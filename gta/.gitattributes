@@ -1,0 +1,4 @@
+# Datos del visor web: ficheros pequeños, se guardan en git normal (sin LFS)
+*.png -filter -diff -merge binary
+*.jpg -filter -diff -merge binary
+*.webp -filter -diff -merge binary
