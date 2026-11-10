@@ -764,7 +764,7 @@ $('stats').innerHTML = sN(bldCount) + ' volúmenes de edificio<br>' + (FXS ? sN(
   sN(Math.round((bldTris + roadTris + (window.BCN.terrTris || 0)) / 1000) / 1000) + ' M de triángulos<br><span style="opacity:.75">© OpenStreetMap · MDT IGN/PNOA · Aj. de Barcelona</span>';
 let t0 = performance.now(), time = 0;
 scene.onBeforeRenderObservable.add(() => {
-  const now = performance.now(), dt = Math.min(0.1, (now - t0) / 1000); t0 = now; time += dt; frame++;
+  const now = performance.now(), dt = Math.min(0.1, (now - t0) / 1000); t0 = now; time = SHOT ? 10 : time + dt; frame++;   // en modo captura el tiempo se congela (capturas reproducibles)
   update(dt);
   matSea.setFloat('uTime', time); matSky.setFloat('uTime', time);
 });
@@ -776,7 +776,7 @@ addEventListener('resize', () => engine.resize());
 setMsg('¡Listo!', 1);
 setTimeout(() => { $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 700); }, 150);
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
-  fx: FXS, st: STS, detailBusy: () => (!!FXS && FXS.busy()) || (!!STS && STS.busy()), detailStats: () => ({ fx: FXS && FXS.stats(), st: STS && STS.stats() }),
+  fx: FXS, streets: STS, detailBusy: () => (!!FXS && FXS.busy()) || (!!STS && STS.busy()), detailStats: () => ({ fx: FXS && FXS.stats(), st: STS && STS.stats() }),
   fxFlush: () => { const P = cam.position, g = groundY(P.x, P.z); let n = 0;
     if (FXS) do { FXS.update(P, g, 0.3, 0); } while (FXS.busy() && ++n < 100000);
     if (STS) { n = 0; do { STS.update(P, g, 0.5, 0); } while (STS.busy() && ++n < 100000); STS.update(P, g, 0.5, 0); } } });

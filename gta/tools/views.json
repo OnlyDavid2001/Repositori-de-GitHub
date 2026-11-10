@@ -1,0 +1,156 @@
+{
+ "eix_acera": {
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03
+ },
+ "eix_calzada": {
+  "x": 12080.6,
+  "z": 14547.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.02
+ },
+ "eix_tienda": {
+  "x": 12064.6,
+  "z": 14541.0,
+  "walk": true,
+  "yaw": -0.7792,
+  "pitch": 0.0
+ },
+ "eix_tienda2": {
+  "x": 12088.1,
+  "z": 14545.6,
+  "walk": true,
+  "yaw": -3.9208,
+  "pitch": 0.0
+ },
+ "eix_fachada": {
+  "x": 12077.4,
+  "z": 14536.6,
+  "walk": true,
+  "yaw": -0.7792,
+  "pitch": -0.32
+ },
+ "eix_balcones": {
+  "x": 12062.0,
+  "z": 14535.1,
+  "walk": true,
+  "yaw": -0.7792,
+  "pitch": -0.75
+ },
+ "eix_portal": {
+  "x": 12075.0,
+  "z": 14550.4,
+  "walk": true,
+  "yaw": -0.2792,
+  "pitch": 0.0
+ },
+ "eix_mobiliario": {
+  "x": 12056.2,
+  "z": 14529.6,
+  "walk": true,
+  "yaw": 0.7916,
+  "pitch": 0.12
+ },
+ "eix2_acera": {
+  "x": 12244.6,
+  "z": 14299.9,
+  "walk": true,
+  "yaw": 0.8056,
+  "pitch": 0.02
+ },
+ "eix2_tienda": {
+  "x": 12261.6,
+  "z": 14296.6,
+  "walk": true,
+  "yaw": 2.3764,
+  "pitch": 0.0
+ },
+ "gotic_calle": {
+  "x": 12712.0,
+  "z": 13385.3,
+  "walk": true,
+  "yaw": 0.704,
+  "pitch": -0.02
+ },
+ "gotic_tienda": {
+  "x": 12720.5,
+  "z": 13393.8,
+  "walk": true,
+  "yaw": 2.6248,
+  "pitch": -0.02
+ },
+ "gracia_calle": {
+  "x": 11126.6,
+  "z": 15848.3,
+  "walk": true,
+  "yaw": 2.4542,
+  "pitch": -0.02
+ },
+ "pg_acera": {
+  "x": 11836.8,
+  "z": 14607.4,
+  "walk": true,
+  "yaw": -0.7403,
+  "pitch": -0.02
+ },
+ "pg_calzada": {
+  "x": 11819.1,
+  "z": 14591.2,
+  "walk": true,
+  "yaw": -0.7403,
+  "pitch": -0.05
+ },
+ "pg_tiendas": {
+  "x": 11840.5,
+  "z": 14611.0,
+  "walk": true,
+  "yaw": 0.83,
+  "pitch": -0.04
+ },
+ "rambla_pie": {
+  "x": 12405.9,
+  "z": 13505.8,
+  "walk": true,
+  "yaw": 2.584,
+  "pitch": 0.0
+ },
+ "granvia_cruce": {
+  "x": 12031.2,
+  "z": 14307.4,
+  "agl": 6,
+  "yaw": 0.7924,
+  "pitch": 0.28
+ },
+ "dron_bajo": {
+  "x": 12073.5,
+  "z": 14540.5,
+  "agl": 22,
+  "yaw": -2.0,
+  "pitch": 0.38
+ },
+ "aereo_eixample": {
+  "x": 11900,
+  "y": 160,
+  "z": 14500,
+  "yaw": 0.5,
+  "pitch": 0.42
+ },
+ "aereo_alto": {
+  "x": 11500,
+  "y": 900,
+  "z": 13500,
+  "yaw": 0.75,
+  "pitch": 0.5
+ },
+ "port_vell": {
+  "x": 13300,
+  "y": 260,
+  "z": 12700,
+  "yaw": -0.6,
+  "pitch": 0.35
+ }
+}
