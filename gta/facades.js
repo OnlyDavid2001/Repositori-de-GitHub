@@ -85,7 +85,7 @@ const AWNINGS = [[166, 36, 33], [31, 77, 56], [219, 204, 168], [38, 56, 107]];
 const SHOPS = ['FORN DE PA', 'FARMÀCIA', 'FERRETERIA', 'BAR TAPES', 'FRUITERIA', 'LLIBRERIA', 'FLORISTERIA', 'RESTAURANT', 'PERRUQUERIA', 'MODA', 'GELATERIA', 'CAFÈ', 'QUEVIURES', 'ÒPTICA', 'PAPERERIA', 'FORMATGERIA'];
 
 window.BCN_FACADES = async function (ctx) {
-  const { scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, RSEG, META, PAL, WX, WZ, blobURL, cam } = ctx;
+  const { scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, SEG, META, PAL, WX, WZ, blobURL, cam } = ctx;
   const VB = BABYLON.VertexBuffer;
 
   // ---------------------------------------------------------------- materiales
@@ -242,10 +242,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   }
   const ALL = csr(NB, (b, f) => rangeCells(BB[b * 4], BB[b * 4 + 1], BB[b * 4 + 2], BB[b * 4 + 3], f));
   const ELIG = csr(NB, (b, f) => { if (BREC.elig[b]) f(cellOf((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2)); });
-  const NS = RSEG.length / 5;
-  const SEG = new Float32Array(RSEG);
-  const ROADS = csr(NS, (s, f) => { const o = s * 5, h = SEG[o + 4] + 1; rangeCells(Math.min(SEG[o], SEG[o + 2]) - h, Math.min(SEG[o + 1], SEG[o + 3]) - h, Math.max(SEG[o], SEG[o + 2]) + h, Math.max(SEG[o + 1], SEG[o + 3]) + h, f); });
-  RSEG.length = 0;
+  const NS = SEG.length / 6;
+  const ROADS = csr(NS, (s, f) => { const o = s * 6, h = SEG[o + 4] + 1; rangeCells(Math.min(SEG[o], SEG[o + 2]) - h, Math.min(SEG[o + 1], SEG[o + 3]) - h, Math.max(SEG[o], SEG[o + 2]) + h, Math.max(SEG[o + 1], SEG[o + 3]) + h, f); });
   let nElig = 0; for (let b = 0; b < NB; b++) nElig += BREC.elig[b];
 
   // ---------------------------------------------------------------- consultas
@@ -281,7 +279,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function roadDist(x, z) {
     const c = cellOf(x, z); let best = 1e9;
     for (let k = ROADS.start[c]; k < ROADS.start[c + 1]; k++) {
-      const o = ROADS.list[k] * 5, ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3];
+      const o = ROADS.list[k] * 6, ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3];
       const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz; let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
       const e = Math.hypot(x - ax - dx * t, z - az - dz * t) - SEG[o + 4]; if (e < best) best = e;
     }
@@ -355,7 +353,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const glass = [33, 43, 54], rv = shade(p, 0.58);
 
     for (const r of runs) {
-      const F = { x: r.ax - ox, z: r.az - oz, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz };
+      // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
+      const F = { x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz };
       const L = r.L, y0 = d.y0;
       const cover = r.cover;
       if (r.kind === 'blind') {
@@ -375,7 +374,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const bwT = street ? 3.7 : 3.2, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
       const N = r === lay.portal && L >= 9 ? nb >> 1 : -1;
       const M = street && tribunaOK && nb >= 3 && nF >= 3 && R() < 0.6 ? nb >> 1 : -9;
-      const gnd = c => heightAt(r.ax + r.tx * c + r.nx * 1.0, r.az + r.tz * c + r.nz * 1.0);
+      const gnd = c => heightAt(r.ax + r.tx * c + r.nx * 1.0, r.az + r.tz * c + r.nz * 1.0) + 0.32;   // cota de la acera
       const wallC = street ? p : shade(p, 0.95);
 
       // --- planta baja
@@ -658,7 +657,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     planT = 0;
   }
   setRange(1);
-  return { update, setRange, nElig, busy: () => !!job || queue.length > 0,
+  return { lib: { GB, quad, box, rect, jamb, hpl, K, shade, mixc, mkMeshFrom, matB, matH, ROADS, cellOf, CS, NX, NZ, coverAt, bget, inside, ALL, BB }, update, setRange, nElig, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 };
 })();

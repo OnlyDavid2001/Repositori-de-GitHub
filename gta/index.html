@@ -71,6 +71,8 @@
   <input id="dist" type="range" min="2" max="40" step="1" value="40">
   <label>Fachadas de detalle al acercarse</label>
   <div class="row" id="fxRow"><button id="fx0">No</button><button id="fx1" class="on">Normal</button><button id="fx2">Alta</button></div>
+  <label>Calles de detalle (aceras, árboles, mobiliario)</label>
+  <div class="row" id="stRow"><button id="st0">No</button><button id="st1" class="on">Normal</button><button id="st2">Alta</button></div>
   <button id="tLabels" class="on">Nombres de barrios</button>
   <h4>Datos</h4>
   <div id="stats" style="color:var(--dim);font-size:12px;margin:0 4px 6px"></div>
@@ -89,6 +91,7 @@
 <script src="https://cdn.jsdelivr.net/npm/babylonjs@9.35.0/babylon.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"></script>
 <script src="facades.js"></script>
+<script src="streets.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

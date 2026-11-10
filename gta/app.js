@@ -193,14 +193,18 @@ void main(){
   gl_FragColor = vec4(fog(c, vPos), 1.0);
 }`;
 
-const FS_ROAD = COMMON + `
+const FS_ROAD = `#extension GL_OES_standard_derivatives : enable
+` + COMMON + `
 varying vec3 vPos; varying vec4 vCol; varying vec4 vInfo;
+uniform sampler2D tAsD; uniform sampler2D tAsN; uniform vec2 uOrg; uniform float uAsph;
 void main(){
   float cls = floor(vCol.a*255.0 + 0.5);
-  vec3 alb = vCol.rgb*(0.90 + 0.2*vnoise(vPos.xz*0.6));
+  vec2 P = vPos.xz - uOrg;                         // origen cercano a la cámara: precisión para texturas
+  vec3 alb = vCol.rgb*(0.90 + 0.2*vnoise(P*0.6));
   float dist = length(vPos - uCam);
   float fade = 1.0 - smoothstep(250.0, 1400.0, dist);
-  float au = abs(vInfo.x), v = vInfo.y, mk = 0.0;
+  float au = abs(vInfo.x), v = vInfo.y, hw = max(vInfo.z, 0.5), mk = 0.0;
+  float x = vInfo.x*hw;                            // metros desde el eje
   if (cls < 1.5 || abs(cls-10.0) < 0.5) {
     mk = smoothstep(0.84,0.87,au)*(1.0 - smoothstep(0.91,0.94,au));
     if (cls < 1.5) mk = max(mk, (1.0 - smoothstep(0.015,0.04,abs(au-0.31)))*step(fract(v/12.0),0.3));
@@ -214,8 +218,43 @@ void main(){
     mk = (1.0 - smoothstep(0.02,0.045,au))*0.8;
     alb = mix(alb, vec3(0.85,0.72,0.2), mk*fade*0.8); mk = 0.0;
   }
+  vec3 N = vec3(0.0, 1.0, 0.0);
+  float near = (1.0 - smoothstep(140.0, 480.0, dist))*uAsph;
+  bool car = cls < 6.5 || abs(cls-8.0) < 0.5 || abs(cls-10.0) < 0.5 || abs(cls-11.0) < 0.5;
+  if (near > 0.0 && car) {
+    // asfalto fotografiado de Transeúnte, con mezcla de dos escalas para que no se repita
+    float gB = smoothstep(0.42, 0.62, vnoise(P*0.02));
+    vec3 t1 = texture2D(tAsD, P/6.0).rgb, t2 = texture2D(tAsD, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).rgb;
+    vec3 tx = mix(t1, t2, gB);
+    float lum = dot(tx, vec3(0.3, 0.6, 0.1));
+    vec3 asf = vCol.rgb*0.8*mix(0.7, 1.22, smoothstep(0.12, 0.5, lum))*mix(0.9, 1.06, vnoise(P*0.025));
+    // parches de reparación y zonas más nuevas
+    vec2 pc = floor(P/vec2(4.8, 9.6)); float ph = hash21(pc + 0.5);
+    vec2 pf = fract(P/vec2(4.8, 9.6));
+    float rpatch = step(0.88, ph)*step(0.15, pf.x)*step(pf.x, 0.85)*step(0.1, pf.y)*step(pf.y, 0.8);
+    asf *= mix(1.0, 0.72 + 0.1*ph, rpatch);
+    // rodadas: más oscuras en el centro de cada carril
+    float lane = abs(fract((x + hw)/3.3) - 0.5);
+    asf *= mix(1.0, 0.9, smoothstep(0.32, 0.05, lane)*(0.5 + 0.5*vnoise(P*0.3)));
+    // tapas de alcantarilla en el eje y rejas de imbornal junto al bordillo
+    float mh = length(vec2((fract(v/31.0 + 0.37) - 0.5)*31.0, x - hw*0.3));
+    float mhole = (1.0 - smoothstep(0.32, 0.34, mh))*step(2.5, hw);
+    float ring = smoothstep(0.26, 0.28, mh)*(1.0 - smoothstep(0.32, 0.34, mh));
+    vec2 dg = vec2((fract(v/23.0 + 0.11) - 0.5)*23.0, abs(x) - (hw - 0.32));
+    float drain = step(abs(dg.x), 0.45)*step(abs(dg.y), 0.2)*step(2.5, hw);
+    float bars = step(0.5, fract(dg.x*11.0));
+    asf = mix(asf, vec3(0.13, 0.13, 0.14)*(0.8 + 0.4*step(0.5, fract((P.x + P.y)*8.0))), mhole*(1.0 - ring));
+    asf = mix(asf, vec3(0.20, 0.19, 0.18), mhole*ring);
+    asf = mix(asf, vec3(0.05, 0.05, 0.06) + bars*0.08, drain);
+    alb = mix(alb, asf, near);
+    vec3 tn = mix(texture2D(tAsN, P/6.0).xyz, texture2D(tAsN, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).xyz, gB)*2.0 - 1.0;
+    N = normalize(vec3(tn.x, 1.0, tn.y)*vec3(near*0.9, 1.0, near*0.9));
+    // pintura gastada
+    mk *= mix(1.0, smoothstep(0.2, 0.55, vnoise(P*0.9)*0.6 + vnoise(P*4.3)*0.4), near);
+  }
   alb = mix(alb, vec3(0.86,0.86,0.82), mk*fade*0.8);
-  vec3 c = lit(alb, vec3(0.0,1.0,0.0));
+  vec3 c = lit(alb, N);
+  c += uSunCol*0.05*pow(max(dot(reflect(-uSunDir, N), normalize(uCam - vPos)), 0.0), 24.0)*near;
   gl_FragColor = vec4(fog(c, vPos), 1.0);
 }`;
 
@@ -293,7 +332,8 @@ const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx']
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
 const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell'], ['groundTex', 'normTex']);
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
-const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv']);
+const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph'], ['tAsD', 'tAsN']);
+matRoad.setVector2('uOrg', new BABYLON.Vector2(0, 0)); matRoad.setFloat('uAsph', 0);
 const matQuay = mkMat('quay', VS_BASIC, FS_QUAY, ['position']);
 const matSea = mkMat('sea', VS_BASIC, FS_SEA, ['position'], ['uSize'], ['coastTex']);
 const matSky = mkMat('sky', VS_SKY, FS_SKY, ['position']);
@@ -414,7 +454,7 @@ const RCOL = [[66, 66, 72], [70, 70, 76], [78, 78, 84], [82, 82, 88], [86, 86, 9
               [168, 150, 118], [72, 72, 78], [96, 88, 82], [104, 112, 98], [52, 52, 58], [92, 92, 97], [150, 140, 124], [212, 203, 186], [100, 146, 82]];
 const ROFF = [0.30, 0.28, 0.24, 0.22, 0.20, 0.18, 0.16, 0.14, 0.12, 0.10, 0.26, 0.13, 0.25, 0.22, 0.17, 0.30, 0.12, 0.20];
 let roadTris = 0;
-const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho) para saber qué fachadas dan a la calle
+const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fachadas, aceras, árboles y mobiliario
 {
   const rd = await loadContainer('data/roads.png');
   const dv = rd.view('data');
@@ -439,7 +479,7 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho) para saber 
       let hp = heightAt(x, z);
       for (let k = 1; k < n; k++, p += 4) {
         const nx = x + dv.getInt16(p, true) / 10, nz = z + dv.getInt16(p + 2, true) / 10, hn = heightAt(nx, nz);
-        RSEG.push(x, z, nx, nz, w / 2);
+        RSEG.push(x, z, nx, nz, w / 2, cls);
         sub(x, z, hp, nx, nz, hn, 0); xs.push(nx); zs.push(nz); x = nx; z = nz; hp = hn;
       }
       const m = xs.length, hw = w / 2, c = RCOL[cls] || RCOL[5], off = ROFF[cls] || 0.15, v0 = pos.length / 3;
@@ -453,19 +493,28 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho) para saber 
         if (hw > 2.5) { const yc = heightAt(xs[k], zs[k]); yl = Math.max(yl, yc - hw * 0.08); yr = Math.max(yr, yc - hw * 0.08); if (hw > 9) { yl = Math.max(yl, yc); yr = Math.max(yr, yc); } }
         pos.push(lx, yl + off, lz, rx, yr + off, rz);
         col.push(c[0], c[1], c[2], cls, c[0], c[1], c[2], cls);
-        uvs.push(-1, along, 1, along);
+        uvs.push(-1, along, hw, 0, 1, along, hw, 0);
         if (k > 0) { const a = v0 + 2 * k - 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
       }
     }
     if (idx.length) {
       const nv = pos.length / 3;
       mkMesh('r' + bi, new Float32Array(pos), nv > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), matRoad,
-        [vbuf(new Uint8Array(col), 'color', 4, VB.UNSIGNED_BYTE, true), vbuf(new Float32Array(uvs), 'uv', 2, VB.FLOAT, false)]);
+        [vbuf(new Uint8Array(col), 'color', 4, VB.UNSIGNED_BYTE, true), vbuf(new Float32Array(uvs), 'uv', 4, VB.FLOAT, false)]);
       roadTris += idx.length / 3;
     }
     if ((++bi & 15) === 0) { setMsg('Trazando calles…', 0.25 + 0.1 * bi / rd.meta.buckets.length); await tick(); }
   }
 }
+
+// asfalto fotografiado (Transeúnte)
+try {
+  const tw = async f => { const t = new BABYLON.Texture(await blobURL('data/' + f), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    t.wrapU = t.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE; t.anisotropicFilteringLevel = 8; return t; };
+  const [ad, an] = await Promise.all([tw('st_asphalt_d.webp'), tw('st_asphalt_n.webp')]);
+  matRoad.setTexture('tAsD', ad); matRoad.setTexture('tAsN', an); matRoad.setFloat('uAsph', 1);
+} catch (e) { console.warn('Sin textura de asfalto', e); matRoad.setTexture('tAsD', coastTex); matRoad.setTexture('tAsN', coastTex); }
+const SEG = new Float32Array(RSEG); RSEG.length = 0;
 
 // ------------------------------------------------------------------ edificios
 const PAL = {
@@ -573,8 +622,15 @@ setMsg('Preparando fachadas de detalle…', 0.97);
 await tick();
 let FXS = null;
 try {
-  FXS = await window.BCN_FACADES({ scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, RSEG, META, PAL, WX, WZ, blobURL, cam, L, matBld });
+  FXS = await window.BCN_FACADES({ scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, SEG, META, PAL, WX, WZ, blobURL, cam, L, matBld });
 } catch (e) { console.warn('Sin fachadas de detalle', e); }
+// ------------------------------------------------------------------ calles de detalle (aceras, árboles, mobiliario)
+setMsg('Preparando calles: aceras, árboles y mobiliario…', 0.985);
+await tick();
+let STS = null;
+try {
+  if (FXS) STS = await window.BCN_STREETS({ scene, engine, mkMat, COMMON, heightAt, SEG, WX, WZ, blobURL, FX: FXS, ROFF });
+} catch (e) { console.warn('Sin calles de detalle', e); }
 
 // ------------------------------------------------------------------ cámara y controles
 const st = { yaw: 0, pitch: 0.5, walk: false, keys: {}, fly: null, showLabels: true, maxDist: 40000 };
@@ -617,6 +673,8 @@ $('dist').oninput = e => { st.maxDist = +e.target.value * 1000; $('distV').textC
 $('distV').textContent = 'todo';
 [['fx0', 0], ['fx1', 1], ['fx2', 2]].forEach(([id, q]) => { $(id).onclick = () => { if (FXS) FXS.setRange(q); for (const k of ['fx0', 'fx1', 'fx2']) $(k).classList.toggle('on', k === id); }; });
 if (!FXS) $('fxRow').style.display = 'none';
+[['st0', 0], ['st1', 1], ['st2', 2]].forEach(([id, q]) => { $(id).onclick = () => { if (STS) STS.setRange(q); for (const k of ['st0', 'st1', 'st2']) $(k).classList.toggle('on', k === id); }; });
+if (!STS) $('stRow').style.display = 'none';
 $('tLabels').onclick = e => { st.showLabels = !st.showLabels; e.target.classList.toggle('on', st.showLabels); if (!st.showLabels) for (const l of labels) { l.e.style.display = 'none'; l.on = false; } };
 addEventListener('keydown', e => { st.keys[e.code] = true; if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].indexOf(e.code) >= 0) e.preventDefault(); });
 addEventListener('keyup', e => { st.keys[e.code] = false; });
@@ -672,7 +730,9 @@ function update(dt) {
   cam.minZ = Math.max(0.4, Math.min(40, alt * 0.03)); cam.maxZ = 170000;
   sky.position.copyFrom(P);
   for (const m of mats) m.setVector3('uCam', P);
+  { const ox = Math.floor(P.x / 1200) * 1200, oz = Math.floor(P.z / 1200) * 1200; if (ox !== st._ox || oz !== st._oz) { st._ox = ox; st._oz = oz; matRoad.setVector2('uOrg', new BABYLON.Vector2(ox, oz)); } }
   if (FXS) FXS.update(P, g, dt, frame);
+  if (STS) STS.update(P, g, dt, frame);
   if (SHOT || (frame & 7) === 0) { const md = st.maxDist + P.y * 1.2, m2 = md * md; for (const c of bldChunks) { const dx = c.x - P.x, dz = c.z - P.z; c.mesh.setEnabled(st.maxDist >= 40000 || dx * dx + dz * dz < m2); } }
   hudT -= dt;
   if (hudT <= 0) {
@@ -716,8 +776,10 @@ addEventListener('resize', () => engine.resize());
 setMsg('¡Listo!', 1);
 setTimeout(() => { $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 700); }, 150);
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
-  fx: FXS, detailBusy: () => !!FXS && FXS.busy(), detailStats: () => FXS && FXS.stats(),
-  fxFlush: () => { if (!FXS) return; const P = cam.position, g = groundY(P.x, P.z); let n = 0; do { FXS.update(P, g, 0.3, 0); } while (FXS.busy() && ++n < 100000); } });
+  fx: FXS, st: STS, detailBusy: () => (!!FXS && FXS.busy()) || (!!STS && STS.busy()), detailStats: () => ({ fx: FXS && FXS.stats(), st: STS && STS.stats() }),
+  fxFlush: () => { const P = cam.position, g = groundY(P.x, P.z); let n = 0;
+    if (FXS) do { FXS.update(P, g, 0.3, 0); } while (FXS.busy() && ++n < 100000);
+    if (STS) { n = 0; do { STS.update(P, g, 0.5, 0); } while (STS.busy() && ++n < 100000); STS.update(P, g, 0.5, 0); } } });
 } catch (e) {
   console.error(e); window.BCN.error = String(e && e.stack || e);
   $('err').textContent = 'No se ha podido cargar la ciudad: ' + (e && e.message || e);
