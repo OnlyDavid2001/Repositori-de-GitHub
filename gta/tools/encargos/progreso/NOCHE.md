@@ -30,3 +30,8 @@ avenidas de LED, aura = bloom + bruma baja leve. La fase B no se toca. Documenta
 ## Cómo se prueba
 `SIZE=640x360 FMT=jpg node tools/shot.js tools/out/nf/x @tools/views_noche.json` (12 vistas, ~10–15 min con la máquina
 compartida). Hoja ANTES/DESPUÉS/REFERENCIA: `<scratchpad>/noche_fiel/hoja.jpg` (y `hoja_horas.jpg`), con `hoja.py`.
+
+## Verificado (640x360, sin errores ni avisos de consola)
+- 23:00: cielo en la franja alta (1, 14, 28) frente a (0, 15, 31) de la foto; a pie `eix_acera` y `rambla_pie` con la misma
+  media que antes (52, 44, 40). 21:15: cielo de hora azul como antes, ventanas y calles encendidas sobre masas aún visibles.
+  3:00: masas negras, muy pocas ventanas. 12:00: idéntica píxel a píxel al código anterior (`aer`, `eix_acera`: media 0, máx. 0).
