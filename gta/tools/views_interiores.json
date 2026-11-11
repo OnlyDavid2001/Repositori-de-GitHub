@@ -1,0 +1,15 @@
+[
+ {"name": "iy_frente", "x": 12066.7, "z": 14538.9, "walk": true, "yaw": -0.7792, "pitch": -0.08, "hour": 17},
+ {"name": "iy_oblicuo", "x": 12068.73, "z": 14541.71, "walk": true, "yaw": -1.391, "pitch": -0.06, "hour": 17},
+ {"name": "iy_acera30", "x": 12086.63, "z": 14561.38, "walk": true, "yaw": -2.193, "pitch": -0.02, "hour": 17},
+ {"name": "iy_acera120", "x": 12152.38, "z": 14622.87, "walk": true, "yaw": -2.29, "pitch": -0.02, "hour": 17},
+ {"name": "iy_rasante", "x": 12070.79, "z": 14548.96, "walk": true, "yaw": -2.25, "pitch": -0.02, "hour": 17},
+ {"x": 12064.6, "z": 14541.0, "walk": true, "yaw": -0.7792, "pitch": 0.0, "name": "eix_tienda", "hour": 17},
+ {"x": 12088.1, "z": 14545.6, "walk": true, "yaw": -3.9208, "pitch": 0.0, "name": "eix_tienda2", "hour": 17},
+ {"x": 11840.5, "z": 14611.0, "walk": true, "yaw": 0.83, "pitch": -0.04, "name": "pg_tiendas", "hour": 17},
+ {"x": 12720.5, "z": 13393.8, "walk": true, "yaw": 2.6248, "pitch": -0.02, "name": "gotic_tienda", "hour": 17},
+ {"x": 12405.9, "z": 13505.8, "walk": true, "yaw": 2.584, "pitch": 0.0, "name": "rambla_pie", "hour": 17},
+ {"x": 12712.0, "z": 13385.3, "walk": true, "yaw": 0.704, "pitch": -0.02, "name": "gotic_calle", "hour": 17},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "noche_eix_acera", "hour": 20.25},
+ {"x": 11840.5, "z": 14611.0, "walk": true, "yaw": 0.83, "pitch": -0.04, "name": "noche_pg_tiendas", "hour": 20.25}
+]

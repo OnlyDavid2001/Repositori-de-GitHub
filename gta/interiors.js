@@ -30,7 +30,7 @@ const TYPES = [
   { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [236, 240, 238], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [230, 232, 230]], far: [LY.MOSTRADOR, [232, 236, 234]], near: [LY.ISLA, [225, 228, 226]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
   { n: 'FERRETERIA', w: 4, sign: ['#2b2b2f', '#f2c230'], awn: [60, 60, 66], wall: [168, 164, 156], floor: [FL.TERRAZO, [120, 116, 110], [156, 150, 140]], warm: 0.4, lamp: LAMP.TUBOS,
-    back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
+    back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.ISLA, [92, 92, 98]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
   { n: 'BAR', w: 13, sign: ['#7c1d22', '#f6e8c9'], awn: [166, 36, 33], wall: [98, 62, 44], floor: [FL.DAMERO, [44, 40, 38], [190, 180, 160]], warm: 1.0, lamp: LAMP.CALIDA,
     back: [BACK.BOTELLERO, [70, 42, 26]], far: [LY.BARRA, [84, 50, 30]], near: [LY.MESAS, [60, 40, 28]], shelf: [LY.NADA, [0, 0, 0]], acc: [220, 170, 70], pal: PAL.BOTELLAS, shape: SH.BOTELLA },
   { n: 'FRUITERIA', w: 7, sign: ['#2f6b1e', '#fff4c9'], awn: [46, 110, 50], wall: [214, 226, 200], floor: [FL.BALDOSA, [190, 186, 170], [140, 138, 128]], warm: 0.5, lamp: LAMP.TUBOS,
@@ -52,7 +52,7 @@ const TYPES = [
   { n: 'QUEVIURES', w: 10, sign: ['#5c3b16', '#f6e8c9'], awn: [166, 36, 33], wall: [226, 214, 180], floor: [FL.DAMERO, [206, 196, 174], [150, 70, 56]], warm: 0.7, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [140, 100, 60]], far: [LY.MOSTRADOR, [130, 92, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 86, 54]], acc: [190, 60, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
   { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [240, 240, 238], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
-    back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
+    back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.ISLA, [228, 230, 232]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
   { n: 'PAPERERIA', w: 4, sign: ['#b8401c', '#fff4c9'], awn: [219, 204, 168], wall: [200, 216, 232], floor: [FL.BALDOSA, [196, 190, 176], [150, 146, 136]], warm: 0.5, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [220, 220, 214]], far: [LY.MOSTRADOR, [70, 110, 160]], near: [LY.ISLA, [210, 206, 196]], shelf: [LY.TARIMA, [60, 100, 150]], acc: [230, 180, 40], pal: PAL.VARIADO, shape: SH.CAJA },
   { n: 'FORMATGERIA', w: 3, sign: ['#6b5a1e', '#fff4c9'], awn: [150, 120, 40], wall: [232, 220, 188], floor: [FL.DAMERO, [220, 210, 190], [80, 68, 56]], warm: 0.8, lamp: LAMP.FOCOS,
@@ -112,6 +112,7 @@ float shR(vec2 p, vec2 a, vec2 b, float px){ vec2 d = min(p - a, b - p); return 
 float shC(vec2 p, float r, float px){ return clamp((r - length(p))/px + 0.5, 0.0, 1.0); }
 float shT(vec2 q, float y0, float y1, float w0, float w1, float px){ float w = mix(w0, w1, clamp((q.y - y0)/(y1 - y0), 0.0, 1.0));
   return clamp(min(min(q.y - y0, y1 - q.y), w - abs(q.x))/px + 0.5, 0.0, 1.0); }
+float shS(float x, float px){ return clamp(x/px + 0.5, 0.0, 1.0); }
 // las capas se componen con alfa premultiplicado
 vec4 shOv(vec4 d, vec3 c, float a){ return vec4(c*a, a) + d*(1.0 - a); }
 float shPitch(float s){ return s < 0.5 ? 0.15 : (s < 1.5 ? 0.24 : (s < 2.5 ? 0.10 : (s < 3.5 ? 0.045 : (s < 5.5 ? 0.24 : 0.13)))); }
@@ -337,23 +338,60 @@ vec4 shLayer(float id, vec2 p, float W, vec3 col, vec3 acc, float shape, float p
       ov.rgb += vec3(0.05, 0.6, 0.2)*0.5*exp(-dot(m, m)*7.0);
     }
   } else if (id < 12.5) {
-    // 12 maniquíes sobre la tarima del escaparate
-    float cw = W/max(1.0, floor(W/1.5)), ci = floor(p.x/cw), hq = hash21(vec2(ci, sd));
+    // 12 maniquíes sobre la tarima del escaparate: de cuerpo entero (pantalón con chaqueta o camiseta, o vestido) y bustos de
+    // sastre con peana. Silueta: cabeza ovalada, cuello, hombros caídos, cintura, caderas, brazos algo abiertos y piernas separadas
+    float cw = W/max(1.0, floor(W/1.5)), ci = floor(p.x/cw), hq = hash21(vec2(ci, sd)), h2 = fract(hq*7.31 + 0.17);
     vec2 q = vec2((fract(p.x/cw) - 0.5)*cw + (hq - 0.5)*0.3, p.y - 0.5), aq = vec2(abs(q.x), q.y);
-    vec3 c1 = shPal(9.0, hq), c2 = shPal(9.0, fract(hq*3.7 + 0.2));
+    vec3 c1 = shPal(9.0, hq), c2 = shPal(9.0, fract(hq*3.7 + 0.2)), mq = acc*1.3 + 0.08;
+    float rd = 0.84 + 0.30*(1.0 - smoothstep(0.0, 0.11, abs(q.x + 0.04))), lrd = 0.84 + 0.30*(1.0 - smoothstep(0.0, 0.05, abs(aq.x - 0.075)));
     o = shOv(o, col*0.9, shR(p, vec2(0.0), vec2(W, 0.5), px));
-    o = shOv(o, col, max(shC(q - vec2(0.0, 1.62), 0.10, px), shR(q, vec2(-0.04, 1.44), vec2(0.04, 1.56), px)));
-    o = shOv(o, col, shR(aq, vec2(0.19, 0.80), vec2(0.25, 1.40), px));
-    if (hq < 0.5) o = shOv(o, c2, shR(aq, vec2(0.015, 0.0), vec2(0.14, 0.86), px));
-    else { o = shOv(o, col, shR(aq, vec2(0.03, 0.0), vec2(0.11, 0.5), px)); o = shOv(o, c2, shT(q, 0.38, 0.92, 0.26, 0.15, px)); }
-    o = shOv(o, c1, shT(q, 0.82, 1.45, 0.15, 0.22, px));
+    float hip = max(shT(q, 0.80, 0.90, 0.158, 0.166, px), shT(q, 0.89, 1.03, 0.166, 0.124, px));
+    float tor = max(max(shT(q, 1.02, 1.31, 0.124, 0.172, px), shT(q, 1.30, 1.43, 0.172, 0.200, px)), shT(q, 1.42, 1.49, 0.200, 0.050, px));
+    float vn = shT(q, 1.30, 1.50, 0.0, 0.066, px);
+    if (hq < 0.24) {
+      o = shOv(o, vec3(0.17, 0.16, 0.16), max(shT(q, 0.0, 0.045, 0.20, 0.07, px), shR(q, vec2(-0.016, 0.0), vec2(0.016, 0.85), px)));
+      o = shOv(o, vec3(0.80, 0.74, 0.62)*rd, max(hip, tor));
+      o = shOv(o, c1*rd, max(tor, hip*step(0.5, h2))*(1.0 - vn));
+      o = shOv(o, vec3(0.30, 0.20, 0.12), max(shR(q, vec2(-0.045, 1.48), vec2(0.045, 1.53), px), shC(q - vec2(0.0, 1.56), 0.034, px)));
+    } else {
+      float slv = step(0.5, h2), axc = mix(0.268, 0.224, smoothstep(0.80, 1.42, q.y));
+      float leg = shT(vec2(aq.x - 0.088, q.y), 0.04, 0.88, 0.040, 0.080, px), arm = shT(vec2(aq.x - axc, q.y), 0.82, 1.45, 0.030, 0.052, px);
+      float body = max(max(leg, arm), shC(vec2(aq.x - 0.270, (q.y - 0.79)*0.65), 0.034, px));
+      o = shOv(o, mq*lrd, body);
+      o = shOv(o, mq*rd, max(max(hip, tor), max(shC(vec2(q.x, (q.y - 1.665)*0.80), 0.088, px), shR(q, vec2(-0.040, 1.46), vec2(0.040, 1.60), px))));
+      o = shOv(o, vec3(0.07, 0.06, 0.06), shR(aq, vec2(0.040, 0.0), vec2(0.150, 0.05), px));
+      if (hq > 0.64) {
+        o = shOv(o, c1*rd, max(tor*(1.0 - vn), shT(q, 0.40, 1.04, 0.26, 0.124, px)));
+        o = shOv(o, c1*lrd, arm*slv*shS(q.y - 1.24, px));
+      } else {
+        o = shOv(o, c2*lrd, leg*shS(q.y - 0.07, px));
+        o = shOv(o, c2*rd, hip);
+        o = shOv(o, c1*rd, max(tor, hip*shS(q.y - 0.94, px)));
+        o = shOv(o, c1*lrd, arm*shS(q.y - mix(1.24, 0.88, slv), px));
+        o = shOv(o, vec3(0.90, 0.89, 0.86), vn*tor*slv);
+        o = shOv(o, c1*0.55, slv*shR(q, vec2(-0.005, 0.94), vec2(0.005, 1.31), px));
+      }
+    }
   } else {
-    // 13 carteles de oferta pegados al vidrio, arriba
-    float ci = floor(p.x/1.7), hq = hash21(vec2(ci, sd));
-    vec2 q = vec2((fract(p.x/1.7) - 0.5)*1.7 + (hq - 0.5)*0.6, p.y - 2.1 - 0.4*fract(hq*5.3));
-    vec3 pc = hq > 0.75 ? vec3(0.96, 0.84, 0.14) : vec3(0.86, 0.14, 0.12), ink = hq > 0.75 ? vec3(0.80, 0.10, 0.08) : vec3(0.98);
-    float mk = max(step(abs(q.y - 0.05), 0.08)*step(abs(q.x), 0.24)*step(0.25, fract(q.x/0.16 + hq)), step(abs(q.y + 0.13), 0.02)*step(abs(q.x), 0.27));
-    o = shOv(o, mix(pc, ink, mk*(1.0 - smoothstep(0.01, 0.05, px))), step(0.4, hq)*shR(q, vec2(-0.34, -0.24), vec2(0.34, 0.24), px));
+    // 13 carteles de oferta colgados tras el vidrio, arriba: papel, franja de color con el reclamo, dos líneas de texto y el
+    // precio en grande (tres cifras de siete segmentos con su coma, acabado en 9)
+    float ci = floor(p.x/1.7), hq = hash21(vec2(ci, sd)), h2 = fract(hq*9.7 + 0.3), lv = 1.0 - smoothstep(0.012, 0.05, px);
+    vec2 q = vec2((fract(p.x/1.7) - 0.5)*1.7 + (hq - 0.5)*0.5, p.y - 2.2 - 0.3*fract(hq*5.3));
+    vec3 band = h2 < 0.6 ? vec3(0.86, 0.12, 0.10) : (h2 < 0.8 ? vec3(0.10, 0.36, 0.70) : vec3(0.12, 0.52, 0.22));
+    vec3 c = hq > 0.78 ? vec3(0.98, 0.86, 0.16) : vec3(0.97, 0.96, 0.92), ink = hq > 0.78 ? vec3(0.78, 0.08, 0.06) : band;
+    float wd = shR(q, vec2(-0.27, 0.185), vec2(0.27, 0.255), px)*step(0.22, fract(q.x/0.09 + 0.1));
+    c = mix(c, mix(band, vec3(0.98), wd*lv), shR(q, vec2(-0.41, 0.14), vec2(0.41, 0.31), px));
+    float tl = max(shR(q, vec2(-0.32, 0.075), vec2(0.18, 0.10), px)*step(0.2, fract(q.x/0.13 + hq)), shR(q, vec2(-0.32, 0.03), vec2(0.02, 0.055), px)*step(0.25, fract(q.x/0.11 + h2)));
+    c = mix(c, vec3(0.25), tl*0.8*lv);
+    vec2 dg = vec2((q.x + 0.29)/0.19, (q.y + 0.25)/0.125), dp = vec2(fract(dg.x)*1.52, dg.y);
+    float di = floor(dg.x), hn = hash21(vec2(ci*3.0 + di, sd + 5.0)), n = di < 0.5 ? 1.0 + floor(hn*5.0) : (di < 1.5 ? floor(hn*9.99) : 9.0), e = px/0.125;
+    float mk = n < 0.5 ? 126.0 : (n < 1.5 ? 48.0 : (n < 2.5 ? 109.0 : (n < 3.5 ? 121.0 : (n < 4.5 ? 51.0 : (n < 5.5 ? 91.0 : (n < 6.5 ? 95.0 : (n < 7.5 ? 112.0 : (n < 8.5 ? 127.0 : 123.0))))))));
+    float sg = max(max(mod(floor(mk/64.0), 2.0)*shR(dp, vec2(0.0, 1.78), vec2(1.0, 2.0), e), mod(floor(mk), 2.0)*shR(dp, vec2(0.0, 0.89), vec2(1.0, 1.11), e)), mod(floor(mk/8.0), 2.0)*shR(dp, vec2(0.0), vec2(1.0, 0.22), e));
+    sg = max(sg, max(mod(floor(mk/2.0), 2.0)*shR(dp, vec2(0.0, 1.0), vec2(0.22, 2.0), e), mod(floor(mk/32.0), 2.0)*shR(dp, vec2(0.78, 1.0), vec2(1.0, 2.0), e)));
+    sg = max(sg, max(mod(floor(mk/4.0), 2.0)*shR(dp, vec2(0.0), vec2(0.22, 1.0), e), mod(floor(mk/16.0), 2.0)*shR(dp, vec2(0.78, 0.0), vec2(1.0, 1.0), e)));
+    sg = max(sg*step(0.0, dg.x)*step(dg.x, 3.0), shR(q, vec2(-0.150, -0.272), vec2(-0.118, -0.215), px));
+    c = mix(c, ink, sg*(1.0 - smoothstep(0.03, 0.10, px)));
+    o = shOv(o, c, step(0.35, hq)*shR(q, vec2(-0.41, -0.31), vec2(0.41, 0.31), px));
   }
   vec4 it = shItems(ip, ipit, ihm, ish, ipal, isd, px)*im;
   o = it + o*(1.0 - it.a);
@@ -445,8 +483,12 @@ vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, f
 }
 // el vidrio delante de la habitación: el interior con su luz propia (más al anochecer) y el reflejo del entorno con Fresnel
 vec3 shGlass(vec3 room, vec3 V, vec3 N){
-  float k = clamp(0.09 + 0.91*pow(1.0 - max(dot(N, V), 0.0), 5.0), 0.0, 1.0);
-  return emit(room, mix(1.05, 2.3, uDusk))*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
+  // Fresnel de un vidrio de dos caras: ~7 % de frente, 12 % a 55 grados, 23 % a 65, 42 % a 75 y 64 % a 82 (en rasante manda el reflejo)
+  float k = clamp(0.07 + 0.93*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0), lum = dot(room, vec3(0.30, 0.59, 0.11));
+  // al anochecer la tienda brilla más, pero lo claro sube poco (con la cadena HDR un color claro florece por encima de ~1,6),
+  // lo oscuro sube más y las luminarias (que ya pasan de 1) se quedan como de día
+  float g = mix(1.05, mix(mix(2.2, 1.5, smoothstep(0.18, 0.62, lum)), 1.05, smoothstep(1.2, 2.4, lum)), uDusk);
+  return emit(room, g)*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
 }`;
 regKind('SHOPWIN', 20, `
     float sw = vCol.r*16.0, stb = floor(vCol.g*255.0 + 0.5), stp = mod(stb, 32.0), sfl = floor(stb/32.0);
