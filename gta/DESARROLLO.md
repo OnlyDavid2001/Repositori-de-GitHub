@@ -781,10 +781,10 @@ cambian) hay un «modo día» que vale 1 a pleno día y se desvanece al ponerse 
 | Bosque y parques | `FS_TER` (`vg`, `mt`, `cw`) y `FS_OUT` | lo verde de la ortofoto pasa a oliva oscuro con textura de copas (tres octavas, que se apagan con el tamaño del píxel) por encima de 60–200 m de cota; en el llano (parques) solo la mitad del cambio |
 | Calles lejanas como surcos en sombra | preludio `shOut()`, `sunTan()`; `FS_ROAD`, `FS_BLD` | más allá de la cascada lejana (o sin sombras, a partir de 150–400 m) la calzada recibe la fracción de sol de un cañón de ~20 m de alto (`1 − 13/(tan·(2·semiancho + 10))`, mín. 0,10) y los muros lejanos quedan en sombra por debajo de `19 − 14·tan` m. Toca `gSunVis` antes de `lit()` (también el brillo). Solo en el llano y nunca de noche |
 
-Medido (640×360, vistas de `<scratchpad>/dia_fiel/vdia.json`): bosque de Collserola al sol ≈ (82, 86, 70), en sombra
-≈ (41–52, 51–64, 31–37) frente a (98, 94, 53) / (52, 66, 58) de las fotos; franja alta del cielo (109, 143, 181); a pie, sin
+Medido (640×360, vistas de `<scratchpad>/dia_fiel/vdia.json`): ladera de Collserola a contraluz ≈ (87, 93, 77), en sombra
+≈ (49, 61, 41) frente a (98, 94, 53) / (52, 66, 58) de las fotos; franja alta del cielo (109, 143, 181); a pie, sin
 cambio de brillo apreciable y sin quemados. Hoja ANTES/DESPUÉS/REFERENCIA: `<scratchpad>/dia_fiel/hoja.jpg`.
-**Flojo:** la ciudad vista desde Fabra sigue algo más gris y oscura que la foto (≈ (118, 118, 116) frente a (171, 151, 135));
+**Flojo:** la ciudad vista desde Fabra sigue algo más gris y oscura que la foto (≈ (120, 120, 118) frente a (171, 151, 135));
 las laderas no proyectan sombra más allá de la cascada lejana (400 m), así que Collserola no tiene las grandes sombras de
 colina de la foto; la textura de copas de lejos parece más musgo que bosque; las copas de los árboles de calle
 (`streets.js`) siguen siendo verde medio y oscuro uniforme.
