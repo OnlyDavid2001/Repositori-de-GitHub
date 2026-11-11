@@ -1151,6 +1151,8 @@ python3 tools/hitos/hoja.py --lote c --rumbos 120,300 --k 3 --elev 25 --out tool
 Q='?lmtest=1' python3 tools/hitos/hoja.py hotel_w --rumbos 30                          # fichas de prueba (abajo)
 ```
 
+- `node tools/hitos/tris.js [lotes]`: sin navegador (1 s), ejecuta los constructores con terreno llano y sin edificios
+  sustituidos y lista triángulos y vértices por hito, los que lanzan y los que dejan vértices no finitos. Úsalo antes del arnés.
 - `hoja.py` genera las vistas (órbita a `k` × el tamaño del hito, a `elev` grados, desde cada rumbo; `BCN.st.maxDist` =
   40 000), lanza el arnés, imprime errores, avisos y `BCN.lm.stats()`, y monta una hoja rotulada (`<out>.jpg`; capturas
   sueltas `<out>_<id>_<rumbo>_<hora>.jpg`). Pocas vistas por ejecución: cada una cuesta 0,5–2 min.
