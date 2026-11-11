@@ -114,7 +114,7 @@ float homeOn(float h){ return uDusk*step(h, homeFrac()); }
 const vec3 kAura = vec3(1.0, 0.62, 0.30);
 uniform vec3 uSunL; uniform vec3 uSkyL; uniform vec3 uGndL; uniform vec2 uTone;
 uniform sampler2D uShadow0; uniform sampler2D uShadow1;
-uniform vec3 uShX; uniform vec3 uShY; uniform vec3 uShZ; uniform vec4 uShC0; uniform vec4 uShC1; uniform vec4 uShP;
+uniform vec3 uShX0; uniform vec3 uShY0; uniform vec3 uShX1; uniform vec3 uShY1; uniform vec3 uShZ; uniform vec4 uShC0; uniform vec4 uShC1; uniform vec4 uShP;
 varying vec3 vPos;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float dith(){ return fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
@@ -122,13 +122,14 @@ float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
   return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x), f.y); }
 vec3 toLin(vec3 c){ return pow(max(c, vec3(0.0)), vec3(2.2)); }
 vec3 toScr(vec3 c){ return pow(max(c, vec3(0.0)), vec3(0.4545)); }
-// SOMBRAS. uShX, uShY, uShZ: ejes del espacio de luz (Z hacia el sol) · uShC0, uShC1: centro de cada cascada (mundo) y
-// 1/semilado · uShP: x resolución del mapa, y 1/(rango de profundidad), z filtro (0 sin sombras, 1 = 2x2, 2 = 3x3)
+// SOMBRAS. uShXk, uShYk: ejes X e Y del espacio de luz de la cascada k (su Z, hacia el sol, es X × Y; cada cascada guarda los
+// ejes con que se pintó, así con el reloj en marcha se repintan de una en una sin desajuste) · uShZ: Z de la cercana ·
+// uShC0, uShC1: centro de cada cascada (mundo) y 1/semilado · uShP: x resolución del mapa, y 1/(rango de profundidad), z filtro (0 sin sombras, 1 = 2x2, 2 = 3x3)
 // una muestra: 1 si lo guardado en el mapa (lo más cercano al sol) no tapa la profundidad t
 float shTap(sampler2D s, vec2 p, float t){ return step(t, dot(texture2D(s, p).rgb, vec3(1.0, 0.00392156863, 0.0000153787005))); }
 // PCF con pesos bilineales (el borde de la sombra se mueve de forma continua, sin escalones de téxel)
-float shMap(sampler2D s, vec3 d, float inv, float t){
-  vec2 q = (vec2(dot(d, uShX), dot(d, uShY))*inv*0.5 + 0.5)*uShP.x;
+float shMap(sampler2D s, vec3 d, vec3 X, vec3 Y, float inv, float t){
+  vec2 q = (vec2(dot(d, X), dot(d, Y))*inv*0.5 + 0.5)*uShP.x;
   float px = 1.0/uShP.x;
   if (uShP.z < 1.5) {
     vec2 f2 = fract(q - 0.5), b2 = (floor(q - 0.5) + 0.5)*px;
@@ -143,10 +144,10 @@ float shMap(sampler2D s, vec3 d, float inv, float t){
   return dot(r, vec3(1.0 - f.y, 1.0, f.y))*0.25; }
 // una cascada: el punto se separa de la superficie a lo largo de la normal (más cuanto más rasante es la luz: evita el
 // acné sin despegar la sombra) y se compara con un pequeño margen. tx = tamaño de un téxel en metros
-float shCasc(sampler2D s, vec3 d, vec3 n, float sl, float inv){
+float shCasc(sampler2D s, vec3 d, vec3 n, float sl, float inv, vec3 X, vec3 Y){
   float tx = 2.0/(inv*uShP.x);
   d += n*(tx*(0.4 + 1.2*sl));
-  return shMap(s, d, inv, 0.5 - (dot(d, uShZ) + 0.25*tx + 0.01)*uShP.y); }
+  return shMap(s, d, X, Y, inv, 0.5 - (dot(d, cross(X, Y)) + 0.25*tx + 0.01)*uShP.y); }
 float gSunVis = -1.0;
 // visibilidad del sol en este fragmento (n = normal de la superficie): multiplica SOLO la luz directa y los brillos del sol
 float sunVisN(vec3 n){
@@ -157,12 +158,12 @@ float sunVisN(vec3 n){
   if (ndl <= 0.0) { gSunVis = 0.0; return 0.0; }
   float sl = sqrt(max(1.0 - ndl*ndl, 0.0));
   vec3 d0 = vPos - uShC0.xyz, d1 = vPos - uShC1.xyz;
-  vec2 a0 = abs(vec2(dot(d0, uShX), dot(d0, uShY)))*uShC0.w, a1 = abs(vec2(dot(d1, uShX), dot(d1, uShY)))*uShC1.w;
+  vec2 a0 = abs(vec2(dot(d0, uShX0), dot(d0, uShY0)))*uShC0.w, a1 = abs(vec2(dot(d1, uShX1), dot(d1, uShY1)))*uShC1.w;
   // peso de cada cascada: 1 dentro, 0 al llegar a su borde. Fuera de la lejana no hay sombra
   float w0 = 1.0 - smoothstep(0.80, 0.95, max(a0.x, a0.y)), w1 = 1.0 - smoothstep(0.80, 0.97, max(a1.x, a1.y));
   float v = 1.0;
-  if (w0 < 1.0 && w1 > 0.0) v = mix(1.0, shCasc(uShadow1, d1, n, sl, uShC1.w), w1);
-  if (w0 > 0.0) v = mix(v, shCasc(uShadow0, d0, n, sl, uShC0.w), w0);
+  if (w0 < 1.0 && w1 > 0.0) v = mix(1.0, shCasc(uShadow1, d1, n, sl, uShC1.w, uShX1, uShY1), w1);
+  if (w0 > 0.0) v = mix(v, shCasc(uShadow0, d0, n, sl, uShC0.w, uShX0, uShY0), w0);
   gSunVis = v;
   return v; }
 // sin normal a mano (reflejos del sol en vidrios, asfalto, mar): el punto se separa unos 3 téxeles hacia el sol
@@ -472,7 +473,7 @@ void main(){
 // junto a uCam si cambia cada fotograma, o desde un módulo con ctx.eachMat(m => m.setTexture(…)), que vale también para
 // los materiales que se creen después.
 const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk', 'uNight', 'uLate', 'uGlow',
-               'uSunL', 'uSkyL', 'uGndL', 'uTone', 'uShX', 'uShY', 'uShZ', 'uShC0', 'uShC1', 'uShP'];
+               'uSunL', 'uSkyL', 'uGndL', 'uTone', 'uShX0', 'uShY0', 'uShX1', 'uShY1', 'uShZ', 'uShC0', 'uShC1', 'uShP'];
 const BASES = ['uShadow0', 'uShadow1'];
 // textura de relleno para los mapas de sombra (blanco = nada tapa) mientras lighting.js no ponga los suyos
 const SH_NONE = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array([255, 255, 255, 255]), 1, 1, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);

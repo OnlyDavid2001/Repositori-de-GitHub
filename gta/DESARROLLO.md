@@ -664,9 +664,9 @@ Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `
   `uGndL` (rebote cálido del suelo, normales hacia abajo). Unidad: 1 = «un albedo se ve tal cual». `setHour` los saca de
   los colores de pantalla de siempre: `color^2.2 × ctx.L.K.{sun, sky, gnd}` (2,3 · 1,6 · 1,5; a mediodía sol : cielo ≈ 8 : 1).
   `ambL(n)` es el ambiente hemisférico. `uSunCol`, `uSkyCol` y `uGndCol` siguen existiendo.
-- **`sunVis()`**: visibilidad del sol en el fragmento, hoy `return 1.0;`. Multiplica **solo** la luz directa de `lit` y
+- **`sunVis()` / `sunVisN(n)`**: visibilidad del sol en el fragmento (las sombras en cascada, §7.7). Multiplica **solo** la luz directa de `lit` y
   `shade`, el brillo especular de `shade`, el disco del sol de `envRefl` y los brillos hechos a mano del asfalto
-  (`FS_ROAD`) y del mar (`FS_SEA`). La etapa de sombras cambia únicamente su cuerpo (tiene `vPos` y `uCam` a mano).
+  (`FS_ROAD`) y del mar (`FS_SEA`). Se calcula una vez por fragmento (con la primera normal que se le pase).
 - **Salida.** `FRAG(c)`: pasa a lineal, aplica la niebla en lineal (`fogL`) y escribe RGB = radiancia HDR lineal (tope
   4000) y A = distancia a la cámara en metros (tope 60000). `FRAG_NOFOG`: igual, sin niebla y con A = 60000. `FRAGA(c, a)`:
   A = opacidad (los materiales con mezcla no tocan el alfa del búfer, §6.4). `fog()` (mezcla en espacio de pantalla) se
@@ -699,15 +699,15 @@ búfer HalfFloat con MSAA → nitidez leve → bloom (umbral alto) → exposici�
 Fila «Gráficos: Auto / Baja / Media / Alta» del panel → `BCN.light.setQuality('auto' | 'baja' | 'media' | 'alta')`
 (también 1, 2, 3). Tabla `QUAL` de `lighting.js` (las etapas de sombras y oclusión añaden ahí sus columnas):
 
-| | escala de render | MSAA | bloom | nitidez |
-| --- | --- | --- | --- | --- |
-| baja | 0,67 | no (FXAA) | no | no |
-| media | 0,85 | 2 | sí (búfer a 0,35) | sí |
-| alta | 1 | 4 | sí (búfer a 0,5) | sí |
+| | escala de render | MSAA | bloom | nitidez | sombras (lado del mapa · filtro) |
+| --- | --- | --- | --- | --- | --- |
+| baja | 0,67 | no (FXAA) | no | no | no |
+| media | 0,85 | 2 | sí (búfer a 0,35) | sí | 1024 · 2×2 |
+| alta | 1 | 4 | sí (búfer a 0,5) | sí | 2048 · 3×3 |
 
 Auto empieza en alta y baja un escalón cuando el tiempo medio de fotograma real supera 34 ms en dos ventanas seguidas
 de 2 s (nunca en modo captura, con la pestaña oculta o tras un parón; nunca sube solo). `BCN.light.stats()` →
-`{ hdr, quality, auto, scale, msaa, bloom, ms, w, h }`.
+`{ hdr, quality, auto, scale, msaa, bloom, ms, w, h, shadow }` (`shadow`: §7.7).
 
 ### 7.4 Camino LDR
 

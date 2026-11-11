@@ -30,7 +30,10 @@ window.BCN_LIGHTING = { init(ctx) {
   // a partir del cual un píxel florece (alto: sol, brillos y emisivos, no las paredes al sol) · bloomW: peso del halo ·
   // bloomK: ancho del desenfoque (px) · sharpen: cantidad de nitidez · vignette: peso de la viñeta
   // shadows: 0 apaga las sombras (para comparar) · shOrn: la capa ORNAMENTO de las fachadas también proyecta (cascada cercana)
-  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1 };
+  // shTreeNF: 1 = la cascada lejana también lleva los árboles cercanos (por defecto no: ver shList)
+  // shNear: en la cascada cercana, el detalle (fachadas de detalle y mobiliario) solo proyecta si está a menos de
+  // shNear × semilado de la cámara, en planta (63 m a pie); más lejos basta el volumen simple del edificio. 0 = sin límite
+  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0 };
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
   let pipe = null, cur = 'alta', auto = true;
 
@@ -73,7 +76,7 @@ window.BCN_LIGHTING = { init(ctx) {
   // cambia su tamaño (altura de la cámara), la hora o la lista de mallas que proyectan dentro de ella. Como mucho una por
   // fotograma, salvo al cambiar la hora y en modo captura (ahí todo queda al día en el mismo fotograma).
   const SH = { res: 0, filt: 0, R: 4000, base: [45, 400], casc: [], X: new B.Vector3(), Y: new B.Vector3(), Z: new B.Vector3(0, 1, 0),
-               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true };
+               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true, dark: false, flushed: false };
   const SH_VS = `precision highp float;
 attribute vec3 position;
 #ifdef INF
@@ -134,13 +137,14 @@ void main(){
     return m;
   }
   function shMatU(m) { const c = SH.casc[m.bcnK]; if (!c) return;
-    m.setVector3('uC', c.C); m.setVector3('uX', SH.X); m.setVector3('uY', SH.Y); m.setVector3('uZ', SH.Z); m.setVector2('uK', c.K); }
+    m.setVector3('uC', c.C); m.setVector3('uX', c.X); m.setVector3('uY', c.Y); m.setVector3('uZ', c.Z); m.setVector2('uK', c.K); }
   // uniformes de recepción de un material de mkMat (los del preludio)
   function shPush(m) {
     m.setVector4('uShP', SH.uP);
     if (SH.off) { m.setTexture('uShadow0', ctx.shNone); m.setTexture('uShadow1', ctx.shNone); return; }
-    m.setVector3('uShX', SH.X); m.setVector3('uShY', SH.Y); m.setVector3('uShZ', SH.Z);
-    for (let k = 0; k < 2; k++) { const c = SH.casc[k]; m.setVector4('uShC' + k, c.U); m.setTexture('uShadow' + k, c.rtt); }
+    m.setVector3('uShZ', SH.casc[0].Z);
+    for (let k = 0; k < 2; k++) { const c = SH.casc[k]; m.setVector3('uShX' + k, c.X); m.setVector3('uShY' + k, c.Y);
+      m.setVector4('uShC' + k, c.U); m.setTexture('uShadow' + k, c.rtt); }
   }
   function shOff() {
     const old = SH.casc;
@@ -151,7 +155,7 @@ void main(){
   // crea (o quita) los mapas según la calidad
   function shSetup(res, filt) {
     if (SH.dead) return;
-    if (res === SH.res) { if (res && SH.filt !== filt) { SH.filt = filt; SH.uP.z = filt; for (const m of ctx.mats) shPush(m); } return; }
+    if (res === SH.res) { if (res && SH.filt !== filt) { SH.filt = filt; SH.uP.z = SH.dark ? 0 : filt; for (const m of ctx.mats) shPush(m); } return; }
     shOff();
     if (!res) return;
     for (let k = 0; k < 2; k++) {
@@ -159,29 +163,38 @@ void main(){
       rtt.wrapU = rtt.wrapV = B.Texture.CLAMP_ADDRESSMODE; rtt.clearColor = new B.Color4(1, 1, 1, 1);
       rtt.renderParticles = false; rtt.renderSprites = false; rtt.ignoreCameraViewport = true;
       rtt.refreshRate = B.RenderTargetTexture.REFRESHRATE_RENDER_ONCE; rtt.renderList = [];
-      const c = { k, rtt, C: new B.Vector3(), U: new B.Vector4(0, 0, 0, 1), K: new B.Vector2(1, 1), half: 0, cx: 0, cy: 0, dirty: true, sig: '', n: 0, tris: 0, late: 0, set: new WeakSet() };
+      const c = { k, rtt, X: new B.Vector3(1, 0, 0), Y: new B.Vector3(0, 0, 1), Z: new B.Vector3(0, 1, 0), C: new B.Vector3(), U: new B.Vector4(0, 0, 0, 1), K: new B.Vector2(1, 1), half: 0, cx: 0, cy: 0, dirty: true, sig: '', n: 0, tris: 0, late: 0, wait: 0, set: new WeakSet() };
       // una malla cuyo material de profundidad aún se está compilando se deja para el fotograma siguiente (y se repinta)
       rtt.customIsReadyFunction = mesh => { const m = mesh.getMaterialForRenderPass(rtt.renderPassId);
         const ok = !m || m.isReady(mesh, mesh.hasThinInstances, mesh.subMeshes && mesh.subMeshes[0]); if (!ok) c.late = 2; return ok; };
       scene.customRenderTargets.push(rtt); SH.casc.push(c);
     }
-    SH.res = res; SH.filt = filt; SH.off = false; SH.uP.set(res, 1 / (2 * SH.R), filt, 0); SH.sun.set(0, 0, 0);
+    SH.res = res; SH.filt = filt; SH.off = false; SH.dark = false; SH.uP.set(res, 1 / (2 * SH.R), filt, 0); SH.sun.set(0, 0, 0);
     for (const m of SH.mats.values()) shMatU(m);
+    for (const m of ctx.mats) shPush(m);                         // los uniformes son referencias: basta con darlos una vez
   }
   // mallas que proyectan dentro de la cascada c (centro C, semilado half): las del registro marcadas con cast cuya caja toca
   // el cuadrado en el plano XY de luz (a lo largo del sol entran todas). Cerca no entra el relieve; lejos, ni las fachadas de
-  // detalle ni el mobiliario (los volúmenes simples ya dan la masa del edificio)
+  // detalle ni el mobiliario (los volúmenes simples ya dan la masa del edificio). Y cerca, el detalle (capas base, orn y furn,
+  // una malla por celda de 100 m) solo si está a menos de P.shNear × semilado de la cámara en planta: con el sol bajo el
+  // cuadrado se alarga cientos de metros sobre el suelo y entraban celdas enteras cuya sombra fina no se distingue
   const shBox = new WeakMap();
   function shList(c, C, half) {
-    const X = SH.X, Y = SH.Y, list = []; let sig = 0;
+    const X = SH.X, Y = SH.Y, list = [], lim = c.k === 0 && P.shNear > 0 ? P.shNear * half : 1e9; let sig = 0;
     for (const m of ctx.reg.meshes) {
       const b = m.metadata.bcn;
       if (!(b.cast || (c.k === 0 && P.shOrn && b.layer === 'orn')) || !m.isEnabled() || (c.k === 0 ? b.layer === 'terrain' : (b.layer === 'base' || b.layer === 'furn'))) continue;
-      if (m.hasThinInstances) { if (m.thinInstanceCount > 0) { list.push(m); sig += m.uniqueId * 7 + m.thinInstanceCount; } continue; }
+      if (m.hasThinInstances) {
+        // árboles (instancias de streets.js: tNB/tNL a menos de ~70 m, tFB/tFL de ~55 a ~520 m): la cascada cercana solo
+        // lleva los cercanos y la lejana solo los lejanos (los cercanos, de muchos triángulos, ya los pinta la cercana)
+        if (b.layer === 'tree' && (c.k === 0 ? /^tF/.test(m.name) : P.shTreeNF === 0 && /^tN/.test(m.name))) continue;
+        if (m.thinInstanceCount > 0) { list.push(m); sig += m.uniqueId * 7 + m.thinInstanceCount; } continue; }
       let bb = shBox.get(m);
       if (!bb) { const o = m.getBoundingInfo().boundingBox, w = m.getWorldMatrix().m, a = o.minimum, z = o.maximum;
         bb = [(a.x + z.x) / 2 + w[12], (a.y + z.y) / 2 + w[13], (a.z + z.z) / 2 + w[14], (z.x - a.x) / 2, (z.y - a.y) / 2, (z.z - a.z) / 2]; shBox.set(m, bb); }
       const dx = bb[0] - C.x, dy = bb[1] - C.y, dz = bb[2] - C.z;
+      if (lim < 1e9 && (b.layer === 'base' || b.layer === 'orn' || b.layer === 'furn') &&
+          Math.hypot(Math.max(Math.abs(dx) - bb[3], 0), Math.max(Math.abs(dz) - bb[5], 0)) > lim) continue;
       if (Math.abs(dx * X.x + dy * X.y + dz * X.z) > half + bb[3] * Math.abs(X.x) + bb[4] * Math.abs(X.y) + bb[5] * Math.abs(X.z)) continue;
       if (Math.abs(dx * Y.x + dy * Y.y + dz * Y.z) > half + bb[3] * Math.abs(Y.x) + bb[4] * Math.abs(Y.y) + bb[5] * Math.abs(Y.z)) continue;
       list.push(m); sig += m.uniqueId;
@@ -189,24 +202,29 @@ void main(){
     return { list, sig: list.length + ':' + sig };
   }
   function shRender(c, Pc, half) {
-    const tx = 2 * half / SH.res, X = SH.X, Y = SH.Y, Z = SH.Z;
+    c.X.copyFrom(SH.X); c.Y.copyFrom(SH.Y); c.Z.copyFrom(SH.Z);    // cada cascada guarda los ejes con que se pinta
+    const tx = 2 * half / SH.res, X = c.X, Y = c.Y, Z = c.Z;
     c.cx = Math.round(B.Vector3.Dot(Pc, X) / tx) * tx; c.cy = Math.round(B.Vector3.Dot(Pc, Y) / tx) * tx; c.half = half;
     const cz = Math.round(B.Vector3.Dot(Pc, Z));
     c.C.set(X.x * c.cx + Y.x * c.cy + Z.x * cz, X.y * c.cx + Y.y * c.cy + Z.y * cz, X.z * c.cx + Y.z * c.cy + Z.z * cz);
     c.U.set(c.C.x, c.C.y, c.C.z, 1 / half); c.K.set(1 / half, 1 / (2 * SH.R));
     const o = shList(c, c.C, half);
     for (const m of o.list) if (!c.set.has(m)) { c.set.add(m); c.rtt.setMaterialForRendering(m, shMat(c.k, m)); }
-    c.rtt.renderList = o.list; c.sig = o.sig; c.n = o.list.length; c.dirty = false; c.late = 0;
+    c.rtt.renderList = o.list; c.sig = o.sig; c.n = o.list.length; c.dirty = false; c.late = 0; c.wait = 0;
     c.tris = 0; for (const m of o.list) c.tris += m.getTotalIndices() / 3 * (m.hasThinInstances ? m.thinInstanceCount : 1);
     c.rtt.resetRefreshCounter(); SH.renders++;
   }
   function shUpdate(Pc, groundY) {
     if (SH.off) return;
+    // sin luz direccional (relevo sol → luna, ~20:55–21:20) no se pinta nada: sunVis vale 1 y la luz es 0
+    const lum = Math.max(L.sunL.r, L.sunL.g, L.sunL.b), dark = !(lum > 1e-5);
+    if (dark !== SH.dark) { SH.dark = dark; SH.uP.z = dark ? 0 : SH.filt; }
     const S = L.sunDir, hour = Math.abs(S.x - SH.sun.x) + Math.abs(S.y - SH.sun.y) + Math.abs(S.z - SH.sun.z) > 1e-6;
     if (hour) {
       SH.sun.copyFrom(S); SH.Z.copyFrom(S); SH.X.set(S.z, 0, -S.x).normalize(); B.Vector3.CrossToRef(SH.Z, SH.X, SH.Y);
       for (const c of SH.casc) c.dirty = true;
     }
+    if (dark) return;
     // las cascadas crecen con la altura sobre el suelo, en escalones del 25 % (para no repintar a cada metro que se sube)
     const s = Math.min(10, Math.pow(1.25, Math.round(Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25))));
     const check = ctx.reg.ver !== SH.ver || ++SH.tick >= 30;
@@ -215,13 +233,21 @@ void main(){
     for (const c of SH.casc) {
       const half = SH.base[c.k] * s;
       if (c.late > 0) c.late--;                                 // (el propio mapa se repinta solo mientras falte algún material)
-      let need = c.dirty || half !== c.half || Math.abs(B.Vector3.Dot(Pc, SH.X) - c.cx) > 0.18 * half || Math.abs(B.Vector3.Dot(Pc, SH.Y) - c.cy) > 0.18 * half;
+      let need = c.dirty || half !== c.half || Math.abs(B.Vector3.Dot(Pc, c.X) - c.cx) > 0.18 * half || Math.abs(B.Vector3.Dot(Pc, c.Y) - c.cy) > 0.18 * half;
       if (!need && check && shList(c, c.C, half).sig !== c.sig) need = true;
       if (need) c.dirty = true;
-      if (!need || (did > 0 && !SH.all && !hour)) continue;
+      if (!need) continue;
+      // en modo captura se espera (hasta 2 fotogramas) al flush del arnés, que llega con todo el detalle construido: así cada
+      // vista pinta cada cascada una sola vez. Fuera de él, como mucho una cascada por fotograma (también al cambiar la hora)
+      if (SH.all ? !SH.flushed && ++c.wait < 3 : did > 0) continue;
       shRender(c, Pc, half); did++;
     }
-    if (did) { for (const m of SH.mats.values()) shMatU(m); for (const m of ctx.mats) shPush(m); }
+    if (did) { SH.flushed = false; for (const m of SH.mats.values()) shMatU(m); }
+  }
+  // depuración: triángulos de cada cascada por capa del registro (BCN.light.shBreak())
+  function shBreak() {
+    return SH.casc.map(c => { const o = {}; for (const m of c.rtt.renderList) { const l = m.metadata.bcn.layer || '?';
+      const l2 = l === 'tree' ? l + m.name : l; o[l2] = (o[l2] || 0) + Math.round(m.getTotalIndices() / 3 * (m.hasThinInstances ? m.thinInstanceCount : 1)); } return o; });
   }
   ctx.eachMat(shPush);                                           // también los materiales que se creen después
 
@@ -263,11 +289,11 @@ void main(){
     if (win.bad >= 2 && i > 0) { cur = ORDER[i - 1]; win.bad = -1; apply(); }   // -1: una ventana de gracia tras el cambio
   }
   // flush (lo llama BCN.fxFlush, el arnés, después de construir todo el detalle): las dos cascadas se repintan en el fotograma siguiente
-  const M = { update, setQuality, set, busy: () => SH.casc.some(c => c.dirty || c.late > 0),
-    flush: () => { for (const c of SH.casc) c.dirty = true; },
+  const M = { update, setQuality, set, shBreak, busy: () => !SH.dark && SH.casc.some(c => c.dirty || c.late > 0),
+    flush: () => { for (const c of SH.casc) c.dirty = true; SH.flushed = true; },
     stats: () => ({ hdr: !!pipe, quality: cur, auto, scale: QUAL[cur].scale, msaa: pipe ? pipe.samples : 0, bloom: !!(pipe && pipe.bloomEnabled),
       ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight(),
-      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: !SH.casc.some(c => c.dirty || c.late > 0) } }) };
+      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: SH.dark || !SH.casc.some(c => c.dirty || c.late > 0), dark: SH.dark } }) };
   Object.defineProperty(M, 'shadow', { get: () => SH });        // depuración: BCN.light.shadow (cascadas, mapas, materiales)
   Object.defineProperty(M, 'pipe', { get: () => pipe });         // depuración: BCN.light.pipe
   return M;

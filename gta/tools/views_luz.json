@@ -1,68 +1,29 @@
 [
- {
-  "x": 12069.6,
-  "z": 14544.5,
-  "walk": true,
-  "yaw": -2.35,
-  "pitch": 0.03,
-  "name": "eix_acera"
- },
- {
-  "x": 12077.4,
-  "z": 14536.6,
-  "walk": true,
-  "yaw": -0.7792,
-  "pitch": -0.32,
-  "name": "eix_fachada"
- },
- {
-  "x": 12405.9,
-  "z": 13505.8,
-  "walk": true,
-  "yaw": 2.584,
-  "pitch": 0.0,
-  "name": "rambla_pie"
- },
- {
-  "x": 12712.0,
-  "z": 13385.3,
-  "walk": true,
-  "yaw": 0.704,
-  "pitch": -0.02,
-  "name": "gotic_calle"
- },
- {
-  "x": 11900,
-  "y": 160,
-  "z": 14500,
-  "yaw": 0.5,
-  "pitch": 0.42,
-  "name": "aereo_eixample"
- },
- {
-  "x": 13300,
-  "y": 260,
-  "z": 12700,
-  "yaw": -0.6,
-  "pitch": 0.35,
-  "name": "port_vell"
- },
- {
-  "x": 12069.6,
-  "z": 14544.5,
-  "walk": true,
-  "yaw": -2.35,
-  "pitch": 0.03,
-  "name": "eix_acera_13",
-  "hour": 13
- },
- {
-  "x": 12069.6,
-  "z": 14544.5,
-  "walk": true,
-  "yaw": -2.35,
-  "pitch": 0.03,
-  "name": "eix_acera_2025",
-  "hour": 20.25
- }
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "eix_acera"},
+ {"x": 12077.4, "z": 14536.6, "walk": true, "yaw": -0.7792, "pitch": -0.32, "name": "eix_fachada"},
+ {"x": 12405.9, "z": 13505.8, "walk": true, "yaw": 2.584, "pitch": 0.0, "name": "rambla_pie"},
+ {"x": 12712.0, "z": 13385.3, "walk": true, "yaw": 0.704, "pitch": -0.02, "name": "gotic_calle"},
+ {"x": 11900, "y": 160, "z": 14500, "yaw": 0.5, "pitch": 0.42, "name": "aereo_eixample"},
+ {"x": 13300, "y": 260, "z": 12700, "yaw": -0.6, "pitch": 0.35, "name": "port_vell"},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "eix_acera_13", "hour": 13},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "eix_acera_2025", "hour": 20.25},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_0930", "hour": 9.5},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_13", "hour": 13},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_17", "hour": 17},
+ {"x": 12069.95, "z": 14544.85, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_17_b", "hour": 17},
+ {"x": 12077.4, "z": 14536.6, "walk": true, "yaw": -0.7792, "pitch": -0.32, "name": "s_fachada_17", "hour": 17},
+ {"x": 12080.6, "z": 14547.5, "walk": true, "yaw": -2.35, "pitch": 0.02, "name": "s_calzada_17", "hour": 17},
+ {"x": 12405.9, "z": 13505.8, "walk": true, "yaw": 2.584, "pitch": 0.0, "name": "s_rambla_17", "hour": 17},
+ {"x": 12712.0, "z": 13385.3, "walk": true, "yaw": 0.704, "pitch": -0.02, "name": "s_gotic_13", "hour": 13},
+ {"x": 11836.8, "z": 14607.4, "walk": true, "yaw": -0.7403, "pitch": -0.02, "name": "s_pg_0930", "hour": 9.5},
+ {"x": 12073.5, "z": 14540.5, "agl": 22, "yaw": -2.0, "pitch": 0.38, "name": "s_dron_17", "hour": 17},
+ {"x": 11900, "y": 160, "z": 14500, "yaw": 0.5, "pitch": 0.42, "name": "s_aereo_17", "hour": 17, "eval": "BCN.st.maxDist=40000"},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_2045", "hour": 20.75},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_2115", "hour": 21.25},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_2145", "hour": 21.75},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_acera_23", "hour": 23},
+ {"x": 12073.5, "z": 14540.5, "agl": 22, "yaw": -2.0, "pitch": 0.38, "name": "s_dron_23", "hour": 23},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_q_media", "hour": 17, "eval": "BCN.light.setQuality('media')"},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_q_baja", "hour": 17, "eval": "BCN.light.setQuality('baja')"},
+ {"x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "name": "s_q_auto", "hour": 17, "eval": "BCN.light.setQuality('auto')"}
 ]
