@@ -5,7 +5,7 @@ Rama `wt-n2-fx`. Encargo: `tools/encargos/n2/FX.md` (reparto FX1).
 ## Hecho
 - **`fachadas_estilos.js`** (nuevo, cargado antes de `facades.js` en `index.html`): catálogo de datos.
   - `BASE` (valores por defecto de cada campo; la cabecera del fichero documenta TODOS los campos).
-  - `FAM`: 7 familias, **31 variantes**: `eixample` 5 · `gracia` 4 · `ciutat_vella` 4 · `raval` 4 · `barceloneta` 4 ·
+  - `FAM`: 7 familias, **30 variantes**: `eixample` 5 · `gracia` 4 · `ciutat_vella` 4 · `raval` 4 · `barceloneta` 4 ·
     `poble_sec` 4 · `sant_gervasi` 5 (ver ids en el fichero).
   - `BARRI` / `familia(barri)`: barrio → familia (ids de `n2/comun.md`; null → `periferia`; respaldo por distrito).
 - **`facades.js`** (generador ampliado):
