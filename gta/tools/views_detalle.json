@@ -1,7 +1,7 @@
 [
  {"name":"cont","x":12042.9,"z":14518.6,"walk":true,"yaw":2.7,"pitch":0.2},
  {"name":"cont_calz","x":12048.0,"z":14511.4,"walk":true,"yaw":-0.78,"pitch":0.2},
- {"name":"papelera","x":12061.2,"z":14521.0,"walk":true,"yaw":-1.72,"pitch":0.32},
+ {"name":"papelera","x":12056.9,"z":14521.9,"walk":true,"yaw":2.25,"pitch":0.3},
  {"name":"banco","x":12062.1,"z":14525.9,"walk":true,"yaw":2.76,"pitch":0.3},
  {"name":"farola_base","x":12061.3,"z":14521.0,"walk":true,"yaw":0.0,"pitch":0.45},
  {"name":"farola_cap","x":12063.9,"z":14528.0,"walk":true,"yaw":-2.35,"pitch":-0.88},
@@ -9,6 +9,11 @@
  {"name":"bicing_calz","x":12037.1,"z":14506.7,"walk":true,"yaw":1.85,"pitch":0.25},
  {"name":"bici","x":12035.6,"z":14501.9,"walk":true,"yaw":0.79,"pitch":0.22},
  {"name":"semaforo","x":11986.1,"z":14459.1,"walk":true,"yaw":-2.35,"pitch":-0.19},
+ {"name":"motos","x":12011.2,"z":14485.4,"walk":true,"yaw":3.14,"pitch":0.25},
+ {"name":"buzon","x":12036.5,"z":14494.6,"walk":true,"yaw":-0.45,"pitch":0.2},
+ {"name":"parquimetro","x":12058.1,"z":14517.2,"walk":true,"yaw":-0.43,"pitch":0.12},
+ {"name":"bolardo","x":11988.9,"z":14452.1,"walk":true,"yaw":-2.36,"pitch":0.3},
  {"name":"farola_noche","x":12063.9,"z":14528.0,"walk":true,"yaw":-2.35,"pitch":-0.88,"hour":20.25},
- {"name":"charco","x":12055.4,"z":14519.6,"walk":true,"yaw":0.79,"pitch":0.3,"hour":20.25}
+ {"name":"charco","x":12055.4,"z":14519.6,"walk":true,"yaw":0.79,"pitch":0.3,"hour":20.25},
+ {"name":"bicing_noche","x":12049.5,"z":14507.7,"walk":true,"yaw":-1.57,"pitch":0.22,"hour":20.25}
 ]

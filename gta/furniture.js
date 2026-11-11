@@ -17,7 +17,10 @@ const { K, F0, shade, mixc, quad, quadN, triN, box, rev, tube, sphere, R, seed, 
 // de detalle: uCellHi) · 200 = detalle (solo se ve por debajo de uFurnHi). Las dos mitades del tramado son complementarias.
 const LOD_GLSL = `
     float fLv = floor(vInfo.w*2.55 + 0.5), fHi = smoothstep(uFurnHi.x, uFurnHi.y, dist);
-    if (fLv > 1.5 ? dt < fHi : (fLv > 0.5 && uCellHi > 0.5 && dt >= fHi)) discard;`;
+    if (fLv > 1.5 ? dt < fHi : (fLv > 0.5 && uCellHi > 0.5 && dt >= fHi)) discard;
+    float fNite = smoothstep(0.05, 0.3, uDusk);`;
+// fNite: encendido del alumbrado (0 de día … 1 con uDusk ≥ 0,3: a las 20:25 ya está todo encendido). Ganancias de emit pensadas
+// para la cadena HDR (florece a partir de ~1,6 sobre un color claro): luminaria 5,5 · pantalla 2,3 · focos de semáforo 1,6–3
 regKind('FURN', 60, LOD_GLSL + `
     rough = max(vInfo.x, 0.05); metal = vInfo.y;
     float pat = floor(vInfo.z*255.0 + 0.5);
@@ -41,11 +44,13 @@ regKind('FURN', 60, LOD_GLSL + `
     } else if (pat > 4.5 && pat < 5.5) {              // 5: madera barnizada, veta a lo largo en las caras verticales
       vec2 q = an.y > 0.7 ? vLoc.xz*7.0 : vec2(P.x*2.5, P.y*45.0);
       alb *= mix(0.74, 1.12, vnoise(q)*0.6 + vnoise(q*3.1)*0.4);
-    } else if (pat > 5.5 && pat < 6.5) {              // 6: lente de luminaria, encendida al anochecer
-      alb = vec3(0.8, 0.8, 0.76); rough = 0.25;
-      emis = emit(vec3(1.0, 0.84, 0.56), 0.25 + 6.0*uDusk);
+    } else if (pat > 5.5 && pat < 6.5) {              // 6: lente de luminaria (matriz de ledes), encendida al anochecer
+      float led = 1.0 - smoothstep(0.14, 0.44, length(fract(vLoc.xz/0.05) - 0.5));
+      led = mix(led, 0.4, smoothstep(0.25, 0.8, fwidth(vLoc.x/0.05) + fwidth(vLoc.z/0.05)));
+      alb = vec3(0.8, 0.8, 0.76)*(0.8 + 0.5*led); rough = 0.25;
+      emis = emit(vec3(1.0, 0.84, 0.56), (0.2 + 5.3*fNite)*(0.8 + 0.5*led));
     } else if (pat > 6.5 && pat < 7.5) {              // 7: piloto
-      emis = emit(alb, 1.3 + 1.2*uDusk);
+      emis = emit(alb, 1.3 + 0.9*fNite);
     }`, `uniform vec2 uFurnHi;
 float fBx(vec2 p, vec2 b){ vec2 q = abs(p) - b; return max(q.x, q.y); }
 float fPict(vec2 p, float id){
@@ -93,13 +98,13 @@ regKind('FDEC', 61, LOD_GLSL + `
       float inn = step(fBx(uv - 0.5, vec2(0.43, 0.41)), 0.0), row = floor(uv.y*7.0);
       float ln = step(0.45, fract(uv.y*7.0))*step(0.1, uv.x)*step(uv.x, 0.35 + 0.5*hash21(vec2(row, 3.0)));
       alb = vec3(0.02); rough = 0.15;
-      emis = emit(mix(vec3(0.06, 0.14, 0.34), vec3(0.75, 0.86, 1.0), ln), (0.8 + 1.2*uDusk)*inn);
+      emis = emit(mix(vec3(0.06, 0.14, 0.34), vec3(0.75, 0.86, 1.0), ln), (0.9 + 1.4*fNite)*inn);
     } else if (id < 11.5) {                           // 11: banda reflectante roja y blanca
       alb = mix(vec3(0.9), vec3(0.74, 0.07, 0.07), step(0.5, fract((uv.x*0.35 + uv.y)*3.0))); rough = 0.35;
     } else if (id < 13.5) {                           // 12–13: foco de semáforo, encendido o apagado
       float lens = 1.0 - smoothstep(0.40 - aa, 0.40 + aa, length(uv - 0.5));
       alb = mix(vec3(0.03), vCol.rgb*(id < 12.5 ? 0.5 : 0.14), lens); rough = 0.3;
-      if (id < 12.5) emis = emit(vCol.rgb, lens*(1.5 + 1.5*uDusk));
+      if (id < 12.5) emis = emit(vCol.rgb, lens*(1.6 + 1.4*fNite));
     }`);
 
 // ------------------------------------------------------------------ acabados y ámbitos de azar
@@ -114,7 +119,7 @@ const finishes = lod => ({ lod,
   GLOSS: fa(0.3, 0, 0, lod), LENS: fa(0.25, 0, 6, lod), LED: fa(0.3, 0, 7, lod),
   dec: id => { const w = lod * 100; return [0, 0, id, w, 255, 0, id, w, 255, 255, id, w, 0, 255, id, w]; } });
 const AS = finishes(1), AH = finishes(2);
-const T_BIN = 2, T_CONT = 4, T_BICI = 5;                    // seed(tipo, índice de retícula a lo largo de la calle, tramo)
+const T_BIN = 2, T_CONT = 4, T_BICI = 5, T_MOTO = 10;                    // seed(tipo, índice de retícula a lo largo de la calle, tramo)
 const HI = [58, 70];                                        // relevo sencillo → detalle (m)
 const LOG = /#shot/.test(location.hash) ? [] : null;        // solo en modo captura: dónde ha caído cada objeto (para montar vistas)
 
@@ -159,8 +164,16 @@ function cdec(B, F, u, d, r0, r1, y0, y1, a0, a1, n, col, id, lod) {
       [[c0, -sl, s0], [c1, -sl, s1], [c1, -sl, s1], [c0, -sl, s0]], col, K.FDEC, [t0, 0, id, w, t1, 0, id, w, t1, 255, id, w, t0, 255, id, w]); }
 }
 
+// losa inclinada en el plano (u, y): va de a a b (puntos [u, y]), con semiancho en d de w0 a w1 y grueso t (carrocerías). 12 triángulos
+function slab(B, F, a, b, w0, w1, t, col, aux) {
+  const vx = b[0] - a[0], vy = b[1] - a[1], l = Math.hypot(vx, vy) || 1, nx = -vy / l * t / 2, ny = vx / l * t / 2;
+  const P = (p, w, sn, sd) => [p[0] + nx * sn, p[1] + ny * sn, w * sd];
+  const c = [P(a, w0, -1, -1), P(a, w0, -1, 1), P(b, w1, -1, 1), P(b, w1, -1, -1), P(a, w0, 1, -1), P(a, w0, 1, 1), P(b, w1, 1, 1), P(b, w1, 1, -1)];
+  for (const [i, j, k, m] of [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [3, 2, 6, 7], [0, 3, 7, 4], [1, 2, 6, 5]]) quad(B, F, ...c[i], ...c[j], ...c[k], ...c[m], col, K.FURN, aux);
+}
+
 // ------------------------------------------------------------------ objetos: f(B, A, F, y, …) con A = acabados del nivel (A.lod)
-const lampC = [38, 46, 42], ironC = [28, 29, 31], steelC = [150, 152, 156], dark = [20, 20, 22];
+const lampC = [46, 56, 51], ironC = [40, 42, 45], steelC = [150, 152, 156], dark = [20, 20, 22];
 
 // farola: F con +d hacia la calzada (hacia donde vuela el brazo)
 function lamp(B, A, F, y, H, reach) {
@@ -172,11 +185,11 @@ function lamp(B, A, F, y, H, reach) {
     hq(B, F, -0.11, 0.11, yh - 0.206, reach - 0.26, reach + 0.26, [255, 236, 190], K.FURN, A.LENS); return; }
   // columna torneada: zócalo, dos molduras, fuste cónico y collarín
   rev(B, F, 0, 0, [[0.2, y], [0.2, y + 0.05], [0.17, y + 0.07], [0.162, y + 0.3], [0.19, y + 0.34], [0.13, y + 0.42], [0.112, y + 0.92], [0.135, y + 0.96], [0.086, y + 1.04],
-    [0.056, yh - 0.08], [0.075, yh - 0.05], [0.045, yh + 0.05]], 8, lampC, K.FURN, { aux: A.PAINT, cap: 1 });
+    [0.056, yh - 0.08], [0.075, yh - 0.05], [0.045, yh + 0.05]], 7, lampC, K.FURN, { aux: A.PAINT, cap: 1 });
   // brazo en arco, más fino hacia la punta
   tube(B, F, [[0, yh - 0.3, 0.04], [0, yh + 0.1, reach * 0.22], [0, yh + 0.2, reach * 0.6], [0, yh + 0.1, reach - 0.3]], t => 0.046 - 0.012 * t, 5, lampC, K.FURN, { aux: A.PAINT });
   // luminaria: carcasa aplanada, alargada en el sentido del brazo, con la lente debajo
-  loft(B, F, 0, reach, [[0.11, 0.3, 0.09, yh - 0.02], [0.17, 0.36, 0.12, yh + 0.035], [0.17, 0.36, 0.12, yh + 0.07], [0.1, 0.27, 0.09, yh + 0.14]], 2, lampC, A.PAINT, 3);
+  loft(B, F, 0, reach, [[0.11, 0.3, 0.09, yh - 0.02], [0.17, 0.36, 0.12, yh + 0.035], [0.17, 0.36, 0.12, yh + 0.07], [0.1, 0.27, 0.09, yh + 0.14]], 1, lampC, A.PAINT, 3);
   hq(B, F, -0.1, 0.1, yh - 0.024, reach - 0.27, reach + 0.27, [255, 236, 190], K.FURN, A.LENS);
 }
 
@@ -332,23 +345,97 @@ function signal(B, A, F, y, go) {
     if (hi) fbox(B, F, -0.12, 0.12, yc + 0.115, yc + 0.13, 0.27, 0.38, dark, A.PAINT); }                      // visera
 }
 
+// bolardo (pilona) de fundición con collarín
+function bollard(B, A, F, y) {
+  if (A.lod < 2) { rev(B, F, 0, 0, [[0.06, y], [0.055, y + 0.9]], 4, ironC, K.FURN, { aux: A.CAST, cap: 1 }); return; }
+  rev(B, F, 0, 0, [[0.082, y], [0.056, y + 0.05], [0.054, y + 0.72], [0.072, y + 0.75], [0.072, y + 0.8], [0.05, y + 0.84], [0, y + 0.93]], 6, ironC, K.FURN, { aux: A.CAST });
+}
+
+// buzón amarillo genérico: F con +d hacia la boca (la acera)
+function mailbox(B, A, F, y) {
+  const yel = [232, 180, 22], foot = [40, 40, 44];
+  if (A.lod < 2) { rev(B, F, 0, 0, [[0.19, y, foot], [0.19, y + 0.2, foot], [0.225, y + 0.2], [0.225, y + 1.26], [0.1, y + 1.45]], 6, yel, K.FURN, { aux: A.PAINT, cap: 1 }); return; }
+  rev(B, F, 0, 0, [[0.19, y, foot], [0.19, y + 0.17, foot], [0.215, y + 0.2, foot], [0.215, y + 0.2], [0.225, y + 0.22], [0.225, y + 1.22], [0.243, y + 1.24], [0.243, y + 1.28],
+    [0.2, y + 1.39], [0.1, y + 1.46], [0, y + 1.475]], 10, yel, K.FURN, { aux: A.WORN });
+  cdec(B, F, 0, 0, 0.228, 0.228, y + 0.98, y + 1.12, 1.02, 2.12, 3, yel, 6, 2);                                   // boca
+  rev(B, F, 0, 0, [[0.228, y + 1.135], [0.262, y + 1.125], [0.228, y + 1.16]], 4, yel, K.FURN, { aux: A.PAINT, a0: 0.95, a1: 2.19 });   // visera sobre la boca
+  cdec(B, F, 0, 0, 0.228, 0.228, y + 0.56, y + 0.86, 1.2, 1.94, 2, [34, 52, 110], 4, 2);                          // placa de horarios
+}
+
+// parquímetro: F con +d hacia la acera (la pantalla)
+function meter(B, A, F, y) {
+  const body = [42, 66, 118], post = [74, 77, 82];
+  if (A.lod < 2) { fbox(B, F, -0.11, 0.11, y, y + 1.6, -0.075, 0.075, body, A.PAINT); return; }
+  loft(B, F, 0, 0, [[0.075, 0.055, 0.02, y], [0.075, 0.055, 0.02, y + 0.86]], 1, post, A.PAINT, 0);                // pie
+  loft(B, F, 0, 0, [[0.11, 0.07, 0.03, y + 0.84], [0.13, 0.09, 0.035, y + 0.9], [0.13, 0.09, 0.035, y + 1.56], [0.11, 0.07, 0.03, y + 1.61]], 1, body, A.PAINT, 3);
+  dq(B, F, 0.095, -0.095, y + 1.36, y + 1.5, 0.094, body, A.dec(10));                                             // pantalla
+  dq(B, F, 0.09, -0.01, y + 1.2, y + 1.3, 0.094, body, A.dec(6));                                                 // ranura de monedas y tique
+  quad(B, F, -0.04, y + 1.235, 0.094, -0.085, y + 1.235, 0.094, -0.085, y + 1.265, 0.094, -0.04, y + 1.265, 0.094, [40, 220, 90], K.FURN, A.LED);   // botón
+  dq(B, F, 0.1, -0.1, y + 0.94, y + 1.15, 0.094, [226, 226, 222], A.dec(4));                                      // instrucciones
+  dq(B, F, -0.1, 0.1, y + 1.1, y + 1.5, -0.094, [226, 226, 222], A.dec(4));
+  slab(B, F, [-0.07, y + 1.63], [0.07, y + 1.72], 0.14, 0.14, 0.015, [22, 26, 44], A.GLOSS);                      // placa solar (inclinada a lo largo de la acera)
+}
+
+// moto (escúter) aparcada: F con +u hacia delante. col = color de la carrocería
+const MOTO = [[226, 226, 222], [30, 30, 33], [168, 26, 30], [118, 122, 128], [38, 72, 132], [150, 196, 180], [224, 168, 30]];
+function scooter(B, A, F, y, col) {
+  const blk = [22, 22, 24], gry = [150, 150, 155], seat = [34, 34, 37];
+  if (A.lod < 2) {
+    for (const w of [-0.62, 0.62]) fbox(B, F, w - 0.2, w + 0.2, y + 0.02, y + 0.42, -0.05, 0.05, blk, A.RUBBER);
+    slab(B, F, [0.44, y + 0.26], [0.33, y + 1.02], 0.19, 0.15, 0.07, col, A.GLOSS);
+    fbox(B, F, -0.82, 0.4, y + 0.28, y + 0.36, -0.16, 0.16, blk, A.MATTE);
+    fbox(B, F, -0.85, 0, y + 0.36, y + 0.69, -0.16, 0.16, col, A.GLOSS);
+    fbox(B, F, -0.76, -0.04, y + 0.69, y + 0.79, -0.11, 0.11, seat, A.RUBBER); return; }
+  const T = (pts, r, c, aux, sides, o) => tube(B, F, pts.map(p => [p[0], y + p[1], p[2] || 0]), r, sides || 4, c, K.FURN, Object.assign({ aux }, o));
+  for (const w of [-0.62, 0.62]) { const ring = [];
+    for (let k = 0; k < 9; k++) { const a = k / 9 * 6.2832; ring.push([w + Math.cos(a) * 0.168, 0.223 + Math.sin(a) * 0.168]); }
+    T(ring, 0.055, blk, A.RUBBER, 4, { closed: true });                                    // neumático
+    T([[w, 0.223, -0.045], [w, 0.223, 0.045]], 0.118, gry, A.STEEL, 6, { caps: true }); }  // llanta
+  slab(B, F, [-0.14, y + 0.3], [0.43, y + 0.3], 0.17, 0.17, 0.08, blk, A.MATTE);           // plataforma
+  slab(B, F, [0.44, y + 0.26], [0.34, y + 0.97], 0.2, 0.15, 0.06, col, A.GLOSS);           // escudo
+  T([[0.44, 0.4], [0.56, 0.47], [0.72, 0.45], [0.81, 0.34]], 0.062, col, A.GLOSS, 3);      // guardabarros delantero
+  for (const sd of [-0.075, 0.075]) T([[0.62, 0.223, sd], [0.5, 0.6, sd]], 0.018, gry, A.STEEL, 3);   // horquilla
+  loft(B, F, 0.31, 0, [[0.07, 0.13, 0.04, y + 0.95], [0.09, 0.16, 0.05, y + 1.02], [0.06, 0.11, 0.04, y + 1.09]], 1, col, A.GLOSS, 3);   // careta del manillar
+  quad(B, F, 0.403, y + 0.975, -0.07, 0.403, y + 0.975, 0.07, 0.403, y + 1.05, 0.07, 0.403, y + 1.05, -0.07, [238, 238, 228], K.FURN, A.GLOSS);   // faro
+  T([[0.3, 1.09, -0.33], [0.3, 1.09, 0.33]], 0.014, gry, A.STEEL, 3);                      // manillar, puños y retrovisores
+  for (const sd of [-1, 1]) { T([[0.3, 1.09, sd * 0.24], [0.3, 1.09, sd * 0.35]], 0.02, blk, A.RUBBER);
+    T([[0.3, 1.09, sd * 0.2], [0.26, 1.3, sd * 0.29]], 0.008, blk, A.MATTE, 3);
+    quad(B, F, 0.255, y + 1.27, sd * 0.29 - 0.06, 0.255, y + 1.27, sd * 0.29 + 0.06, 0.255, y + 1.35, sd * 0.29 + 0.06, 0.255, y + 1.35, sd * 0.29 - 0.06, [60, 66, 74], K.FURN, A.STEEL); }
+  T([[0.0, 0.44], [-0.3, 0.5], [-0.6, 0.55], [-0.85, 0.6]], t => 0.19 - 0.08 * t * t, col, A.GLOSS, 6, { caps: true });      // cuerpo trasero, abombado y más fino hacia la cola
+  T([[-0.06, 0.665], [-0.4, 0.695], [-0.74, 0.735]], t => 0.115 - 0.03 * t, seat, A.RUBBER, 5, { caps: true });             // asiento
+  quad(B, F, -0.854, y + 0.58, -0.06, -0.854, y + 0.58, 0.06, -0.854, y + 0.65, 0.06, -0.854, y + 0.65, -0.06, [170, 18, 20], K.FURN, A.GLOSS);     // piloto trasero
+  slab(B, F, [-0.76, y + 0.5], [-0.93, y + 0.33], 0.07, 0.07, 0.02, blk, A.MATTE);         // guardabarros trasero y matrícula (en blanco)
+  quad(B, F, -0.862, y + 0.447, -0.06, -0.862, y + 0.447, 0.06, -0.932, y + 0.377, 0.06, -0.932, y + 0.377, -0.06, [232, 232, 226], K.FURN, A.PAINT);
+  T([[-0.2, 0.2, -0.16], [-0.78, 0.3, -0.19]], 0.045, gry, A.STEEL, 5, { caps: true });   // escape
+  T([[0.0, 0.26, 0.05], [-0.05, 0.02, 0.2]], 0.012, gry, A.STEEL, 3);                      // pata
+}
+
 // ------------------------------------------------------------------ material del charco de luz de las farolas (mezcla alfa)
 const VS_POOL = `precision highp float;
 attribute vec3 position; attribute vec2 uv; uniform mat4 world; uniform mat4 viewProjection;
 varying vec3 vPos; varying vec2 vUv;
 void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vUv = uv; gl_Position = viewProjection*wp; }`;
+// En HDR el charco MULTIPLICA lo que ya hay pintado (mezcla DST_COLOR, ZERO sobre el búfer lineal): 1 + luz cálida, como una
+// luz de verdad (el dibujo del suelo se conserva y un suelo claro se ilumina más que uno oscuro). Por eso esta rama escribe
+// el factor a mano en vez de pasar por FRAGA. En LDR (sin búfer flotante no se puede pasar de 1) queda la mezcla alfa de antes.
 const FS_POOL = `varying vec2 vUv;
 void main(){
-  float f = max(0.0, 1.0 - dot(vUv, vUv)), a = smoothstep(0.0, 0.45, uDusk)*f*f*0.6;
+  float f = max(0.0, 1.0 - dot(vUv, vUv)), a = smoothstep(0.05, 0.3, uDusk)*f*f*(0.45 + 0.55*f);
   if (a < 0.004) discard;
-  FRAGA(emit(vec3(1.0, 0.8, 0.5), 0.85), a);
+#ifdef LDR
+  FRAGA(emit(vec3(1.0, 0.8, 0.5), 0.85), a*0.6);
+#else
+  gl_FragColor = vec4(1.0 + vec3(1.0, 0.56, 0.12)*(a*7.0*(1.0 + 0.8*smoothstep(0.3, 1.0, uDusk))), 1.0);
+#endif
 }`;
 
 // `parts` deja las piezas a mano para pruebas sin navegador (contar triángulos: ver DESARROLLO.md §9)
-window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, bike, dock, totem, signal, loft, cdec, levels: [AS, AH] }, init(ctx) {
+window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, bike, dock, totem, signal, bollard, mailbox, meter, scooter, MOTO, loft, cdec, slab, levels: [AS, AH] }, init(ctx) {
   const { SEG } = ctx, { walkY, roadY, nearestCar, coverAt } = ctx.city;
   for (const m of ctx.detail.mats) m.setVector2('uFurnHi', new BABYLON.Vector2(HI[0], HI[1]));
   const poolMat = ctx.mkMat('farolaLuz', VS_POOL, FS_POOL, ['position', 'uv'], [], [], { blend: true });
+  // después del observador de mkMat (que pone la mezcla alfa): en HDR, color = destino × fuente y el alfa del búfer no se toca
+  poolMat.onBindObservable.add(() => { if (ctx.out.hdr) ctx.engine.alphaState.setAlphaBlendFunctionParameters(0x0306, 0, 0, 1); });
 
   // reparto de los objetos de una celda en el nivel de acabados A. Las dos pasadas (sencilla y detalle) siembran los mismos
   // ámbitos y sacan los mismos números: los objetos caen en el mismo sitio
@@ -420,12 +507,39 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
         fbox(W, fr(cxp + dx, czp + dz, ang), -nd * 0.425, nd * 0.425, y, y + 0.06, -0.15, 0.15, [84, 86, 90], A.PAINT);
         log('bicing', cxp, czp, bang);
       });
-      // semáforos: en los extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra
+      // buzón amarillo: uno cada 190 m, con la boca hacia la acera
+      if (hw >= 3) along(190, 60, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.8, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
+        if (!inCell(x, z) || nearJ(x, z, 9)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        mailbox(W, A, fr(x, z, out(side)), walkY(ns, x, z) - 0.02); log('buzon', x, z, out(side));
+      });
+      // parquímetros: donde hay banda de aparcamiento, cada 64 m alternando acera, con la pantalla hacia la acera
+      if ((cls === 4 || cls === 5) && hw >= 3) along(64, 35, (u, n) => { const side = n % 2 ? -1 : 1, off = hw + 0.55, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
+        if (!inCell(x, z) || nearJ(x, z, 7)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        meter(W, A, fr(x, z, out(side)), walkY(ns, x, z) - 0.02); log('parquimetro', x, z, out(side));
+      });
+      // motos aparcadas en batería, de culo al bordillo: grupos de 2 a 5 (a 47 m de los contenedores; nunca sobre una estación de Bicing)
+      if ((cls === 4 || cls === 5) && hw >= 3) along(95, 88, (u, n) => {
+        seed(T_MOTO, n, s);                                   // todo el azar del grupo, de golpe
+        const side = R() < 0.5 ? 1 : -1, nm = R() < 0.3 ? 0 : 2 + Math.floor(R() * 4), ms = [];
+        for (let m = 0; m < 5; m++) ms.push([Math.floor(R() * MOTO.length), R(-0.09, 0.09), R(-0.12, 0.12)]);
+        const off = hw - 1.05, cxp = ax + tx * u + px * side * off, czp = az + tz * u + pz * side * off, mb = ((seg.a0 + u - 150) % 310 + 310) % 310;
+        if (!nm || mb < 11 || mb > 299 || !inCell(cxp, czp) || nearJ(cxp, czp, 12) || u < 4 || u > L - 4) return;
+        const bang = Math.atan2(-pz * side, -px * side);
+        for (let m = 0; m < nm; m++) { const e = (m - (nm - 1) / 2) * 0.86, q = ms[m][2], x = cxp + tx * e + px * side * q, z = czp + tz * e + pz * side * q;
+          scooter(W, A, fr(x, z, bang + ms[m][1]), roadY(s, x, z), MOTO[ms[m][0]]); }
+        log('motos', cxp, czp, bang);
+      });
+      // semáforos: en los extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra;
+      // y bolardos en el bordillo, flanqueando el paso de cebra
       if (hw >= 3) for (const [e, dir] of [[0, 1], [2, -1]]) {
         const o = s * 6, jx = SEG[o + e], jz = SEG[o + e + 1], jk = cell.jKey(jx, jz); if (!cell.Jset.has(jk)) continue;
         let back = 3; for (const j of cell.J) if (cell.jKey(j[0], j[1]) === jk) for (const s2 of j[2]) if (s2 !== s) back = Math.max(back, SEG[s2 * 6 + 4] + 2.2);
         if (back + 4 > L) continue;
-        const ux = tx * dir, uz = tz * dir, q = hw + 0.55, x = jx + ux * (back + 4.5) + px * dir * q, z = jz + uz * (back + 4.5) + pz * dir * q;
+        const ux = tx * dir, uz = tz * dir;
+        for (const [b, sd] of [[back - 0.45, 1], [back - 0.45, -1], [back + 4.45, -1]]) { const qb = (hw + 0.42) * sd, x = jx + ux * b + px * dir * qb, z = jz + uz * b + pz * dir * qb;
+          if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
+          bollard(W, A, fr(x, z, 0), walkY(ns, x, z) - 0.02); log('bolardo', x, z, 0); }
+        const q = hw + 0.55, x = jx + ux * (back + 4.5) + px * dir * q, z = jz + uz * (back + 4.5) + pz * dir * q;
         if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
         const a = Math.atan2(-ux, uz);
         signal(W, A, fr(x, z, a), walkY(ns, x, z) - 0.02, Math.floor((ang + 12.5664) / 1.5708) % 2 === 0); log('semaforo', x, z, a);
