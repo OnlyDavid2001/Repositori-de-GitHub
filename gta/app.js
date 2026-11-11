@@ -499,7 +499,9 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             sunL: new BABYLON.Color3(), skyL: new BABYLON.Color3(), gndL: new BABYLON.Color3(),
             // exp: exposición de día. Al anochecer el ojo se adapta: el ambiente (cielo y suelo) sube hasta ×(1 + dAmb) y la
             // exposición hasta ×(1 + dExp), con el sol ya bajo (L.dusk de 0 a 0,6). Poco de exposición para no lavar el cielo
-            K: { sun: 2.3, sky: 1.6, gnd: 1.5, exp: 1.6, dAmb: 3.0, dExp: 0.3 },
+            // des: cuánto se desatura el cielo como luz ambiente (0…1). Su color de pantalla, al pasar a lineal, sale mucho más
+            // azul de lo que parece y teñía de azul todo lo que queda en sombra
+            K: { sun: 2.1, sky: 3.6, gnd: 4.0, exp: 1.5, dAmb: 0.78, dExp: 0.38, des: 0.55 },
             tone: new BABYLON.Vector2(1.6, 1.08) };            // exposición (la fija setHour) y contraste (postproceso, o FRAG en el camino LDR)
 // uniformes de luz de un material (los comunes del preludio que dependen de la hora)
 function lightTo(m) {
@@ -524,6 +526,7 @@ function setHour(hh) {
   L.dusk = 1 - Math.min(1, Math.max(0, (L.sunDir.y - 0.02) / 0.22));        // 0 de día … 1 al anochecer (uDusk, en todos los materiales)
   const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), amb = 1 + L.K.dAmb * dk;   // adaptación al anochecer
   linTo(L.sunL, L.sunCol, L.K.sun); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
+  { const c = L.skyL, g = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, t = L.K.des; c.r += (g * 1.03 - c.r) * t; c.g += (g - c.g) * t; c.b += (g * 0.98 - c.b) * t; }
   L.tone.x = L.K.exp * (1 + L.K.dExp * dk);
   L.hour = hh; lightOn = true;
   for (const m of mats) lightTo(m);

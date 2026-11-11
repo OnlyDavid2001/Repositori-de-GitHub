@@ -237,7 +237,7 @@ void main(){
     win.t = 0; win.n = 0; win.bad = 0;
     apply();
   }
-  // ajustes en caliente: { exposure, contrast, sun, sky, gnd, dAmb, dExp } (luz y tono, viven en ctx.L) y los de P
+  // ajustes en caliente: { exposure, contrast, sun, sky, gnd, dAmb, dExp, des } (luz y tono, viven en ctx.L) y los de P
   function set(o) {
     for (const k in o) {
       if (k === 'exposure') L.K.exp = o[k]; else if (k === 'contrast') L.tone.y = o[k];
