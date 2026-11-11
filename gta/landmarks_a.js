@@ -683,7 +683,7 @@ add({ id: 'casa_calvet', nombre: 'Casa Calvet', nivel: 'C', x: 12477.1, z: 14467
   } });
 // Fundació Antoni Tàpies: ladrillo rojo y, en la azotea, la nube de tubos metálicos «Núvol i cadira»
 add({ id: 'fundacio_tapies', nombre: 'Fundació Antoni Tàpies', nivel: 'C', x: 11675.5, z: 14576.8, rot: 137, alto: 34, edificios: ED.fundacio_tapies, ocultar: false,
-  noche: 'nada', retoque: { color: '#b5543a', estilo: 1 },
+  noche: 'nada', retoque: { color: '#b5543a', estilo: 1 }, fachada: false,
   build(B, h, L) {
     const e = (h.edif || [])[0], y = e && isFinite(e.alto) ? e.alto : 25.3, R = h.R;
     for (let i = 0; i < 26; i++) { const pts = []; let x = R(-4, 4), yy = y + R(1, 8), z = R(-6, 6);
