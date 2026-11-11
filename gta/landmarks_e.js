@@ -307,7 +307,8 @@ add({ id: 'estacio_sants', nombre: 'Estació de Sants', nivel: 'B', x: 9700.7, z
     if (!ed.length) { L.caja(B, 0, 0, -1, 136, 150, 4.8, 0, GR, K.LISO); L.caja(B, 0, -22, 3.5, 105, 50, 16, 0, GR, K.VENTANAS); }
     // marquesina de la plaza (delante de la fachada noroeste, −X): losa fina a 15 m sobre pilares
     const mx = -98, mz = -18;
-    L.caja(B, mx, mz, 14.2, 34, 64, 1.0, 0, [184, 186, 188], K.METAL, { aux: L.aux.panel(4, 0.1, 0) });
+    L.caja(B, mx, mz, 14.2, 38, 70, 1.4, 0, [226, 228, 230], K.METAL, { aux: L.aux.panel(4, 0.1, 0) });
+    L.caja(B, mx, mz, 15.6, 39, 71, 0.5, 0, [200, 202, 206], K.METAL);
     for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
       const px = mx + s * 12, pz = mz - 27 + i * 18, y = yT(h, px, pz);
       L.tambor(B, px, pz, y - 1, 14.2, 0.35, { lados: 6, col: [120, 122, 126], k: K.METAL });
