@@ -730,7 +730,85 @@ lienzo ya se creó sin antialiasing: se ve correcto pero con dientes de sierra. 
 
 ## 8. Carril INTERIORES
 
-_Pendiente: aquí documentará el carril INTERIORES (`interiors.js`, `facades.js`) lo que añada o cambie._
+### 8.1 Comercios que se ven por dentro (etapa IY1)
+
+Los escaparates ya no son un vidrio gris: cada vidrio de comercio es un quad de tipo **`K.SHOPWIN`** (id 20, registrado por
+`interiors.js`) cuyo shader pinta, por píxel, lo que se vería dentro de una **habitación virtual** («interior mapping»).
+No hay geometría interior, ni vidrio con mezcla alfa, ni sustitutos: el mismo quad, en la capa BASE, vale de cerca y de
+lejos (el detalle fino se desvanece solo con la distancia).
+
+**Comercios por grupos** (`shopPlan`, en `groundFloor`). En un tramo de calle con planta baja comercial (`env.shopsHere`),
+los vanos contiguos a cada lado del portal se parten en comercios de hasta 4 vanos o ~14 m. Cada comercio siembra su
+ámbito, `env.rnd(10, tramo, primer vano)`, y saca 6 números: tipo, vano de la puerta, si lleva rótulo (93 %), si lleva
+toldos (35 %; del color del tipo, en todos sus vanos) y semilla del interior (1–255). El tipo sale de un sorteo con pesos
+(`w` de cada fila: más bares, cafès, forns y queviures que ópticas); `SUPERMERCAT` solo sale en comercios de 3 vanos o más
+y ≥ 9,5 m (30 %). El rótulo (`K.SIGN`, `signAux(tipo)`) va centrado sobre el comercio, con proporción 8:1; el atlas de
+rótulos pasa a ser de **2 × 16 celdas de 512 × 64** (la rama `K.SIGN` de `FS_DET` lo lee así), una por tipo y con los
+colores de su fila. Un vano de cada comercio es la **puerta de vidrio** (hoja de 1,1 m centrada, vidrios fijos a los lados,
+montante, marco, zócalo y tirador de acero); por ella se ve la misma habitación. La farmacia lleva además una cruz verde
+luminosa en banderola (`K.PBR` con emisión). El hueco del escaparate baja 30 cm respecto a antes (dintel a `F1 − 1,0`)
+para dejar sitio al rótulo.
+
+**Depuración.** `?shop=<índice o principio del nombre>` (p. ej. `?shop=5`, `?shop=farm`) fuerza el tipo de todos los
+comercios. En caliente: `BCN_INTERIORS.force = n; BCN.fx.setRange(0); BCN.fx.setRange(1)` (reconstruye las celdas; sirve en
+el `eval` de una vista del arnés). `node tools/shop_preview.js salida.jpg [frente|oblicuo|lejos|noche] [ancho]` pinta en
+menos de un minuto una hoja con todos los tipos sin cargar la ciudad (mismo GLSL, WebGL1 a pelo): es lo cómodo para iterar
+el dibujo de un interior; la comprobación final, con `tools/shot.js`.
+
+**Tipos: una fila de `TYPES`** (`interiors.js`). El índice de la fila es el tipo (máx. 32). Campos: `n` rótulo, `w` peso,
+`sign` [fondo, letra], `awn` toldo, `wall` pared, `floor` [patrón `FL.*`, color A, color B], `warm` calidez de la luz
+(0–1), `lamp` luminarias (`LAMP.*`), `back` [qué hay en la pared del fondo `BACK.*`, color del mueble], `far` / `near` /
+`shelf` [capa `LY.*`, color] a ~3,1 m, a 1,7 m y en la repisa del escaparate (0,42 m), `acc` color de acento, `pal`
+(`PAL.*`) y `shape` (`SH.*`): colores y forma del género que llena baldas, vitrinas y tarimas. **Añadir un tipo = añadir
+una fila**; si hace falta un dibujo nuevo, una rama más en `shBack` (fondo) o `shLayer` (capas) y su nombre en `BACK`/`LY`.
+La tabla viaja al shader en la textura `tShop` (8 × 32 RGBA8, sin filtrar; fila = tipo; columnas: 0 pared + patrón de
+suelo · 1 suelo A + calidez · 2 suelo B + luminarias · 3 mueble + id del fondo · 4, 5, 6 color + id de las capas lejana,
+cercana y repisa · 7 acento + `paleta + 16·forma`), que `paramData()` genera a partir de `TYPES`.
+
+**Empaquetado por vértice del quad `K.SHOPWIN`** (lo escribe `glassQuad`; nada de coordenadas de mundo):
+
+| Byte | Contenido |
+| --- | --- |
+| `color.r` | ancho de la habitación: `W/16 m` |
+| `color.g` | `tipo (0–31) + 32·sentido + 64·puerta`. *Sentido* = 1 si la tangente `T` del shader va al revés que la `u` del marco de fachada; *puerta* = 1 en la hoja de la puerta (por ahí no se pinta la repisa del escaparate) |
+| `color.b` | semilla del interior |
+| `aux.x`, `aux.y` | posición del vértice en la habitación: `u/W` y `(y sobre el suelo + 1)/6 m` (se interpolan) |
+| `aux.z`, `aux.w` | alto de la habitación `H/8 m` y fondo `D/16,32 m` (`aux.w` nunca llega a 255, que es la marca de sustituto) |
+
+La habitación de un comercio empieza 30 cm antes de su primer hueco y acaba 30 cm después del último; su suelo es la cota
+de acera del vano de la puerta (+3 cm), el alto ≥ 3,3 m (siempre por encima del dintel) y el fondo entre 4 y 5,5 m.
+
+**El shader** (funciones `sh…` en `SHOP_DECL`, declaradas con `regKind`; las puede usar cualquier otra rama):
+
+- `shRoom(o, d, sz, tipo, semilla, px, dist, puerta)` → color propio del interior. `o` = punto del vidrio en la habitación
+  (x a lo largo, y sobre el suelo), `d` = rayo de vista en esos ejes (x, y, z hacia dentro), `sz` = (ancho, alto, fondo),
+  `px` = metros por píxel sobre el vidrio (para el filtrado), `dist` = distancia de la cámara. Hace, de atrás adelante:
+  1. **la caja**: primera pared que toca el rayo → suelo (`FL`: damero, tarima, terrazo, baldosa), techo con luminarias
+     (`LAMP`; valen 4,5: pasan de 1 a propósito), paredes laterales (zócalo; si el fondo lleva estanterías, espejos,
+     percheros o cuadros, siguen por los lados) y pared del fondo (`shBack`: estanterías, botellero retroiluminado, espejos
+     con bombillas, panel de herramientas, pizarras, perchero, paneles de gafas, cuadros), con caída de luz hacia el fondo
+     y penumbra en las aristas;
+  2. **lineales de supermercado** (`LY.LINEALES`): góndolas de verdad, cajas perpendiculares al vidrio trazadas con el rayo;
+  3. **tres capas de mobiliario** en planos paralelos al vidrio (`shLayer`, alfa premultiplicado), que dan el paralaje al
+     caminar: lejana (3,1 m), cercana (1,7 m) y repisa del escaparate (0,42 m): mostrador con vitrina, barra con
+     taburetes, mesas y sillas (con o sin mantel), sillones, burras de ropa, isla con género, caballete de cajas de fruta,
+     cubos de flores, tarima con género, maniquíes, carteles de oferta, cruz de farmacia.
+  Piezas comunes: `shItems` (fila de artículos: caja, redondo, botella, lomo de libro, herramienta, gafas), `shShelf`
+  (mueble de baldas lleno), `shPal` (paletas del género), `shR`/`shC`/`shT` (rectángulo, círculo y trapecio suavizados).
+- `shGlass(room, V, N)` → el vidrio: `emit(room, 1,05 → 2,3 con uDusk)` más `envRefl` con Fresnel (9 % de frente, casi
+  todo en rasante). Al interior no le da el sol.
+- **Filtrado**: todo borde se suaviza con `px`, y cada patrón se funde a su color medio cuando el píxel se acerca a su
+  tamaño (los artículos pasan a ser una banda de color; el techo, una franja de luz): no parpadea de lejos.
+
+**Para IY2 (portales y pisos).** La habitación es reutilizable tal cual: emite un quad con `glassQuad` (o el mismo
+empaquetado) y un tipo nuevo = filas nuevas de `TYPES` (portal, salón, cocina…; con `w: 0` no entran en el sorteo de
+comercios; ojo, `SHOPS`/el atlas de rótulos recorren todas las filas). Quedan libres el bit 128 de `color.g` y los ids de
+fondo/capa que se quieran añadir. Para una ventana de piso basta una habitación de 2,7 m de alto (`aux.z`) y la
+persiana delante como hasta ahora.
+
+**Cambios respecto a §6** (que este carril no edita): el ámbito de azar `env.rnd(10, tramo, primer vano)` = comercio;
+`K.SHOPWIN` = 20; el atlas de `K.SIGN` es de 2 × 16; `K.GSHOP` (11) ya no lo usa nadie; `BCN_INTERIORS` exporta además
+`TYPES`, `force` y `paramData()`.
 
 
 
