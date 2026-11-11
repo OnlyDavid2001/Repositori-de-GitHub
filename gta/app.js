@@ -181,6 +181,12 @@ float sunVisN(vec3 n){
   return v; }
 // sin normal a mano (reflejos del sol en vidrios, asfalto, mar): el punto se separa unos 3 téxeles hacia el sol
 float sunVis(){ return sunVisN(uShZ*7.0); }
+// DIA: más allá de la cascada lejana no hay mapa de sombras. shOut() = 1 fuera de ella (sin sombras, a partir de 150–400 m) y
+// sunTan() = tangente de la altura del sol: con ellas se aproxima la sombra de los «cañones» de calle lejanos (calzadas y
+// parte baja de los muros), para que de lejos las calles se lean como surcos en sombra entre manzanas soleadas
+float shOut(){ if (uShP.z < 0.5) return smoothstep(150.0, 400.0, length(vPos - uCam));
+  vec3 d1 = vPos - uShC1.xyz; vec2 a1 = abs(vec2(dot(d1, uShX1), dot(d1, uShY1)))*uShC1.w; return smoothstep(0.80, 0.97, max(a1.x, a1.y)); }
+float sunTan(){ return uSunDir.y/max(length(uSunDir.xz), 1e-3); }
 // color del horizonte en la dirección d (el de la niebla): uFogCol, más cálido del lado del sol cuando está bajo y algo más
 // frío en el lado contrario. Así amanecer y anochecer no tiñen el horizonte por igual en todas direcciones
 float horzW(vec3 d){ float az = dot(normalize(d.xz + vec2(1e-5)), uSunH.xy)*0.5 + 0.5; return az*az*az; }
@@ -277,6 +283,14 @@ void main(){
   float a255 = floor(vCol.a*255.0 + 0.5); float style = floor(a255/16.0); float seed = (a255 - style*16.0)/15.0;
   vec3 base = vCol.rgb; vec3 glow = vec3(0.0);
   float h = vInfo.x*0.1, Ht = vInfo.y*0.1;
+  // DIA: mosaico de colores de fachada como en las fotos (crema, ocre, blanco roto, arena y algo de ladrillo) en las de
+  // vivienda; de noche (uNight) el color de siempre, para no tocar la noche calibrada
+  if (style < 0.5 || abs(style-2.0) < 0.5 || abs(style-6.0) < 0.5) {
+    float hb = hash21(vec2(vInfo.y*0.137 + seed*7.3, vCol.r*31.0 + vCol.g*17.0));
+    vec3 tq = hb < 0.30 ? vec3(1.03, 0.99, 0.91) : (hb < 0.50 ? vec3(1.05, 0.89, 0.68) : (hb < 0.68 ? vec3(1.08, 1.07, 1.05) :
+              (hb < 0.87 ? vec3(1.01, 0.94, 0.82) : vec3(0.88, 0.60, 0.45))));
+    base = mix(min(base*tq, vec3(0.95)), base, uNight);
+  }
   float fade = 1.0 - smoothstep(260.0, 1100.0, dist);
   if (abs(n.y) < 0.5) {
     float u = vInfo.z*0.1;
@@ -337,7 +351,11 @@ void main(){
   } else {
     vec3 roof;
     float r = hash21(vCol.rg*91.7 + seed);
-    if (style < 0.5) roof = mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r));
+    if (style < 0.5) {
+      // DIA: azoteas claras (la mayoría), teja terracota y algo de gris, como en las fotos; de noche, las de siempre
+      vec3 rD = r < 0.32 ? mix(vec3(0.72,0.42,0.30), vec3(0.62,0.37,0.28), fract(r*7.0)) : (r < 0.82 ? mix(vec3(0.80,0.77,0.71), vec3(0.69,0.67,0.63), fract(r*5.0)) : vec3(0.57,0.56,0.55));
+      roof = mix(rD, mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r)), uNight);
+    }
     else if (abs(style-1.0) < 0.5) roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r);
     else if (abs(style-2.0) < 0.5) roof = mix(vec3(0.60,0.50,0.42), vec3(0.52,0.50,0.48), r);
     else if (abs(style-3.0) < 0.5) roof = vec3(0.46,0.48,0.52);
@@ -353,6 +371,10 @@ void main(){
     base *= 1.0;
   }
   // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
+  // DIA: de lejos (sin mapa de sombras) la parte baja de los muros queda en la sombra de la acera de enfrente: calle de
+  // ~20 m entre edificios de ~20 m. Sol de 32° (8:30): sombra hasta ~6 m; a mediodía, nada. De noche no se aplica
+  if (abs(n.y) < 0.5) { float hs = clamp(19.0 - 14.0*sunTan(), 0.0, 19.0), so = shOut()*(1.0 - uNight);
+    if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
   c += emit(glow, 0.8);
   FRAG(c);
@@ -376,6 +398,13 @@ void main(){
   alb *= mix(1.0, 0.86 + 0.28*d1, mix(0.35, 1.0, veg)*nearF);
   alb *= mix(1.0, mix(0.80 + 0.36*canFar, 0.58 + 0.80*can*can, nearF), veg*dark);
   alb *= 0.94 + 0.12*d2;
+  // DIA: el bosque de Collserola y los pinos son verde oscuro y apagado (oliva), con textura de copas; los parques del
+  // llano, verde medio (la mitad del cambio). De noche, como antes
+  { float vg = clamp((alb.g - max(alb.r, alb.b))*9.0, 0.0, 1.0)*(1.0 - uNight), mt = smoothstep(60.0, 200.0, vPos.y);
+    float px = length(fwidth(vPos.xz)), cw = (vnoise(vPos.xz*0.11)*0.6 + vnoise(vPos.xz*0.37)*0.4)*(1.0 - smoothstep(3.0, 12.0, px));
+    float l = dot(alb, vec3(0.30, 0.60, 0.10));
+    vec3 ol = l*mix(vec3(0.98, 1.0, 0.62), vec3(1.06, 1.0, 0.50), mt)*mix(0.95, 0.80, mt)*mix(1.0, 0.62 + 0.72*cw, mix(0.5, 1.0, mt));
+    alb = mix(alb, ol, vg*mix(0.55, 1.0, mt)); }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
   vec3 c = lit(alb, n)*(1.0 - 0.55*uNight);         // de noche, montaña, parques y patios casi negros
@@ -390,7 +419,7 @@ void main(){
   vec3 n = normalize(vN); float slope = 1.0 - n.y; float h = vPos.y;
   float nz = vnoise(vPos.xz*0.0016)*0.6 + vnoise(vPos.xz*0.007)*0.4;
   vec3 low = mix(vec3(0.63,0.61,0.50), vec3(0.50,0.57,0.40), nz);
-  vec3 forest = mix(vec3(0.22,0.36,0.22), vec3(0.31,0.43,0.27), nz);
+  vec3 forest = mix(mix(vec3(0.25,0.29,0.17), vec3(0.32,0.34,0.20), nz), mix(vec3(0.22,0.36,0.22), vec3(0.31,0.43,0.27), nz), uNight);   // DIA: oliva oscuro
   float f = clamp(smoothstep(0.015,0.09,slope) + smoothstep(110.0,300.0,h), 0.0, 1.0);
   vec3 alb = mix(low, forest, f);
   alb = mix(alb, vec3(0.56,0.53,0.49), smoothstep(0.30,0.55,slope));
@@ -435,6 +464,10 @@ void main(){
   bool car = cls < 6.5 || abs(cls-8.0) < 0.5 || abs(cls-10.0) < 0.5 || abs(cls-11.0) < 0.5;
   if (near > 0.0 && car) {` + ROAD_NEAR + `  }
   alb = mix(alb, vec3(0.86,0.86,0.82), mk*fade*0.8);
+  // DIA: de lejos no hay mapa de sombras: fracción de calzada al sol en un cañón de calle (edificios de ~20 m, aceras de 5 m),
+  // para que las calles se lean como surcos en sombra entre manzanas soleadas. Solo en el llano y nunca de noche
+  { float so = shOut()*(1.0 - uNight)*(1.0 - smoothstep(150.0, 300.0, vPos.y));
+    if (so > 0.001 && car) gSunVis = sunVisN(N)*mix(1.0, clamp(1.0 - 13.0/(max(sunTan(), 0.05)*(2.0*hw + 10.0)), 0.10, 1.0), so); }
   vec3 c = lit(alb, N);
   c += uSunCol*0.05*pow(max(dot(reflect(-uSunDir, N), normalize(uCam - vPos)), 0.0), 24.0)*near*sunVis();
   // aura nocturna: la calzada bajo las farolas. Un charco cada 24 m alternando de acera, donde furniture.js planta los postes
@@ -489,13 +522,14 @@ void main(){
   vec2 uv = p/uSize;
   float inside = step(0.0,uv.x)*step(uv.x,1.0)*step(0.0,uv.y)*step(uv.y,1.0);
   float cd = mix(1.0, texture2D(coastTex, uv).r, inside);
-  vec3 deep = vec3(0.020,0.115,0.230), shallow = vec3(0.070,0.330,0.400);
+  // DIA: de día el Mediterráneo es azul intenso y saturado (fotos: (58, 142, 185) cerca); de noche, el de siempre
+  vec3 deep = mix(vec3(0.030,0.200,0.420), vec3(0.020,0.115,0.230), uNight), shallow = mix(vec3(0.080,0.400,0.500), vec3(0.070,0.330,0.400), uNight);
   vec3 water = mix(shallow, deep, smoothstep(0.0, 0.5, cd));
   water *= (uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y,0.0));
   float fres = 0.02 + 0.98*pow(1.0 - max(dot(n,V),0.0), 5.0);
   vec3 r = reflect(-V, n); r.y = abs(r.y);
   vec3 sky = skyGrad(r);
-  vec3 c = mix(water, sky, fres*0.9);
+  vec3 c = mix(water, sky, fres*mix(0.62, 0.9, uNight));
   float sp = pow(max(dot(r,uSunDir),0.0), mix(260.0, 40.0, rough));
   // el brillo del sol en el agua, muy por encima de 1 (HDR): es lo que florece
   c += uSunCol*sp*mix(7.0, 0.35, rough)*sunVis();
@@ -635,7 +669,10 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // color de autor (≈ +15 %) y una pared blanca por debajo de 0,85; la sombra, hacia la mitad de lo soleado.
             // moon: ganancia de la luna respecto al sol · nAmb / nExp: adaptación extra del ambiente y la exposición de noche
             // blue: cuánto ambiente se quita en la hora azul (sol de 0,5° a −5° bajo el horizonte, antes de la noche cerrada)
+            // DIA (de día pleno, se desvanece al ponerse el sol): desD desaturación del cielo como ambiente · skyD / gndD ganancia del
+            // ambiente del cielo y del rebote del suelo · fogDay color de la bruma y del horizonte (azulado, como en las fotos)
             K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
+                 desD: 0.22, skyD: 0.92, gndD: 0.72, fogDay: [0.58, 0.71, 0.86],
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
                  city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
@@ -664,7 +701,9 @@ function setHour(hh) {
   const el = (moon ? 22 + 26 * Math.sin(nn * Math.PI) : Math.max(elS, 1.28)) * D;
   L.sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
   const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-1, -9, elS);                // e: sol bajo … alto · nt: noche cerrada
-  const k = 0.55 + 0.45 * e, sc = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
+  const k = 0.55 + 0.45 * e, sc0 = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
+  // DIA: sol de mañana y de tarde cálido aunque ya esté alto (fotos: 8:30 dorado, 10:30 aún algo cálido, mediodía neutro)
+  const wm = (1 - sstep(8, 70, elS)) * e, sc = [sc0[0], sc0[1] * (1 - 0.12 * wm), sc0[2] * (1 - 0.30 * wm)];
   const sk = mix3(mix3([0.272, 0.256, 0.336], [0.32, 0.384, 0.48], e), [0.12, 0.145, 0.23], nt);
   const gn = mix3([0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04], [0.10, 0.105, 0.13], nt);
   // aura nocturna: «on» sube con las farolas (segunda mitad de uDusk) y dura toda la noche. De día todo queda como estaba
@@ -672,7 +711,7 @@ function setHour(hh) {
   // horizonte: con el sol bajo, la base es un gris malva (también el lado contrario al sol) y el naranja va solo hacia el sol
   // (uSunH, uHorzC: horzCol() en el preludio). sg: fuerza de ese resplandor, de 18° de altura del sol hasta 9° bajo el horizonte
   // De noche cerrada, azul marino oscuro y algo gris (en las fotos el horizonte apenas es más claro que el cenit): nada de pardo
-  const fg = mix3(mix3([0.76, 0.69, 0.68], [0.74, 0.83, 0.92], e), [0.069, 0.122, 0.193], nt);   // → sRGB ≈ (2, 17, 34): calibrado a través del pie del ACES
+  const fg = mix3(mix3([0.76, 0.69, 0.68], L.K.fogDay, e), [0.069, 0.122, 0.193], nt);   // de día, bruma azulada (DIA)   // → sRGB ≈ (2, 17, 34): calibrado a través del pie del ACES
   const sg = (1 - sstep(3, 18, elS)) * sstep(-9, -1.5, elS), sw = mix3([1.04, 0.62, 0.34], [0.50, 0.24, 0.15], sstep(-1, -8, elS));
   const azS = (isDay ? 95 + (hh - 6.5) / 14 * 170 : 271 + nn * 178) * D;                       // acimut del sol de verdad
   L.sunH.set(Math.sin(azS), Math.cos(azS), sg, moon ? mf : 0); L.horzC.set(sw[0] - fg[0], sw[1] - fg[1], sw[2] - fg[2]);
@@ -689,7 +728,11 @@ function setHour(hh) {
   const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), bd = sstep(0.5, -5, elS) * (1 - nt);
   const amb = (1 + L.K.dAmb * dk) * (1 + L.K.nAmb * nt) * (1 - L.K.blue * bd);
   linTo(L.sunL, L.sunCol, L.K.sun * (moon ? L.K.moon : 1)); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
-  { const c = L.skyL, g = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, t = L.K.des; c.r += (g * 1.03 - c.r) * t; c.g += (g - c.g) * t; c.b += (g * 0.98 - c.b) * t; }
+  // DIA: de día el cielo como luz ambiente se desatura menos (sombras frescas, azuladas) y el ambiente baja un poco (más
+  // contraste sol/sombra); el rebote cálido del suelo, más (agrisaba las sombras). dd: 0 al ponerse el sol y de noche
+  const dd = e * (1 - nt);
+  { const c = L.skyL, g = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, t = L.K.des + (L.K.desD - L.K.des) * dd; c.r += (g * 1.03 - c.r) * t; c.g += (g - c.g) * t; c.b += (g * 0.98 - c.b) * t;
+    const ks = 1 + (L.K.skyD - 1) * dd, kg = 1 + (L.K.gndD - 1) * dd; c.r *= ks; c.g *= ks; c.b *= ks; L.gndL.r *= kg; L.gndL.g *= kg; L.gndL.b *= kg; }
   L.tone.x = L.K.exp * (1 + L.K.dExp * dk) * (1 + L.K.nExp * nt);
   L.hour = hh; lightOn = true;
   for (const m of mats) lightTo(m);
