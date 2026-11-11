@@ -665,4 +665,96 @@ _Pendiente: aquí documentará el carril INTERIORES (`interiors.js`, `facades.js
 
 ## 9. Carril DETALLE
 
-_Pendiente: aquí documentará el carril DETALLE (`details.js`, `furniture.js`, `ground.js`, `streets.js`) lo que añada o cambie._
+Etapa FZ (plan ligero): mobiliario urbano con dos niveles de detalle. Ficheros: `furniture.js` (todo el mobiliario),
+`streets.js` (ciclo de vida de las mallas) y, para probar, `tools/views_detalle.json` y `tools/furn_test.js`.
+
+### 9.1 Catálogo de mobiliario (`furniture.js`)
+
+Cada objeto es una función `f(B, A, F, y, …)`: `B` el `GB` de destino, `A` los acabados del nivel (`A.lod` = 1 sencillo, 2
+detalle), `F` un marco como los de fachada (`u`, `y`, `d`) centrado en el objeto e `y` la cota del suelo. Triángulos según
+`node tools/furn_test.js`:
+
+| Objeto (función) | Dónde cae (`place`) | Nivel de detalle | Sencillo | Detalle |
+| --- | --- | --- | --- | --- |
+| Farola (`lamp`) | cada 24 m, alternando acera | columna torneada con zócalo y molduras, brazo en arco que se afina, luminaria aplanada con lente (`emit` 0,25 + 6·`uDusk`) y charco de luz (§9.4) | 77 | 310 |
+| Papelera (`bin`) | cada 37 m | poste con pletina, cesto de chapa perforada (dibujo 9), aro de acero, bolsa vuelta sobre el borde y fondo | 40 | 184 |
+| Banco (`bench`) | cada 53 m, solo aceras anchas | 5 listones de asiento y 4 de respaldo, costados de tubo de fundición con reposabrazos | 108 | 252 |
+| Contenedor (`container`) | batería de 3–5 cada 95 m, en la banda de aparcamiento | ruedas, cuerpo de aristas redondeadas más estrecho abajo, reborde, tapa abombada de color vivo, adhesivo con pictograma delante y detrás, bandas reflectantes hacia la calzada, bulones de izado; boca propia: ranura (paper), dos bocas de goma (envasos), asa y pedal (resta, orgànica) | 36 | 286–332 |
+| Iglú de vidre (`iglu`) | 4.º de la batería | campana torneada de 14 lados, seta de izado, boca de goma y adhesivo curvos a cada lado | 92 | 268 |
+| Bolsas de basura | 0–3 junto a la batería | elipsoides (más gajos en detalle) | 24 | 48 |
+| Bici de Bicing (`bike`) | 40–70 % de los anclajes | cubiertas y llantas de tubo, radios (dibujo 8, un quad por rueda), guardabarros, cuadro de paso abierto, sillín, manillar con puños, soporte delantero, bulón de anclaje, cubrecadena, bielas y pata | 256 | 726 |
+| Anclaje y tótem (`dock`, `totem`) | estación de 9–14 anclajes cada 310 m | poste redondeado con ranura, piloto (verde con bici, ámbar sin ella) y banda roja; tótem con pantalla encendida, lector y panel | 12 · 24 | 76 · 90 |
+| Semáforo (`signal`) | extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra | poste con base, cabeza redondeada, tres focos (uno encendido, que se nota más al anochecer) con visera | 28 | 121 |
+
+Los colores de la batería están en `CONT` (resta gris, paper blau, envasos groc, vidre verd, orgànica marró). Nada lleva
+marcas ni texto real: los adhesivos son un pictograma genérico y dos renglones insinuados.
+
+### 9.2 Dos niveles de detalle
+
+- `BCN_FURNITURE.init(ctx)` devuelve `{ build(cell), buildHi(cell), hiRange, poolMat }`. `build` (nivel sencillo, más las
+  marcas de `ground.js`) va a la malla `fu<celda>` de toda celda de calle, como siempre. `buildHi` va a una malla aparte,
+  `fh<celda>`, que `streets.js` construye (`hiJob`) solo en las celdas a menos de `hiRange[1] + 8` m (78 m) y quita
+  (`dropHi`) al pasar de 103 m. Las dos pasadas llaman a la misma función `place(cell, A)`: siembran los mismos ámbitos y
+  sacan los mismos números, así que los objetos caen en el mismo sitio.
+- El relevo es **por píxel y con tramado**, entre `hiRange` = 58 y 70 m (uniforme `uFurnHi`): el 4.º byte del auxiliar de
+  `K.FURN`/`K.FDEC` es el nivel (0 siempre · 100 sencillo · 200 detalle). Lo de detalle se descarta más allá de 70 m; lo
+  sencillo, por debajo de 58 m **si su celda tiene malla de detalle**: eso es el uniforme `uCellHi` que `facades.js` ya fija
+  por malla a partir de `metadata.bcn.cell.hi` (la malla `fu` se registra con `cell`, y `hiJob` pone `cell.hi`). Si la malla
+  de detalle aún no existe, se sigue viendo la sencilla: no hay huecos.
+- Medida: `BCN.detailStats().st` da `furn` (triángulos del nivel sencillo y las marcas, todas las celdas), `furnHi` (los
+  de detalle) e `hi` (celdas con detalle). En `eix_mobiliario`: 36 082 en 23 celdas (≈ 1 570 por celda, lo mismo que antes
+  más los semáforos) y 46 178 de detalle en 7 celdas (≈ 6 600 por celda). **En una celda cercana el mobiliario es ≈ 5× el
+  de antes; sumando todas las celdas cargadas, ≈ 2,3×** (el objetivo del encargo era ~2×); es el 14 % de los triángulos de
+  la capa de calles. Si hay que recortar, lo que más pesa son las farolas (10 por celda) y las bicis.
+
+### 9.3 Tipos de material propios (ids 60–79)
+
+- **`K.FURN` (60)**: como `K.PBR` (color de vértice = albedo), con auxiliar `(rugosidad, metal, patrón, nivel)`. Patrones:
+  0 liso · 1 lamas · 2 nervios · 3 pintura gastada · 4 plástico con churretes y suciedad · 5 madera barnizada · 6 lente de
+  luminaria (encendida con `uDusk`) · 7 piloto (emisivo con su color). Los acabados ya hechos están en `finishes(lod)`:
+  `A.PAINT`, `A.STEEL`, `A.PLASTIC`, `A.WOOD`, `A.RUBBER`, `A.MATTE`, `A.GLOSS`, `A.CAST`, `A.LENS`, `A.LED`…
+- **`K.FDEC` (61)**, «calcomanía»: un quad con uv propias (auxiliar `A.dec(id)` = uv de 0 a 1 por vértice + dibujo + nivel)
+  y un dibujo procedural: 1–5 adhesivo con pictograma (bolsa, fruta, botella y lata, hoja, copa) sobre el color de vértice ·
+  6 ranura · 7 boca redonda con faldones de goma · 8 rueda de radios (descarta lo que no es radio; de lejos, tramado
+  estable) · 9 chapa perforada con la bolsa detrás · 10 pantalla encendida · 11 banda reflectante roja y blanca · 12/13 foco
+  de semáforo encendido/apagado. Ayudas: `dq` (quad vertical; el primer `u` es el borde que queda a la **izquierda de quien
+  mira**: en una cara que mira a +d, el `u` mayor) y `cdec` (franja curva sobre un cilindro o cono).
+- Piezas nuevas, además de las de `geo.js`: `fbox` (caja exenta) y `loft` (cuerpo de sección rectangular con las esquinas
+  redondeadas, por anillos `[semilargo, semiancho, radio, y]`; un anillo repetido = arista viva).
+
+### 9.4 Charcos de luz de las farolas
+
+Al anochecer, bajo cada luminaria hay un charco cálido: quads a ras de suelo (calzada, acera propia y, si llega, la de
+enfrente, cada banda a su cota) con el material `poolMat` (`mkMat` con `blend`; opacidad `smoothstep(0, 0.45, uDusk)` por
+una caída radial). `furniture.js` deja los vértices en `cell.pools` (`x, y, z, u, v`, de cuatro en cuatro) y `streets.js`
+monta con ellos la malla `lp<celda>` (capa `fx`, no proyecta sombra). De día se descarta entero. Es un sustituto barato:
+cuando el carril LUZ tenga luces de verdad, basta con no devolver `poolMat`.
+
+### 9.5 Cómo añadir un objeto
+
+1. Escribe `miObjeto(B, A, F, y, …)` con las dos ramas: `if (A.lod < 2) { versión de pocas cajas; return; }` y el detalle.
+   Todo con `K.FURN`/`K.FDEC` y los acabados de `A` (llevan el nivel): **nada de `K.PBR` ni otros tipos**, que no saben de
+   niveles y se verían dos veces. Las dos versiones, con la misma silueta y los mismos colores.
+2. Colócalo en `place()`: `along(paso, fase, (u, n) => …)`, siembra `seed(tipo, n, s)` (tipos nuevos desde 10) y saca todos
+   sus números antes de comprobar `inCell`; marco con `fr(x, z, out(lado))` (+d hacia ese lado de la calle).
+3. Añádelo a `parts` y a `tools/furn_test.js`, y mira sus triángulos en los dos niveles.
+4. Captura de cerca: en modo captura `BCN_FURNITURE.log` guarda `[tipo, x, z, ángulo]` de cada objeto colocado (léelo en el
+   `eval` de la vista siguiente) para montar una vista en `tools/views_detalle.json`.
+
+### 9.6 Cómo se prueba
+
+```bash
+node tools/furn_test.js                                        # triángulos por objeto y nivel (1 s)
+node tools/shot.js tools/out/fz/s @tools/views_detalle.json    # de cerca: cont, papelera, banco, farola_base, bicing, bici, semaforo… y dos al anochecer
+```
+
+Ojo: la hora de una vista (`hour`) se queda puesta para las siguientes de la misma ejecución; por eso las de anochecer
+(`farola_noche`, `charco`) van al final del fichero.
+
+### 9.7 Límites conocidos
+
+- La lente de la farola es un rectángulo plano que satura a blanco: sin el bloom del carril LUZ no «deslumbra».
+- El charco de luz es una mezcla alfa (aclara hacia un tono cálido), no luz: aplana algo la textura del suelo debajo.
+- La viga y el tótem de una estación de Bicing usan una sola cota (la del tótem): en una calle en cuesta la viga no sigue la pendiente.
+- Las bolsas de basura pueden rozar el pedal del contenedor vecino.
+- Pendiente del encargo (punto 6): bolardos, buzón, parquímetro y motos aparcadas.
