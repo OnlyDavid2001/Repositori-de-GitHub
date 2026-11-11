@@ -438,7 +438,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (V) {                                          // ámbito (b, 6): tonos y banderas de la variante
       rnd(6, 1); const r = [R(), R(), R(), R()];
       Object.assign(env, { V, kw: KW[V.acab], uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
-        marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib });
+        marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15) });
     }
 
     for (let i = 0; i < runs.length; i++) {
@@ -485,13 +485,36 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   const EST = window.BCN_FX_ESTILOS, VAR = new Array(NB); let FXV = new URLSearchParams(location.search).get('fxv');
   const KW = { estuco: K.STUCCO, piedra: K.FXPIEDRA || K.STONE, ladrillo: 16, gresite: 17, revoco: 18, hormigon: 19 };
   const famOf = b => { const B = window.BCN_BARRI; return EST ? EST.familia(B ? B.at((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2) : null) : null; };
-  function varOf(b) {
+  // Repaso de variedad (FX2): (1) con probabilidad EST.MEZCLA[fam].p el edificio toma una variante de la familia «hermana»
+  // (las calles reales mezclan estilos); (2) nunca repite la variante de un vecino pegado de índice menor (coloreado voraz por
+  // índice: no depende del orden de carga); (3) cada edificio desplaza un poco el ritmo de vanos, el vuelo y el tono de los
+  // remates. Todo sale del ámbito (b, 6) y se guarda por edificio.
+  function vecinos(b) {
+    const out = [], x0 = BB[b * 4] - 1.5, z0 = BB[b * 4 + 1] - 1.5, x1 = BB[b * 4 + 2] + 1.5, z1 = BB[b * 4 + 3] + 1.5;
+    rangeCells(x0, z0, x1, z1, c => { for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) { const n = ALL.list[k];
+      if (n < b && BREC.elig[n] && out.indexOf(n) < 0 && BB[n * 4] < x1 && BB[n * 4 + 2] > x0 && BB[n * 4 + 1] < z1 && BB[n * 4 + 3] > z0) out.push(n); } });
+    return out;
+  }
+  function varOf(b, dep) {
     if (VAR[b] !== undefined) return VAR[b];
     let V = null;
     if (EST && FXV !== 'off') {
-      const fv = FXV ? FXV.split(':') : null, L = EST.FAM[fv ? fv[0] : famOf(b)];
-      seed(b, 6); const r = R();
-      if (L && L.length) V = L[fv && fv[1] !== undefined ? (+fv[1] || 0) % L.length : (r * L.length) | 0];
+      const fv = FXV ? FXV.split(':') : null, fam = fv ? fv[0] : famOf(b);
+      seed(b, 6); const r = R(), rm = R(), j = [R(), R(), R(), R()];
+      const mz = !fv && EST.MEZCLA && EST.MEZCLA[fam], L = EST.FAM[mz && rm < mz.p && EST.FAM[mz.f] ? mz.f : fam];
+      if (L && L.length) {
+        if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
+        else {
+          let i0 = (r * L.length) | 0;
+          if ((dep | 0) < 400) {                      // no repetir la variante de los vecinos pegados (los de índice menor)
+            const usados = vecinos(b).map(n => { const v = varOf(n, (dep | 0) + 1); return v && v.id; });
+            for (let t = 0; t < L.length; t++) { const k = (i0 + t) % L.length; if (usados.indexOf(L[k].id) < 0) { i0 = k; break; } }
+          }
+          const V0 = L[i0];
+          V = Object.assign(Object.create(V0), { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
+            remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
+        }
+      }
     }
     return (VAR[b] = V);
   }
@@ -582,7 +605,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const atico = street && top && V.coron === 'atico', low = top && V.ultimo === 'bajo' && !atico;
       const tipo = atico ? 'terraza' : low ? 'ninguno' : D === 1 && V.princ ? V.princ : V.bal;
       const corr = tipo === 'corrido' || tipo === 'terraza';
-      if (D > 1 && V.imposta && k > cover) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, (V.imposta > 1 ? 0.16 : 0.07) * (street ? 1 : 0.6), uV, K.STUCCO);
+      if (D > 1 && V.imposta === 3 && k > cover) box(W0, F, 0, L, k - 0.24, k + 0.06, 0, 0.05, env.forjV, 19, 3);   // canto de forjado visto
+      else if (D > 1 && V.imposta && k > cover) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, (V.imposta > 1 ? 0.16 : 0.07) * (street ? 1 : 0.6), uV, K.STUCCO);
       for (let W = 0; W < nb; W++) {
         const a = W * bw, c = a + bw / 2;
         env.rnd(3, run.i, W * 64 + D);
@@ -591,21 +615,28 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (!street) { patioV(env, F, a, bw, c, k, P, wallC, rr); continue; }
         if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
         if (tipo === 'galeria') { galeriaV(env, F, a, bw, k, P); continue; }
-        const vent = !low && !corr && (V.hueco === 'ventana' || (V.hueco === 'mixto' && W % 2 === 1));
-        const Vw = Math.min(V.win * (vent ? 1.12 : 1), bw - 0.95);
+        const tall = V.hueco === 'taller' && !low;   // ventanal de taller (fábricas): ancho, alto y con retícula de acero
+        const vent = tall || (!low && !corr && (V.hueco === 'ventana' || (V.hueco === 'mixto' && W % 2 === 1)));
+        const Vw = Math.min(V.win * (vent && !tall ? 1.12 : 1), bw - 0.95);
         let Bh, Q;
         if (low) { Bh = Math.min(1.5, m - 1.15); Q = Math.min(0.85, m - Bh - 0.32); }
+        else if (tall) { Q = 0.7; Bh = Math.min(2.7, m - 1.15); }
         else if (vent) { Q = 0.9; Bh = Math.min(1.45, m - 1.35); }
         else { Q = 0.08; Bh = Math.min(2.45, m * V.alto); }
         const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh, car = V.carp;
         // cierre: persiana interior (se), ventanas abiertas con habitación (~25 %), hojas, cadeneta
         const open = rr[7] < 0.25 && RQ && car !== 'mallorquina' && car !== 'alicantina';
-        const se = open ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.6 ? 0.15 + rr[1] * 0.55 : 0;
+        const se = open || car === 'ninguna' ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.6 ? 0.15 + rr[1] * 0.55 : 0;
         const room = open ? { x0: tt - 0.55, W: Vw + 1.1, yF: k + 0.02, H: Math.max(2.6, yt - k + 0.15), D: 4, mode: 1, seed: 1 + ((rr[8] * 254) | 0) } : null;
         if (open && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz, +((st + yt) / 2).toFixed(1), D]);
         windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.3, wallC, kw, se, room && ((B, F, u0, u1, y0, y1, d) => RQ(B, F, u0, u1, y0, y1, d, room)));
         const qt = yt - se * Bh;
-        if (W1) {                                     // marco y montantes
+        if (W1 && tall) {                             // retícula de acero del ventanal
+          const nv = Math.max(2, Math.round(Vw / 0.55));
+          for (let q = 1; q < nv; q++) { const x = tt + Vw * q / nv; box(W1, F, x - 0.025, x + 0.025, st, qt, -0.3, -0.25, marcoV, K.METAL, 4); }
+          for (const f of [0.36, 0.7]) { const y = st + (qt - st) * f; if (y < qt - 0.1) box(W1, F, tt, ct, y - 0.025, y + 0.025, -0.3, -0.25, marcoV, K.METAL, 1); }
+          box(W1, F, tt, tt + 0.06, st, qt, -0.3, -0.24, marcoV, K.METAL, 4); box(W1, F, ct - 0.06, ct, st, qt, -0.3, -0.24, marcoV, K.METAL, 4);
+        } else if (W1) {                              // marco y montantes
           box(W1, F, c - 0.03, c + 0.03, st, qt, -0.3, -0.25, marcoV, K.WOOD, 4);
           box(W1, F, tt, tt + 0.06, st, qt, -0.3, -0.24, marcoV, K.WOOD, 4); box(W1, F, ct - 0.06, ct, st, qt, -0.3, -0.24, marcoV, K.WOOD, 4);
           box(W1, F, tt, ct, Math.min(qt, yt) - 0.06, Math.min(qt, yt), -0.3, -0.24, marcoV, K.WOOD, 2);
@@ -686,6 +717,16 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       box(W0, F, 0, L, y1 + 0.35, y1 + 0.45, -0.03, 0.1, uV, K.STUCCO);
       if (V.bar === 'vidrio') { rect(W0, F, 0, L, y1 + 0.45, y1 + 1.1, 0.02, VID, K.PBR, VIDA); box(W1, F, 0, L, y1 + 1.1, y1 + 1.14, -0.02, 0.05, [150, 152, 150], K.METAL); }
       else { box(W0, F, 0, L, y1 + 1.06, y1 + 1.1, -0.02, 0.03, env.marcoV, K.METAL, 3); for (let q = 0; q <= nb * 2; q++) { const x = Math.min(L - 0.04, q * bw / 2); box(W1, F, x, x + 0.04, y1 + 0.45, y1 + 1.06, -0.02, 0.03, env.marcoV, K.METAL, 4); } }
+    } else if (co === 'frontis') {                    // peto con frontón escalonado en el centro (fábricas y casas obreras)
+      box(W0, F, 0, L, C + 0.05, C + 0.22, 0, 0.1, uV, K.STUCCO);
+      wr(W0, F, 0, L, C, y1 + 0.9, wallC, kw);
+      const w = Math.min(L * 0.42, 9), a0 = (L - w) / 2, h = 0.7 + cr * 0.6;
+      if (L > 6) {
+        wr(W0, F, a0, a0 + w, y1 + 0.9, y1 + 0.9 + h, wallC, kw);
+        box(W0, F, a0 - 0.06, a0 + w + 0.06, y1 + 0.9 + h, y1 + 1.0 + h, -0.03, 0.14, uV, K.STUCCO, 3);
+        box(W0, F, 0, a0, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO); box(W0, F, a0 + w, L, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO);
+        if (W1) box(W1, F, a0 + 0.3, a0 + w - 0.3, y1 + 1.1, y1 + 0.8 + h, 0, 0.04, uV, K.STUCCO);   // cartela lisa
+      } else box(W0, F, 0, L, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO);
     } else if (co === 'alero') {                      // alero de teja sobre canecillos
       wr(W0, F, 0, L, C, y1, wallC, kw);
       box(W0, F, 0, L, y1, y1 + 0.16, 0, 0.72, [150, 74, 50], K.STUCCO, 3);

@@ -7,22 +7,28 @@
      bay    ancho objetivo de vano en fachada a calle (m)        hp     altura objetivo de planta (m)
      win    ancho máximo del hueco (m)                          alto   alto de la balconera, fracción de la planta
      hueco  'balconera' (hasta el suelo) · 'ventana' (antepecho de 0,9 m) · 'mixto' (balconera en vanos pares, ventana en impares)
+            · 'taller' (ventanal de fábrica: ancho y alto, retícula de acero, sin balcón; el marco sale de `marco`)
      bal    balcón en plantas normales: 'indiv' · 'corrido' · 'terraza' · 'galeria' · 'ninguno' (barandilla de antepecho)
      princ  el mismo campo para la planta principal (1.ª); null = como las demás
      balP   probabilidad de que un vano lleve balcón (con 'indiv'); los demás, balcón francés
      vuelo  vuelo del balcón (m)                                 bar    barandilla: 'forja' · 'balaustre' · 'obra' · 'vidrio' · 'tubo'
      forja  dibujo de la forja (0 anillas, 1 anillas y óvalos)
      carp   cierre: 'librillo' (hojas de lamas abatibles) · 'porticon' (hojas de madera) · 'enrollable' · 'mallorquina'
-            (hojas de lamas a medio cerrar en el hueco) · 'alicantina' (persiana de cadeneta colgada por fuera)
+            (hojas de lamas a medio cerrar en el hueco) · 'alicantina' (persiana de cadeneta colgada por fuera) · 'ninguna' (vidrio solo)
      carpCol tonos del cierre (uno por edificio, al azar)        marco  tonos del marco del vidrio
      acab   acabado del muro: 'estuco' · 'piedra' (sillería, tipo K.FXPIEDRA = 100) · 'ladrillo' · 'revoco' (gastado, con desconchados) · 'gresite' · 'hormigon'
      remate cuánto se aclaran los remates (impostas, recercados, cornisa) respecto al muro, 0–1
-     imposta 0 nada · 1 fina · 2 marcada                         recerc 0 nada · 1 recercado · 2 + guardapolvo · 3 + clave y frontón
+     imposta 0 nada · 1 fina · 2 marcada · 3 canto de forjado visto (banda de hormigón, bloques de los 60–70)
+                                                                 recerc 0 nada · 1 recercado · 2 + guardapolvo · 3 + clave y frontón
      pil    pilastras entre vanos                                esgr   esgrafiado: 0 · 1 plantas pares · 2 todas
      ultimo 'bajo' (última planta con ventanas cortas, bajo la cornisa) · 'normal'
      coron  'cornisa' · 'balaustrada' · 'peto' · 'atico' (última planta en terraza corrida) · 'alero' (teja)
+            · 'frontis' (peto con frontón escalonado en el centro: fábricas y casas obreras)
      trib   probabilidad de tribuna en tramos de calle           ropa   probabilidad de ropa tendida por balcón
      mac    probabilidad de maceta por balcón
+   MEZCLA[fam] = { f, p }: con probabilidad p un edificio de fam toma una variante de la familia f (las calles reales mezclan
+   estilos). Además (facades.js, varOf) un edificio nunca repite la variante de un vecino pegado y desplaza un poco su ritmo
+   de vanos, su vuelo, su altura de planta y el tono de sus remates.
    Cómo se añade una familia: una entrada en FAM con su id (los de comun.md) y 4–5 variantes; si una familia no tiene
    entrada, sus edificios salen con la fachada de antes (details.js). Depuración: ?fxv=familia:n fuerza la variante n
    (desde 0) en todos los edificios; ?fxv=familia, la familia con variante al azar; ?fxv=off, la fachada de antes. */
@@ -42,6 +48,7 @@ const VERDE = [[43, 77, 51], [60, 92, 64], [52, 84, 70]], MARRON = [[84, 56, 34]
 const GRIS = [[84, 87, 69], [120, 118, 104], [96, 98, 96]], AZUL = [[36, 59, 77], [52, 88, 112], [40, 96, 110]];
 const BLANCO = [[205, 204, 196], [178, 176, 168]], ALU = [[150, 152, 150], [96, 92, 86], [190, 190, 184]];
 const MADERA = [[64, 38, 20], [38, 28, 20], [36, 51, 41], [79, 48, 26]];
+const ACERO = [[44, 48, 50], [62, 68, 66], [32, 36, 38], [70, 62, 52]], CAD = [[150, 120, 70], [120, 88, 52], [60, 92, 64]];
 
 const BASE = { bay: 3.6, hp: 3.15, win: 1.25, alto: 0.78, hueco: 'balconera', bal: 'indiv', princ: null, balP: 1, vuelo: 0.95,
   bar: 'forja', forja: 0, carp: 'librillo', carpCol: VERDE, marco: MADERA, acab: 'estuco', remate: 0.5, imposta: 1, recerc: 1,
@@ -121,8 +128,111 @@ const FAM = {
     { id: 'sg_galeria', bay: 3.3, hp: 2.95, hueco: 'ventana', bal: 'galeria', princ: 'galeria', carp: 'enrollable', carpCol: MARRON,
       marco: ALU, recerc: 1, imposta: 1, ultimo: 'normal', coron: 'peto', mac: 0.2, remate: 0.35 },
     { id: 'sg_noucentista', bay: 3.5, princ: 'corrido', vuelo: 0.8, carp: 'mallorquina', carpCol: VERDE, recerc: 2, imposta: 1,
-      esgr: 1, coron: 'cornisa', mac: 0.45, remate: 0.6 }]
+      esgr: 1, coron: 'cornisa', mac: 0.45, remate: 0.6 }],
+  // ---- FX2
+  // Sants, Hostafrancs, la Bordeta: obreras de 4–6 plantas, algún burgués en la Creu Coberta, bloques de los 60–70 en Badal
+  sants: [
+    { id: 'sts_obrera', bay: 3.1, hp: 3.05, vuelo: 0.7, carp: 'librillo', carpCol: VERDE.concat(MARRON), recerc: 1, imposta: 1,
+      coron: 'cornisa', ropa: 0.25, mac: 0.35, remate: 0.45 },
+    { id: 'sts_maó', bay: 3.0, hp: 3.0, vuelo: 0.65, acab: 'ladrillo', carp: 'alicantina', carpCol: CAD, recerc: 2, imposta: 1,
+      coron: 'frontis', ropa: 0.3, mac: 0.3, remate: 0.65 },
+    { id: 'sts_creu_coberta', bay: 3.5, princ: 'corrido', forja: 1, carp: 'porticon', carpCol: MARRON.concat(VERDE), recerc: 2,
+      imposta: 2, coron: 'cornisa', trib: 0.15, mac: 0.3, remate: 0.55 },
+    { id: 'sts_50', bay: 3.2, hp: 2.9, hueco: 'mixto', bal: 'corrido', vuelo: 0.75, bar: 'tubo', carp: 'enrollable', carpCol: ALU.concat(GRIS),
+      marco: ALU, recerc: 0, imposta: 1, ultimo: 'normal', coron: 'peto', ropa: 0.35, mac: 0.25, remate: 0.35 },
+    { id: 'sts_badal', bay: 3.3, hp: 2.85, hueco: 'ventana', bal: 'galeria', princ: 'galeria', acab: 'gresite', carp: 'enrollable',
+      carpCol: ALU, marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.1, remate: 0.3 }],
+  // les Corts: núcleo antiguo de casas bajas y, sobre todo, bloques y fincas de los 60–80 con terrazas
+  les_corts: [
+    { id: 'lc_casa', bay: 3.2, hp: 3.05, vuelo: 0.65, carp: 'librillo', carpCol: VERDE, recerc: 1, imposta: 1, ultimo: 'normal',
+      coron: 'alero', mac: 0.5, ropa: 0.1, remate: 0.55 },
+    { id: 'lc_terrasses', bay: 3.5, hp: 2.95, hueco: 'mixto', bal: 'terraza', bar: 'obra', vuelo: 1.2, carp: 'enrollable',
+      carpCol: MARRON.concat(ALU), marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.4, remate: 0.3 },
+    { id: 'lc_maó', bay: 3.3, hp: 2.9, hueco: 'mixto', balP: 0.55, vuelo: 0.8, acab: 'ladrillo', bar: 'tubo', carp: 'enrollable',
+      carpCol: MARRON.concat(GRIS), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.3, remate: 0.35 },
+    { id: 'lc_galeria', bay: 3.4, hp: 2.9, hueco: 'ventana', bal: 'galeria', princ: 'galeria', carp: 'enrollable', carpCol: GRIS,
+      marco: ALU, recerc: 1, imposta: 1, ultimo: 'normal', coron: 'peto', mac: 0.15, remate: 0.4 },
+    { id: 'lc_vidre', bay: 3.6, hp: 3.0, bal: 'terraza', bar: 'vidrio', vuelo: 1.3, acab: 'hormigon', carp: 'enrollable',
+      carpCol: GRIS, marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.35, remate: 0.2 }],
+  // Sarrià (vila con casas de 2–3 plantas y teja), Pedralbes (fincas de lujo con terrazas y piedra), Vallvidrera
+  sarria_pedralbes: [
+    { id: 'sar_vila', bay: 3.2, hp: 3.1, vuelo: 0.6, carp: 'porticon', carpCol: VERDE.concat(MARRON), recerc: 2, imposta: 1,
+      ultimo: 'normal', coron: 'alero', mac: 0.55, remate: 0.6 },
+    { id: 'sar_noucentista', bay: 3.4, princ: 'corrido', vuelo: 0.75, carp: 'mallorquina', carpCol: VERDE, recerc: 2, imposta: 1,
+      esgr: 1, coron: 'cornisa', mac: 0.5, remate: 0.6 },
+    { id: 'sar_pedralbes', bay: 3.8, hp: 3.1, bal: 'terraza', bar: 'vidrio', vuelo: 1.6, carp: 'enrollable', carpCol: GRIS.concat(MARRON),
+      marco: ALU, recerc: 0, imposta: 1, ultimo: 'normal', coron: 'atico', mac: 0.55, remate: 0.3 },
+    { id: 'sar_pedra', bay: 3.7, hp: 3.1, hueco: 'mixto', bal: 'terraza', bar: 'obra', vuelo: 1.4, acab: 'piedra', carp: 'enrollable',
+      carpCol: MARRON, marco: MADERA, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.5, remate: 0.3 },
+    { id: 'sar_xalet', bay: 3.4, hp: 3.0, hueco: 'ventana', princ: 'indiv', balP: 0.5, vuelo: 0.6, bar: 'balaustre', carp: 'porticon',
+      carpCol: VERDE.concat(AZUL), recerc: 2, imposta: 1, ultimo: 'normal', coron: 'alero', mac: 0.4, remate: 0.65 }],
+  // Poblenou: fábricas de ladrillo (algunas reconvertidas en lofts), casas obreras bajas, bloques y el 22@ / Vila Olímpica
+  poblenou: [
+    { id: 'pn_fabrica', bay: 4.2, hp: 4.1, win: 2.4, hueco: 'taller', bal: 'ninguno', acab: 'ladrillo', carp: 'ninguna', marco: ACERO,
+      recerc: 1, imposta: 2, ultimo: 'normal', coron: 'frontis', mac: 0, remate: 0.55 },
+    { id: 'pn_casa', bay: 3.1, hp: 3.1, vuelo: 0.6, carp: 'librillo', carpCol: VERDE.concat(AZUL), recerc: 1, imposta: 1,
+      ultimo: 'normal', coron: 'frontis', ropa: 0.3, mac: 0.4, remate: 0.6 },
+    { id: 'pn_loft', bay: 3.9, hp: 3.7, win: 2.2, hueco: 'taller', bal: 'ninguno', acab: 'ladrillo', carp: 'ninguna', marco: ACERO,
+      bar: 'vidrio', recerc: 0, imposta: 3, ultimo: 'normal', coron: 'atico', mac: 0.1, remate: 0.3 },
+    { id: 'pn_22', bay: 3.6, hp: 3.05, bal: 'terraza', bar: 'vidrio', vuelo: 1.2, acab: 'hormigon', carp: 'enrollable', carpCol: GRIS,
+      marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.25, remate: 0.2 },
+    { id: 'pn_bloc', bay: 3.2, hp: 2.85, hueco: 'mixto', balP: 0.7, vuelo: 0.75, acab: 'ladrillo', bar: 'tubo', carp: 'enrollable',
+      carpCol: ALU.concat(MARRON), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.3, mac: 0.2, remate: 0.4 }],
+  // Sant Andreu, el Clot, la Sagrera, la Verneda: casas de pueblo, ladrillo, alguna nave, bloques de los 60–70
+  sant_andreu: [
+    { id: 'sa_vila', bay: 3.2, hp: 3.1, vuelo: 0.7, carp: 'librillo', carpCol: VERDE.concat(MARRON), recerc: 2, imposta: 1,
+      coron: 'cornisa', ropa: 0.15, mac: 0.5, remate: 0.55 },
+    { id: 'sa_maó', bay: 3.1, hp: 3.0, vuelo: 0.65, acab: 'ladrillo', carp: 'alicantina', carpCol: CAD, recerc: 1, imposta: 2,
+      ultimo: 'normal', coron: 'peto', ropa: 0.3, mac: 0.35, remate: 0.6 },
+    { id: 'sa_nau', bay: 4.0, hp: 3.9, win: 2.2, hueco: 'taller', bal: 'ninguno', acab: 'revoco', carp: 'ninguna', marco: ACERO,
+      recerc: 1, imposta: 1, ultimo: 'normal', coron: 'frontis', mac: 0, remate: 0.5 },
+    { id: 'sa_bloc', bay: 3.2, hp: 2.85, hueco: 'mixto', bal: 'corrido', vuelo: 0.7, acab: 'gresite', bar: 'tubo', carp: 'enrollable',
+      carpCol: ALU, marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.4, mac: 0.2, remate: 0.3 },
+    { id: 'sa_60', bay: 3.3, hp: 2.9, hueco: 'ventana', bal: 'galeria', princ: 'galeria', acab: 'ladrillo', carp: 'enrollable',
+      carpCol: MARRON.concat(ALU), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.1, remate: 0.35 }],
+  // Horta-Guinardó: casas de Horta, bloques de los 60–70 en ladera (gresite, galerías), alguno reciente
+  horta_guinardo: [
+    { id: 'hg_horta', bay: 3.2, hp: 3.05, vuelo: 0.6, carp: 'porticon', carpCol: VERDE.concat(MARRON), recerc: 1, imposta: 1,
+      ultimo: 'normal', coron: 'alero', mac: 0.55, remate: 0.6 },
+    { id: 'hg_gresite', bay: 3.3, hp: 2.85, hueco: 'ventana', bal: 'galeria', princ: 'galeria', acab: 'gresite', carp: 'enrollable',
+      carpCol: ALU, marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.1, remate: 0.3 },
+    { id: 'hg_maó', bay: 3.2, hp: 2.85, hueco: 'mixto', balP: 0.6, vuelo: 0.8, acab: 'ladrillo', bar: 'tubo', carp: 'enrollable',
+      carpCol: MARRON.concat(ALU), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.35, mac: 0.3, remate: 0.35 },
+    { id: 'hg_terrassa', bay: 3.4, hp: 2.9, bal: 'terraza', bar: 'obra', vuelo: 1.1, carp: 'enrollable', carpCol: GRIS.concat(MARRON),
+      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', ropa: 0.15, mac: 0.45, remate: 0.3 },
+    { id: 'hg_nou', bay: 3.5, hp: 3.0, bal: 'terraza', bar: 'vidrio', vuelo: 1.1, acab: 'hormigon', carp: 'enrollable', carpCol: GRIS,
+      marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.3, remate: 0.2 }],
+  // Nou Barris: bloques de los 50–70 (ladrillo y forjado visto, gresite, galerías), autoconstrucción en las laderas
+  nou_barris: [
+    { id: 'nb_bloc', bay: 3.0, hp: 2.8, hueco: 'ventana', bal: 'ninguno', acab: 'ladrillo', carp: 'enrollable', carpCol: ALU.concat(MARRON),
+      marco: ALU, recerc: 1, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.4, mac: 0.1, remate: 0.35 },
+    { id: 'nb_gresite', bay: 3.1, hp: 2.8, hueco: 'mixto', balP: 0.75, vuelo: 0.7, acab: 'gresite', bar: 'tubo', carp: 'enrollable',
+      carpCol: ALU.concat(GRIS), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.45, mac: 0.2, remate: 0.3 },
+    { id: 'nb_galeria', bay: 3.2, hp: 2.8, hueco: 'ventana', bal: 'galeria', princ: 'galeria', carp: 'enrollable', carpCol: GRIS,
+      marco: ALU, recerc: 0, imposta: 1, ultimo: 'normal', coron: 'peto', ropa: 0.2, mac: 0.1, remate: 0.4 },
+    { id: 'nb_ladera', bay: 3.0, hp: 2.8, hueco: 'mixto', balP: 0.5, vuelo: 0.55, acab: 'revoco', bar: 'tubo', carp: 'enrollable',
+      carpCol: ALU.concat(VERDE), marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'peto', ropa: 0.5, mac: 0.35, remate: 0.4 },
+    { id: 'nb_terrassa', bay: 3.3, hp: 2.85, hueco: 'mixto', bal: 'terraza', bar: 'obra', vuelo: 1.0, acab: 'hormigon', carp: 'enrollable',
+      carpCol: MARRON.concat(GRIS), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.3, mac: 0.3, remate: 0.25 }],
+  // fuera de Barcelona (L'Hospitalet, Badalona, Cornellà, Sant Adrià, Esplugues): bloques y algunas obreras antiguas
+  periferia: [
+    { id: 'per_bloc', bay: 3.1, hp: 2.85, hueco: 'mixto', balP: 0.7, vuelo: 0.75, acab: 'ladrillo', bar: 'tubo', carp: 'enrollable',
+      carpCol: ALU.concat(MARRON), marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', ropa: 0.4, mac: 0.2, remate: 0.35 },
+    { id: 'per_gresite', bay: 3.2, hp: 2.85, hueco: 'ventana', bal: 'galeria', princ: 'galeria', acab: 'gresite', carp: 'enrollable',
+      carpCol: ALU, marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.1, remate: 0.3 },
+    { id: 'per_terrassa', bay: 3.4, hp: 2.9, bal: 'terraza', bar: 'obra', vuelo: 1.1, carp: 'enrollable', carpCol: GRIS.concat(MARRON),
+      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', ropa: 0.2, mac: 0.4, remate: 0.3 },
+    { id: 'per_obrera', bay: 3.1, hp: 3.0, vuelo: 0.65, acab: 'revoco', carp: 'librillo', carpCol: VERDE.concat(MARRON), recerc: 1,
+      imposta: 1, coron: 'cornisa', ropa: 0.35, mac: 0.35, remate: 0.45 },
+    { id: 'per_nou', bay: 3.5, hp: 3.0, bal: 'terraza', bar: 'vidrio', vuelo: 1.2, acab: 'hormigon', carp: 'ninguna', marco: ALU,
+      recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0.25, remate: 0.2 }]
 };
+// familia hermana: de ella toma variante, con probabilidad p, un edificio de la familia (las calles reales mezclan estilos)
+const MEZCLA = { sants: { f: 'poble_sec', p: 0.15 }, poble_sec: { f: 'sants', p: 0.15 }, les_corts: { f: 'sant_gervasi', p: 0.15 },
+  sarria_pedralbes: { f: 'sant_gervasi', p: 0.2 }, poblenou: { f: 'sant_andreu', p: 0.2 }, sant_andreu: { f: 'poblenou', p: 0.15 },
+  horta_guinardo: { f: 'nou_barris', p: 0.2 }, nou_barris: { f: 'horta_guinardo', p: 0.2 }, periferia: { f: 'nou_barris', p: 0.25 },
+  ciutat_vella: { f: 'raval', p: 0.15 }, raval: { f: 'ciutat_vella', p: 0.15 }, gracia: { f: 'eixample', p: 0.12 },
+  sant_gervasi: { f: 'eixample', p: 0.12 } };
 
 // barrio → familia (ids de n2/comun.md)
 const BARRI = {
@@ -150,5 +260,5 @@ const familia = barri => !barri ? 'periferia' : BARRI[barri.n] || DISTRICTE[barr
 
 // variantes completas (BASE + propias), congeladas
 for (const f in FAM) FAM[f] = FAM[f].map(v => Object.freeze(Object.assign({}, BASE, v, { fam: f })));
-window.BCN_FX_ESTILOS = { FAM, BASE, BARRI, familia };
+window.BCN_FX_ESTILOS = { FAM, BASE, BARRI, familia, MEZCLA };
 })();
