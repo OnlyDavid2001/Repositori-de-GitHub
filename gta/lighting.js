@@ -10,8 +10,8 @@
    Si no hay camino HDR (ctx.out.hdr = false: ?ldr=1, sin WebGL2…) no monta postproceso: tono y gamma van en los shaders y
    aquí solo queda la escala de render. Si el postproceso falla al montarse, llama a ctx.setLDR() y sigue igual.
    window.BCN_LIGHTING = { init(ctx) → { update(P, groundY, dt, frame), setQuality(q), set(o), busy(), stats(), pipe } }.
-   Pendiente en este fichero (siguiente etapa del carril): oclusión ambiental (lee la distancia del alfa del búfer HDR),
-   que se añade a la tabla QUAL. */
+   OCLUSIÓN AMBIENTAL en pantalla: tres pases propios delante de la cadena (leen la distancia del alfa del búfer HDR). Ver
+   «OCLUSIÓN AMBIENTAL» más abajo. */
 (function () {
 'use strict';
 
@@ -19,11 +19,12 @@ window.BCN_LIGHTING = { init(ctx) {
   const B = BABYLON, { scene, engine, cam, SHOT, L } = ctx;
   // TABLA DE CALIDADES. scale: fracción de la resolución completa · msaa: muestras (1 = sin MSAA, entonces FXAA) ·
   // bloom: escala del búfer de bloom (0 = sin bloom) · sharpen: pase de nitidez · shadow: lado del mapa de sombras de cada
-  // cascada (0 = sin sombras) · sfilt: filtro de la sombra (1 = 2x2 muestras, 2 = 3x3)
+  // cascada (0 = sin sombras) · sfilt: filtro de la sombra (1 = 2x2 muestras, 2 = 3x3) · ao: muestras de la oclusión
+  // ambiental por píxel (0 = sin oclusión)
   const QUAL = {
-    baja:  { scale: 0.67, msaa: 1, bloom: 0,    sharpen: false, shadow: 0,    sfilt: 0 },
-    media: { scale: 0.85, msaa: 2, bloom: 0.35, sharpen: true,  shadow: 1024, sfilt: 1 },
-    alta:  { scale: 1.0,  msaa: 4, bloom: 0.5,  sharpen: true,  shadow: 2048, sfilt: 2 },
+    baja:  { scale: 0.67, msaa: 1, bloom: 0,    sharpen: false, shadow: 0,    sfilt: 0, ao: 0 },
+    media: { scale: 0.85, msaa: 2, bloom: 0.35, sharpen: true,  shadow: 1024, sfilt: 1, ao: 8 },
+    alta:  { scale: 1.0,  msaa: 4, bloom: 0.5,  sharpen: true,  shadow: 2048, sfilt: 2, ao: 12 },
   };
   const ORDER = ['baja', 'media', 'alta'];
   // AJUSTES DE LA CADENA (se cambian en caliente con set({…}), para calibrar). bloomT: umbral de luminancia YA EXPUESTA
@@ -33,7 +34,10 @@ window.BCN_LIGHTING = { init(ctx) {
   // shTreeNF: 1 = la cascada lejana también lleva los árboles cercanos (por defecto no: ver shList)
   // shNear: en la cascada cercana, el detalle (fachadas de detalle y mobiliario) solo proyecta si está a menos de
   // shNear × semilado de la cámara, en planta (63 m a pie); más lejos basta el volumen simple del edificio. 0 = sin límite
-  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0 };
+  // ao: intensidad de la oclusión ambiental (0 = nada, pero el pase sigue: sirve para comparar) · aoR: radio en mundo (m) ·
+  // aoFar: distancia (m) a la que ya no hay oclusión (empieza a desvanecerse en aoFar × 0,73) · aoDbg: 1 = ver solo la oclusión
+  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0,
+              ao: 1, aoR: 0.7, aoFar: 110, aoDbg: 0 };
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
   let pipe = null, cur = 'alta', auto = true;
 
@@ -47,6 +51,7 @@ window.BCN_LIGHTING = { init(ctx) {
     ip.vignetteBlendMode = IPC.VIGNETTEMODE_MULTIPLY;
     if ('ditheringEnabled' in ip) { ip.ditheringEnabled = true; ip.ditheringIntensity = 1 / 255; }   // sin bandas en el cielo
     pipe.imageProcessingEnabled = true;
+    pipe.onBuildObservable.add(() => aoSync());                  // la cadena pone el MSAA en su primer pase al reconstruirse
   }
   // fija una propiedad de la cadena solo si cambia (cada cambio la reconstruye)
   const put = (o, k, v) => { if (o && o[k] !== v) o[k] = v; };
@@ -55,17 +60,26 @@ window.BCN_LIGHTING = { init(ctx) {
     const hsl = baseScale / q.scale; if (engine.getHardwareScalingLevel() !== hsl) engine.setHardwareScalingLevel(hsl);
     try { shSetup(P.shadows ? q.shadow : 0, q.sfilt); } catch (e) { console.warn('Sin sombras: ' + (e && e.message || e)); shOff(); SH.dead = true; }
     if (!pipe) return;
+    let rebuild = false;
+    try { rebuild = aoSetup(q.ao); } catch (e) { console.warn('Sin oclusión ambiental: ' + (e && e.message || e)); aoKill(); rebuild = true; }
     const ip = scene.imageProcessingConfiguration;
     put(ip, 'exposure', L.tone.x); put(ip, 'contrast', L.tone.y); put(ip, 'vignetteWeight', P.vignette);
     put(pipe, 'samples', q.msaa); put(pipe, 'fxaaEnabled', q.msaa <= 1);
     put(pipe, 'bloomEnabled', q.bloom > 0);
     if (q.bloom > 0) { put(pipe, 'bloomScale', q.bloom); put(pipe, 'bloomKernel', P.bloomK); put(pipe, 'bloomWeight', P.bloomW);
-      put(pipe, 'bloomThreshold', Math.pow(P.bloomT, 2.2)); }   // Babylon compara con umbral^(1/2.2)
+      put(pipe, 'bloomThreshold', bloomT()); }
     put(pipe, 'sharpenEnabled', q.sharpen && P.sharpen > 0);
     if (pipe.sharpenEnabled) { put(pipe.sharpen, 'edgeAmount', P.sharpen); put(pipe.sharpen, 'colorAmount', 1); }
+    // al poner o quitar la oclusión cambia cuál es el primer pase (el que recibe la escena, con MSAA y búfer de profundidad):
+    // la cadena se reconstruye para que sus pases se creen de nuevo en su sitio
+    if (rebuild) pipe.prepare();
+    aoSync();
   }
+  // umbral del bloom (Babylon compara con umbral^(1/2.2)). De noche baja (×0,7): lo más brillante de la ciudad —avenidas,
+  // escaparates, farolas— ha de florecer aunque la exposición no lo lleve tan arriba como al sol
+  const bloomT = () => Math.pow(P.bloomT * (1 - 0.3 * L.night), 2.2);
   // camino LDR en marcha: fuera el postproceso (lo llama ctx.setLDR a través de ctx.out.onLDR)
-  function dropPipe() { if (pipe) { try { pipe.dispose(); } catch (e) { console.warn(e); } pipe = null; } }
+  function dropPipe() { try { aoKill(); } catch (e) { console.warn(e); } if (pipe) { try { pipe.dispose(); } catch (e) { console.warn(e); } pipe = null; } }
   ctx.out.onLDR.push(dropPipe);
 
   // ---------------------------------------------------------------- SOMBRAS DEL SOL
@@ -252,6 +266,115 @@ void main(){
   }
   ctx.eachMat(shPush);                                           // también los materiales que se creen después
 
+  // ---------------------------------------------------------------- OCLUSIÓN AMBIENTAL (en pantalla)
+  // Tres pases propios delante de la cadena de Babylon (antes del bloom y del tono), sobre el búfer HDR, cuyo alfa guarda la
+  // distancia a la cámara (FRAG, en el preludio; los materiales con mezcla no tocan ese alfa):
+  //   bcnAo    (recibe la escena a resolución completa, con el MSAA; dibuja a media resolución) reconstruye la posición de cada
+  //            píxel (rayo de la cámara × distancia, en coordenadas relativas a la cámara: nada de matrices con coordenadas de
+  //            mundo) y su normal (diferencias con los vecinos, la más corta de cada lado, para no cruzar bordes); 8 o 12
+  //            muestras en espiral (ángulo áureo, girada por píxel) dentro de un radio de 0,7 m en mundo. Escribe (oclusión, distancia)
+  //   bcnAoH   desenfoque horizontal bilateral (no mezcla píxeles de distinta distancia), a media resolución
+  //   bcnAoMix desenfoque vertical + subida a resolución completa con pesos de distancia (sin halos en los bordes) y mezcla:
+  //            color × (1 − intensidad × oclusión). Lo muy brillante (emisivos, sol) no se oscurece. Deja el alfa como estaba
+  // Se desvanece de aoFar × 0,73 a aoFar (80–110 m) y no toca el cielo. En calidad Baja no está (ni en el camino LDR)
+  const AO_FS = `precision highp float;
+varying vec2 vUV; uniform sampler2D textureSampler;
+uniform vec2 uTx; uniform vec3 uF; uniform vec3 uR; uniform vec3 uU; uniform vec4 uAo;
+vec3 dirAt(vec2 uv){ return normalize(uF + (uv.x*2.0 - 1.0)*uR + (uv.y*2.0 - 1.0)*uU); }
+vec3 posAt(vec2 uv){ return dirAt(uv)*texture2D(textureSampler, uv).a; }
+void main(){
+  vec2 uv = (floor(vUV/uTx) + 0.5)*uTx;
+  float d = texture2D(textureSampler, uv).a;
+  if (d > uAo.w) { gl_FragColor = vec4(0.0, d, 0.0, 1.0); return; }
+  vec3 P = dirAt(uv)*d;
+  vec3 a = posAt(uv + vec2(uTx.x, 0.0)) - P, b = P - posAt(uv - vec2(uTx.x, 0.0));
+  vec3 ex = dot(a, a) < dot(b, b) ? a : b;
+  a = posAt(uv + vec2(0.0, uTx.y)) - P; b = P - posAt(uv - vec2(0.0, uTx.y));
+  vec3 ey = dot(a, a) < dot(b, b) ? a : b;
+  vec3 N = normalize(cross(ex, ey));
+  if (dot(N, P) > 0.0) N = -N;
+  float z = max(dot(P, uF), 0.1);
+  // radio en mundo, sin pasar de 1/10 de la pantalla (de muy cerca)
+  float R = min(uAo.x, 0.2*z*length(uU)), R2 = R*R;
+  vec2 rUV = vec2(R/(2.0*z*length(uR)), R/(2.0*z*length(uU)));
+  float rot = 6.2831853*fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  float bias = 0.012 + 0.0015*z, s = 0.0;
+  for (int i = 0; i < 12; i++) {
+    if (float(i) >= uAo.y) break;
+    float t = (float(i) + 0.5)/uAo.y, an = rot + float(i)*2.3999632;
+    vec3 v = posAt(uv + vec2(cos(an), sin(an))*rUV*mix(0.1, 1.0, t)) - P;
+    float vv = dot(v, v);
+    s += max(0.0, 1.0 - vv/R2)*max(dot(v, N) - bias, 0.0)/sqrt(vv + 1e-4);
+  }
+  gl_FragColor = vec4(s/uAo.y*(1.0 - smoothstep(uAo.z, uAo.w, d)), d, 0.0, 1.0); }`;
+  const AOH_FS = `precision highp float;
+varying vec2 vUV; uniform sampler2D textureSampler; uniform vec2 uTx;
+void main(){
+  vec2 c = texture2D(textureSampler, vUV).rg;
+  float d = c.y, tol = 0.04*d + 0.05, s = c.x, sw = 1.0;
+  for (int i = -3; i <= 3; i++) {
+    if (i == 0) continue;
+    vec2 t = texture2D(textureSampler, vUV + vec2(float(i)*uTx.x, 0.0)).rg;
+    float w = exp(-float(i*i)*0.125)*max(0.0, 1.0 - abs(t.y - d)/tol);
+    s += t.x*w; sw += w;
+  }
+  gl_FragColor = vec4(s/sw, d, 0.0, 1.0); }`;
+  const AOM_FS = `precision highp float;
+varying vec2 vUV; uniform sampler2D textureSampler; uniform sampler2D tScene; uniform vec2 uHx; uniform vec4 uK;
+void main(){
+  vec4 sc = texture2D(tScene, vUV);
+  float d = sc.a, tol = 0.04*d + 0.05, s = 0.0, sw = 0.0;
+  vec2 q = vUV/uHx - 0.5, b = floor(q), f = q - b;
+  for (int j = -2; j <= 3; j++) for (int i = 0; i <= 1; i++) {
+    vec2 t = texture2D(textureSampler, (b + vec2(float(i), float(j)) + 0.5)*uHx).rg;
+    float dy = float(j) - f.y;
+    float w = (i == 0 ? 1.0 - f.x : f.x)*exp(-dy*dy*0.3)*max(0.0, 1.0 - abs(t.y - d)/tol);
+    s += t.x*w; sw += w;
+  }
+  float ao = 1.0 - clamp(uK.x*s/max(sw, 1e-3), 0.0, 0.85);
+  // lo muy brillante (luminarias, rótulos, el sol en un vidrio) no se oscurece
+  ao = mix(ao, 1.0, smoothstep(1.2, 3.5, dot(sc.rgb, vec3(0.2126, 0.7152, 0.0722))*uK.y));
+  if (uK.z > 0.5) { gl_FragColor = vec4(vec3(ao*ao*ao*0.9), d); return; }
+  gl_FragColor = vec4(sc.rgb*ao, d); }`;
+  const AO = { pp: null, on: false, dead: false, n: 12, f: new B.Vector3(), r: new B.Vector3(), u: new B.Vector3() };
+  function aoMake() {
+    const C = B.Constants, caps = engine.getCaps(), NEAR = B.Texture.NEAREST_SAMPLINGMODE;
+    B.Effect.ShadersStore.bcnAoFragmentShader = AO_FS; B.Effect.ShadersStore.bcnAoHFragmentShader = AOH_FS; B.Effect.ShadersStore.bcnAoMixFragmentShader = AOM_FS;
+    // la escena entra en coma flotante de 32 bits si se puede (la distancia del alfa con precisión), y si no de 16
+    const tf = caps.textureFloatRender ? C.TEXTURETYPE_FLOAT : C.TEXTURETYPE_HALF_FLOAT, th = caps.textureHalfFloatRender ? C.TEXTURETYPE_HALF_FLOAT : tf;
+    const p0 = new B.PostProcess('bcnAo', 'bcnAo', ['uTx', 'uF', 'uR', 'uU', 'uAo'], null, 1, null, NEAR, engine, false, null, tf);
+    const p1 = new B.PostProcess('bcnAoH', 'bcnAoH', ['uTx'], null, 0.5, null, NEAR, engine, false, null, th);
+    const p2 = new B.PostProcess('bcnAoMix', 'bcnAoMix', ['uHx', 'uK'], ['tScene'], 0.5, null, NEAR, engine, false, null, th);
+    p0.onApplyObservable.add(e => {
+      const t = Math.tan(cam.fov / 2), asp = engine.getAspectRatio(cam);
+      cam.getDirectionToRef(B.Axis.Z, AO.f); cam.getDirectionToRef(B.Axis.X, AO.r); cam.getDirectionToRef(B.Axis.Y, AO.u);
+      AO.r.scaleInPlace(t * asp); AO.u.scaleInPlace(t);
+      e.setFloat2('uTx', 1 / p0.width, 1 / p0.height); e.setVector3('uF', AO.f); e.setVector3('uR', AO.r); e.setVector3('uU', AO.u);
+      e.setFloat4('uAo', P.aoR, AO.n, P.aoFar * 0.73, P.aoFar);
+    });
+    p1.onApplyObservable.add(e => e.setFloat2('uTx', 1 / p1.width, 1 / p1.height));
+    p2.onApplyObservable.add(e => { e.setFloat2('uHx', 1 / p2.width, 1 / p2.height); e.setFloat4('uK', 2.6 * P.ao, L.tone.x, P.aoDbg, 0);
+      e.setTextureFromPostProcess('tScene', p0); });
+    AO.pp = [p0, p1, p2];
+  }
+  // pone o quita los pases (n = muestras, 0 = sin oclusión). Devuelve true si ha cambiado cuál es el primer pase de la cámara
+  function aoSetup(n) {
+    const want = n > 0 && !AO.dead;
+    if (want && !AO.pp) aoMake();
+    if (want) AO.n = n;
+    if (want === AO.on) return false;
+    AO.on = want;
+    if (want) AO.pp.forEach((p, i) => cam.attachPostProcess(p, i)); else AO.pp.forEach(p => cam.detachPostProcess(p));
+    return true;
+  }
+  function aoKill() { if (AO.pp) { for (const p of AO.pp) { cam.detachPostProcess(p); p.dispose(cam); } } AO.pp = null; AO.on = false; AO.dead = true; }
+  // el MSAA va en el primer pase de la cámara (el que recibe la escena): con la oclusión puesta es bcnAo, no el de la cadena
+  function aoSync() {
+    if (!pipe) return;
+    const list = cam._postProcesses.filter(p => p), ms = QUAL[cur].msaa;
+    list.forEach((p, i) => { const s = i === 0 ? ms : 1; if (p.samples !== s) p.samples = s; });
+  }
+
   if (ctx.out.hdr) {
     try { mkPipe(); }
     catch (e) { console.warn('Sin postproceso HDR (se usa el camino LDR): ' + (e && e.message || e)); dropPipe(); ctx.setLDR(); }
@@ -277,7 +400,8 @@ void main(){
   // modo Auto: tiempo medio de fotograma REAL en ventanas de 2 s. Dos ventanas seguidas por encima de 34 ms → un escalón menos
   const win = { t: 0, n: 0, bad: 0, last: 0, ms: 0 };
   function update(P_, groundY, dt, frame) {
-    if (pipe) put(scene.imageProcessingConfiguration, 'exposure', L.tone.x);   // la exposición cambia con la hora (setHour)
+    if (pipe) { put(scene.imageProcessingConfiguration, 'exposure', L.tone.x);   // la exposición y el umbral del bloom cambian con la hora (setHour)
+      if (pipe.bloomEnabled) put(pipe, 'bloomThreshold', bloomT()); }
     try { shUpdate(P_, groundY); } catch (e) { console.warn('Sin sombras: ' + (e && e.stack || e)); shOff(); SH.dead = true; }
     const now = performance.now(), d = now - win.last; win.last = now;
     if (SHOT || d > 400 || document.hidden) return;             // capturas, pestaña oculta o parón: no cuenta
@@ -294,7 +418,8 @@ void main(){
     flush: () => { for (const c of SH.casc) c.dirty = true; SH.flushed = true; },
     stats: () => ({ hdr: !!pipe, quality: cur, auto, scale: QUAL[cur].scale, msaa: pipe ? pipe.samples : 0, bloom: !!(pipe && pipe.bloomEnabled),
       ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight(),
-      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: SH.dark || !SH.casc.some(c => c.dirty || c.late > 0), dark: SH.dark } }) };
+      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: SH.dark || !SH.casc.some(c => c.dirty || c.late > 0), dark: SH.dark },
+      ao: AO.on ? { n: AO.n, k: P.ao, first: (cam._postProcesses.find(p => p) || {}).name } : 0 }) };
   Object.defineProperty(M, 'shadow', { get: () => SH });        // depuración: BCN.light.shadow (cascadas, mapas, materiales)
   Object.defineProperty(M, 'pipe', { get: () => pipe });         // depuración: BCN.light.pipe
   return M;
