@@ -7,11 +7,15 @@ Uso:  python3 gta/tools/hitos/catalogo.py      (reescribe los dos ficheros)
 Cada ficha: id, nombre (en catalán), lote (a…e), nivel (A/B/C), cat, lat, lon, confianza (de la posición), alto,
 ancho, largo (m reales), rot (rumbo del eje largo, grados desde el norte hacia el este, 0–180), forma, rasgos,
 colores, noche, fuente, y opcionalmente nota.
-x, z, y, edificios y en_datos los añade la etapa R2 (encaje con los datos del juego).
+x, z, y, edificios y en_datos los añade la etapa R2 (encaje con los datos del juego): `node tools/hitos/encaje.js`
+escribe tools/hitos/encaje.json y este script lo mezcla (orden: catalogo.py → encaje.js → catalogo.py).
 
 Fuentes de la posición: «cawiki» / «eswiki» / «enwiki» = coordenadas de la API de Wikipedia (GeoData) consultadas el
 2026-11-11; «memoria» = de memoria (puede desviarse 100–200 m; R2 la corrige con la planta real o el poi del juego).
-Las medidas (alto, ancho, largo) son casi todas de memoria: orientativas, R2 las corrige con la planta del registro.
+Las medidas de R1 (alto, ancho, largo, rot) eran casi todas de memoria; R2 corrige ancho, largo y rot con la planta del
+registro cuando la selección de edificios es fiable (los valores de R1 quedan en `r1`) y guarda lo medido en `planta`
+(ancho, largo, rot, area, alto en los datos, clases). x, z (m, mundo) y y (cota del terreno) son los del juego;
+`edificios` = índices de BREC (app.js) que el hito sustituye o retoca; `en_datos` = qué hay hoy; `encaje` = cómo se eligió.
 Ejes de la cuadrícula del Eixample: calles paralelas al mar ≈ 45°, calles mar-montaña ≈ 135°. Diagonal ≈ 72°.
 """
 import json, os
@@ -454,6 +458,35 @@ LOTES = {'a': 'Gaudí y modernismo', 'b': 'Deporte y Montjuïc', 'c': 'Torres y 
 COMO = {'A': 'modelo propio', 'B': 'arquetipo', 'C': 'retoque del volumen'}
 
 
+ENC = None
+
+
+def merge(root, here):
+    """Mezcla en H el encaje de R2 (tools/hitos/encaje.json, de encaje.js) si existe."""
+    global ENC
+    fn = os.path.join(here, 'encaje.json')
+    if not os.path.exists(fn):
+        return
+    with open(fn, encoding='utf-8') as fi:
+        ENC = json.load(fi)
+    for f in H:
+        e = ENC['hitos'].get(f['id'])
+        if not e:
+            continue
+        r1 = {k: f[k] for k in ('ancho', 'largo', 'rot', 'confianza') if k in e and e[k] != f[k]}
+        for k in ('x', 'z', 'y', 'edificios', 'en_datos', 'ancho', 'largo', 'rot', 'confianza', 'planta', 'fuera'):
+            if k in e:
+                f[k] = e[k]
+        f['encaje'] = e['modo']
+        if e.get('mover') is not None and e['mover'] >= 30:
+            f['nota'] = (f.get('nota', '') + ' ' if f.get('nota') else '') + \
+                f"R2: la planta del juego está a {e['mover']} m de la coordenada lat/lon; x, z son los de la planta."
+        if e.get('nota'):
+            f['nota'] = (f.get('nota', '') + ' ' if f.get('nota') else '') + 'R2: ' + e['nota']
+        if r1:
+            f['r1'] = r1
+
+
 def check():
     ids = set()
     for f in H:
@@ -467,14 +500,15 @@ def check():
 
 def md():
     L = ['# Hitos de Barcelona — catálogo', '',
-         'Listado de los edificios y monumentos singulares que el juego modelará aparte (encargo de hitos, etapa R1).',
+         'Listado de los edificios y monumentos singulares que el juego modelará aparte (encargo de hitos, etapas R1 y R2).',
          'Versión para máquinas: `data/hitos_catalogo.json` (mismas fichas, completas). Se genera con',
          '`python3 tools/hitos/catalogo.py`: para cambiar algo, edita ese script y vuelve a ejecutarlo.', '',
          '**Niveles**: A = modelo propio cuidado (icono) · B = arquetipo con parámetros · C = retoque del volumen que ya',
          'existe (color, estilo, altura). **Alto** en metros reales. **Pos.** = confianza de la posición (alta: coordenada',
          'de Wikipedia/Wikidata; media: redondeada o de memoria en sitio aislado; baja: de memoria, a revisar).',
-         'La columna «Hoy en el juego» la rellena la etapa R2 (encaje con el registro de edificios); hasta entonces dice',
-         '«(R2)» o lo que ya se sabe por `data/meta.json`.', '']
+         'La columna «Hoy en el juego» sale del encaje de R2 con el registro de edificios (`tools/hitos/encaje.js`):',
+         'cuántos volúmenes del juego sustituye el hito, su planta y su altura en los datos. **x, z** = posición en el',
+         'mundo del juego (m; X al este, Z al norte). La lista de índices (`edificios`) está en el JSON.', '']
     tot = {}
     for f in H:
         tot.setdefault(f['lote'], {'A': 0, 'B': 0, 'C': 0})[f['nivel']] += 1
@@ -488,8 +522,8 @@ def md():
     L.append('')
     for k in 'abcde':
         L += [f'## Lote {k} · {LOTES[k]}', '',
-              '| Nombre | Nivel | Qué es | Alto | Cómo se va a hacer | Pos. | Hoy en el juego |',
-              '|---|---|---|---|---|---|---|']
+              '| Nombre | Nivel | Qué es | Alto | Cómo se va a hacer | x, z | Pos. | Hoy en el juego |',
+              '|---|---|---|---|---|---|---|---|']
         for f in sorted((f for f in H if f['lote'] == k), key=lambda f: ('ABC'.index(f['nivel']), f['nombre'])):
             como = COMO[f['nivel']] + ': ' + '; '.join(f['rasgos'])
             hoy = '(R2)'
@@ -498,10 +532,33 @@ def md():
                 hoy = '(R2) ' + fr[0].rstrip('.')
             que = f['forma'].split(': ')[0] if len(f['forma'].split(': ')[0]) < 90 else f['forma'][:87] + '…'
             alto = ('%g' % f['alto']).replace('.', ',') + ' m'
-            L.append(f"| {f['nombre']} | {f['nivel']} | {que} | {alto} | {como} | {f['confianza']} | {hoy} |")
+            xz = f"{f['x']:.0f}, {f['z']:.0f}" if 'x' in f else '—'
+            if 'en_datos' in f:
+                hoy = f['en_datos']
+            L.append(f"| {f['nombre']} | {f['nivel']} | {que} | {alto} | {como} | {xz} | {f['confianza']} | {hoy} |")
         L.append('')
     dud = [f for f in H if f['confianza'] != 'alta']
-    L += ['## Posiciones dudosas (para R2)', '']
+    if ENC:
+        a = ENC['ajuste']
+        L += ['## Encaje en el mapa del juego (R2)', '',
+              f"- Conversión lat/lon → mundo: el mundo es UTM huso 31N (ETRS89) trasladado: x = E {a['ox']:+.1f}, "
+              f"z = N {a['oz']:+.1f}. Ajustada con {len(a['residuos'])} poi de `meta.json` (mínimos cuadrados): error "
+              f"cuadrático medio {a['rms']} m, máximo {max((r['ex'] ** 2 + r['ez'] ** 2) ** 0.5 for r in a['residuos']):.0f} m "
+              '(los poi marcan el sitio a ojo; las torres caen a 1–10 m de su planta).',
+              '- Selección de edificios: el grupo que contiene el punto (raíz + partes de OSM apiladas), la torre más alta',
+              '  cercana, una lista explícita o un rectángulo (ver `SEL` en `tools/hitos/encaje.js`). Los índices son los de',
+              '  `BREC` en `app.js`.', '']
+        no = [f for f in H if f.get('encaje') == 'no']
+        L += ['### No están en los datos (se modelan desde cero en su coordenada)', '']
+        for f in no:
+            L.append(f"- **{f['nombre']}**: {f['en_datos'].replace('no existe: ', '')}")
+        mv = sorted((f for f in H if ENC['hitos'][f['id']].get('mover', 0) >= 30), key=lambda f: -ENC['hitos'][f['id']]['mover'])
+        L += ['', '### Posición corregida con la planta del juego (30 m o más)', '']
+        for f in mv:
+            L.append(f"- **{f['nombre']}**: {ENC['hitos'][f['id']]['mover']} m")
+        fu = [f for f in H if f.get('fuera')]
+        L += ['', '### Fuera del área con edificios', '', '- ' + (', '.join(f['nombre'] for f in fu) if fu else 'ninguno: los 107 caen dentro del mapa y con edificios a menos de 300 m.'), '']
+    L += ['## Posiciones dudosas', '']
     for f in dud:
         L.append(f"- **{f['nombre']}** ({f['confianza']}): {f['lat']}, {f['lon']} — {f.get('nota', 'de memoria')}")
     L += ['', '## Descartados de la lista semilla', '',
@@ -519,9 +576,20 @@ def md():
 
 if __name__ == '__main__':
     check()
-    root = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.normpath(os.path.join(here, '..', '..'))
+    with open(os.path.join(here, 'r1.json'), 'w', encoding='utf-8') as fo:
+        json.dump({'nota': 'Fichas de R1 sin encaje: entrada de encaje.js. Generado por catalogo.py; no editar.', 'hitos': H},
+                  fo, ensure_ascii=False, indent=1)
+        fo.write('\n')
+    merge(root, here)
     with open(os.path.join(root, 'data', 'hitos_catalogo.json'), 'w', encoding='utf-8') as fo:
-        json.dump({'version': 1, 'etapa': 'R1', 'nota': ' '.join(__doc__.strip().split('\n\n')[2:]).replace('\n', ' '), 'hitos': H}, fo,
+        doc = {'version': 2 if ENC else 1, 'etapa': 'R2' if ENC else 'R1',
+               'nota': ' '.join(__doc__.strip().split('\n\n')[2:]).replace('\n', ' ')}
+        if ENC:
+            doc['ajuste'] = ENC['ajuste']
+        doc['hitos'] = H
+        json.dump(doc, fo,
                   ensure_ascii=False, indent=1)
         fo.write('\n')
     with open(os.path.join(root, 'HITOS.md'), 'w', encoding='utf-8') as fo:

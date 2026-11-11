@@ -1,0 +1,3212 @@
+{
+ "ajuste": {
+  "metodo": "UTM 31N (ETRS89) + traslación",
+  "ox": -418400.68,
+  "oz": -4567997.59,
+  "rms": 11,
+  "residuos": [
+   {
+    "n": "Sagrada Família",
+    "ex": -2.7,
+    "ez": 9.4
+   },
+   {
+    "n": "Torre Glòries",
+    "ex": 4.8,
+    "ez": 4.2
+   },
+   {
+    "n": "Camp Nou",
+    "ex": -2.7,
+    "ez": -8.5
+   },
+   {
+    "n": "Castell de Montjuïc",
+    "ex": -0.3,
+    "ez": 6.9
+   },
+   {
+    "n": "Palau Nacional (MNAC)",
+    "ex": -17.1,
+    "ez": -16.3
+   },
+   {
+    "n": "Arc de Triomf",
+    "ex": -4.2,
+    "ez": 3.8
+   },
+   {
+    "n": "Catedral",
+    "ex": 15.4,
+    "ez": -9.3
+   },
+   {
+    "n": "Hotel W",
+    "ex": 10.6,
+    "ez": 9.7
+   },
+   {
+    "n": "Estadi Olímpic",
+    "ex": -3.8,
+    "ez": 5.1
+   },
+   {
+    "n": "Estació de Sants",
+    "ex": -0.6,
+    "ez": -8.9
+   },
+   {
+    "n": "Plaça de Catalunya",
+    "ex": -3.4,
+    "ez": 2.9
+   },
+   {
+    "n": "Plaça d'Espanya",
+    "ex": 8.1,
+    "ez": 2.6
+   },
+   {
+    "n": "Torre de Collserola (meta.stats)",
+    "ex": -8.6,
+    "ez": -1.8
+   },
+   {
+    "n": "Sagrat Cor (meta.stats)",
+    "ex": 4.2,
+    "ez": 0.2
+   }
+  ]
+ },
+ "hitos": {
+  "sagrada_familia": {
+   "modo": "g",
+   "x": 12597.9,
+   "z": 15875.2,
+   "edificios": [
+    136884,
+    136885,
+    138817,
+    138818,
+    138820,
+    139042,
+    139043,
+    139044,
+    139045,
+    139046,
+    139047,
+    139048,
+    139049,
+    139050,
+    139051,
+    139052,
+    139053,
+    139054,
+    139055,
+    139056,
+    139057,
+    139058,
+    139059,
+    139060,
+    139061,
+    139062,
+    139063,
+    139064,
+    139065,
+    139066,
+    139067,
+    139068,
+    139069,
+    139070,
+    139071,
+    139072,
+    139073,
+    139074,
+    139075,
+    139076,
+    139077,
+    139078,
+    139079,
+    139080,
+    139081,
+    139082,
+    139083,
+    139084,
+    139085,
+    139086,
+    139087,
+    139088,
+    139089,
+    139090,
+    139091,
+    139092,
+    139093,
+    139094,
+    139095,
+    139096,
+    139097,
+    139098,
+    139099,
+    139100,
+    139101,
+    139102,
+    139103,
+    139104,
+    139105,
+    139106,
+    139107,
+    139108,
+    139109,
+    139110,
+    139111,
+    139112,
+    139113,
+    139114,
+    139115,
+    139116,
+    139117,
+    139118,
+    139119,
+    139120,
+    139121,
+    139122,
+    139123,
+    139124,
+    139125,
+    139126,
+    139127,
+    139128,
+    139129,
+    139130,
+    139131,
+    139132,
+    139133,
+    139134,
+    139135,
+    139136,
+    139137,
+    139138,
+    139139,
+    139140,
+    139141,
+    139142,
+    139143,
+    139144,
+    139145,
+    139146,
+    139147,
+    139148,
+    139149,
+    139150,
+    139151,
+    139152,
+    139153,
+    139154,
+    139155,
+    139156,
+    139157,
+    139158,
+    139159,
+    139160,
+    139161,
+    139162,
+    139163,
+    139164,
+    139165,
+    139166,
+    139167,
+    139168,
+    139169,
+    139170,
+    139171,
+    139172,
+    139173,
+    139174,
+    139176,
+    139177,
+    139178,
+    139179,
+    139180,
+    139181,
+    139182,
+    139183,
+    139184,
+    139185
+   ],
+   "planta": {
+    "ancho": 84,
+    "largo": 142,
+    "rot": 136,
+    "area": 8295,
+    "alto": 172.5,
+    "clases": [
+     11,
+     14
+    ]
+   },
+   "en_datos": "2 volúmenes, 8 295 m² en total, hasta 173 m (+146 partes de OSM); clase 11 , 14",
+   "mover": 31,
+   "rot": 136,
+   "ancho": 84,
+   "largo": 142,
+   "y": 30.5
+  },
+  "casa_mila": {
+   "modo": "auto",
+   "x": 11535.7,
+   "z": 14987.7,
+   "edificios": [
+    112845,
+    112869,
+    112891,
+    112898,
+    112938,
+    112948,
+    112964,
+    112975,
+    112981,
+    112989,
+    112992,
+    112993,
+    113010
+   ],
+   "planta": {
+    "ancho": 35,
+    "largo": 58,
+    "rot": 48,
+    "area": 1674,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 1 674 m² y 30 m (+12 partes de OSM); clase 0",
+   "mover": 20,
+   "rot": 48,
+   "ancho": 35,
+   "largo": 58,
+   "y": 37.6
+  },
+  "casa_batllo": {
+   "modo": "auto",
+   "x": 11775.8,
+   "z": 14563.1,
+   "edificios": [
+    114428
+   ],
+   "planta": {
+    "ancho": 15,
+    "largo": 30,
+    "rot": 46,
+    "area": 303,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 303 m² y 20 m; clase 0",
+   "mover": 10,
+   "rot": 46,
+   "ancho": 15,
+   "largo": 30,
+   "y": 28.9
+  },
+  "casa_amatller": {
+   "modo": "auto",
+   "x": 11788.5,
+   "z": 14552.5,
+   "edificios": [
+    114377
+   ],
+   "planta": {
+    "ancho": 17,
+    "largo": 18,
+    "rot": 136,
+    "area": 179,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 179 m² y 20 m; clase 0",
+   "mover": 4,
+   "rot": 136,
+   "ancho": 17,
+   "largo": 18,
+   "y": 28.7
+  },
+  "casa_lleo_morera": {
+   "modo": "g",
+   "x": 11821.7,
+   "z": 14518.1,
+   "edificios": [
+    114478,
+    115079
+   ],
+   "planta": {
+    "ancho": 19,
+    "largo": 33,
+    "rot": 47,
+    "area": 395,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 395 m² y 17 m (+1 parte de OSM); clase 0",
+   "mover": 17,
+   "rot": 47,
+   "ancho": 19,
+   "largo": 33,
+   "y": 27.5
+  },
+  "park_guell": {
+   "modo": "rect",
+   "x": 10794.5,
+   "z": 16990.8,
+   "edificios": [
+    164249,
+    164254,
+    164255,
+    164256,
+    164272,
+    164377,
+    164400,
+    164407,
+    164417,
+    164419,
+    164430,
+    164454,
+    164474,
+    164478,
+    164491,
+    164494,
+    164561,
+    164601,
+    164645,
+    164646,
+    164647,
+    164648,
+    164649
+   ],
+   "planta": {
+    "ancho": 111,
+    "largo": 182,
+    "rot": 135,
+    "area": 4088,
+    "alto": 20.2,
+    "clases": [
+     0,
+     2,
+     6,
+     1
+    ]
+   },
+   "en_datos": "22 volúmenes, 4 088 m² en total, hasta 20 m (+1 parte de OSM); clase 0 , 2 , 6 , 1",
+   "mover": 30,
+   "y": 133,
+   "nota": "Recinto: se cuentan los pabellones y construcciones del núcleo monumental (sala hipóstila, entrada); el banco y la plaza no son volúmenes."
+  },
+  "sant_pau": {
+   "modo": "rect",
+   "x": 12599.2,
+   "z": 16904.1,
+   "edificios": [
+    155107,
+    155298,
+    155299,
+    155300,
+    155301,
+    155302,
+    155495,
+    155500,
+    155501,
+    155504,
+    155509,
+    155514,
+    155522,
+    155523,
+    155524,
+    155528,
+    155541,
+    155585,
+    155595,
+    155598,
+    155607,
+    155631,
+    155833,
+    155836,
+    155839,
+    155840,
+    155841,
+    155845,
+    155846,
+    155853,
+    155866,
+    155874,
+    155913,
+    155916,
+    155919,
+    155922,
+    155927,
+    155928,
+    155932,
+    155935,
+    155936,
+    155937,
+    155938,
+    155940,
+    155948,
+    155949,
+    155951,
+    155952,
+    155955,
+    155960,
+    155964,
+    155965,
+    155969,
+    155972,
+    155975,
+    155977,
+    155981,
+    155997,
+    155998,
+    156005,
+    156012,
+    156013,
+    156014,
+    156020,
+    156024,
+    156026,
+    156028,
+    156029,
+    156034,
+    156036,
+    156129,
+    166277,
+    166278,
+    166279,
+    166286,
+    166287,
+    166293,
+    166294,
+    166295,
+    166296,
+    166297,
+    166302,
+    166303,
+    166304,
+    166307,
+    166308,
+    166309,
+    166311,
+    166312,
+    166313,
+    166314,
+    166315,
+    166316,
+    166317,
+    166319,
+    166320,
+    166321,
+    166323,
+    166325,
+    166332,
+    166333,
+    166335,
+    166336,
+    166337,
+    166339,
+    166340,
+    166344,
+    166345,
+    166346,
+    166348,
+    166349,
+    166351,
+    166352,
+    166355,
+    166357,
+    166358,
+    166360,
+    166364,
+    166366,
+    166367,
+    166368,
+    166369,
+    166370,
+    166371,
+    166372,
+    166373,
+    166374,
+    166375,
+    166376,
+    166377,
+    166378,
+    166379,
+    166380,
+    166381,
+    166382,
+    166383,
+    166384,
+    166385,
+    166386,
+    166388,
+    166390,
+    166400,
+    166401,
+    166404,
+    166405,
+    166407,
+    166785,
+    166789,
+    167173,
+    167182,
+    168055,
+    168166,
+    168169,
+    168262,
+    168263,
+    168264,
+    168265,
+    168480,
+    168481,
+    168482,
+    168483,
+    168538,
+    168609
+   ],
+   "planta": {
+    "ancho": 319,
+    "largo": 372,
+    "rot": 179,
+    "area": 29227,
+    "alto": 33,
+    "clases": [
+     0,
+     1,
+     2
+    ]
+   },
+   "en_datos": "152 volúmenes, 29 227 m² en total, hasta 33 m (+11 partes de OSM); clase 0 , 1 , 2",
+   "mover": 11,
+   "y": 61.3,
+   "nota": "Recinto modernista: se cuentan sus pabellones. El poi «Hospital de Sant Pau» del juego marca la Administració, ~150 m al S del centro."
+  },
+  "palau_musica": {
+   "modo": "auto",
+   "x": 12647.4,
+   "z": 14115.6,
+   "edificios": [
+    97284
+   ],
+   "planta": {
+    "ancho": 28,
+    "largo": 59,
+    "rot": 137,
+    "area": 1294,
+    "alto": 17,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 1 294 m² y 17 m; clase 2",
+   "mover": 9,
+   "rot": 137,
+   "ancho": 28,
+   "largo": 59,
+   "y": 10.5
+  },
+  "casa_vicens": {
+   "modo": "auto",
+   "x": 10603,
+   "z": 15898.1,
+   "edificios": [
+    127731,
+    127733,
+    131450
+   ],
+   "planta": {
+    "ancho": 19,
+    "largo": 22,
+    "rot": 60,
+    "area": 282,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 282 m² y 11 m (+2 partes de OSM); clase 0",
+   "mover": 2,
+   "rot": 60,
+   "ancho": 19,
+   "largo": 22,
+   "y": 72.1
+  },
+  "palau_guell": {
+   "modo": "auto",
+   "x": 12550.1,
+   "z": 13139.3,
+   "edificios": [
+    79036
+   ],
+   "planta": {
+    "ancho": 24,
+    "largo": 27,
+    "rot": 38,
+    "area": 549,
+    "alto": 17,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 549 m² y 17 m; clase 2",
+   "mover": 13,
+   "rot": 38,
+   "ancho": 24,
+   "largo": 27,
+   "y": 6.7
+  },
+  "bellesguard": {
+   "modo": "auto",
+   "x": 8623.3,
+   "z": 16590.7,
+   "edificios": [
+    147126
+   ],
+   "planta": {
+    "ancho": 17,
+    "largo": 18,
+    "rot": 146,
+    "area": 253,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 253 m² y 9 m; clase 0",
+   "mover": 3,
+   "rot": 146,
+   "ancho": 17,
+   "largo": 18,
+   "y": 172
+  },
+  "casa_punxes": {
+   "modo": "rect",
+   "x": 11696.8,
+   "z": 15279.1,
+   "edificios": [
+    133912,
+    133914,
+    133923,
+    133924,
+    133926,
+    133929,
+    133938,
+    133944,
+    134071,
+    134072,
+    134073,
+    134077,
+    134078,
+    134079,
+    134080,
+    134081,
+    134083,
+    134084,
+    134085,
+    134086,
+    134087,
+    134088,
+    134089,
+    134090,
+    134091,
+    134092,
+    134093,
+    134094,
+    134095,
+    134096,
+    134098,
+    134100,
+    134101,
+    134102,
+    134103,
+    134104,
+    135676,
+    135687,
+    135688,
+    135689,
+    135690,
+    135692,
+    135693,
+    135694,
+    135695,
+    135696,
+    135697,
+    135698,
+    135700,
+    136036,
+    136037
+   ],
+   "planta": {
+    "ancho": 39,
+    "largo": 84,
+    "rot": 86,
+    "area": 1390,
+    "alto": 36.2,
+    "clases": [
+     0,
+     5
+    ]
+   },
+   "en_datos": "46 volúmenes, 1 390 m² en total, hasta 36 m (+5 partes de OSM); clase 0 , 5",
+   "mover": 1,
+   "rot": 86,
+   "ancho": 39,
+   "largo": 84,
+   "y": 40.3
+  },
+  "pavellons_guell": {
+   "modo": "g",
+   "x": 7950.5,
+   "z": 14348,
+   "edificios": [
+    90015
+   ],
+   "planta": {
+    "ancho": 13,
+    "largo": 32,
+    "rot": 63,
+    "area": 328,
+    "alto": 4.2,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 328 m² y 4 m; clase 2",
+   "mover": 16,
+   "rot": 63,
+   "ancho": 13,
+   "largo": 32,
+   "y": 77
+  },
+  "teresianes": {
+   "modo": "dudoso",
+   "x": 9142,
+   "z": 15501.7,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: Hay varios volúmenes bajos (9–22 m) en la parcela y ninguno con la planta alargada de 18×65 m; candidatos: #124633 (995 m², 9 m), #124634 (469 m², 22 m), #124630 (411 m², 15 m).",
+   "y": 91.9,
+   "confianza": "baja"
+  },
+  "fundacio_tapies": {
+   "modo": "auto",
+   "x": 11675.5,
+   "z": 14576.8,
+   "edificios": [
+    112626
+   ],
+   "planta": {
+    "ancho": 25,
+    "largo": 47,
+    "rot": 137,
+    "area": 1099,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 1 099 m² y 25 m; clase 0",
+   "mover": 1,
+   "rot": 137,
+   "ancho": 25,
+   "largo": 47,
+   "y": 29
+  },
+  "monumental": {
+   "modo": "auto",
+   "x": 13156.7,
+   "z": 15496.1,
+   "edificios": [
+    139529,
+    139539,
+    139540,
+    139541,
+    139542,
+    139543,
+    139544,
+    139545,
+    139546,
+    139547,
+    139548,
+    139549,
+    139550,
+    139551,
+    139552,
+    139553,
+    139554,
+    139555,
+    139556
+   ],
+   "planta": {
+    "ancho": 100,
+    "largo": 100,
+    "rot": 167,
+    "area": 7868,
+    "alto": 25,
+    "clases": [
+     5
+    ]
+   },
+   "en_datos": "1 volumen de 7 868 m² y 25 m (+18 partes de OSM); clase 5",
+   "mover": 13,
+   "rot": 167,
+   "ancho": 100,
+   "largo": 100,
+   "y": 15.2,
+   "confianza": "alta"
+  },
+  "universitat": {
+   "modo": "rect",
+   "x": 11685,
+   "z": 14026.8,
+   "edificios": [
+    95418,
+    95419,
+    95422,
+    95423,
+    95424,
+    95426,
+    95427,
+    95429,
+    95430,
+    95431,
+    95432,
+    95433,
+    95434,
+    95437,
+    95438,
+    95440,
+    95441,
+    95445,
+    95446,
+    95447,
+    95449,
+    95450,
+    95451,
+    95452,
+    95453
+   ],
+   "planta": {
+    "ancho": 59,
+    "largo": 132,
+    "rot": 46,
+    "area": 4251,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "21 volúmenes, 4 251 m² en total, hasta 30 m (+4 partes de OSM); clase 0",
+   "mover": 15,
+   "rot": 46,
+   "ancho": 59,
+   "largo": 132,
+   "y": 22
+  },
+  "mercat_sant_antoni": {
+   "modo": "auto",
+   "x": 11531.5,
+   "z": 13128.1,
+   "edificios": [
+    77046,
+    77047,
+    77048,
+    77049,
+    77050,
+    77051,
+    77160,
+    77161
+   ],
+   "planta": {
+    "ancho": 108,
+    "largo": 108,
+    "rot": 46,
+    "area": 2679,
+    "alto": 23.4,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 2 679 m² y 23 m (+7 partes de OSM); clase 0",
+   "mover": 2,
+   "rot": 46,
+   "ancho": 108,
+   "largo": 108,
+   "y": 13.2
+  },
+  "castell_tres_dragons": {
+   "modo": "auto",
+   "x": 13318.8,
+   "z": 14168,
+   "edificios": [
+    99107
+   ],
+   "planta": {
+    "ancho": 47,
+    "largo": 53,
+    "rot": 137,
+    "area": 1188,
+    "alto": 18.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 1 188 m² y 19 m; clase 0",
+   "mover": 9,
+   "rot": 137,
+   "ancho": 47,
+   "largo": 53,
+   "y": 6.8
+  },
+  "casa_calvet": {
+   "modo": "auto",
+   "x": 12477.1,
+   "z": 14467.9,
+   "edificios": [
+    115277,
+    116764
+   ],
+   "planta": {
+    "ancho": 16,
+    "largo": 52,
+    "rot": 135,
+    "area": 622,
+    "alto": 20.2,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 622 m² y 20 m (+1 parte de OSM); clase 2",
+   "mover": 15,
+   "rot": 135,
+   "ancho": 16,
+   "largo": 52,
+   "y": 18.8
+  },
+  "camp_nou": {
+   "modo": "auto",
+   "x": 8253.4,
+   "z": 13411.6,
+   "edificios": [
+    70092,
+    70093,
+    70094,
+    70095,
+    70096
+   ],
+   "planta": {
+    "ancho": 162,
+    "largo": 209,
+    "rot": 158,
+    "area": 29598,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 29 598 m² y 25 m (+4 partes de OSM); clase 0",
+   "mover": 7,
+   "rot": 158,
+   "y": 48,
+   "nota": "Las medidas de la planta de los datos (estadio viejo en obras) son menores que las del estadio acabado: se conservan las del catálogo; el rumbo, de los datos."
+  },
+  "palau_blaugrana": {
+   "modo": "auto",
+   "x": 8028,
+   "z": 13319.5,
+   "edificios": [
+    69987,
+    70097
+   ],
+   "planta": {
+    "ancho": 80,
+    "largo": 84,
+    "rot": 158,
+    "area": 4712,
+    "alto": 5.8,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 4 712 m² y 6 m (+1 parte de OSM); clase 0",
+   "mover": 10,
+   "rot": 158,
+   "ancho": 80,
+   "largo": 84,
+   "y": 47
+  },
+  "estadi_olimpic": {
+   "modo": "auto",
+   "x": 10983.3,
+   "z": 11594.6,
+   "edificios": [
+    52371,
+    52372
+   ],
+   "planta": {
+    "ancho": 191,
+    "largo": 277,
+    "rot": 2,
+    "area": 44781,
+    "alto": 22,
+    "clases": [
+     9
+    ]
+   },
+   "en_datos": "1 volumen de 44 781 m² y 22 m (+1 parte de OSM); clase 9",
+   "mover": 10,
+   "y": 100.9,
+   "nota": "El volumen de los datos incluye la explanada (44 781 m²): se conservan medidas y rumbo del catálogo."
+  },
+  "palau_sant_jordi": {
+   "modo": "auto",
+   "x": 10722.1,
+   "z": 11449.3,
+   "edificios": [
+    52375,
+    52376
+   ],
+   "planta": {
+    "ancho": 110,
+    "largo": 132,
+    "rot": 1,
+    "area": 12946,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 12 946 m² y 9 m (+1 parte de OSM); clase 0",
+   "mover": 3,
+   "rot": 1,
+   "ancho": 110,
+   "largo": 132,
+   "y": 78.6
+  },
+  "torre_calatrava": {
+   "modo": "auto-alto",
+   "x": 10559.2,
+   "z": 11544.8,
+   "edificios": [
+    52411,
+    52412,
+    52413
+   ],
+   "planta": {
+    "ancho": 11,
+    "largo": 12,
+    "rot": 54,
+    "area": 105,
+    "alto": 136,
+    "clases": [
+     4
+    ]
+   },
+   "en_datos": "1 volumen de 105 m² y 136 m (+2 partes de OSM); clase 4",
+   "mover": 11,
+   "y": 80.7
+  },
+  "palau_nacional": {
+   "modo": "auto",
+   "x": 10820.8,
+   "z": 11985,
+   "edificios": [
+    52387,
+    52388,
+    52389
+   ],
+   "planta": {
+    "ancho": 147,
+    "largo": 168,
+    "rot": 64,
+    "area": 15857,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 15 857 m² y 11 m (+2 partes de OSM); clase 2",
+   "mover": 33,
+   "rot": 64,
+   "ancho": 147,
+   "largo": 168,
+   "y": 79.7
+  },
+  "font_magica": {
+   "modo": "no",
+   "x": 10659.9,
+   "z": 12308,
+   "edificios": [],
+   "en_datos": "no existe: fuente: no hay volumen en los datos",
+   "y": 37.8
+  },
+  "quatre_columnes": {
+   "modo": "no",
+   "x": 10690.2,
+   "z": 12251,
+   "edificios": [],
+   "en_datos": "no existe: columnas: no existen en los datos",
+   "y": 40.7
+  },
+  "torres_venecianes": {
+   "modo": "g",
+   "x": 10502.1,
+   "z": 12628.6,
+   "edificios": [
+    58995,
+    59058,
+    59059,
+    59060,
+    59061,
+    59062,
+    59063,
+    59064
+   ],
+   "planta": {
+    "ancho": 9,
+    "largo": 42,
+    "rot": 63,
+    "area": 172,
+    "alto": 47,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "2 volúmenes, 172 m² en total, hasta 47 m (+6 partes de OSM); clase 0",
+   "mover": 26,
+   "rot": 63,
+   "ancho": 9,
+   "largo": 42,
+   "y": 27.4
+  },
+  "arenas": {
+   "modo": "auto",
+   "x": 10463.3,
+   "z": 12880.9,
+   "edificios": [
+    75880,
+    75894,
+    75895,
+    75896,
+    75897,
+    75898,
+    75940,
+    75941,
+    75942,
+    75943,
+    75951,
+    75952
+   ],
+   "planta": {
+    "ancho": 100,
+    "largo": 100,
+    "rot": 49,
+    "area": 7861,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 7 861 m² y 25 m (+11 partes de OSM); clase 0",
+   "mover": 26,
+   "rot": 49,
+   "ancho": 100,
+   "largo": 100,
+   "y": 22.7,
+   "confianza": "alta"
+  },
+  "castell_montjuic": {
+   "modo": "auto",
+   "x": 11842.8,
+   "z": 11426.8,
+   "edificios": [
+    52440,
+    52444,
+    52449,
+    52450,
+    52451
+   ],
+   "planta": {
+    "ancho": 166,
+    "largo": 222,
+    "rot": 61,
+    "area": 25457,
+    "alto": 8.2,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 25 457 m² y 8 m (+4 partes de OSM); clase 2",
+   "mover": 21,
+   "rot": 61,
+   "ancho": 166,
+   "largo": 222,
+   "y": 183.6
+  },
+  "picornell": {
+   "modo": "g",
+   "x": 10537.8,
+   "z": 11702.3,
+   "edificios": [
+    52385
+   ],
+   "planta": {
+    "ancho": 62,
+    "largo": 112,
+    "rot": 92,
+    "area": 3439,
+    "alto": 12,
+    "clases": [
+     9
+    ]
+   },
+   "en_datos": "1 volumen de 3 439 m² y 12 m; clase 9",
+   "mover": 14,
+   "rot": 92,
+   "ancho": 62,
+   "largo": 112,
+   "y": 83.2
+  },
+  "pavello_mies": {
+   "modo": "auto",
+   "x": 10512.1,
+   "z": 12241.7,
+   "edificios": [
+    58997
+   ],
+   "planta": {
+    "ancho": 14,
+    "largo": 25,
+    "rot": 153,
+    "area": 349,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 349 m² y 11 m; clase 2",
+   "mover": 4,
+   "y": 38
+  },
+  "caixaforum": {
+   "modo": "auto",
+   "x": 10462.3,
+   "z": 12345.4,
+   "edificios": [
+    59057
+   ],
+   "planta": {
+    "ancho": 83,
+    "largo": 91,
+    "rot": 135,
+    "area": 5943,
+    "alto": 10.8,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 5 943 m² y 11 m; clase 2",
+   "mover": 35,
+   "rot": 135,
+   "ancho": 83,
+   "largo": 91,
+   "y": 33.7
+  },
+  "palaus_fira": {
+   "modo": "dudoso",
+   "x": 10718.1,
+   "z": 12190.8,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: La coordenada de cawiki cae en la explanada de la Font Màgica. Los palacios que flanquean la avenida tienen en los datos plantas grandes y bajas (11–29 m) que no se distinguen con seguridad de los pabellones de la Fira: #58992 (5 923 m², E), #60010 (7 499 m², O), #60012 (17 742 m², O).",
+   "y": 44.9,
+   "confianza": "baja"
+  },
+  "poble_espanyol": {
+   "modo": "rect",
+   "x": 10248.1,
+   "z": 12086.4,
+   "edificios": [
+    52069,
+    52070,
+    52072,
+    52077,
+    58078,
+    58082,
+    58083,
+    58086,
+    58087,
+    58089,
+    58090,
+    58092,
+    58093,
+    58094,
+    58095,
+    58097,
+    58098,
+    58099,
+    58101,
+    58102,
+    58103,
+    58104,
+    58108,
+    58111,
+    58112,
+    58113,
+    58115,
+    58117,
+    58118,
+    58119,
+    58121,
+    58122,
+    58128,
+    58137,
+    58138,
+    58140,
+    58141,
+    58143,
+    58144,
+    58147,
+    58148,
+    58149,
+    58151,
+    58155,
+    58156,
+    58159,
+    58161,
+    58163,
+    58168,
+    58172,
+    58183,
+    58184,
+    58191,
+    58239,
+    58737
+   ],
+   "planta": {
+    "ancho": 117,
+    "largo": 206,
+    "rot": 152,
+    "area": 6431,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "55 volúmenes, 6 431 m² en total, hasta 9 m; clase 0",
+   "mover": 12,
+   "y": 59.3
+  },
+  "fundacio_miro": {
+   "modo": "auto",
+   "x": 11339.3,
+   "z": 12016.5,
+   "edificios": [
+    60046
+   ],
+   "planta": {
+    "ancho": 66,
+    "largo": 87,
+    "rot": 49,
+    "area": 3742,
+    "alto": 4.2,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 3 742 m² y 4 m; clase 0",
+   "mover": 10,
+   "rot": 49,
+   "ancho": 66,
+   "largo": 87,
+   "y": 86.6
+  },
+  "teatre_grec": {
+   "modo": "auto",
+   "x": 11321.5,
+   "z": 12118.6,
+   "edificios": [
+    60045,
+    60294
+   ],
+   "planta": {
+    "ancho": 42,
+    "largo": 54,
+    "rot": 178,
+    "area": 1677,
+    "alto": 12,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 1 677 m² y 12 m (+1 parte de OSM); clase 2",
+   "mover": 11,
+   "rot": 178,
+   "ancho": 42,
+   "largo": 54,
+   "y": 58.2
+  },
+  "piscina_montjuic": {
+   "modo": "g",
+   "x": 11775,
+   "z": 12079.3,
+   "edificios": [
+    60293
+   ],
+   "planta": {
+    "ancho": 20,
+    "largo": 96,
+    "rot": 91,
+    "area": 1880,
+    "alto": 12,
+    "clases": [
+     9
+    ]
+   },
+   "en_datos": "1 volumen de 1 880 m² y 12 m; clase 9",
+   "mover": 30,
+   "y": 77.4
+  },
+  "velodrom_horta": {
+   "modo": "auto",
+   "x": 10492.7,
+   "z": 19741.8,
+   "edificios": [
+    207295,
+    207296
+   ],
+   "planta": {
+    "ancho": 128,
+    "largo": 128,
+    "rot": 45,
+    "area": 13004,
+    "alto": 7.4,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 13 004 m² y 7 m (+1 parte de OSM); clase 0",
+   "mover": 6,
+   "rot": 45,
+   "ancho": 128,
+   "largo": 128,
+   "y": 147.9
+  },
+  "torre_glories": {
+   "modo": "auto",
+   "x": 13854.6,
+   "z": 15869.5,
+   "edificios": [
+    141753,
+    141754,
+    141755,
+    141756,
+    141757,
+    141758,
+    141759
+   ],
+   "planta": {
+    "ancho": 37,
+    "largo": 40,
+    "rot": 121,
+    "area": 1163,
+    "alto": 144.4,
+    "clases": [
+     12
+    ]
+   },
+   "en_datos": "1 volumen de 1 163 m² y 144 m (+6 partes de OSM); clase 12 (Torre Glòries)",
+   "mover": 1,
+   "rot": 121,
+   "ancho": 37,
+   "largo": 40,
+   "y": 9.6
+  },
+  "hotel_arts": {
+   "modo": "g",
+   "x": 14397.4,
+   "z": 14018.7,
+   "edificios": [
+    102614
+   ],
+   "planta": {
+    "ancho": 36,
+    "largo": 37,
+    "rot": 46,
+    "area": 1323,
+    "alto": 154,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 1 323 m² y 154 m; clase 3",
+   "mover": 24,
+   "rot": 46,
+   "ancho": 36,
+   "largo": 37,
+   "y": 4.6
+  },
+  "torre_mapfre": {
+   "modo": "auto",
+   "x": 14492.8,
+   "z": 14116.5,
+   "edificios": [
+    102818
+   ],
+   "planta": {
+    "ancho": 33,
+    "largo": 33,
+    "rot": 136,
+    "area": 1102,
+    "alto": 154,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 1 102 m² y 154 m; clase 3",
+   "mover": 12,
+   "rot": 136,
+   "ancho": 33,
+   "largo": 33,
+   "y": 7
+  },
+  "peix": {
+   "modo": "no",
+   "x": 14419.5,
+   "z": 13955.3,
+   "edificios": [],
+   "en_datos": "no existe: escultura sobre el zócalo del Hotel Arts; debajo hay el volumen bajo #102827 (2 878 m², 5 m)",
+   "y": 7.1
+  },
+  "hotel_w": {
+   "modo": "auto",
+   "x": 13860.2,
+   "z": 11980.5,
+   "edificios": [
+    52511,
+    52517,
+    52518,
+    52519,
+    52520,
+    52521,
+    52522,
+    52523,
+    52524,
+    52525,
+    52526,
+    52527,
+    52528,
+    52529,
+    52530,
+    52531,
+    52532,
+    52533,
+    52534,
+    52535,
+    52536,
+    52537,
+    52538,
+    52539,
+    52540
+   ],
+   "planta": {
+    "ancho": 40,
+    "largo": 79,
+    "rot": 98,
+    "area": 2338,
+    "alto": 87.4,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 2 338 m² y 87 m (+24 partes de OSM); clase 3",
+   "mover": 17,
+   "rot": 98,
+   "ancho": 40,
+   "largo": 79,
+   "y": 3.7
+  },
+  "torres_caixa": {
+   "modo": "g",
+   "x": 8536.9,
+   "z": 14129.8,
+   "edificios": [
+    90403,
+    90429,
+    90811,
+    90812
+   ],
+   "planta": {
+    "ancho": 34,
+    "largo": 138,
+    "rot": 72,
+    "area": 1704,
+    "alto": 85,
+    "clases": [
+     3,
+     0
+    ]
+   },
+   "en_datos": "2 volúmenes, 1 704 m² en total, hasta 85 m (+2 partes de OSM); clase 3 , 0",
+   "mover": 49,
+   "rot": 72,
+   "ancho": 34,
+   "largo": 138,
+   "y": 62.4
+  },
+  "edifici_forum": {
+   "modo": "auto",
+   "x": 16520.2,
+   "z": 16706.1,
+   "edificios": [
+    161386,
+    161387
+   ],
+   "planta": {
+    "ancho": 164,
+    "largo": 177,
+    "rot": 138,
+    "area": 14326,
+    "alto": 15,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 14 326 m² y 15 m (+1 parte de OSM); clase 0",
+   "mover": 43,
+   "rot": 138,
+   "ancho": 164,
+   "largo": 177,
+   "y": 11.1
+  },
+  "pergola_forum": {
+   "modo": "no",
+   "x": 16978.4,
+   "z": 16785.4,
+   "edificios": [],
+   "en_datos": "no existe: pérgola: no existe en los datos",
+   "y": 10.9
+  },
+  "diagonal_zerozero": {
+   "modo": "g",
+   "x": 16452.8,
+   "z": 16798.5,
+   "edificios": [
+    161373
+   ],
+   "planta": {
+    "ancho": 31,
+    "largo": 65,
+    "rot": 72,
+    "area": 1128,
+    "alto": 110,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 1 128 m² y 110 m; clase 3",
+   "mover": 340,
+   "rot": 72,
+   "ancho": 31,
+   "largo": 65,
+   "y": 4,
+   "confianza": "alta",
+   "nota": "Identificada por altura (110 m en los datos) junto al Edifici Fòrum; la coordenada de memoria se iba ~300 m."
+  },
+  "hotel_princess": {
+   "modo": "g",
+   "x": 16358.5,
+   "z": 16801.7,
+   "edificios": [
+    161483,
+    176088
+   ],
+   "planta": {
+    "ancho": 34,
+    "largo": 82,
+    "rot": 61,
+    "area": 946,
+    "alto": 97,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "2 volúmenes, 946 m² en total, hasta 97 m; clase 3",
+   "mover": 126,
+   "rot": 61,
+   "ancho": 34,
+   "largo": 82,
+   "y": 4,
+   "confianza": "media",
+   "nota": "Identificado por altura (97 y 78 m en los datos) junto a la Diagonal ZeroZero: dos torres; confirmar con vista."
+  },
+  "torres_diagonal_mar": {
+   "modo": "altas",
+   "x": 16055,
+   "z": 16302,
+   "edificios": [
+    160844,
+    160845,
+    161456,
+    161458,
+    161464,
+    161465
+   ],
+   "planta": {
+    "ancho": 66,
+    "largo": 352,
+    "rot": 151,
+    "area": 2597,
+    "alto": 87.4,
+    "clases": [
+     0,
+     3
+    ]
+   },
+   "en_datos": "4 volúmenes, 2 597 m² en total, hasta 87 m (+2 partes de OSM); clase 0 , 3",
+   "mover": 27,
+   "y": 6.1,
+   "confianza": "media",
+   "nota": "Grupo: torres de vivienda de 75–87 m alrededor del Parc de Diagonal Mar; ancho/largo de cada torre, del catálogo."
+  },
+  "torre_mare_nostrum": {
+   "modo": "rect",
+   "x": 13913.4,
+   "z": 13616.7,
+   "edificios": [
+    84484,
+    84485,
+    102644,
+    102645,
+    102646,
+    102647,
+    102648,
+    102649,
+    102652,
+    102653,
+    102654
+   ],
+   "planta": {
+    "ancho": 80,
+    "largo": 90,
+    "rot": 136,
+    "area": 2127,
+    "alto": 60,
+    "clases": [
+     0,
+     3
+    ]
+   },
+   "en_datos": "10 volúmenes, 2 127 m² en total, hasta 60 m (+1 parte de OSM); clase 0 , 3",
+   "mover": 10,
+   "y": 4.5,
+   "nota": "El rectángulo recoge la torre (60 m en los datos) y los volúmenes bajos del conjunto; revisar antes de ocultar."
+  },
+  "wtc": {
+   "modo": "auto",
+   "x": 13159.6,
+   "z": 12309.5,
+   "edificios": [
+    64243,
+    64252,
+    64262,
+    64289,
+    64290,
+    64291,
+    64292
+   ],
+   "planta": {
+    "ancho": 98,
+    "largo": 111,
+    "rot": 122,
+    "area": 6574,
+    "alto": 7.4,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 6 574 m² y 7 m (+6 partes de OSM); clase 0",
+   "mover": 6,
+   "rot": 122,
+   "ancho": 98,
+   "largo": 111,
+   "y": 4.8
+  },
+  "edifici_colon": {
+   "modo": "auto",
+   "x": 12628.4,
+   "z": 12902.7,
+   "edificios": [
+    79063,
+    79064,
+    79065,
+    79066,
+    79067
+   ],
+   "planta": {
+    "ancho": 38,
+    "largo": 55,
+    "rot": 15,
+    "area": 1649,
+    "alto": 110,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 1 649 m² y 110 m (+4 partes de OSM); clase 0",
+   "mover": 19,
+   "rot": 15,
+   "ancho": 38,
+   "largo": 55,
+   "y": 5
+  },
+  "edificis_trade": {
+   "modo": "altas",
+   "x": 8677.4,
+   "z": 13977.4,
+   "edificios": [
+    90621,
+    90623,
+    90851,
+    90852
+   ],
+   "planta": {
+    "ancho": 51,
+    "largo": 107,
+    "rot": 177,
+    "area": 1837,
+    "alto": 39.4,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "4 volúmenes, 1 837 m² en total, hasta 39 m; clase 0",
+   "mover": 12,
+   "rot": 177,
+   "ancho": 51,
+   "largo": 107,
+   "y": 56.9
+  },
+  "melia_sky": {
+   "modo": "g",
+   "x": 14791.3,
+   "z": 16161.7,
+   "edificios": [
+    159825,
+    159826,
+    159829,
+    160270,
+    160273,
+    160275,
+    160278,
+    160282,
+    160293,
+    160297
+   ],
+   "planta": {
+    "ancho": 18,
+    "largo": 36,
+    "rot": 29,
+    "area": 628,
+    "alto": 116,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "3 volúmenes, 628 m² en total, hasta 116 m (+7 partes de OSM); clase 3",
+   "mover": 363,
+   "rot": 29,
+   "ancho": 18,
+   "largo": 36,
+   "y": 3.9,
+   "confianza": "alta",
+   "nota": "Identificado por altura (116 m en los datos, Pere IV); la coordenada de memoria se iba ~360 m. Al lado, otra torre de ~100 m (#160161 y partes)."
+  },
+  "encants": {
+   "modo": "auto",
+   "x": 13609.9,
+   "z": 15594.2,
+   "edificios": [
+    139521
+   ],
+   "planta": {
+    "ancho": 115,
+    "largo": 136,
+    "rot": 135,
+    "area": 9106,
+    "alto": 8,
+    "clases": [
+     1
+    ]
+   },
+   "en_datos": "1 volumen de 9 106 m² y 8 m; clase 1",
+   "mover": 14,
+   "rot": 135,
+   "ancho": 115,
+   "largo": 136,
+   "y": 14.2
+  },
+  "disseny_hub": {
+   "modo": "rect",
+   "x": 13725.2,
+   "z": 15753.1,
+   "edificios": [
+    141731,
+    141732,
+    141744,
+    141745
+   ],
+   "planta": {
+    "ancho": 40,
+    "largo": 54,
+    "rot": 136,
+    "area": 1369,
+    "alto": 33,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "4 volúmenes, 1 369 m² en total, hasta 33 m; clase 0",
+   "mover": 11,
+   "y": 10.8
+  },
+  "xemeneies_besos": {
+   "modo": "no",
+   "x": 17419,
+   "z": 18402.5,
+   "edificios": [],
+   "en_datos": "no existe: las tres chimeneas de 200 m no existen en los datos (posición: poi del juego)",
+   "y": 4.2
+  },
+  "torre_aigues_besos": {
+   "modo": "g",
+   "x": 15760.8,
+   "z": 16104,
+   "edificios": [
+    161363,
+    161364,
+    161365
+   ],
+   "planta": {
+    "ancho": 5,
+    "largo": 6,
+    "rot": 126,
+    "area": 24,
+    "alto": 63,
+    "clases": [
+     4
+    ]
+   },
+   "en_datos": "1 volumen de 24 m² y 63 m (+2 partes de OSM); clase 4",
+   "mover": 4,
+   "y": 4.1
+  },
+  "torre_urquinaona": {
+   "modo": "auto",
+   "x": 12453.8,
+   "z": 14354.2,
+   "edificios": [
+    96044,
+    98005,
+    98006
+   ],
+   "planta": {
+    "ancho": 26,
+    "largo": 45,
+    "rot": 136,
+    "area": 503,
+    "alto": 70,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 503 m² y 70 m (+2 partes de OSM); clase 3",
+   "mover": 9,
+   "rot": 136,
+   "ancho": 26,
+   "largo": 45,
+   "y": 17
+  },
+  "torre_melina": {
+   "modo": "g",
+   "x": 7056.5,
+   "z": 13426.8,
+   "edificios": [
+    68831
+   ],
+   "planta": {
+    "ancho": 24,
+    "largo": 32,
+    "rot": 127,
+    "area": 578,
+    "alto": 65,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 578 m² y 65 m; clase 3",
+   "mover": 53,
+   "rot": 127,
+   "ancho": 24,
+   "largo": 32,
+   "y": 80.4
+  },
+  "colom": {
+   "modo": "auto",
+   "x": 12843.5,
+   "z": 12802,
+   "edificios": [
+    82738,
+    82739,
+    82740,
+    82741
+   ],
+   "planta": {
+    "ancho": 28,
+    "largo": 28,
+    "rot": 45,
+    "area": 611,
+    "alto": 53,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 611 m² y 53 m (+3 partes de OSM); clase 0",
+   "mover": 3,
+   "rot": 45,
+   "ancho": 28,
+   "largo": 28,
+   "y": 4.4
+  },
+  "catedral": {
+   "modo": "auto",
+   "x": 12750.6,
+   "z": 13711,
+   "edificios": [
+    95948,
+    95950,
+    95952,
+    95957,
+    95960,
+    96096,
+    96097
+   ],
+   "planta": {
+    "ancho": 45,
+    "largo": 94,
+    "rot": 134,
+    "area": 3034,
+    "alto": 80,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 3 034 m² y 80 m (+6 partes de OSM); clase 0",
+   "mover": 16,
+   "rot": 134,
+   "ancho": 45,
+   "largo": 94,
+   "y": 14.1
+  },
+  "santa_maria_mar": {
+   "modo": "rect",
+   "x": 13197.5,
+   "z": 13669.2,
+   "edificios": [
+    99176,
+    99177,
+    99178,
+    99179,
+    99181,
+    99182,
+    99183,
+    99184,
+    99185,
+    101392,
+    101405,
+    102600,
+    102601
+   ],
+   "planta": {
+    "ancho": 45,
+    "largo": 79,
+    "rot": 53,
+    "area": 1006,
+    "alto": 42,
+    "clases": [
+     0,
+     5
+    ]
+   },
+   "en_datos": "11 volúmenes, 1 006 m² en total, hasta 42 m (+2 partes de OSM); clase 0 , 5",
+   "mover": 2,
+   "rot": 53,
+   "ancho": 45,
+   "largo": 79,
+   "y": 4.7
+  },
+  "santa_maria_pi": {
+   "modo": "g",
+   "x": 12526.1,
+   "z": 13492.3,
+   "edificios": [
+    81887,
+    81900,
+    81910,
+    82725,
+    82726,
+    82727
+   ],
+   "planta": {
+    "ancho": 61,
+    "largo": 64,
+    "rot": 38,
+    "area": 2124,
+    "alto": 54,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "2 volúmenes, 2 124 m² en total, hasta 54 m (+4 partes de OSM); clase 0",
+   "mover": 26,
+   "y": 8.3,
+   "nota": "Nave (#81910, 7 m en los datos) y campanario (#81900, 54 m)."
+  },
+  "merce": {
+   "modo": "dudoso",
+   "x": 12997.7,
+   "z": 13215.9,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: La basílica no se distingue en los datos (manzana de volúmenes de 4–17 m, sin cúpula); el punto cae en #83401 (174 m², 17 m). Candidatos: #83401, #83404, #83405.",
+   "y": 4,
+   "confianza": "baja"
+  },
+  "arc_triomf": {
+   "modo": "g",
+   "x": 13099.6,
+   "z": 14491.7,
+   "edificios": [
+    118700,
+    119009,
+    119010
+   ],
+   "planta": {
+    "ancho": 13,
+    "largo": 28,
+    "rot": 46,
+    "area": 280,
+    "alto": 29,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "3 volúmenes, 280 m² en total, hasta 29 m; clase 0",
+   "mover": 13,
+   "rot": 46,
+   "ancho": 13,
+   "largo": 28,
+   "y": 10.8
+  },
+  "cascada": {
+   "modo": "g",
+   "x": 13591.8,
+   "z": 14361.9,
+   "edificios": [
+    99108,
+    99109
+   ],
+   "planta": {
+    "ancho": 81,
+    "largo": 85,
+    "rot": 0,
+    "area": 2232,
+    "alto": 28.2,
+    "clases": [
+     2,
+     0
+    ]
+   },
+   "en_datos": "2 volúmenes, 2 232 m² en total, hasta 28 m; clase 2 , 0",
+   "mover": 8,
+   "y": 8.3
+  },
+  "parlament": {
+   "modo": "rect",
+   "x": 13788.2,
+   "z": 14167.7,
+   "edificios": [
+    102656,
+    102658,
+    102659,
+    102660,
+    102662,
+    102663,
+    102665,
+    102666,
+    102667,
+    102668,
+    102669,
+    102670,
+    102671,
+    102672,
+    102676
+   ],
+   "planta": {
+    "ancho": 71,
+    "largo": 98,
+    "rot": 148,
+    "area": 4832,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "12 volúmenes, 4 832 m² en total, hasta 17 m (+3 partes de OSM); clase 0",
+   "mover": 11,
+   "rot": 148,
+   "ancho": 71,
+   "largo": 98,
+   "y": 4
+  },
+  "estacio_franca": {
+   "modo": "auto",
+   "x": 13566.5,
+   "z": 13708.6,
+   "edificios": [
+    99155,
+    99156,
+    99157,
+    102640,
+    102641
+   ],
+   "planta": {
+    "ancho": 137,
+    "largo": 235,
+    "rot": 114,
+    "area": 25568,
+    "alto": 30,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 25 568 m² y 30 m (+4 partes de OSM); clase 2",
+   "mover": 27,
+   "rot": 114,
+   "ancho": 137,
+   "largo": 235,
+   "y": 6,
+   "confianza": "alta"
+  },
+  "santa_caterina": {
+   "modo": "auto",
+   "x": 12919.2,
+   "z": 13948.3,
+   "edificios": [
+    100070
+   ],
+   "planta": {
+    "ancho": 70,
+    "largo": 86,
+    "rot": 129,
+    "area": 4486,
+    "alto": 4.2,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 4 486 m² y 4 m; clase 0",
+   "mover": 20,
+   "rot": 129,
+   "ancho": 70,
+   "largo": 86,
+   "y": 6
+  },
+  "boqueria": {
+   "modo": "g",
+   "x": 12324.6,
+   "z": 13473.3,
+   "edificios": [
+    79055,
+    79057,
+    79058
+   ],
+   "planta": {
+    "ancho": 39,
+    "largo": 97,
+    "rot": 59,
+    "area": 3597,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "3 volúmenes, 3 597 m² en total, hasta 11 m; clase 0",
+   "mover": 5,
+   "rot": 59,
+   "ancho": 39,
+   "largo": 97,
+   "y": 9.9
+  },
+  "macba": {
+   "modo": "auto",
+   "x": 11931.4,
+   "z": 13620.2,
+   "edificios": [
+    94812
+   ],
+   "planta": {
+    "ancho": 47,
+    "largo": 109,
+    "rot": 59,
+    "area": 3646,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 3 646 m² y 11 m; clase 2",
+   "mover": 32,
+   "rot": 59,
+   "ancho": 47,
+   "largo": 109,
+   "y": 13.8
+  },
+  "drassanes": {
+   "modo": "rect",
+   "x": 12707.4,
+   "z": 12755.4,
+   "edificios": [
+    63075,
+    63076,
+    63077,
+    63079,
+    63080,
+    63083,
+    63084,
+    63088,
+    63090,
+    63091,
+    63092,
+    63093,
+    63094,
+    79062
+   ],
+   "planta": {
+    "ancho": 116,
+    "largo": 117,
+    "rot": 115,
+    "area": 10428,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "14 volúmenes, 10 428 m² en total, hasta 11 m; clase 0",
+   "mover": 13,
+   "rot": 115,
+   "ancho": 116,
+   "largo": 117,
+   "y": 4
+  },
+  "sant_jaume": {
+   "modo": "rect",
+   "x": 12786.3,
+   "z": 13550.5,
+   "edificios": [
+    79132,
+    79133,
+    79139,
+    82748,
+    82750,
+    82751,
+    82752,
+    82753,
+    82754
+   ],
+   "planta": {
+    "ancho": 60,
+    "largo": 143,
+    "rot": 133,
+    "area": 3493,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "7 volúmenes, 3 493 m² en total, hasta 17 m (+2 partes de OSM); clase 0",
+   "mover": 2,
+   "y": 12.3,
+   "nota": "Dos palacios enfrentados (Generalitat al NO, Ajuntament al SE) con la plaza en medio: el rectángulo incluye manzanas vecinas del Gòtic; no sustituir sin mirar."
+  },
+  "born_ccm": {
+   "modo": "g",
+   "x": 13357.9,
+   "z": 13910.8,
+   "edificios": [
+    99110,
+    99111,
+    99158,
+    99159,
+    99160,
+    99161,
+    99162,
+    99163,
+    99164,
+    99165,
+    99166,
+    99167,
+    99168,
+    99169,
+    99170,
+    99171,
+    99172,
+    99173,
+    99174
+   ],
+   "planta": {
+    "ancho": 58,
+    "largo": 138,
+    "rot": 135,
+    "area": 8039,
+    "alto": 26,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 8 039 m² y 26 m (+18 partes de OSM); clase 0",
+   "mover": 36,
+   "rot": 135,
+   "ancho": 58,
+   "largo": 138,
+   "y": 5,
+   "confianza": "alta"
+  },
+  "duana": {
+   "modo": "g",
+   "x": 12889,
+   "z": 12537.7,
+   "edificios": [
+    64248
+   ],
+   "planta": {
+    "ancho": 31,
+    "largo": 73,
+    "rot": 122,
+    "area": 1535,
+    "alto": 10.6,
+    "clases": [
+     10
+    ]
+   },
+   "en_datos": "1 volumen de 1 535 m² y 11 m; clase 10",
+   "mover": 54,
+   "rot": 122,
+   "ancho": 31,
+   "largo": 73,
+   "y": 2.5,
+   "confianza": "media",
+   "nota": "Volumen bajo de 1 535 m² (11 m) a 54 m de la coordenada de memoria: es lo único que encaja; confirmar con vista."
+  },
+  "correus": {
+   "modo": "rect",
+   "x": 13138.9,
+   "z": 13444.6,
+   "edificios": [
+    83131,
+    83133,
+    83134,
+    83135,
+    83136,
+    83352,
+    83374,
+    83376,
+    83911,
+    84258,
+    84267
+   ],
+   "planta": {
+    "ancho": 54,
+    "largo": 96,
+    "rot": 20,
+    "area": 1055,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "10 volúmenes, 1 055 m² en total, hasta 30 m (+1 parte de OSM); clase 0",
+   "mover": 19,
+   "y": 5.2,
+   "nota": "El rectángulo puede recoger volúmenes vecinos; revisar antes de ocultar."
+  },
+  "torre_jaume_i": {
+   "modo": "auto",
+   "x": 13034.9,
+   "z": 12386.5,
+   "edificios": [
+    64247,
+    64319,
+    64320,
+    64321,
+    64322,
+    64323,
+    64324
+   ],
+   "planta": {
+    "ancho": 11,
+    "largo": 11,
+    "rot": 123,
+    "area": 120,
+    "alto": 107,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 120 m² y 107 m (+6 partes de OSM); clase 0",
+   "mover": 3,
+   "rot": 123,
+   "ancho": 11,
+   "largo": 11,
+   "y": 4.5
+  },
+  "torre_sant_sebastia": {
+   "modo": "auto-alto",
+   "x": 13679.8,
+   "z": 12501.5,
+   "edificios": [
+    64416,
+    64417,
+    64418
+   ],
+   "planta": {
+    "ancho": 7,
+    "largo": 7,
+    "rot": 90,
+    "area": 37,
+    "alto": 78.4,
+    "clases": [
+     4
+    ]
+   },
+   "en_datos": "1 volumen de 37 m² y 78 m (+2 partes de OSM); clase 4",
+   "mover": 4,
+   "rot": 90,
+   "ancho": 7,
+   "largo": 7,
+   "y": 2.6
+  },
+  "cap_barcelona": {
+   "modo": "no",
+   "x": 13100.9,
+   "z": 13334.8,
+   "edificios": [],
+   "en_datos": "no existe: escultura; la coordenada de memoria cae dentro de un edificio (#83377): está unos 30–60 m más al mar, en la acera del Passeig de Colom",
+   "y": 4.2
+  },
+  "estel_ferit": {
+   "modo": "no",
+   "x": 13940.8,
+   "z": 12837.3,
+   "edificios": [],
+   "en_datos": "no existe: escultura sobre la arena: no existe en los datos",
+   "y": 3.2
+  },
+  "llapis": {
+   "modo": "no",
+   "x": 11335.9,
+   "z": 15006,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos (Cinc d'Oros, cruce Diagonal / Passeig de Gràcia)",
+   "y": 39.9
+  },
+  "rambla_mar": {
+   "modo": "no",
+   "x": 13114.3,
+   "z": 12717.4,
+   "edificios": [],
+   "en_datos": "no existe: pasarela: no existe en los datos",
+   "y": 1.4
+  },
+  "torre_collserola": {
+   "modo": "auto",
+   "x": 7580.5,
+   "z": 17458,
+   "edificios": [
+    162670,
+    162671,
+    162672,
+    162673,
+    162674,
+    162675,
+    162676,
+    162677,
+    162678,
+    162679,
+    162680,
+    162681,
+    162682,
+    162683,
+    162684,
+    162685,
+    162686,
+    162687
+   ],
+   "planta": {
+    "ancho": 26,
+    "largo": 26,
+    "rot": 167,
+    "area": 487,
+    "alto": 288.4,
+    "clases": [
+     13
+    ]
+   },
+   "en_datos": "1 volumen de 487 m² y 288 m (+17 partes de OSM); clase 13 (Torre de Collserola)",
+   "mover": 10,
+   "y": 443.1
+  },
+  "sagrat_cor": {
+   "modo": "auto",
+   "x": 7959.3,
+   "z": 17987.7,
+   "edificios": [
+    176499,
+    176500,
+    176501,
+    176502,
+    176503
+   ],
+   "planta": {
+    "ancho": 57,
+    "largo": 75,
+    "rot": 103,
+    "area": 2775,
+    "alto": 67.5,
+    "clases": [
+     2
+    ]
+   },
+   "en_datos": "1 volumen de 2 775 m² y 68 m (+4 partes de OSM); clase 2",
+   "mover": 10,
+   "rot": 103,
+   "ancho": 57,
+   "largo": 75,
+   "y": 510
+  },
+  "tibidabo_parc": {
+   "modo": "rect",
+   "x": 8040.7,
+   "z": 17929.4,
+   "edificios": [
+    176505,
+    176507,
+    176509,
+    176511,
+    176532
+   ],
+   "planta": {
+    "ancho": 84,
+    "largo": 149,
+    "rot": 162,
+    "area": 1551,
+    "alto": 9,
+    "clases": [
+     0,
+     2
+    ]
+   },
+   "en_datos": "5 volúmenes, 1 551 m² en total, hasta 9 m; clase 0 , 2",
+   "mover": 35,
+   "y": 495
+  },
+  "observatori_fabra": {
+   "modo": "auto",
+   "x": 8402.7,
+   "z": 17577.2,
+   "edificios": [
+    162698,
+    162699
+   ],
+   "planta": {
+    "ancho": 17,
+    "largo": 31,
+    "rot": 93,
+    "area": 351,
+    "alto": 13.8,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 351 m² y 14 m (+1 parte de OSM); clase 0",
+   "mover": 5,
+   "rot": 93,
+   "ancho": 17,
+   "largo": 31,
+   "y": 406.5
+  },
+  "monestir_pedralbes": {
+   "modo": "rect",
+   "x": 7375.2,
+   "z": 15055.7,
+   "edificios": [
+    104726,
+    104728,
+    104729,
+    104731,
+    104737,
+    104738,
+    104742,
+    104743,
+    105103
+   ],
+   "planta": {
+    "ancho": 94,
+    "largo": 120,
+    "rot": 41,
+    "area": 7568,
+    "alto": 17,
+    "clases": [
+     0,
+     2
+    ]
+   },
+   "en_datos": "9 volúmenes, 7 568 m² en total, hasta 17 m; clase 0 , 2",
+   "mover": 7,
+   "rot": 41,
+   "ancho": 94,
+   "largo": 120,
+   "y": 125.9
+  },
+  "palau_pedralbes": {
+   "modo": "g",
+   "x": 7776.9,
+   "z": 14249.9,
+   "edificios": [
+    89896,
+    89898,
+    89903,
+    89909,
+    89910
+   ],
+   "planta": {
+    "ancho": 38,
+    "largo": 130,
+    "rot": 59,
+    "area": 2985,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 2 985 m² y 11 m (+4 partes de OSM); clase 0",
+   "mover": 5,
+   "rot": 59,
+   "ancho": 38,
+   "largo": 130,
+   "y": 78.4
+  },
+  "bunquers_carmel": {
+   "modo": "no",
+   "x": 11548.8,
+   "z": 17657.6,
+   "edificios": [],
+   "en_datos": "no existe: ruinas a ras de suelo: no hay volumen",
+   "y": 255.9
+  },
+  "estacio_sants": {
+   "modo": "auto",
+   "x": 9700.7,
+   "z": 13205.4,
+   "edificios": [
+    74236,
+    74354,
+    74355,
+    74356,
+    74357
+   ],
+   "planta": {
+    "ancho": 136,
+    "largo": 150,
+    "rot": 51,
+    "area": 20265,
+    "alto": 42.6,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 20 265 m² y 43 m (+4 partes de OSM); clase 0",
+   "mover": 29,
+   "rot": 51,
+   "ancho": 136,
+   "largo": 150,
+   "y": 30.7,
+   "confianza": "alta"
+  },
+  "hotel_torre_catalunya": {
+   "modo": "g",
+   "x": 9898.3,
+   "z": 13258.6,
+   "edificios": [
+    74364,
+    75227,
+    75229
+   ],
+   "planta": {
+    "ancho": 16,
+    "largo": 46,
+    "rot": 46,
+    "area": 721,
+    "alto": 100,
+    "clases": [
+     3,
+     5
+    ]
+   },
+   "en_datos": "3 volúmenes, 721 m² en total, hasta 100 m; clase 3 , 5",
+   "mover": 7,
+   "rot": 46,
+   "ancho": 16,
+   "largo": 46,
+   "y": 30
+  },
+  "espanya_industrial": {
+   "modo": "g",
+   "x": 9753.5,
+   "z": 13094,
+   "edificios": [
+    74242,
+    74346,
+    74347,
+    74348,
+    74349,
+    74350,
+    74351,
+    74352
+   ],
+   "planta": {
+    "ancho": 35,
+    "largo": 160,
+    "rot": 65,
+    "area": 294,
+    "alto": 10,
+    "clases": [
+     4
+    ]
+   },
+   "en_datos": "8 volúmenes, 294 m² en total, hasta 10 m; clase 4",
+   "mover": 71,
+   "rot": 65,
+   "ancho": 35,
+   "largo": 160,
+   "y": 27.4,
+   "nota": "Las torres-faro del parque están en los datos como 8 pilares de 10 m (clase 4)."
+  },
+  "auditori": {
+   "modo": "auto",
+   "x": 13518,
+   "z": 15309.2,
+   "edificios": [
+    139573,
+    139575,
+    139576
+   ],
+   "planta": {
+    "ancho": 52,
+    "largo": 173,
+    "rot": 135,
+    "area": 7468,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 7 468 m² y 17 m (+2 partes de OSM); clase 0",
+   "mover": 31,
+   "rot": 135,
+   "ancho": 52,
+   "largo": 173,
+   "y": 10.7
+  },
+  "tnc": {
+   "modo": "auto",
+   "x": 13530.2,
+   "z": 15481.7,
+   "edificios": [
+    139560,
+    139563,
+    139566
+   ],
+   "planta": {
+    "ancho": 59,
+    "largo": 99,
+    "rot": 136,
+    "area": 5837,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "en_datos": "1 volumen de 5 837 m² y 20 m (+2 partes de OSM); clase 0",
+   "mover": 45,
+   "rot": 136,
+   "ancho": 59,
+   "largo": 99,
+   "y": 13.8
+  },
+  "mistos": {
+   "modo": "no",
+   "x": 10183.1,
+   "z": 18492.5,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos; posición de memoria",
+   "y": 144.6
+  },
+  "pont_bac_de_roda": {
+   "modo": "no",
+   "x": 14107.7,
+   "z": 17278,
+   "edificios": [],
+   "en_datos": "no existe: puente: no existe en los datos",
+   "y": 13.4
+  },
+  "aeroport": {
+   "modo": "g",
+   "x": 4285.4,
+   "z": 3345.4,
+   "edificios": [
+    605,
+    606,
+    607
+   ],
+   "planta": {
+    "ancho": 499,
+    "largo": 1099,
+    "rot": 66,
+    "area": 128796,
+    "alto": 10.6,
+    "clases": [
+     10
+    ]
+   },
+   "en_datos": "1 volumen de 128 796 m² y 11 m (+2 partes de OSM); clase 10",
+   "mover": 338,
+   "rot": 66,
+   "ancho": 499,
+   "largo": 1099,
+   "y": 4,
+   "confianza": "alta",
+   "nota": "Terminal 1 (#607); la torre de control no está en los datos."
+  },
+  "hotel_porta_fira": {
+   "modo": "auto-alto",
+   "x": 8440.6,
+   "z": 10543.4,
+   "edificios": [
+    41345
+   ],
+   "planta": {
+    "ancho": 36,
+    "largo": 38,
+    "rot": 65,
+    "area": 1066,
+    "alto": 113,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 1 066 m² y 113 m; clase 3",
+   "mover": 21,
+   "rot": 65,
+   "ancho": 36,
+   "largo": 38,
+   "y": 6.2
+  },
+  "torre_realia": {
+   "modo": "auto",
+   "x": 8412.5,
+   "z": 10609.2,
+   "edificios": [
+    41346
+   ],
+   "planta": {
+    "ancho": 32,
+    "largo": 40,
+    "rot": 15,
+    "area": 1288,
+    "alto": 112,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 1 288 m² y 112 m; clase 3",
+   "mover": 11,
+   "rot": 15,
+   "ancho": 32,
+   "largo": 40,
+   "y": 6.4
+  },
+  "ciutat_justicia": {
+   "modo": "altas",
+   "x": 9049.2,
+   "z": 11551.8,
+   "edificios": [
+    50815,
+    50817,
+    51366,
+    51367,
+    51662,
+    51663,
+    51665,
+    51667,
+    51668,
+    51671,
+    51672,
+    51673,
+    51674,
+    51677,
+    51680,
+    51682,
+    51683,
+    51685,
+    51686,
+    51687,
+    51690,
+    51693,
+    51694,
+    51696,
+    51697,
+    51698,
+    51700,
+    51703,
+    51705,
+    51706,
+    51708,
+    51709,
+    51711,
+    51712,
+    51713,
+    51716,
+    51873,
+    52019,
+    52020,
+    52021,
+    52029,
+    52032,
+    52033
+   ],
+   "planta": {
+    "ancho": 215,
+    "largo": 234,
+    "rot": 61,
+    "area": 9085,
+    "alto": 51.3,
+    "clases": [
+     2,
+     0
+    ]
+   },
+   "en_datos": "31 volúmenes, 9 085 m² en total, hasta 51 m (+12 partes de OSM); clase 2 , 0",
+   "mover": 5,
+   "rot": 61,
+   "ancho": 215,
+   "largo": 234,
+   "y": 12.5
+  },
+  "hesperia_tower": {
+   "modo": "auto-alto",
+   "x": 7018.8,
+   "z": 9558,
+   "edificios": [
+    26147
+   ],
+   "planta": {
+    "ancho": 18,
+    "largo": 51,
+    "rot": 136,
+    "area": 744,
+    "alto": 105,
+    "clases": [
+     3
+    ]
+   },
+   "en_datos": "1 volumen de 744 m² y 105 m; clase 3",
+   "mover": 21,
+   "rot": 136,
+   "ancho": 18,
+   "largo": 51,
+   "y": 4.3
+  },
+  "xemeneies_parallel": {
+   "modo": "g",
+   "x": 12277.4,
+   "z": 12621.8,
+   "edificios": [
+    63105,
+    63106,
+    63107
+   ],
+   "planta": {
+    "ancho": 6,
+    "largo": 56,
+    "rot": 112,
+    "area": 135,
+    "alto": 72,
+    "clases": [
+     4
+    ]
+   },
+   "en_datos": "3 volúmenes, 135 m² en total, hasta 72 m; clase 4",
+   "mover": 183,
+   "rot": 112,
+   "ancho": 6,
+   "largo": 56,
+   "y": 7.9,
+   "confianza": "alta",
+   "nota": "Las tres chimeneas están en los datos (clase 4, 72 m); la coordenada de memoria se iba ~180 m."
+  },
+  "fabra_coats": {
+   "modo": "rect",
+   "x": 13986.2,
+   "z": 19130.7,
+   "edificios": [
+    197803,
+    199008,
+    199027,
+    199047,
+    209994
+   ],
+   "planta": {
+    "ancho": 115,
+    "largo": 165,
+    "rot": 8,
+    "area": 7396,
+    "alto": 13.8,
+    "clases": [
+     0,
+     2,
+     1
+    ]
+   },
+   "en_datos": "5 volúmenes, 7 396 m² en total, hasta 14 m; clase 0 , 2 , 1",
+   "mover": 12,
+   "y": 26
+  },
+  "dona_ocell": {
+   "modo": "no",
+   "x": 10271.6,
+   "z": 13051.2,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos",
+   "y": 28.6
+  }
+ }
+}
