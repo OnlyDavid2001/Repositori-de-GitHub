@@ -390,14 +390,15 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
 
     // ----- pieza común: los hooks la reciben como env.windowHole
     // hueco con derrame: paños de muro alrededor, jambas, dintel, alféizar, vidrio y persiana
-    function windowHole(W0, F, a0, a1, tt, ct, k, P, st, yt, dep, col, kind, se) {
+    // gq (opcional): quien pinta el vidrio en lugar del K.GLASS de siempre, gq(W0, F, tt, ct, st, qt, d) (ventanas abiertas de details.js)
+    function windowHole(W0, F, a0, a1, tt, ct, k, P, st, yt, dep, col, kind, se, gq) {
       rect(W0, F, a0, tt, k, P, 0, col, kind); rect(W0, F, ct, a1, k, P, 0, col, kind);
       rect(W0, F, tt, ct, yt, P, 0, col, kind); if (st > k) rect(W0, F, tt, ct, k, st, 0, col, kind);
       const rc = shade(col, 0.62);
       jamb(W0, F, tt, st, yt, -dep, 0, rc, kind); jamb(W0, F, ct, st, yt, -dep, 0, rc, kind);
       hpl(W0, F, tt, ct, yt, -dep, 0, shade(col, 0.45), kind); hpl(W0, F, tt, ct, st, -dep, 0, shade(col, 0.8), kind);
       const qt = yt - se * (yt - st);
-      rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
+      if (gq) gq(W0, F, tt, ct, st, qt, -dep); else rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
     }
   }

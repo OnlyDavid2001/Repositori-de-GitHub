@@ -9,6 +9,7 @@
 const { K, rect, jamb, box, lattice, latticeSide, shade, mixc, rev, sphere, R } = window.BCN_GEO;
 
 window.BCN_DETAILS = { init(ctx) {
+  const RQ = window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;   // vidrio con habitación (ventanas abiertas)
   // ---------------------------------------------------------------- tramo ciego: medianera tapada por un vecino igual o más alto
   function blindRun(env, run) {
     const { W0, d, p, u, y0 } = env, { F, L, cover } = run;
@@ -44,14 +45,17 @@ window.BCN_DETAILS = { init(ctx) {
       for (let W = 0; W < nb; W++) {
         const a = W * bw, c = a + bw / 2;
         env.rnd(3, run.i, W * 64 + D);
-        const rr = [R(), R(), R(), R(), R(), R(), R()];
+        const rr = [R(), R(), R(), R(), R(), R(), R(), R(), R()];
         if (k < cover) { rect(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, 0, wallC, K.STUCCO); continue; }
         if (!street) { yardWin(env, W0, W1, F, a, bw, c, k, P, wallC, u, rr); continue; }
         if (W === M && D <= 3 && !U) { tribuna(W0, W1, F, a, bw, k, P, p, u, wood, glass); continue; }
         const Vw = Math.min(1.3, bw - 0.95), Bh = U ? Math.min(1.7, m - 1.15) : Math.min(2.45, m - 0.72), Q = U ? Math.min(0.85, m - Bh - 0.32) : 0.08;
         const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh;
-        const se = rr[0] < 0.75 ? 0.15 + rr[1] * 0.6 : 0;
-        windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.32, p, K.STUCCO, se);
+        // ~30 % de las ventanas con la persiana subida del todo dejan ver la habitación (K.HOMEWIN de interiors.js): ~4 m de fondo
+        const open = rr[7] < 0.3 && RQ, se = open ? 0 : rr[0] < 0.75 ? 0.15 + rr[1] * 0.6 : 0;
+        const room = open ? { x0: tt - 0.55, W: Vw + 1.1, yF: k + 0.02, H: Math.max(2.6, yt - k + 0.15), D: 4, mode: 1, seed: 1 + ((rr[8] * 254) | 0) } : null;
+        if (open && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz, +((st + yt) / 2).toFixed(1), D]);
+        windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.32, p, K.STUCCO, se, room && ((B, F, u0, u1, y0, y1, d) => RQ(B, F, u0, u1, y0, y1, d, room)));
         // carpintería
         const qt = yt - se * Bh;
         if (W1) {

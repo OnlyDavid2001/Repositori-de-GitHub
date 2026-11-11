@@ -9,7 +9,7 @@
    Tipos de material propios: ids 20–39, con BCN_GEO.regKind() al cargar el script. */
 (function () {
 'use strict';
-const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, signAux, pbrAux, R } = window.BCN_GEO;
+const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, mixc, signAux, pbrAux, subAux, rev, sphere, R } = window.BCN_GEO;
 
 // ------------------------------------------------------------------ tabla de comercios: una fila por tipo
 // Vocabulario de las filas (los números son los que lee el shader):
@@ -501,7 +501,201 @@ regKind('SHOPWIN', 20, `
     vec3 c = shGlass(srm, V, N);
     FRAG(c); return;`, SHOP_DECL);
 
-const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, paramSize: [PARW, PARH], init(ctx) {
+// ------------------------------------------------------------------ zaguanes y pisos (tipo K.HOMEWIN): la misma técnica, otra habitación
+// Empaquetado por vértice (lo escribe roomQuad): color.r = ancho/16 m · color.g = modo (0 zaguán, 1 piso) + 2·sentido del marco ·
+// color.b = semilla (1–255) · aux.x = u/ancho · aux.y = (y sobre el suelo + 1)/6 m · aux.z = alto/8 m · aux.w = fondo/16,32 m.
+// De día el interior es la luz que entra (oscuro) y de noche lo enciende su lámpara según las reglas del preludio:
+// zaguán con uDusk (más tenue de madrugada, uLate), piso con homeOn(h).
+const HOME_DECL = `
+// color de pared de un piso: tonos de casa (crema, salvia, terracota, azul pálido, ocre, blanco roto) según la semilla
+vec3 hmWall(float h){ return h < 0.3 ? vec3(0.86, 0.80, 0.68) : (h < 0.45 ? vec3(0.66, 0.74, 0.62) : (h < 0.6 ? vec3(0.80, 0.56, 0.44) :
+  (h < 0.72 ? vec3(0.62, 0.72, 0.80) : (h < 0.85 ? vec3(0.86, 0.72, 0.44) : vec3(0.90, 0.88, 0.84))))); }
+// capa de muebles de un piso (plano paralelo al vidrio): sofá con lámpara de pie, librería con cuadro, mesa con sillas o
+// cómoda con televisor. p = (x, y) en metros. Devuelve color premultiplicado + alfa
+vec4 hmFurn(vec2 p, float W, float sd, float px){
+  vec4 o = vec4(0.0);
+  float h = hash21(vec2(sd, 1.9)), hc = hash21(vec2(sd, 6.1)), xc = W*(0.35 + 0.3*hash21(vec2(sd, 2.7)));
+  vec3 fc = 0.30 + 0.28*cos(6.2832*(hc + vec3(0.0, 0.33, 0.67)));
+  vec2 q = vec2(p.x - xc, p.y);
+  if (h < 0.3) {
+    // respaldo de sofá con cojines y, al lado, lámpara de pie con pantalla
+    o = shOv(o, fc*0.8, shR(q, vec2(-1.0, 0.0), vec2(1.0, 0.62), px));
+    o = shOv(o, fc*(0.9 + 0.12*cos(q.x*7.0)), shR(q, vec2(-0.95, 0.62), vec2(0.95, 0.88), px));
+    o = shOv(o, fc*1.15, max(shR(q, vec2(-1.08, 0.0), vec2(-0.92, 0.72), px), shR(q, vec2(0.92, 0.0), vec2(1.08, 0.72), px)));
+    o = shOv(o, vec3(0.85, 0.80, 0.70) - fc*0.2, shC(vec2(q.x + 0.55, (q.y - 0.95)*1.4), 0.15, px));
+    vec2 l = vec2(q.x - 1.35, q.y);
+    o = shOv(o, vec3(0.12), shR(l, vec2(-0.015, 0.0), vec2(0.015, 1.45), px));
+    o = shOv(o, vec3(0.95, 0.88, 0.70), shT(l, 1.42, 1.70, 0.20, 0.13, px));
+  } else if (h < 0.55) {
+    // librería llena y un cuadro al lado
+    vec2 b = vec2(q.x + 0.5, q.y);
+    float a = shR(b, vec2(-0.6, 0.0), vec2(0.6, 2.0), px), r = floor(b.y/0.36), y = b.y - r*0.36;
+    float bk = step(0.06, y)*step(y, 0.32)*step(0.25, hash21(vec2(floor(b.x/0.045), r + sd)));
+    vec3 bc = 0.35 + 0.25*cos(6.2832*(hash21(vec2(floor(b.x/0.045), r)) + vec3(0.0, 0.4, 0.7)));
+    o = shOv(o, mix(fc*0.6, mix(vec3(0.38), bc, 1.0 - smoothstep(0.01, 0.04, px)), bk*step(y, 0.32 - 0.1*hash21(vec2(floor(b.x/0.045), r*3.0)))), a);
+    vec2 c = vec2(q.x - 0.75, q.y - 1.5);
+    o = shOv(o, vec3(0.15), shR(c, vec2(-0.32, -0.25), vec2(0.32, 0.25), px));
+    o = shOv(o, mix(fc*1.4, vec3(0.8, 0.7, 0.5), smoothstep(-0.2, 0.2, c.y + 0.3*sin(c.x*7.0))), shR(c, vec2(-0.28, -0.21), vec2(0.28, 0.21), px));
+  } else if (h < 0.78) {
+    // mesa con mantel, dos sillas y un jarrón
+    vec2 aq = vec2(abs(q.x), q.y);
+    o = shOv(o, fc*0.7, max(shR(aq, vec2(0.62, 0.0), vec2(0.66, 0.95), px), shR(aq, vec2(0.48, 0.44), vec2(0.66, 0.48), px)));
+    o = shOv(o, vec3(0.30, 0.20, 0.12), shR(aq, vec2(0.36, 0.0), vec2(0.40, 0.74), px));
+    o = shOv(o, vec3(0.88, 0.86, 0.80), shT(q, 0.50, 0.78, 0.48, 0.45, px));
+    o = shOv(o, vec3(0.30, 0.40, 0.60), shR(q, vec2(-0.05, 0.78), vec2(0.05, 0.98), px));
+  } else {
+    // cómoda baja con un televisor encima
+    o = shOv(o, fc*0.65*(0.85 + 0.15*step(0.03, abs(fract(q.y/0.24) - 0.5)*0.24)), shR(q, vec2(-0.8, 0.0), vec2(0.8, 0.72), px));
+    o = shOv(o, vec3(0.04), shR(q, vec2(-0.5, 0.76), vec2(0.5, 1.36), px));
+    o = shOv(o, vec3(0.06), shR(q, vec2(-0.06, 0.72), vec2(0.06, 0.78), px));
+  }
+  return o;
+}
+// HABITACIÓN de zaguán (mode 0) o de piso (mode 1) vista desde su vidrio; mismos ejes que shRoom. Devuelve la luz que sale
+vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist){
+  float h1 = hash21(vec2(sd, 3.7)), h2 = hash21(vec2(sd, 9.1)), h3 = hash21(vec2(sd*1.3, 5.3));
+  bool zg = mode < 0.5;
+  o = clamp(o, vec2(0.02), sz.xy - 0.02);
+  d.z = max(d.z, 0.03);
+  d += step(abs(d), vec3(1e-4))*2e-4;
+  vec3 ro = vec3(o, 0.0);
+  float tx = (d.x > 0.0 ? sz.x - o.x : -o.x)/d.x, ty = (d.y > 0.0 ? sz.y - o.y : -o.y)/d.y, tz = sz.z/d.z;
+  float t = min(tx, min(ty, tz));
+  vec3 h = ro + d*t;
+  float pf = px*(1.0 + t/dist), kx = clamp(abs(d.z/d.x), 1.0, 40.0), pl = pf*clamp(abs(d.z/d.y), 1.0, 40.0);
+  vec3 wall = zg ? (h1 < 0.5 ? vec3(0.84, 0.78, 0.64) : (h1 < 0.8 ? vec3(0.70, 0.76, 0.68) : vec3(0.80, 0.66, 0.54))) : hmWall(h1);
+  vec3 c, glow = vec3(0.0);
+  // lámparas: el zaguán, una o dos en el eje; el piso, una en el centro
+  float lz = zg ? (h.z < sz.z*0.5 ? 2.4 : 6.4) : sz.z*0.45;
+  vec2 lc = vec2(sz.x*0.5, lz);
+  if (t == ty && d.y > 0.0) {
+    // techo
+    c = wall*0.95;
+    float r = length(h.xz - lc), rl = zg ? 0.17 : 0.14;
+    glow = vec3(1.0)*(clamp((rl - r)/pl + 0.5, 0.0, 1.0)*4.0 + 0.6*exp(-r*r*4.0));
+  } else if (t == ty) {
+    // suelo: zaguán de mármol en damero girado o de baldosa hidráulica con roseta; piso de tarima
+    vec2 q = h.xz;
+    if (zg && h2 < 0.55) { vec2 g = vec2(q.x + q.y, q.y - q.x)/0.5;
+      c = mix(mix(vec3(0.86, 0.84, 0.80), vec3(0.16, 0.15, 0.15), mod(floor(g.x) + floor(g.y), 2.0)), vec3(0.5), smoothstep(0.1, 0.35, pl)); }
+    else if (zg) { vec2 g = fract(q/0.4) - 0.5; float rr = length(g), lv = smoothstep(0.02, 0.1, pl);
+      c = mix(mix(vec3(0.78, 0.72, 0.62), vec3(0.62, 0.22, 0.16), (1.0 - smoothstep(0.14, 0.16, rr))*step(0.08, rr) + step(0.47, max(abs(g.x), abs(g.y)))*0.6), vec3(0.66, 0.52, 0.42), lv); }
+    else { float bi = floor(q.x/0.12), hb = hash21(vec2(bi, sd)), lv = smoothstep(0.04, 0.12, pl);
+      c = vec3(0.55, 0.38, 0.24)*mix(0.82 + 0.3*hb, 0.97, lv)*(1.0 - 0.25*(1.0 - lv)*smoothstep(0.44, 0.48, abs(fract(q.x/0.12) - 0.5))); }
+  } else if (t == tz) {
+    // pared del fondo
+    vec2 q = h.xy; c = wall;
+    if (zg) {
+      // zócalo de mármol, escalera que arranca hacia un lado y puerta del ascensor al otro
+      float sl = h3 < 0.5 ? q.x : sz.x - q.x, ws = min(1.4, sz.x*0.52), stp = min(floor(sl/0.3) + 1.0, 6.0);
+      c = mix(c, vec3(0.50, 0.44, 0.38), 1.0 - shS(q.y - 1.05, px));
+      float sm = (1.0 - shS(q.y - stp*0.17, px))*(1.0 - shS(sl - ws, px));
+      c = mix(c, vec3(0.80, 0.76, 0.70)*(0.85 + 0.15*step(0.03, fract(q.y/0.17)*0.17)), sm);
+      c = mix(c, vec3(0.10, 0.08, 0.06), (1.0 - shS(abs(q.y - min(sl, ws)*0.567 - 0.95) - 0.025, px))*(1.0 - shS(sl - ws, px)));
+      float ex = sz.x - ws*0.5 - 0.15, ec = h3 < 0.5 ? ex : sz.x - ex;
+      vec2 e = vec2(q.x - ec, q.y);
+      c = mix(c, vec3(0.30, 0.31, 0.33), shR(e, vec2(-0.55, 0.0), vec2(0.55, 2.25), px));
+      c = mix(c, vec3(0.62, 0.64, 0.66)*(0.9 + 0.1*cos(e.x*40.0)*(1.0 - smoothstep(0.004, 0.02, px))), shR(e, vec2(-0.45, 0.0), vec2(0.45, 2.1), px));
+      c = mix(c, vec3(0.20, 0.20, 0.22), shR(e, vec2(-0.008, 0.0), vec2(0.008, 2.1), px));
+      glow += vec3(1.2, 0.9, 0.5)*shC(e - vec2(0.62, 1.1), 0.025, px);
+    } else {
+      // puerta al pasillo (oscura) y un cuadro
+      float dx = sz.x*(h3 < 0.5 ? 0.2 : 0.8);
+      c = mix(c, vec3(0.14, 0.12, 0.10), shR(q - vec2(dx, 0.0), vec2(-0.42, 0.0), vec2(0.42, 2.05), px));
+      vec2 pq = q - vec2(sz.x - dx, 1.55);
+      c = mix(c, vec3(0.12), shR(pq, vec2(-0.3, -0.22), vec2(0.3, 0.22), px));
+      c = mix(c, 0.45 + 0.25*cos(6.2832*(h2 + vec3(0.0, 0.33, 0.67) + pq.y)), shR(pq, vec2(-0.26, -0.18), vec2(0.26, 0.18), px));
+    }
+    c *= 1.0 - 0.35*(1.0 - shS(q.y - 0.1, px));
+  } else {
+    // paredes laterales: el zaguán con zócalo y buzones en una; el piso con rodapié
+    vec2 q = h.zy; c = wall;
+    if (zg) {
+      c = mix(c, vec3(0.50, 0.44, 0.38), 1.0 - shS(q.y - 1.05, pf*kx));
+      c = mix(c, vec3(0.72, 0.68, 0.62), shR(q, vec2(0.0, 1.02), vec2(sz.z, 1.08), pf*kx));
+      if ((d.x > 0.0) == (h2 < 0.5)) {
+        vec2 m = q - vec2(1.6, 1.25), g = fract(m/vec2(0.34, 0.21));
+        float a = shR(m, vec2(0.0), vec2(1.36, 0.63), pf*kx);
+        c = mix(c, mix(vec3(0.45, 0.30, 0.16), vec3(0.72, 0.58, 0.30), step(0.12, g.x)*step(g.x, 0.88)*step(0.6, g.y)*step(g.y, 0.72)), a);
+      }
+    } else c = mix(c, vec3(0.92, 0.90, 0.86), 1.0 - shS(q.y - 0.1, pf*kx));
+  }
+  // luz: de día la que entra por la ventana (cae hacia el fondo) y la lámpara, y de noche solo la lámpara, si está encendida
+  float dep = clamp(h.z/sz.z, 0.0, 1.0), on, day;
+  vec3 tint;
+  if (zg) {
+    on = step(0.2, h2)*uDusk*(1.0 - 0.45*uLate);
+    day = mix(0.42, 0.62, step(0.2, h2));
+    tint = vec3(1.08, 0.94, 0.74);
+  } else {
+    on = homeOn(fract(sd*0.6180339 + 0.21));
+    day = 0.44 + 0.2*h3;
+    tint = h3 < 0.12 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.25 ? vec3(0.92, 0.98, 1.08) : vec3(1.10, 0.92, 0.70));
+  }
+  float lv = day*(1.0 - 0.92*uDusk)*mix(1.0, 0.55, dep) + on*1.5*mix(1.0, 0.75, dep);
+  vec3 lamp = glow*mix(zg ? step(0.2, h2)*0.35 : 0.0, 1.0, on);
+  c = c*lv*mix(vec3(1.0), tint, min(1.0, on + (zg ? 0.5 : 0.0))) + lamp*tint;
+  // piso: muebles insinuados en un plano a 1,6–2,2 m y cortinas a los lados del vidrio
+  if (!zg) {
+    float tf = (1.6 + 0.6*h2)/d.z;
+    if (tf < t) { vec4 L = hmFurn(o + d.xy*tf, sz.x, sd, px*(1.0 + tf/dist)); c = L.rgb*lv*mix(vec3(1.0), tint, on) + c*(1.0 - L.a); }
+    vec2 cp = o + d.xy*(0.12/d.z);
+    float cw = 0.35 + 0.25*h2, fold = 0.82 + 0.18*cos(cp.x*38.0)*(1.0 - smoothstep(0.01, 0.04, px));
+    float cm = max(shR(cp, vec2(0.25, 0.0), vec2(0.5 + cw, sz.y), px), shR(cp, vec2(sz.x - 0.5 - cw, 0.0), vec2(sz.x - 0.25, sz.y), px));
+    vec3 cc = h1 > 0.5 ? vec3(0.92, 0.88, 0.80) : 0.55 + 0.25*cos(6.2832*(h3 + vec3(0.1, 0.4, 0.7)));
+    float sheer = step(0.7, h3)*0.35;
+    c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk)), max(cm*0.92, sheer));
+  } else {
+    // zaguán: una planta grande en su maceta
+    float tp = 2.2/d.z;
+    if (tp < t) {
+      vec2 p = o + d.xy*tp - vec2(h2 < 0.5 ? sz.x - 0.45 : 0.45, 0.0); float ppx = px*(1.0 + tp/dist);
+      float leaf = shC(vec2(p.x, (p.y - 0.95)*0.75), 0.36, ppx)*mix(step(0.35, vnoise(p*22.0 + sd)), 0.8, smoothstep(0.01, 0.05, ppx));
+      vec4 L = shOv(vec4(0.0), vec3(0.16, 0.30, 0.12)*(0.8 + 0.4*vnoise(p*9.0)), leaf);
+      L = shOv(L, vec3(0.50, 0.28, 0.18), shT(p, 0.0, 0.5, 0.15, 0.2, ppx));
+      c = L.rgb*lv*tint + c*(1.0 - L.a);
+    }
+  }
+  return c;
+}
+// vidrio de portal o de ventana: el interior y el reflejo con el Fresnel de shGlass. En el portal, reja de forja sobre el vidrio
+vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px){
+  vec3 r = reflect(-V, N);
+  float k = clamp((mode < 0.5 ? 0.07 : 0.10) + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0);
+  vec3 c = emit(room, 1.0)*(1.0 - k) + envRefl(r, 0.0)*k*(1.0 - 0.4*uDusk) + uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.0;
+  if (mode < 0.5) {
+    // reja: barrotes cada 12 cm, dos travesaños y una banda de anillos; de lejos se funde a su tono medio
+    float x = o.x - 0.35, bw = 0.12, fx = abs(fract(x/bw) - 0.5)*bw, e = px*0.8;
+    float m = 1.0 - shS(fx - 0.008, e);
+    m = max(m, 1.0 - shS(min(abs(o.y - 0.75), abs(o.y - 2.05)) - 0.014, e));
+    vec2 q = vec2((fract(x/bw) - 0.5)*bw, (fract((o.y - 1.0)/bw) - 0.5)*bw);
+    m = max(m, (1.0 - shS(abs(length(q) - 0.045) - 0.006, e))*step(1.0, o.y)*step(o.y, 1.6));
+    m = mix(m, 0.32, smoothstep(0.01, 0.03, px));
+    c = mix(c, shade(vec3(0.05, 0.05, 0.055), N, V, 0.45, 0.0, 1.0), m);
+  }
+  return c;
+}`;
+regKind('HOMEWIN', 21, `
+    float hw = vCol.r*16.0, hb = floor(vCol.g*255.0 + 0.5), hmode = mod(hb, 2.0);
+    vec2 ho = vec2(vInfo.x*hw, vInfo.y*6.0 - 1.0);
+    float hpx = max(max(fwidth(ho.x), fwidth(ho.y)), 1e-4);
+    vec3 htu = T*(mod(floor(hb/2.0), 2.0) > 0.5 ? -1.0 : 1.0);
+    vec3 hrm = hmRoom(ho, vec3(-dot(V, htu), -V.y, dot(V, n)), vec3(hw, vInfo.z*8.0, vInfo.w*16.32), hmode, floor(vCol.b*255.0 + 0.5), hpx, dist);
+    vec3 c = hmGlass(hrm, V, N, ho, hw, hmode, hpx);
+    FRAG(c); return;`, HOME_DECL);
+// vidrio de zaguán o de piso: un quad K.HOMEWIN con las coordenadas de su habitación. rm = { x0, W, yF, H, D, mode, seed }
+// (x0 = u del extremo de la habitación, yF = cota de su suelo). Lo usan portalBay y, a través de env, las ventanas de details.js
+function roomQuad(B, F, u0, u1, y0, y1, d, rm) {
+  if (!B || u1 - u0 < 0.02 || y1 - y0 < 0.02) return;
+  const Wb = Math.max(1, Math.min(255, Math.round(rm.W / 16 * 255))), W = Wb / 255 * 16;
+  const X = v => Math.max(0, Math.min(255, Math.round((v - rm.x0) / W * 255))), Y = v => Math.max(0, Math.min(255, Math.round((v - rm.yF + 1) / 6 * 255)));
+  const h = Math.min(255, Math.round(rm.H / 8 * 255)), dd = Math.min(250, Math.round(rm.D / 16.32 * 255));
+  const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;
+  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [Wb, rm.mode + 2 * dir, rm.seed], K.HOMEWIN,
+    [X(u0), Y(y0), h, dd, X(u1), Y(y0), h, dd, X(u1), Y(y1), h, dd, X(u0), Y(y1), h, dd]);
+}
+
+const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, paramSize: [PARW, PARH], roomQuad, log: null, init(ctx) {
   const { scene } = ctx;
   // rótulos: un atlas de 2 × 16 celdas de 512 × 64 (proporción 8:1), una por tipo, con sus colores
   const sign = new BABYLON.DynamicTexture('signs', { width: 1024, height: 1024 }, scene, true);
@@ -542,7 +736,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
     }
-    if (plan) for (const s of plan.list) shopFront(env, run, s);
+    if (plan) for (const s of plan.list) { shopFront(env, run, s); terrace(env, run, s); }
   }
 
   // ---------------------------------------------------------------- comercios
@@ -635,6 +829,79 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       box(W0, F, uc - 0.04, uc + 0.04, y - 0.11, y + 0.11, 0.2, 0.86, g, K.PBR, 7, NEON); box(W0, F, uc - 0.04, uc + 0.04, y - 0.33, y + 0.33, 0.42, 0.64, g, K.PBR, 7, NEON);
       box(W1, F, uc - 0.015, uc + 0.015, y - 0.02, y + 0.02, 0, 0.2, FRAME, K.METAL); }
   }
+  // ---------------------------------------------------------------- terrazas de bar
+  // Delante de BAR, CAFÈ, RESTAURANT y GELATERIA cuando la acera es ancha (≥ 5,2 m de la fachada al borde de la vía): pegadas a
+  // la fachada y sin pasar de ~3,2 m del bordillo (ahí van árboles, farolas y bancos). 2–6 mesas redondas de pie central con 2–4
+  // sillas, sombrillas del color del toldo (si el local no tiene toldo), jardineras en los extremos y una pizarra junto a la
+  // puerta. ORNAMENTO con detalle; en BASE, tableros y sombrillas de pocos lados marcados como sustitutos (no aparecen de golpe).
+  // Azar: ámbito env.rnd(11, tramo, primer vano del comercio), 40 números de golpe.
+  const TERR = new Set(['BAR', 'CAFÈ', 'RESTAURANT', 'GELATERIA'].map(n => SHOPS.indexOf(n)));
+  const PINT = pbrAux(0.4, 0, 0, 0), ALU = pbrAux(0.35, 1, 0, 0), RATTAN = pbrAux(0.7, 0, 1, 0), TELA = pbrAux(0.85, 0, 0, 0), PIZ = pbrAux(0.8, 0, 1, 0), SUB = subAux();
+  function terrace(env, run, s) {
+    const { W0, W1 } = env, { F, r } = run;
+    env.rnd(11, run.i, s.w0);
+    const q = []; for (let j = 0; j < 40; j++) q.push(R());
+    if (!run.street || !TERR.has(s.type) || q[0] > 0.85) return;
+    const city = ctx.city, wp = (u, d) => [r.ax + r.tx * u + r.nx * d, r.az + r.tz * u + r.nz * d];
+    let S = 1e9;
+    for (const u of [s.uA, (s.uA + s.uB) / 2, s.uB]) { const [x, z] = wp(u, 0.3); S = Math.min(S, city.roadDist(x, z) + 0.3); }
+    if (API.log) { const [x, z] = wp((s.uA + s.uB) / 2, 0); API.log.push(['T', +x.toFixed(1), +z.toFixed(1), r.nx, r.nz, +S.toFixed(2)]); }
+    if (!(S >= 5.2) || S > 60) return;
+    const D1 = Math.min(2.9, S - 3.2), dC = (0.6 + D1) / 2, [dB0, dB1] = opening(run, s.door), doorU = (dB0 + dB1) / 2;
+    const free = (u, d) => { const [x, z] = wp(u, d); return city.coverAt(x, z, -1) < -1e8; };
+    const yAt = (u, d) => { const [x, z] = wp(u, d); return city.walkAt(x, z); };
+    const top = q[1] < 0.5 ? [226, 222, 214] : [48, 50, 54], foot = [38, 38, 42];
+    const chC = q[2] < 0.4 ? [176, 178, 182] : q[2] < 0.7 ? [150, 106, 60] : [40, 78, 60], chA = q[2] < 0.4 ? ALU : q[2] < 0.7 ? RATTAN : PINT;
+    const awn = s.T.awn, umb = !s.awn;
+    // mesas: una cada 1,9 m a lo largo del comercio, sin tapar la puerta
+    const slots = [];
+    for (let u = s.uA + 0.7; u <= s.uB - 0.7 && slots.length < 6; u += 1.9) if (Math.abs(u - doorU) > 1.1 && free(u, dC) && free(u, D1)) slots.push(u);
+    if (slots.length < 2) return;
+    slots.forEach((u, j) => {
+      const y = yAt(u, dC), n = 2 + ((q[4 + j] * 3) | 0);
+      rev(W1, F, u, dC, [[0.24, y], [0.24, y + 0.03], [0.035, y + 0.06], [0.03, y + 0.7], [0.3, y + 0.71, top], [0.34, y + 0.715, top], [0.34, y + 0.745, top], [0, y + 0.745, top]], 12, foot, K.PBR, { aux: PINT });
+      rev(W0, F, u, dC, [[0.34, y + 0.70], [0.34, y + 0.745], [0, y + 0.745]], 6, top, K.PLAIN, { aux: SUB });
+      // sillas alrededor (a lo largo y hacia la calle primero; la de cara a la fachada, la última)
+      const pos = [[-0.62, 0], [0.62, 0], [0, 0.6], [0, -0.6]];
+      for (let k = 0; k < n; k++) chair(W1, u + pos[k][0], dC + pos[k][1], pos[k][0] ? Math.sign(pos[k][0]) : 0, pos[k][1] ? Math.sign(pos[k][1]) : 0, y, chC, chA);
+      // sombrilla abierta o cerrada sobre algunas mesas
+      if (umb && q[12 + j] < 0.6) {
+        rev(W1, F, u, dC, [[0.022, y + 0.745], [0.022, y + 2.35]], 5, [60, 60, 64], K.PBR, { aux: PINT });
+        if (q[20 + j] < 0.75) {
+          const cr = 0.95, hy = y + 2.08;
+          rev(W1, F, u, dC, [[cr, hy - 0.1], [cr, hy], [0, hy + 0.4]], 10, awn, K.PBR, { aux: TELA });
+          rev(W1, F, u, dC, [[0, hy + 0.38], [cr - 0.01, hy - 0.01]], 10, shade(awn, 0.62), K.PBR, { aux: TELA });
+          rev(W0, F, u, dC, [[cr, hy], [0, hy + 0.4]], 6, awn, K.PLAIN, { aux: SUB });
+        } else rev(W1, F, u, dC, [[0.03, y + 1.25], [0.11, y + 1.95], [0.0, y + 2.5]], 7, awn, K.PBR, { aux: TELA });
+      }
+    });
+    // jardineras en los extremos de la terraza, perpendiculares a la fachada
+    const shrub = [52, 96, 46];
+    for (const u of [slots[0] - 1.05, slots[slots.length - 1] + 1.05]) {
+      if (!free(u, dC)) continue;
+      const y = yAt(u, dC), d0 = 0.65, d1 = Math.max(d0 + 0.8, D1 - 0.1);
+      box(W0, F, u - 0.2, u + 0.2, y - 0.05, y + 0.45, d0, d1, [120, 92, 66], K.PBR, 7, RATTAN);
+      if (W1) for (let k = 0; k < 3; k++) { const dd = d0 + (d1 - d0) * (k + 0.5) / 3;
+        sphere(W1, F, u, y + 0.62, dd, 0.26 + 0.05 * q[30 + k], 7, 4, mixc(shrub, [90, 130, 50], q[33 + k] * 0.5), K.LEAF, undefined, 0.8); }
+    }
+    // pizarra de caballete junto a la puerta
+    if (W1) {
+      const u = doorU + (q[3] < 0.5 ? -1 : 1) * (dB1 - dB0) * 0.5 + (q[3] < 0.5 ? -0.45 : 0.45), dP = 0.75, y = yAt(u, dP);
+      for (const sg of [1, -1]) {
+        quad(W1, F, u - 0.3, y, dP + sg * 0.24, u + 0.3, y, dP + sg * 0.24, u + 0.3, y + 1.0, dP, u - 0.3, y + 1.0, dP, [120, 84, 50], K.PBR, PINT);
+        quad(W1, F, u - 0.25, y + 0.12, dP + sg * 0.215, u + 0.25, y + 0.12, dP + sg * 0.215, u + 0.25, y + 0.93, dP + sg * 0.02, u - 0.25, y + 0.93, dP + sg * 0.02, [34, 38, 36], K.PBR, PIZ);
+      }
+    }
+    // silla de terraza: asiento, cuatro patas y respaldo en el lado opuesto a la mesa (su, sd = hacia dónde queda la silla)
+    function chair(B, cu, cd, su, sd, y, col, aux) {
+      if (!B) return;
+      const h = 0.21, ys = y + 0.45;
+      box(B, F, cu - h, cu + h, ys - 0.035, ys, cd - h, cd + h, col, K.PBR, 7, aux);
+      for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(B, F, cu + a * (h - 0.03) - 0.014, cu + a * (h - 0.03) + 0.014, y, ys - 0.035, cd + b * (h - 0.03) - 0.014, cd + b * (h - 0.03) + 0.014, col, K.PBR, 4, aux);
+      if (su) box(B, F, cu + su * h - 0.03, cu + su * h, ys, ys + 0.42, cd - h, cd + h, col, K.PBR, 7, aux);
+      else box(B, F, cu - h, cu + h, ys, ys + 0.42, cd + sd * h - (sd > 0 ? 0.03 : 0), cd + sd * h + (sd > 0 ? 0 : 0.03), col, K.PBR, 7, aux);
+    }
+  }
   // portal: puerta de madera con montante de vidrio, recercado de piedra y farol
   function portalBay(env, run, a, c, gl, yB, rr) {
     const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run;
@@ -644,18 +911,36 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, K.STONE); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), K.STONE);
     jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE);
     hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), K.STONE);
-    const tr = dtop - 0.95;
-    rect(W0, F, x0, x1, gl, tr, -0.42, wood, K.WOOD); rect(W0, F, x0, x1, tr, dtop, -0.43, glass, K.GLASS);
+    // puerta de dos hojas de vidrio con reja de forja (la dibuja el shader K.HOMEWIN) y, detrás, el zaguán: estrecho, ~3,3 m
+    // de alto y 9 m de fondo. Marco y zócalo de madera, travesaño del montante, tirador de latón
+    if (API.log) API.log.push(['P', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz]);
+    const tr = dtop - 0.85, zt = gl + 0.12 + 0.42, yF = gl + 0.12, dg = -0.43;
+    const rm = { x0: x0 - 0.35, W: x1 - x0 + 0.7, yF, H: Math.max(3.3, dtop - yF + 0.25), D: 9, mode: 0, seed: 1 + ((rr[1] * 254) | 0) };
+    roomQuad(W0, F, x0, x1, zt, dtop, dg, rm);
+    const fr = shade(wood, 0.8);
+    rect(W0, F, x0, x1, gl + 0.12, zt, -0.42, wood, K.WOOD);                                          // zócalo
+    box(W0, F, x0, x0 + 0.1, zt, dtop, -0.43, -0.37, fr, K.WOOD, 4); box(W0, F, x1 - 0.1, x1, zt, dtop, -0.43, -0.37, fr, K.WOOD, 4);   // largueros
+    box(W0, F, c - 0.06, c + 0.06, zt, tr, -0.43, -0.36, fr, K.WOOD, 4);                               // encuentro de las hojas
+    box(W0, F, x0, x1, tr - 0.06, tr + 0.06, -0.43, -0.36, fr, K.WOOD, 3);                             // travesaño del montante
+    box(W0, F, x0, x1, dtop - 0.08, dtop, -0.43, -0.37, fr, K.WOOD, 2);
+    box(W0, F, x0, x1, zt - 0.05, zt + 0.03, -0.43, -0.37, fr, K.WOOD, 1);
     box(W0, F, x0 - 0.25, x1 + 0.25, gl - 0.2, gl + 0.12, 0, 0.55, shade(sc, 1.15), K.STONE);
     if (W1) {
       box(W1, F, x0 - 0.34, x0, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE); box(W1, F, x1, x1 + 0.34, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE);
       box(W1, F, x0 - 0.44, x1 + 0.44, dtop + 0.1, dtop + 0.3, 0, 0.4, shade(sc, 1.08), K.STONE);
       box(W1, F, c - 0.24, c + 0.24, dtop - 0.08, dtop + 0.42, 0, 0.5, shade(sc, 1.15), K.STONE);
-      box(W1, F, c - 0.02, c + 0.02, gl, tr, -0.42, -0.39, shade(wood, 0.6), K.WOOD);
-      for (const [l0, l1] of [[x0 + 0.12, c - 0.12], [c + 0.12, x1 - 0.12]]) {
-        box(W1, F, l0, l1, gl + 0.3, gl + 1.1, -0.42, -0.37, shade(wood, 1.15), K.WOOD); box(W1, F, l0, l1, gl + 1.35, tr - 0.2, -0.42, -0.37, shade(wood, 1.15), K.WOOD); }
-      for (const s of [-1, 1]) box(W1, F, c + s * 0.09 - 0.025, c + s * 0.09 + 0.025, gl + 1.0, gl + 1.32, -0.39, -0.33, [184, 140, 56], K.METAL);
-      for (let q = 1; q < 6; q++) { const xx = x0 + (x1 - x0) * q / 6; box(W1, F, xx - 0.015, xx + 0.015, tr, dtop, -0.42, -0.39, iron, K.METAL); }
+      for (const [l0, l1] of [[x0 + 0.1, c - 0.06], [c + 0.06, x1 - 0.1]])                           // plafones del zócalo
+        box(W1, F, l0 + 0.06, l1 - 0.06, gl + 0.2, zt - 0.1, -0.42, -0.39, shade(wood, 1.12), K.WOOD, 7);
+      const LATON = pbrAux(0.3, 1, 0, 0), brass = [196, 152, 70];
+      for (const s of [-1, 1]) { box(W1, F, c + s * 0.1 - 0.02, c + s * 0.1 + 0.02, gl + 1.0, gl + 1.45, -0.32, -0.29, brass, K.PBR, 7, LATON);
+        box(W1, F, c + s * 0.1 - 0.02, c + s * 0.1 + 0.02, gl + 1.03, gl + 1.07, -0.36, -0.32, brass, K.PBR, 4, LATON);
+        box(W1, F, c + s * 0.1 - 0.02, c + s * 0.1 + 0.02, gl + 1.38, gl + 1.42, -0.36, -0.32, brass, K.PBR, 4, LATON); }
+      // placa del número (esmalte claro con canto oscuro) sobre la pilastra derecha y portero automático en la izquierda
+      box(W1, F, x1 + 0.05, x1 + 0.29, gl + 2.05, gl + 2.25, 0.28, 0.3, [30, 44, 80], K.PBR, 7, pbrAux(0.25, 0, 0, 0));
+      box(W1, F, x1 + 0.07, x1 + 0.27, gl + 2.07, gl + 2.23, 0.3, 0.305, [228, 228, 220], K.PBR, 1, pbrAux(0.25, 0, 0, 0));
+      box(W1, F, x0 - 0.29, x0 - 0.05, gl + 1.2, gl + 1.72, 0.28, 0.305, [150, 152, 156], K.PBR, 7, ACERO);
+      box(W1, F, x0 - 0.25, x0 - 0.09, gl + 1.6, gl + 1.68, 0.305, 0.31, [40, 40, 44], K.PBR, 1, pbrAux(0.6, 0, 0, 0));
+      for (let q = 0; q < 4; q++) box(W1, F, x0 - 0.21, x0 - 0.13, gl + 1.26 + q * 0.08, gl + 1.31 + q * 0.08, 0.305, 0.315, [210, 210, 214], K.PBR, 1, ACERO);
       if (rr[0] < 0.6) { box(W1, F, x1 + 0.42, x1 + 0.6, gl + 2.6, gl + 3.0, 0.12, 0.32, [235, 220, 180], K.LAMP); box(W1, F, x1 + 0.48, x1 + 0.54, gl + 3.0, gl + 3.2, 0, 0.3, iron, K.METAL); }
     }
   }

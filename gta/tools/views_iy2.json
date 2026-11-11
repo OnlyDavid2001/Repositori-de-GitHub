@@ -1,0 +1,9 @@
+[
+ {"name": "iy2_portal", "x": 12062.45, "z": 14537.79, "walk": true, "yaw": -0.775, "pitch": -0.04, "hour": 17},
+ {"name": "iy2_portal_obl", "x": 12063.9, "z": 14540.6, "walk": true, "yaw": -1.484, "pitch": -0.04, "hour": 17},
+ {"name": "iy2_pisos", "x": 12067.7, "z": 14532.4, "walk": true, "yaw": -0.775, "pitch": -0.32, "hour": 17},
+ {"name": "iy2_noche_cerca", "x": 12067.7, "z": 14532.4, "walk": true, "yaw": -0.775, "pitch": -0.22, "hour": 20.25},
+ {"name": "iy2_noche_100", "x": 12140.8, "z": 14601.2, "walk": true, "yaw": -2.41, "pitch": -0.1, "hour": 20.25},
+ {"name": "iy2_terraza", "x": 12072.9, "z": 14533.3, "walk": true, "yaw": 1.494, "pitch": 0.06, "hour": 17, "eval": "BCN_INTERIORS.force=3;BCN.fx.setRange(0);BCN.fx.setRange(1);"},
+ {"name": "iy2_terraza60", "x": 12035.1, "z": 14494.8, "walk": true, "yaw": 0.862, "pitch": 0.0, "hour": 17}
+]
