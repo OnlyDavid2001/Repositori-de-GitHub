@@ -382,7 +382,7 @@ void main(){
 
 const FS_TER = `
 uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
-uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D coastTex;
+uniform sampler2D uStreet; uniform vec4 uStreetR;
 void main(){
   vec2 uv = vPos.xz/uSize;
   vec3 alb = texture2D(groundTex, uv).rgb;
@@ -429,7 +429,7 @@ void main(){
   vec3 g0 = texture2D(groundTex, uv).rgb;
   vec3 SAND = vec3(0.882, 0.827, 0.655), SEA = vec3(0.588, 0.592, 0.420);
   float sandC = 1.0 - smoothstep(0.035, 0.09, length(g0 - SAND)), seaC = 1.0 - smoothstep(0.02, 0.07, length(g0 - SEA));
-  float sandM = sandC, wet = 0.0, rough = 0.95, foamT = 0.0;
+  float sandM = sandC, wet = 0.0, rough = 0.95;
   if (sandC + seaC > 0.01 && vPos.y > -2.0) {
     vec2 q = vPos.xz; float px = length(fwidth(q));
     float sandN = 0.0, seaN = 0.0;
@@ -439,19 +439,11 @@ void main(){
       sandN = max(sandN, 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv + dd*12.0).rgb - SAND)));
       seaN = max(seaN, 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + dd*10.0).rgb - SEA)));
     }
-    sandM = max(sandC, seaC*sandN*(1.0 - smoothstep(2.0, 3.5, vPos.y)));
-    // el relieve acaba en un escalón donde empieza el agua (coast.png: 0 en tierra, crece mar adentro, téxel de 16 m).
-    // Con el filtrado bilineal, el borde de tierra recoge algo del primer téxel de mar: eso marca la franja de orilla
-    vec2 co = vec2(8.0)/uSize;
-    float cc = texture2D(coastTex, uv).r;
-    float cm = max(max(cc, texture2D(coastTex, uv + vec2(co.x, 0.0)).r), max(texture2D(coastTex, uv - vec2(co.x, 0.0)).r,
-               max(texture2D(coastTex, uv + vec2(0.0, co.y)).r, texture2D(coastTex, uv - vec2(0.0, co.y)).r)));
+    sandM = max(sandC, seaC*max(sandN, 0.85)*(1.0 - smoothstep(2.0, 3.5, vPos.y)));
+    // franja mojada: la parte del relieve que la ortofoto ya pinta como mar (llega hasta el agua) y unos metros de la
+    // arena que la toca, con el borde roto por ruido. La espuma va en el mar (FS_SEA), pegada al borde del relieve
     float wn = vnoise(q*0.15)*0.6 + vnoise(q*0.6)*0.4;
-    wet = max(seaC*0.8, smoothstep(0.0006, 0.010 + 0.012*wn, cm));
-    // espuma de la orilla: una línea blanda pegada al agua y restos sueltos de la ola que se retira
-    float fn = vnoise(q*0.7 + 3.0)*0.6 + vnoise(q*2.3)*0.4;
-    foamT = (smoothstep(0.010 + 0.006*fn, 0.020 + 0.006*fn, cc)*(0.55 + 0.45*fn)
-           + smoothstep(0.004, 0.008, cc)*(1.0 - smoothstep(0.010, 0.014, cc))*0.5*smoothstep(0.45, 0.75, fn))*sandM*(1.0 - smoothstep(1.0, 4.0, px));
+    wet = max(seaC*smoothstep(0.1, 0.5, wn + 0.3), 0.45*seaN*smoothstep(0.35, 0.8, wn));
   }
   if (sandM > 0.001) {
     vec2 q = vPos.xz; float px = length(fwidth(q));
@@ -477,9 +469,20 @@ void main(){
     sa = mix(sa, sa*vec3(0.58, 0.58, 0.60), wet);
     rough = mix(0.95, 0.30, wet);
     alb = mix(alb, sa, sandM);
-    alb = mix(alb, vec3(0.90, 0.91, 0.90), clamp(foamT, 0.0, 1.0)*0.85);
-    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM*(1.0 - foamT));
+    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM);
   }
+  // NAT: campos del delta y del Baix Llobregat. La ortofoto los pinta de un oliva liso: mosaico de parcelas (cada una con
+  // su tono y su cultivo) y, de cerca, surcos. De lejos solo queda el mosaico (los surcos se apagan con el píxel)
+  { vec3 a0 = texture2D(groundTex, uv).rgb;
+    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y));
+    if (farm > 0.01) {
+      vec2 q = vPos.xz; float px = length(fwidth(q));
+      vec2 fc = floor((q + 40.0*vec2(vnoise(q*0.004), vnoise(q*0.004 + 5.0)))/vec2(95.0, 70.0));
+      float h = hash21(fc), h2 = hash21(fc + 17.3);
+      vec3 tone = mix(vec3(0.86, 0.95, 0.78), vec3(1.10, 1.02, 0.80), h)*mix(0.85, 1.12, h2);
+      float a = h2*3.1416, st = sin(dot(q, vec2(cos(a), sin(a)))*4.2);
+      alb = mix(alb, alb*tone*(1.0 + 0.10*st*(1.0 - smoothstep(0.25, 1.0, px))), farm);
+    } }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
   vec3 c = lit(alb, n);
@@ -616,8 +619,8 @@ void main(){
   c = mix(c, mix(vec3(0.20, 0.42, 0.40), vec3(0.06, 0.12, 0.13), uNight)*(uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y, 0.0)), sh*0.45*(1.0 - fres));
   float br = vnoise(p*0.09 + vec2(t*0.2, -t*0.08))*0.6 + vnoise(p*0.35 - vec2(t*0.3, t*0.1))*0.4;
   float fr = fract(cd*26.0 - t*0.035 + 0.25*vnoise(p*0.02));
-  float waves = exp(-pow((fr - 0.5)*7.0, 2.0))*(1.0 - smoothstep(0.012, 0.055, cd))*(1.0 - smoothstep(4.0, 18.0, px));
-  float edge = 1.0 - smoothstep(0.0, 0.012, cd);
+  float waves = exp(-pow((fr - 0.5)*7.0, 2.0))*(1.0 - smoothstep(0.03, 0.075, cd))*(1.0 - smoothstep(4.0, 18.0, px));
+  float edge = 1.0 - smoothstep(0.012, 0.035, cd + 0.012*(br - 0.5));
   float foam = clamp(edge*(0.55 + 0.45*br) + waves*smoothstep(0.35, 0.75, br)*0.8, 0.0, 1.0)*inside;
   c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.65);
   FRAG(c);
@@ -702,7 +705,7 @@ function setLDR() {
 }
 const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx', 'uStreetR'], ['uStreet']);
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
-const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet', 'coastTex']);
+const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet']);
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
 for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
@@ -853,7 +856,7 @@ await tick();
   }
   const normTex = BABYLON.RawTexture.CreateRGBATexture(nrm, GW, GH, scene, true, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
   texOpts(normTex, 4);
-  matTer.setTexture('normTex', normTex); matTer.setTexture('coastTex', coastTex);   // NAT: orilla de la arena
+  matTer.setTexture('normTex', normTex);
   matTer.setVector2('uSize', new BABYLON.Vector2(WX, WZ)); matTer.setVector2('uGrid', new BABYLON.Vector2(GW, GH)); matTer.setFloat('uCell', CELL);
   const groundTex = texOpts(new BABYLON.Texture(await blobURL('data/ground.webp'), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE), 8);
   matTer.setTexture('groundTex', groundTex);
