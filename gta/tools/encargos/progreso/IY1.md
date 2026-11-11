@@ -17,7 +17,17 @@
 - `tools/views_interiores.json` (vistas del carril) y `tools/shop_sheet.py` (hojas de contacto de los 17 tipos en la ciudad).
 - `DESARROLLO.md` §8.1 al día (capas, empaquetado, cómo se prueba, límites conocidos, notas para IY2).
 
+## Verificación final (hecha)
+- Hojas de contacto de los 17 tipos DENTRO de la ciudad, de frente (~5 m) y en oblicuo (~6 m), a 480x270 y calidad alta:
+  `<scratchpad>/iy1_hoja_frente_ciudad.jpg` e `iy1_hoja_oblicuo_ciudad.jpg` (34 vistas, sin errores de consola).
+- `tools/views_interiores.json` entero (13 vistas a 640x360: frente, oblicuo, acera a 30 y a 120 m, rasante, las cinco con
+  tienda, `gotic_calle` y dos al anochecer): sin errores ni avisos de consola. Hojas en `<scratchpad>/iy1_vistas_dia.jpg`
+  e `iy1_vistas_noche.jpg`. No se hicieron las PNG a 960x540 (máquina con carga 12–16: cada vista, 1–2 min).
+- `node --check` de todos los `.js`: bien.
+
 ## Pendiente (para IY2 o QA)
+- En `gotic_tienda`, el edificio de la izquierda se ve borroso (volumen simple con ventanas pintadas, a 10 m): ya estaba
+  así en la referencia «antes»; no es de los comercios (edificio sin capa de detalle).
 - Portales y pisos con la misma habitación (IY2).
 - Lo flojo: ver «Límites conocidos (IY1)» en §8.1.
 
