@@ -479,7 +479,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // La variante de cada edificio sale de su familia de barrio (BCN_BARRI.at en el centro de su caja) y de su semilla, ámbito
   // (b, 6); se guarda por edificio. Depuración: ?fxv=familia:n fuerza la variante n en todos; ?fxv=familia, la familia;
   // ?fxv=off, la fachada de antes. Las familias sin variantes en el catálogo siguen con details.js.
-  const EST = window.BCN_FX_ESTILOS, FXV = new URLSearchParams(location.search).get('fxv'), VAR = new Array(NB);
+  const EST = window.BCN_FX_ESTILOS, VAR = new Array(NB); let FXV = new URLSearchParams(location.search).get('fxv');
   const KW = { estuco: K.STUCCO, piedra: K.STONE, ladrillo: 16, gresite: 17, revoco: 18, hormigon: 19 };
   const famOf = b => { const B = window.BCN_BARRI; return EST ? EST.familia(B ? B.at((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2) : null) : null; };
   function varOf(b) {
@@ -494,7 +494,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   }
   // paño de muro: los acabados propios (16–19) se solapan 12 mm como el estuco y la piedra, para que no haya grietas
   function wr(B, F, u0, u1, y0, y1, col, kw) { if (kw >= 16) { u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; } rect(B, F, u0, u1, y0, y1, 0, col, kw); }
-  const ROPA = [[232, 230, 222], [196, 58, 54], [58, 88, 156], [232, 196, 78], [118, 168, 198], [236, 160, 172], [86, 136, 88], [44, 44, 52], [240, 240, 236]];
+  const ROPA = [[232, 230, 222], [150, 62, 60], [64, 86, 132], [206, 190, 150], [118, 160, 190], [222, 168, 176], [96, 128, 96], [52, 52, 60], [240, 240, 236], [170, 150, 190]];
   const VID = [150, 172, 168], VIDA = pbrAux(0.12, 0.2, 0, 0), RQV = () => window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;
   // barandilla de balcón de e0 a e1, de y hacia arriba, con el frente a jt; sl/sr: lados
   function rail(env, F, e0, e1, y, jt, sl, sr) {
@@ -534,9 +534,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   }
   // ropa tendida en la barandilla (frente a d)
   function ropa(W0, F, e0, e1, y, d, r) {
-    const n = 2 + ((r * 3) | 0); let x = e0 + 0.15 + r * 0.2;
-    for (let q = 0; q < n && x < e1 - 0.3; q++) { const w = 0.3 + ((q * 37 + r * 91) % 10) / 22, h = 0.35 + ((q * 53 + r * 71) % 10) / 20;
-      rect(W0, F, x, Math.min(e1 - 0.1, x + w), y - h, y, d, ROPA[(q * 5 + ((r * 97) | 0)) % ROPA.length], K.PLAIN); x += w + 0.08; }
+    // prendas sueltas y separadas, de tonos apagados (nunca franjas de colores seguidas)
+    const n = 2 + ((r * 3) | 0); let x = e0 + 0.12 + r * 0.25;
+    for (let q = 0; q < n && x < e1 - 0.35; q++) { const w = 0.26 + (((q * 37 + r * 91) | 0) % 10) / 40, h = 0.3 + (((q * 53 + r * 71) | 0) % 10) / 25;
+      rect(W0, F, x, Math.min(e1 - 0.1, x + w), y - h, y, d, ROPA[(q * 3 + ((r * 97) | 0)) % ROPA.length], K.PLAIN); x += w + 0.22 + (q % 2) * 0.15; }
   }
   // tribuna acristalada en voladizo (un vano, una planta)
   function tribunaV(env, F, a, bw, k, P) {
@@ -640,7 +641,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         const sl = !corr || W === 0, sr = !corr || W === nb - 1, slab = mixc(uV, env.stone, 0.35);
         box(W0, F, e0, e1, k - (ter ? 0.2 : 0.06), k + 0.12, 0, jt, ter ? uV : slab, ter ? K.STUCCO : K.STONE, (sl ? 4 : 0) | 3);
         rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr);
-        if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.3]) box(W1, F, pe, pe + 0.1, k - 0.34, k - 0.06, 0, jt * 0.78, shade(slab, 0.88), K.STONE);
+        if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.08, k - 0.26, k - 0.06, 0, jt * 0.55, shade(slab, 0.88), K.STONE);
         if (rr[9] < V.ropa) ropa(W0, F, e0, e1, k + 1.08, jt + 0.03, rr[10]);
         if (W1 && rr[3] < V.mac && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
       }
@@ -803,7 +804,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   }
   function setRange(q) {   // 0 apagado · 1 normal · 2 alto
     S.on = q > 0;
-    const k = q >= 2 ? 1.45 : 1;
+    const k = q >= 2 ? 1.45 : q < 1 ? q : 1;   // q < 1: radios reducidos (hojas de depuración)
     Object.assign(S, { R0: 170 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 70 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
     ctx.matBld.setVector2('uFx', new BABYLON.Vector2(S.R0, S.R1));
     matB.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1)); matH.setVector2('uFade', new BABYLON.Vector2(S.H0, S.H1));
@@ -812,7 +813,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     planT = 0;
   }
   setRange(1);
-  return { update, setRange, nElig, spot, famOf, varOf, busy: () => !!job || queue.length > 0,
+  // depuración: fuerza un estilo («familia:n», «familia», «off» o null) y rehace las celdas
+  function force(v) { FXV = v; VAR.fill(undefined); dropAll(); planT = 0; }
+  return { update, setRange, nElig, spot, famOf, varOf, force, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();
