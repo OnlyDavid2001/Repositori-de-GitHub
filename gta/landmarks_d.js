@@ -25,7 +25,7 @@ function roseton(B, x, y, z, r, dir, col) {
 }
 // torre octogonal con franjas oscuras (huecos del campanario): bandas = [[y0, y1], …]
 function torreOct(B, x, z, y0, y1, r, col, bandas, o) {
-  o = o || {}; const c = L.color(col), dk = L.shade(c, 0.32), prof = [[r, y0, c]];
+  o = o || {}; const c = L.color(col), dk = L.shade(c, 0.5), prof = [[r, y0, c]];
   for (const [a, b] of bandas || []) prof.push([r, a, c], [r, a, dk], [r, b, dk], [r, b, c]);
   prof.push([r, y1, c], [r * 0.001, y1, L.shade(c, 0.85)]);
   L.rev(B, L.F0, x, z, prof, o.lados || 8, c, o.k || K.PIEDRA, { aux: o.aux || aPie });
@@ -450,8 +450,9 @@ add({ id: 'torre_sant_sebastia', nombre: 'Torre Sant Sebastià', nivel: 'B', x: 
   } });
 
 // El Cap de Barcelona (Lichtenstein): cabeza de 14 m de perfil, plana como una viñeta, de cerámica de colores. Movido
-// 55 m hacia el mar respecto al catálogo (la coordenada de memoria caía dentro de una manzana).
-add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13139.8, z: 13295.9, rot: 45, alto: 14, ancho: 8, largo: 4,
+// unos 90 m hacia el mar respecto al catálogo (la coordenada de memoria caía dentro de una manzana): en el paseo del
+// Moll de la Fusta, al otro lado de la calzada del Passeig de Colom, fuera de la arboleda.
+add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13181, z: 13304, rot: 45, alto: 14, ancho: 8, largo: 4,
   noche: 'focos', edificios: [],
   build(B, h, L) {
     L.caja(B, 0, 0, -1.5, 5, 3.2, 2, 0, [190, 186, 178], K.LISO);
@@ -473,19 +474,21 @@ add({ id: 'estel_ferit', nombre: "L'Estel Ferit", nivel: 'B', x: 13940.8, z: 128
       L.caja(B, x, z, y, s, s, 2.5, ang, R, K.METAL, { aux: a }));
   } });
 
-// El Llapis (Monument a la República, Cinc d'Oros): obelisco blanco muy fino de 33 m.
-add({ id: 'llapis', nombre: "El Llapis (Cinc d'Oros)", nivel: 'B', x: 11335.9, z: 15006, rot: 45, alto: 33, ancho: 3, largo: 3,
+// El Llapis (Monument a la República, Cinc d'Oros): obelisco blanco muy fino de 33 m. La coordenada de memoria caía dentro
+// de una manzana; va en el mayor claro cercano (el cruce, unos 95 m al noroeste).
+add({ id: 'llapis', nombre: "El Llapis (Cinc d'Oros)", nivel: 'B', x: 11271, z: 15078, rot: 45, alto: 33, ancho: 3, largo: 3,
   noche: 'focos', edificios: [],
   build(B, h, L) {
     L.caja(B, 0, 0, -1.5, 3.2, 3.2, 2.3, 0, [200, 196, 188], K.PIEDRA);
     L.aguja(B, 0, 0, 0.8, 32, 1.05, { lados: 4, pasos: 2, recto: 0.93, pot: 1, exp: 1, col: [242, 242, 236], k: K.LISO });
   } });
 
-// Rambla de Mar: pasarela ondulada de madera sobre el agua del Port Vell, con barandillas y farolas.
-add({ id: 'rambla_mar', nombre: 'Rambla de Mar', nivel: 'B', x: 13114.3, z: 12717.4, y: 1.4, rot: 135, alto: 6, ancho: 20, largo: 200,
+// Rambla de Mar: pasarela ondulada de madera sobre el agua del Port Vell, con barandillas y farolas, del muelle de Colom
+// (−Z) al Moll d'Espanya (+Z). Posición y rumbo ajustados con una vista cenital (el catálogo la dejaba en el agua).
+add({ id: 'rambla_mar', nombre: 'Rambla de Mar', nivel: 'B', x: 13068, z: 12757, y: 1.4, rot: 112, alto: 6, ancho: 20, largo: 215,
   noche: 'nada', edificios: [], sombra: false,
   build(B, h, L) {
-    const MAD = [140, 106, 74], GR = [196, 196, 190], N = 32, Lg = 200, W = 5;
+    const MAD = [140, 106, 74], GR = [196, 196, 190], N = 32, Lg = 215, W = 5;
     const X = z => 7 * Math.sin(z / Lg * Math.PI * 2), Y = z => 1.6 + 1.1 * Math.max(0, Math.sin(z / Lg * Math.PI * 3));
     for (let i = 0; i < N; i++) { const z0 = -Lg / 2 + Lg * i / N, z1 = z0 + Lg / N, a0 = X(z0), a1 = X(z1), y0 = Y(z0), y1 = Y(z1);
       L.q4(B, [a0 - W, y0, z0], [a0 + W, y0, z0], [a1 + W, y1, z1], [a1 - W, y1, z1], MAD, K.LISO, L.aux.liso(0.9));
