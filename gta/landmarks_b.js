@@ -153,9 +153,9 @@ add({ id: 'estadi_olimpic', nombre: 'Estadi Olímpic Lluís Companys', nivel: 'A
     corona(B, GI, yP + 1.2, GO, 19, i => (i % 12 < 6 ? [156, 152, 146] : [138, 136, 132]), K.GRADA, L.aux.grada(0.8, 0));
     banda(B, GI, yP, yP + 1.2, [70, 80, 96], K.LISO);
     // marquesina blanca curva de la tribuna (oeste: t ≈ 270°)
-    const MI = SE(rx - 38, rz - 50, P, 24, 232, 308), MO = SE(rx - 2, rz - 2, P, 24, 232, 308);
-    corona(B, MI, 31.5, MO, 27, [240, 238, 232], K.METAL, L.aux.panel(3, 0.08, 0), true);
-    banda(B, MI, 30.6, 31.5, [222, 220, 214], K.METAL, null, true);
+    const MI = SE(rx - 26, rz - 40, P, 24, 236, 304), MO = SE(rx - 2, rz - 2, P, 24, 232, 308);
+    corona(B, MI, 32, MO, 27.5, [240, 238, 232], K.METAL, L.aux.panel(3, 0.08, 0), true);
+    banda(B, MI, 31.1, 32, [222, 220, 214], K.METAL, null, true);
     for (let i = 2; i <= 22; i += 4) { const p = MO[i]; L.tambor(B, p[0], p[1], 21, 27.2, 0.5, { lados: 6, col: [230, 228, 222], k: K.LISO }); }
     // pórtico de entrada (este, t = 90°) con columnas y dos grupos ecuestres; pebetero al sur
     const g = seRay(rx, rz, P, Math.PI / 2);
