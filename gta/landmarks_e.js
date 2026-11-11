@@ -162,10 +162,13 @@ add({ id: 'hotel_porta_fira', nombre: 'Hotel Porta Fira', nivel: 'A', x: 8440.6,
 // Parc d'Atraccions del Tibidabo: la noria de cestas de colores, la Talaia (brazo inclinado con cabina), el avión colgado
 // de su torre, un tiovivo y los pabellones del parque (sus plantas reales, con tejado rojo).
 add({ id: 'tibidabo_parc', nombre: "Parc d'Atraccions del Tibidabo", nivel: 'B', x: 8040.7, z: 17929.4, y: 495, rot: 0, alto: 30, ancho: 84, largo: 150,
-  noche: 'focos', edificios: [176505, 176507, 176509, 176511, 176532],
+  noche: 'focos', edificios: [176505, 176507, 176509, 176511, 176532, 176533, 176534, 176535, 176536, 176537, 176538, 176539, 176540, 176541,
+    176542, 176543, 176544],
   build(B, h, L) {
     const COLS = [[214, 70, 56], [232, 196, 72], [43, 95, 168], [70, 150, 80], [236, 236, 230], [200, 90, 160]];
-    for (const e of edifs(h)) L.prisma(B, e.plantas[0], e.y0 - 1, Math.max(e.y0 + 3, e.alto), [226, 214, 190], K.VENTANAS,
+    // (los volúmenes de planta mínima son las antenas de la cumbre: en los datos salían como columnas blancas macizas;
+    // se ocultan y se rehacen abajo como mástiles finos de metal gris)
+    for (const e of edifs(h)) if (area(e.plantas[0]) > 60) L.prisma(B, e.plantas[0], e.y0 - 1, Math.max(e.y0 + 3, e.alto), [226, 214, 190], K.VENTANAS,
       { aux: L.aux.ventanas(3.4, 2.6, 0.4, 0.5), techo: [176, 76, 56], kTecho: K.TEJA });
     // noria: aro doble, radios, cestas de colores y caballete
     { const x0 = 14, z0 = 18, y0 = yT(h, x0, z0), R = 11, HC = R + 2.2, ring = [], ring2 = [];
@@ -194,6 +197,13 @@ add({ id: 'tibidabo_parc', nombre: "Parc d'Atraccions del Tibidabo", nivel: 'B',
       L.caja(B, px, pz - 0.8, py - 0.15, 11, 1.7, 0.3, 0, [200, 40, 36], K.METAL);
       L.caja(B, px, pz + 3.7, py + 0.2, 4, 1, 0.25, 0, [200, 40, 36], K.METAL);
       L.caja(B, px, pz + 3.9, py + 0.3, 0.25, 1.1, 1.8, 0, [200, 40, 36], K.METAL); }
+    // antenas de la cumbre (posiciones de los datos, relativas al parque): fuste metálico fino que adelgaza, con plataformas
+    for (const [x, z, alto, r] of [[-36.8, 139.3, 54, 1.3], [-20.9, 281.6, 100, 2.4], [-21.5, 321.2, 36, 0.9], [-16.5, 295.1, 43, 0.9]]) {
+      const y = yT(h, x, z), GRI = [138, 140, 146];
+      L.tambor(B, x, z, y - 1.5, y + alto * 0.75, r, { r1: r * 0.55, lados: 8, col: GRI, k: K.METAL });
+      L.tambor(B, x, z, y + alto * 0.75, y + alto, r * 0.3, { r1: r * 0.12, lados: 6, col: [190, 70, 60], k: K.METAL });
+      for (const f of [0.45, 0.68]) L.tambor(B, x, z, y + alto * f, y + alto * f + 1.2, r * 1.9, { lados: 8, col: GRI, k: K.METAL });
+    }
     // tiovivo
     { const x0 = -6, z0 = 0, y0 = yT(h, x0, z0);
       L.tambor(B, x0, z0, y0 - 1, y0 + 0.6, 7, { lados: 16, col: [236, 220, 180], k: K.LISO });
@@ -217,7 +227,7 @@ add({ id: 'observatori_fabra', nombre: 'Observatori Fabra', nivel: 'B', x: 8402.
 
 // Monestir de Pedralbes: el conjunto gótico (plantas reales, piedra dorada y teja), con la iglesia de una nave y el
 // campanario octogonal.
-add({ id: 'monestir_pedralbes', nombre: 'Monestir de Pedralbes', nivel: 'B', x: 7375.2, z: 15055.7, rot: 41, alto: 36, ancho: 94, largo: 120,
+add({ id: 'monestir_pedralbes', nombre: 'Monestir de Pedralbes', nivel: 'B', x: 7375.2, z: 15055.7, rot: 41, alto: 44, ancho: 94, largo: 120,
   noche: 'focos', edificios: [104726, 104728, 104729, 104731, 104737, 104738, 104742, 104743, 105103],
   build(B, h, L) {
     const PI = [201, 180, 138], PI2 = [180, 160, 120], TJ = [168, 92, 64];
@@ -226,14 +236,20 @@ add({ id: 'monestir_pedralbes', nombre: 'Monestir de Pedralbes', nivel: 'B', x: 
     if (!ed.length) L.caja(B, 0, 0, -1, 80, 66, 13, 0, PI, K.PIEDRA, { techo: TJ, kTecho: K.TEJA });
     // iglesia: nave alta con tejado a dos aguas (sobre el volumen 105103, a lo largo de Z) y contrafuertes
     const nx = 33, nz = -24;
-    L.caja(B, nx, nz, -2, 13, 46, 23, 0, PI, K.PIEDRA, { aux: L.aux.piedra(0.5, 1.1) });
-    L.cubierta(B, nx, nz, 21, 14, 47, 5, { tipo: 'dos', col: TJ, colHastial: PI2, kHastial: K.PIEDRA });
-    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) L.caja(B, nx + s * 7.4, nz - 20 + i * 8, -2, 1.8, 1.6, 19, 0, PI2, K.PIEDRA);
+    L.caja(B, nx, nz, -2, 13, 46, 27, 0, [214, 196, 156], K.PIEDRA, { aux: L.aux.piedra(0.5, 1.1) });
+    L.cubierta(B, nx, nz, 25, 14, 47, 6, { tipo: 'dos', col: TJ, colHastial: PI2, kHastial: K.PIEDRA });
+    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) L.caja(B, nx + s * 7.4, nz - 20 + i * 8, -2, 1.8, 1.6, 23, 0, PI2, K.PIEDRA);
     // campanario octogonal junto a la cabecera, con su terraza y el remate
     const cx = 22, cz = -1;
-    L.tambor(B, cx, cz, -2, 33, 3.6, { lados: 8, col: PI, k: K.PIEDRA, aux: L.aux.piedra(0.5, 1.0) });
-    L.tambor(B, cx, cz, 27, 33.8, 3.9, { lados: 8, col: PI2, k: K.VENTANAS, aux: L.aux.ventanas(6.8, 2.9, 0.45, 0.6) });
-    L.piramide(B, cx, cz, 33.8, 4, 4, 2.6, { col: PI2, k: K.PIEDRA });
+    L.tambor(B, cx, cz, -2, 40, 3.8, { lados: 8, col: [214, 196, 156], k: K.PIEDRA, aux: L.aux.piedra(0.5, 1.0) });
+    L.tambor(B, cx, cz, 33, 40, 4.0, { lados: 8, col: [214, 196, 156], k: K.VENTANAS, aux: L.aux.ventanas(7, 3.2, 0.5, 0.75) });
+    L.tambor(B, cx, cz, 40, 41, 4.4, { lados: 8, col: PI2, k: K.PIEDRA });
+    L.piramide(B, cx, cz, 41, 2.6, 2.6, 2.2, { col: PI2, k: K.PIEDRA });
+    // claustro: patio ajardinado con la galería de tres pisos de arcos alrededor (en el centro del conjunto)
+    { const qx = -8, qz = 8, Q = 34, y = yT(h, qx, qz);
+      L.caja(B, qx, qz, y - 1, Q - 8, Q - 8, 1.3, 0, [96, 132, 76], K.CESPED);
+      for (const [dx, dz, w, l] of [[0, -(Q - 4) / 2, Q, 4], [0, (Q - 4) / 2, Q, 4], [-(Q - 4) / 2, 0, 4, Q - 8], [(Q - 4) / 2, 0, 4, Q - 8]])
+        L.caja(B, qx + dx, qz + dz, y - 1, w, l, 12, 0, [224, 210, 176], K.VENTANAS, { aux: L.aux.ventanas(4, 2.2, 0.7, 0.7), techo: TJ, kTecho: K.TEJA }); }
   } });
 
 // Palau Reial de Pedralbes: palacio italianizante blanco y ocre en U (planta real), de tres plantas con cornisa y
@@ -383,7 +399,7 @@ add({ id: 'mistos', nombre: 'Mistos', nivel: 'B', x: 10168, z: 18482, rot: 0, al
 // Pont de Bac de Roda (Calatrava): tablero sobre las vías y, a cada lado de la calzada, un par de arcos blancos (uno
 // vertical y otro inclinado hacia fuera) con péndolas. El paso va de Bac de Roda a Felip II (rumbo 135°, perpendicular a
 // las vías; el catálogo decía 45°).
-add({ id: 'pont_bac_de_roda', nombre: 'Pont de Bac de Roda', nivel: 'B', x: 14107.7, z: 17278, rot: 135, alto: 20, ancho: 30, largo: 130,
+add({ id: 'pont_bac_de_roda', nombre: 'Pont de Bac de Roda', nivel: 'B', x: 14107.7, z: 17278, rot: 135, alto: 24, ancho: 34, largo: 130,
   noche: 'focos', edificios: [], sombra: true,
   build(B, h, L) {
     const BL = [240, 240, 234], GR = [170, 170, 168];
@@ -391,12 +407,14 @@ add({ id: 'pont_bac_de_roda', nombre: 'Pont de Bac de Roda', nivel: 'B', x: 1410
     L.caja(B, 0, 0, -2.6, 12, 126, 1.0, 0, BL, K.LISO);
     for (const s of [-1, 1]) {
       L.caja(B, s * 12.6, 0, 0, 0.6, 130, 1.1, 0, BL, K.METAL);                      // barandillas
-      const vert = arcoPts(s * 6.5, -26, 26, 0, 20, 0, 18), incl = arcoPts(s * 7.5, -26, 26, 0, 19, s * 24, 18);
-      L.tube(B, L.F0, vert, 0.9, 8, BL, K.LISO);
-      L.tube(B, L.F0, incl, 0.8, 8, BL, K.LISO);
-      for (let i = 2; i < 17; i += 2) { L.bar(B, vert[i], [s * 6.5, 0, vert[i][2]], 0.07, [210, 210, 210], K.METAL);
-        L.bar(B, incl[i], [s * 12.2, 0, incl[i][2]], 0.07, [210, 210, 210], K.METAL); }
-      for (const z of [-26, 26]) L.caja(B, s * 7, z, -6, 4, 4, 6.4, 0, BL, K.LISO);        // estribos
+      // arcos más gruesos y algo más altos que los reales para que se lean desde lejos (blanco brillante sobre el gris)
+      const vert = arcoPts(s * 6.5, -31, 31, 0, 23, 0, 20), incl = arcoPts(s * 7.5, -31, 31, 0, 22, s * 26, 20);
+      L.tube(B, L.F0, vert, 1.5, 10, BL, K.LISO);
+      L.tube(B, L.F0, incl, 1.3, 10, BL, K.LISO);
+      for (let i = 3; i < 18; i += 3) L.bar(B, vert[i], incl[i], 0.35, BL, K.LISO);
+      for (let i = 2; i < 19; i += 2) { L.bar(B, vert[i], [s * 6.5, 0, vert[i][2]], 0.12, [210, 210, 210], K.METAL);
+        L.bar(B, incl[i], [s * 12.2, 0, incl[i][2]], 0.12, [210, 210, 210], K.METAL); }
+      for (const z of [-31, 31]) L.caja(B, s * 8, z, -8, 6, 6, 8.6, 0, BL, K.LISO);        // estribos
     }
   } });
 
