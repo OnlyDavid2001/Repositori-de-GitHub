@@ -185,4 +185,118 @@ add({ id: 'sagrada_familia', nombre: 'Sagrada Família', nivel: 'A', x: 12597.9,
     L.prisma(B, esc, y0, (x, z) => 6.5 + 1.1 * Math.sin((z - 2) / 26 * 3 * 2 * PI) * (x < 34 ? 1 : -1), [214, 186, 150], K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [176, 150, 120] });
   } });
 
+// ================================================================== CASA MILÀ (LA PEDRERA)
+// Silueta: bloque de esquina de 6 plantas con el chaflán redondeado, sin aristas, y la azotea poblada de chimeneas.
+// Rasgos: (1) fachada de piedra crema que ondula en planta y en altura (los cantos de forjado salen como olas);
+// (2) balcones de hierro negro enmarañado en cada vano; (3) desván blanco con el borde ondulado y chimeneas-guerrero.
+// Ejes (datos): fachadas a −Z (Pg. de Gràcia) y a +X (Provença), chaflán curvo entre ellas; medianeras a −X y +Z.
+add({ id: 'casa_mila', nombre: 'Casa Milà (La Pedrera)', nivel: 'A', x: 11535.7, z: 14987.7, rot: 48, alto: 34, ancho: 35, largo: 58,
+  noche: 'focos', edificios: ED.casa_mila,
+  build(B, h, L) {
+    const PI = Math.PI, CREMA = [214, 202, 178], BLANCO = [236, 230, 216], HIERRO = [46, 46, 42];
+    // línea de fachada (Pg. de Gràcia → chaflán curvo → Provença), remuestreada cada ~1,4 m
+    const fach = [];
+    const tramo = (a, b, n) => { for (let i = 0; i < n; i++) fach.push([a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n]); };
+    tramo([-17.4, -28.7], [1.5, -28.7], 14);
+    for (let i = 0; i < 14; i++) { const t = i / 14 * PI / 2; fach.push([1.5 + 14.5 * Math.sin(t), -14.2 - 14.5 * Math.cos(t)]); }
+    tramo([16, -14.2], [16, 29.2], 31); fach.push([16, 29.2]);
+    // longitud de arco y normal hacia fuera de cada punto
+    const sArc = [0]; for (let i = 1; i < fach.length; i++) sArc.push(sArc[i - 1] + Math.hypot(fach[i][0] - fach[i - 1][0], fach[i][1] - fach[i - 1][1]));
+    const nor = fach.map((p, i) => { const a = fach[Math.max(0, i - 1)], b = fach[Math.min(fach.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1; return [dz / l, -dx / l]; });
+    const NF = fach.length, back = [[-13.6, 28.6], [-13.2, 2.4], [-17.4, 2.4]];      // medianeras
+    // ondulación: olas a lo largo de la fachada (~9 m) que se desplazan de planta en planta, y cantos de forjado salientes
+    const PL = 3.55, ola = (sa, y) => 0.55 * Math.sin(2 * PI * sa / 9 + 0.9 * Math.sin(y * 0.55)) + 0.32 * Math.cos(2 * PI * y / PL);
+    const anillo = (y, d) => fach.map((p, i) => { const o = ola(sArc[i], y) + d; return [p[0] + nor[i][0] * o, p[1] + nor[i][1] * o]; }).concat(back.map(p => [p[0] + (d < 0 ? 0.8 : 0), p[1]]));
+    const niv = []; for (let y = -1.5; y <= 21.4; y += PL / 2) niv.push([y, anillo(y, 0)]);
+    L.loft(B, niv, CREMA, K.VENTANAS, { aux: L.aux.ventanas(PL, 4.2, 0.52, 0.56), sinTecho: true });
+    // cubierta del cuerpo principal con los dos patios
+    const top = niv[niv.length - 1][1], yT = niv[niv.length - 1][0];
+    const p1 = [[-8.5, -19], [-5.9, -20.4], [-2.2, -20.5], [0.3, -19.5], [1.8, -18.2], [3.3, -15.8], [3.5, -13.5], [1, -8.7], [-0.8, -7.6], [-4.1, -7.1], [-7.3, -7.5], [-8.9, -8.5], [-10.3, -12.9], [-9.7, -16.4]];
+    const p2 = [[-2.5, 3.5], [0.2, 2], [4.8, 1.1], [7.1, 3.1], [8.2, 8.8], [7.5, 17.6], [6.8, 20.3], [5.4, 21.2], [1.2, 21.9], [-0.8, 21.5], [-4, 18.8], [-4.6, 15.3], [-4.3, 8.3], [-3.8, 5.7]];
+    for (const pt of [p1, p2]) L.prisma(B, pt, 0, yT, [176, 166, 146], K.VENTANAS, { aux: L.aux.ventanas(PL, 2.6, 0.5, 0.55), sinTecho: true });
+    const conHuecos = (ring, y) => { const pts = ring.concat(p1, p2).map(p => [p[0], y, p[1]]); L.poly(B, pts, [190, 182, 166], K.LISO, null, [ring.length, ring.length + p1.length]); };
+    conHuecos(top, yT);
+    // balcones de hierro: una maraña oscura en cada vano (~4,2 m) de las plantas 1–5
+    const sTot = sArc[NF - 1];
+    for (let f = 1; f <= 5; f++) { const y = f * PL + 0.15;
+      for (let sa = 2.1 + (f % 2) * 0.6; sa < sTot - 1; sa += 4.2) {
+        let i = 1; while (i < NF - 1 && sArc[i] < sa) i++;
+        const t = (sa - sArc[i - 1]) / Math.max(1e-3, sArc[i] - sArc[i - 1]), x = fach[i - 1][0] + (fach[i][0] - fach[i - 1][0]) * t, z = fach[i - 1][1] + (fach[i][1] - fach[i - 1][1]) * t;
+        const n = nor[i], o = ola(sa, y) + 0.45, tx = -n[1], tz = n[0], w = 1.25 + 0.25 * Math.sin(sa * 3.1 + f);
+        const cx = x + n[0] * o, cz = z + n[1] * o, hb = 1.05 + 0.2 * Math.cos(sa * 2.3 + f);
+        L.q4(B, [cx - tx * w, y, cz - tz * w], [cx + tx * w, y, cz + tz * w], [cx + tx * w * 0.8, y + hb, cz + tz * w * 0.8], [cx - tx * w * 0.9, y + hb * 0.9, cz - tz * w * 0.9], HIERRO, K.METAL);
+      } }
+    // desván: algo retranqueado, blanco, con el borde superior ondulado
+    const des = anillo(yT, -1.3), yD = yT + 3.2;
+    for (let i = 0; i < des.length; i++) { const a = des[i], b = des[(i + 1) % des.length], sa = i < NF ? sArc[i] : 0, sb = i + 1 < NF ? sArc[i + 1] : 0;
+      const ya = yD + (i < NF ? 0.9 * Math.sin(2 * PI * sa / 11) : 0), yb = yD + (i + 1 < NF ? 0.9 * Math.sin(2 * PI * sb / 11) : 0);
+      L.q4(B, [a[0], yT, a[1]], [b[0], yT, b[1]], [b[0], yb, b[1]], [a[0], ya, a[1]], BLANCO, K.VENTANAS, L.aux.ventanas(3.2, 1.6, 0.35, 0.3)); }
+    conHuecos(des, yD - 0.4);
+    // azotea: salidas de escalera (trencadís) y chimeneas-guerrero
+    const az = yD - 0.4;
+    for (const [x, z, r, a] of [[-12, -24, 1.7, 5.5], [10, -17, 1.6, 5], [11.5, 6, 1.7, 5.6], [-9, 0, 1.5, 5], [10.5, 24, 1.5, 4.8], [-9, 24, 1.4, 4.6]])
+      huso(B, x, z, [[r, az], [r * 1.1, az + a * 0.35], [r * 0.7, az + a * 0.7], [r * 0.45, az + a * 0.82], [0, az + a]], 8, BLANCO, K.TRENCADIS);
+    for (const [x, z] of [[-14, -26], [-6, -24.5], [-1, -24], [4, -24], [7.5, -21.5], [12.5, -11], [12.6, -3], [12.4, 12], [12, 18.5], [-12, -4], [-11, 8], [-10.5, 15], [-7.5, -2.5], [2, 25.5], [-3, 25.2], [-14.5, -10]]) {
+      const hh = 2.8 + h.R(0, 1.4), r = 0.55 + h.R(0, 0.2);
+      huso(B, x, z, [[r, az], [r * 0.85, az + hh * 0.45], [r * 1.35, az + hh * 0.62], [r * 1.25, az + hh * 0.78], [r * 0.5, az + hh * 0.9], [0, az + hh]], 6, h.R() < 0.3 ? [120, 140, 100] : CREMA, h.R() < 0.4 ? K.TRENCADIS : K.LISO);
+    }
+  } });
+
+// ================================================================== CASA BATLLÓ
+// Silueta: casa entre medianeras de 15 m de frente; la cubierta remata la fachada con un lomo de dragón y una torrecilla a
+// un lado. Rasgos: (1) lomo de dragón de escamas de colores (verde-azul a rosado) con la cresta de bolas; (2) fachada de
+// trencadís azul-verde con balcones-máscara blancos; (3) planta baja y principal de piedra con grandes huecos y huesos.
+// Ejes (datos): fachada a +Z (Pg. de Gràcia, al NE); la torrecilla a +X (al lado de la Casa Amatller).
+add({ id: 'casa_batllo', nombre: 'Casa Batlló', nivel: 'A', x: 11775.8, z: 14563.1, rot: 46, alto: 32, ancho: 15, largo: 30,
+  noche: 'focos', edificios: ED.casa_batllo,
+  build(B, h, L) {
+    const PI = Math.PI, W = 14.8, ZF = 15, PIE = [204, 192, 166], BLANCO = [238, 234, 222], AZUL = [92, 156, 176];
+    // cuerpo trasero (patio de manzana) y medianeras
+    L.caja(B, 0, -0.5, -1.5, W, 31, 22.5, 0, [196, 186, 166], K.VENTANAS, { aux: L.aux.ventanas(3.4, 3.2, 0.4, 0.5), techo: [150, 140, 125] });
+    // fachada principal: zócalo de piedra con los grandes huecos (huesos) y planos de trencadís azul-verde con ligera ondulación
+    L.caja(B, 0, ZF + 0.3, -1.5, W, 0.7, 8.5, 0, PIE, K.VENTANAS, { aux: L.aux.ventanas(8.5, 3.7, 0.72, 0.72) });
+    const N = 10;
+    for (let j = 0; j < 4; j++) { const ya = 7 + j * 4.1, yb = ya + 4.1;
+      for (let i = 0; i < N; i++) { const xa = -W / 2 + W * i / N, xb = -W / 2 + W * (i + 1) / N, za = ZF + 0.3 + 0.35 * Math.sin(xa * 0.8 + j), zb = ZF + 0.3 + 0.35 * Math.sin(xb * 0.8 + j);
+        L.q4(B, [xa, ya, za], [xb, ya, zb], [xb, yb, zb], [xa, yb, za], L.mixc(AZUL, [120, 168, 140], (i + j) % 3 / 3), K.TRENCADIS); } }
+    // ventanas oscuras y balcones-máscara (tres por planta)
+    for (let j = 0; j < 4; j++) for (const x of [-4.6, 0, 4.6]) { const y = 8.4 + j * 4.1;
+      L.q4(B, [x - 1, y, ZF + 0.72], [x + 1, y, ZF + 0.72], [x + 1, y + 2.5, ZF + 0.72], [x - 1, y + 2.5, ZF + 0.72], [40, 48, 56], K.LISO);
+      L.esfera(B, x, y + 0.15, ZF + 0.9, 1.05, { gajos: 6, anillos: 4, sy: 0.55, col: BLANCO, k: K.LISO }); }
+    // lomo de dragón: bóveda de escamas sobre la fachada, de −X hasta la torrecilla, con la cresta de bolas
+    const xa = -W / 2, xb = 3.6, NX = 12, NT = 6;
+    const lomo = t => 1.2 + 4.6 * Math.pow(Math.sin(PI * Math.min(1, t * 1.15)), 0.7);
+    const P = (t, th) => [xa + (xb - xa) * t, 23.5 + lomo(t) * Math.sin(th), 12.2 + 3.2 * Math.cos(th)];
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NT; j++) {
+      const t0 = i / NX, t1 = (i + 1) / NX, a0 = PI * j / NT, a1 = PI * (j + 1) / NT;
+      const col = L.ramp([[0, '#3f8f86'], [0.45, '#4f7fb0'], [0.75, '#b0708a'], [1, '#d9844a']], (t0 + t1) / 2);
+      L.q4(B, P(t0, a0), P(t1, a0), P(t1, a1), P(t0, a1), L.shade(col, 0.9 + 0.2 * ((i + j) % 2)), K.TEJA);
+    }
+    L.poly(B, Array.from({ length: NT + 1 }, (_, j) => P(0, PI * j / NT)), [180, 170, 150], K.LISO);
+    for (let i = 1; i < NX; i++) { const p = P(i / NX, PI / 2); L.esfera(B, p[0], p[1] + 0.35, p[2], 0.5, { gajos: 6, anillos: 4, col: [226, 196, 96], k: K.TRENCADIS }); }
+    // torrecilla con bulbo y cruz de cuatro brazos
+    L.tambor(B, 5.6, 13.6, 20, 29.5, 1.25, { lados: 10, col: PIE, k: K.TRENCADIS });
+    huso(B, 5.6, 13.6, [[1.25, 29.5], [1.65, 30.4], [1.1, 31.3], [0.3, 31.8]], 10, [216, 180, 90], K.TRENCADIS);
+    L.caja(B, 5.6, 13.6, 31.6, 0.35, 0.35, 2.4, 0, BLANCO, K.LISO);
+    L.caja(B, 5.6, 13.6, 32.9, 1.6, 0.35, 0.35, 0, BLANCO, K.LISO);
+    L.caja(B, 5.6, 13.6, 32.9, 0.35, 1.6, 0.35, 0, BLANCO, K.LISO);
+  } });
+
+// ================================================================== CASA AMATLLER (nivel B)
+// Casa entre medianeras junto a la Batlló: fachada rosada con esgrafiados y hastial escalonado flamenco. Fachada a −X (NE).
+add({ id: 'casa_amatller', nombre: 'Casa Amatller', nivel: 'B', x: 11788.5, z: 14552.5, rot: 136, alto: 28, ancho: 17, largo: 18,
+  noche: 'focos', edificios: ED.casa_amatller,
+  build(B, h, L) {
+    const ROSA = [226, 196, 166], OCRE = [196, 150, 110], ROJO = [176, 74, 60];
+    L.caja(B, 0.4, 0, -1.5, 16.2, 17.6, 21.5, 0, ROSA, K.VENTANAS, { aux: L.aux.ventanas(3.6, 3.4, 0.42, 0.55), techo: [150, 136, 120] });
+    // hastial escalonado sobre la fachada (−X): siete peldaños con remates rojos
+    const st = [[0, 8.8, 4.4], [1, 6.4, 2.9], [2, 4.2, 1.7], [3, 2.2, 0.8]];
+    for (const [i, a, al] of st) { const y = 20 + i * 1.6;
+      L.caja(B, -7.6, 0, y, 1.2, a * 2, 1.6, 0, ROSA, K.LISO);
+      if (i < 3) for (const s of [-1, 1]) L.caja(B, -7.6, s * (a - 0.4), y + 1.6, 1.3, 0.8, 0.35, 0, ROJO, K.TRENCADIS); }
+    L.caja(B, -7.6, 0, 26.4, 1.3, 1.4, 0.8, 0, ROJO, K.TRENCADIS);
+    L.cubierta(B, -2.4, 0, 20, 17.6, 10, 6, { tipo: 'dos', ang: 90, col: [150, 80, 60], colHastial: ROSA });
+    L.caja(B, -7.7, 0, 15, 0.4, 14, 3.2, 0, OCRE, K.PIEDRA);                       // friso de esgrafiado
+  } });
+
 })();
