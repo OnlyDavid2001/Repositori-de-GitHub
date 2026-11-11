@@ -28,6 +28,41 @@ window.BCN_FACADES = { init: async function (ctx) {
   const { scene, engine, mkMat, reg, heightAt, BREC, bldChunks, SEG, ROFF, META, PAL, WX, WZ, blobURL } = ctx;
   const VB = BABYLON.VertexBuffer;
 
+  // ---------------------------------------------------------------- rejilla de farolas (baño de sodio de noche)
+  // La llena streets.js con las farolas de sus celdas de detalle (LG.set(celda, [[x, yPie, z], …]) y LG.drop(celda)).
+  // Textura RGBA float de LG_N × LG_N celdas de LG_C m, toroidal: texel (cx mod N, cz mod N) = (x − cx·C, z − cz·C, cota del pie,
+  // clave cx + cz·4096) para comprobar que es de esa celda. Ventana de 1536 m: de sobra para las celdas de calle (RD 270 m).
+  // lampBath(p, n) suma las farolas de las 3 × 3 celdas vecinas; también la usan las copas de los árboles (streets.js).
+  const LG_N = 128, LG_C = 12, lgD = new Float32Array(LG_N * LG_N * 4);
+  for (let i = 3; i < lgD.length; i += 4) lgD[i] = -1;
+  const LG = { N: LG_N, C: LG_C, own: new Map(), dirty: false,
+    tex: new BABYLON.RawTexture(lgD, LG_N, LG_N, BABYLON.Constants.TEXTUREFORMAT_RGBA, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE, BABYLON.Constants.TEXTURETYPE_FLOAT),
+    set(key, list) { LG.drop(key); const md = (a) => ((a % LG_N) + LG_N) % LG_N, slots = [];
+      for (const [x, y, z] of list) { const cx = Math.floor(x / LG_C), cz = Math.floor(z / LG_C);
+        for (let k = 0; k < 9; k++) { const ix = cx + [0, 1, -1, 0, 0, 1, -1, 1, -1][k], iz = cz + [0, 0, 0, 1, -1, 1, -1, -1, 1][k], t = (md(iz) * LG_N + md(ix)) * 4;
+          if (lgD[t + 3] >= 0) continue;
+          lgD[t] = x - ix * LG_C; lgD[t + 1] = z - iz * LG_C; lgD[t + 2] = y; lgD[t + 3] = ix + iz * 4096; slots.push(t, ix + iz * 4096); break; } }
+      LG.own.set(key, slots); LG.dirty = true; },
+    drop(key) { const s = LG.own.get(key); if (!s) return; LG.own.delete(key);
+      for (let i = 0; i < s.length; i += 2) if (lgD[s[i] + 3] === s[i + 1]) lgD[s[i] + 3] = -1; LG.dirty = true; } };
+  LG.tex.wrapU = LG.tex.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+  scene.onBeforeRenderObservable.add(() => { if (LG.dirty) { LG.dirty = false; LG.tex.update(lgD); } });
+  const LAMP_GLSL = `uniform sampler2D tLamp;
+// luz de las farolas cercanas en p (normal n; k = 1/(2σ²) a lo largo del suelo): ~1 en la fachada junto a una farola, cae en 6–7 m a lo largo y en 6–10 m hacia arriba
+float lampBath(vec3 p, vec3 n, float k){
+  vec2 c0 = floor(p.xz/${LG_C}.0); float s = 0.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 ci = c0 + vec2(float(i), float(j));
+    vec4 L = texture2D(tLamp, (mod(ci, ${LG_N}.0) + 0.5)/${LG_N}.0);
+    if (abs(L.w - (ci.x + ci.y*4096.0)) > 0.5) continue;
+    vec3 d = vec3(ci.x*${LG_C}.0 + L.x, L.z + 8.6, ci.y*${LG_C}.0 + L.y) - p;
+    float hy = p.y - L.z;
+    s += exp(-dot(d.xz, d.xz)*k)*(1.0 - smoothstep(1.5, 9.0, hy))*(0.25 + 0.75*max(dot(n, normalize(d)), 0.0));
+  }
+  return s;
+}
+`;
+  LG.glsl = LAMP_GLSL;
   // ---------------------------------------------------------------- materiales
   // El preludio común lo antepone mkMat. Ramas por tipo de material («kind»): las del núcleo van aquí; las que registran
   // los demás módulos con GEO.regKind() se insertan antes de la rama final (variables disponibles: DESARROLLO.md §6).
@@ -37,7 +72,7 @@ window.BCN_FACADES = { init: async function (ctx) {
 varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
 uniform vec2 uFade; uniform vec2 uFadeHi; uniform float uCellHi;
 uniform sampler2D tPlD; uniform sampler2D tPlN; uniform sampler2D tAsD; uniform sampler2D tAsN; uniform sampler2D tSign;
-` + GEO.kindsDecl() + `
+` + LAMP_GLSL + GEO.kindsDecl() + `
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   float dt = dith();
@@ -153,6 +188,9 @@ void main(){
     alb *= 0.6 + 0.7*vnoise(P*9.0); N = normalize(n + vec3(vnoise(P*7.0) - 0.5, 0.0, vnoise(P*7.0 + 3.0) - 0.5)*1.4);
   }
   vec3 c = shade(alb, N, V, rough, metal, ao) + emis;
+  // baño de sodio de las farolas en los bajos (de noche; los vidrios ya han salido: escaparates y ventanas no se tocan)
+  if (uDusk > 0.001) { float sd = lampBath(vPos, n, 1.0/92.0)*smoothstep(0.05, 0.3, uDusk);
+    c += emit(kAura*min(alb, vec3(0.55)), sd*2.8); }
   FRAG(c);
 }`;
   const VS_DET = `precision highp float;
@@ -160,19 +198,20 @@ attribute vec3 position; attribute vec4 color; attribute vec4 uv; attribute vec4
 varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; vN = nrm.xyz*2.0 - 1.0; vSm = nrm.w; gl_Position = viewProjection*wp; }`;
   const KU = GEO.kindsUniforms();   // uniformes y samplers que declaran los tipos registrados
-  const UNI = ['uFade', 'uFadeHi', 'uCellHi'].concat(KU.uniforms), SMP = ['tPlD', 'tPlN', 'tAsD', 'tAsN', 'tSign'].concat(KU.samplers);
+  const UNI = ['uFade', 'uFadeHi', 'uCellHi'].concat(KU.uniforms), SMP = ['tPlD', 'tPlN', 'tAsD', 'tAsN', 'tSign', 'tLamp'].concat(KU.samplers);
   const matB = mkMat('fx0', VS_DET, FS_DET, ['position', 'color', 'uv', 'nrm'], UNI, SMP);
   const matH = mkMat('fx1', VS_DET, FS_DET, ['position', 'color', 'uv', 'nrm'], UNI, SMP);
   const tex = async (f) => { const t = new BABYLON.Texture(await blobURL('data/' + f), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
     t.wrapU = t.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE; t.anisotropicFilteringLevel = 8; return t; };
   const [tPlD, tPlN, tAsD, tAsN] = await Promise.all(['fx_plaster_d.webp', 'fx_plaster_n.webp', 'fx_ashlar_d.webp', 'fx_ashlar_n.webp'].map(tex));
+  for (const m of [matB, matH]) m.setTexture('tLamp', LG.tex);
   for (const m of [matB, matH]) { m.setTexture('tPlD', tPlD); m.setTexture('tPlN', tPlN); m.setTexture('tAsD', tAsD); m.setTexture('tAsN', tAsN); m.setTexture('tSign', tPlD); }
   // bandera por malla «la celda tiene ORNAMENTO» (uCellHi): la malla BASE de una celda lleva su celda en metadata.bcn.cell.
   // Se fija en el efecto al enlazar cada malla, también a 0 en las que no son BASE (ORNAMENTO, mobiliario)
   for (const m of [matB, matH]) m.onBindObservable.add(mesh => { const e = m.getEffect(), o = mesh.metadata && mesh.metadata.bcn, c = o && o.cell;
     if (e) e.setFloat('uCellHi', c && c.hi ? 1 : 0); });
   // para los hooks y para streets.js: materiales de detalle (cada módulo fija ahí sus texturas y uniformes; tSign lo pone interiors.js)
-  ctx.detail = { matB, matH, mats: [matB, matH], mkMesh: mkMeshFrom };
+  ctx.detail = { matB, matH, mats: [matB, matH], mkMesh: mkMeshFrom, lamps: LG };
 
   // ---------------------------------------------------------------- índices espaciales
   const CS = 100, NX = Math.ceil(WX / CS), NZ = Math.ceil(WZ / CS), NC = NX * NZ;
