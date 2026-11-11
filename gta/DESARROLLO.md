@@ -843,11 +843,9 @@ Vistas: `tools/views_noche.json` (`n_*`: 23:00 desde Collserola, aéreo alto, dr
 como la foto de los Bunkers, `eix_acera` y `rambla_pie`; y 21:15, 3:00 y 12:00). Las aéreas llevan `BCN.st.maxDist=40000` y
 todas reponen `BCN.cam.fov=0.86` (la de la Rovira lo cambia).
 
-**Pendiente / flojo** (NOCHE): las fachadas de detalle (`facades.js`) no reciben el baño de sodio de las farolas (solo los
-charcos del suelo y la luz de los escaparates): en la foto, junto a cada farola la fachada se ve amarilla hasta 6–10 m; las
-copas de los árboles de calle se ven verde oliva desde el dron (algo fuertes); el mar no refleja las luces del puerto (es
-negro azulado); monumentos iluminados (Torre Glòries en azul y rojo, Sagrada Família en blanco frío, grúa con luces rojas) y
-comercios de horario distinto (bares, farmacia de guardia).
+**Baño de sodio en fachadas de detalle y copas oscuras desde arriba** (etapa REMATE; detalle en `tools/encargos/progreso/REMATE.md`): rejilla de farolas `ctx.detail.lamps` (textura RGBA float 128 × 128 de celdas de 12 m que llena `streets.js` con los charcos de `cc.pools` y vacía al soltar cada celda) y `lampBath(p, n, k)` en `FS_DET` (`facades.js`): suma gaussiana (σ ≈ 6,8 m) de las farolas de las 3 × 3 celdas vecinas, que se apaga de 1,5 a 9 m sobre el pie; solo de noche, sin tocar los vidrios. En `FS_TREE`, con la cámara por encima de la hoja, la copa se oscurece y el aura de farola queda en la cara inferior, más un borde cálido sobre cada farola; vista desde abajo, igual que antes.
+
+**Pendiente / flojo** (NOCHE): el baño solo existe a menos de ~270 m (celdas de calle de detalle); en calles con farolas alternas cada 24 m queda bastante continuo; el mar no refleja las luces del puerto (es negro azulado); comercios de horario distinto (bares, farmacia de guardia).
 
 No se enciende nunca: parques, cubiertas, el mar y la montaña (solo reciben la luna).
 
