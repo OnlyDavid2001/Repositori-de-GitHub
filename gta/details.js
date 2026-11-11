@@ -6,7 +6,7 @@
    Contrato de env/run: DESARROLLO.md §6. Tipos de material propios: ids 40–59, con BCN_GEO.regKind() al cargar el script. */
 (function () {
 'use strict';
-const { K, rect, jamb, box, lattice, latticeSide, shade, mixc, R } = window.BCN_GEO;
+const { K, rect, jamb, box, lattice, latticeSide, shade, mixc, rev, sphere, R } = window.BCN_GEO;
 
 window.BCN_DETAILS = { init(ctx) {
   // ---------------------------------------------------------------- tramo ciego: medianera tapada por un vecino igual o más alto
@@ -83,9 +83,18 @@ window.BCN_DETAILS = { init(ctx) {
             box(W1, F, e0, e0 + 0.05, k + 1.14, k + 1.19, 0, jt, iron, K.METAL); box(W1, F, e1 - 0.05, e1, k + 1.14, k + 1.19, 0, jt, iron, K.METAL);
             box(W1, F, e0, e0 + 0.05, k + 0.12, k + 1.14, jt - 0.06, jt, iron, K.METAL); box(W1, F, e1 - 0.05, e1, k + 0.12, k + 1.14, jt - 0.06, jt, iron, K.METAL);
             for (const pe of [e0 + 0.22, e1 - 0.32]) box(W1, F, pe, pe + 0.1, k - 0.36, k - 0.06, 0, jt * 0.78, shade(slab, 0.88), K.STONE);
-            if (rr[3] < 0.32) { const pe = e0 + 0.25 + rr[4] * Math.max(0, e1 - e0 - 0.8);
-              box(W1, F, pe, pe + 0.28, k + 0.12, k + 0.38, jt - 0.42, jt - 0.12, [158, 82, 56], K.PLAIN);
-              box(W1, F, pe - 0.08, pe + 0.36, k + 0.38, k + 0.62 + rr[5] * 0.3, jt - 0.5, jt - 0.04, [52 + rr[5] * 30 | 0, 100 + rr[5] * 40 | 0, 46], K.LEAF); }
+            if (rr[3] < 0.32) {                                 // maceta: tiesto de barro torneado, mata redondeada y, a veces, flores
+              const pe = e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), pd = jt - 0.27, y0 = k + 0.12, t = rr[5];
+              const clay = [150 + t * 22 | 0, 78 + t * 12 | 0, 52], soil = [58, 44, 34];
+              rev(W1, F, pe, pd, [[0.10, y0], [0.145, y0 + 0.22], [0.162, y0 + 0.23], [0.162, y0 + 0.27], [0.135, y0 + 0.27, soil], [0, y0 + 0.25, soil]], 8, clay, K.PLAIN);
+              const g = [46 + t * 34 | 0, 96 + t * 44 | 0, 40 + t * 14 | 0], h = 0.20 + t * 0.22;
+              sphere(W1, F, pe, y0 + 0.30 + h * 0.55, pd, 0.19 + t * 0.05, 7, 4, g, K.LEAF, undefined, 0.83 + t * 0.57);
+              sphere(W1, F, pe - 0.13, y0 + 0.36, pd + 0.05, 0.13, 6, 3, shade(g, 0.82), K.LEAF);
+              sphere(W1, F, pe + 0.12, y0 + 0.38, pd - 0.06, 0.12, 6, 3, mixc(g, [120, 150, 60], 0.25), K.LEAF);
+              if (rr[6] < 0.6) { const fl = rr[2] < 0.4 ? [198, 38, 44] : (rr[2] < 0.7 ? [226, 96, 140] : [238, 230, 214]);
+                for (let q = 0; q < 5; q++) { const a = q * 2.4 + t * 6, rq = 0.10 + 0.07 * ((q * 37 % 10) / 10);
+                  sphere(W1, F, pe + Math.cos(a) * rq, y0 + 0.40 + h * 0.5 + 0.08 * Math.sin(q * 1.9), pd + Math.sin(a) * rq * 0.9 + 0.03, 0.035, 4, 2, fl, K.PLAIN); } }
+            }
           }
         }
       }
