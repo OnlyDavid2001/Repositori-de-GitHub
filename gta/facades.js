@@ -1,4 +1,4 @@
-/* GTA Barcelona — Fachadas de detalle.
+/* GTA Barcelona — Fachadas de detalle: NÚCLEO.
    Lleva la fachada del Eixample de «Transeúnte» (planta baja de piedra con comercios y portal, balconeras con
    derrame, persianas, porticones, balcones de forja, tribunas, esgrafiados, cornisa y balaustrada) a todos los
    edificios de viviendas de la ciudad, respetando su planta y su altura reales.
@@ -6,94 +6,34 @@
      · lejos   → el volumen simple de siempre (shader con ventanas pintadas);
      · cerca   → capa BASE: fachada en 3D construida al vuelo por celdas de 100 m (fundido tramado con el volumen);
      · muy cerca → capa ORNAMENTO: carpinterías, molduras, pilastras, ménsulas, macetas, dentículos…
-   Todo se genera en segundo plano con un presupuesto de milisegundos por fotograma. */
+   Todo se genera en segundo plano con un presupuesto de milisegundos por fotograma.
+   Este fichero es el núcleo: shader y materiales de detalle, índices espaciales y consultas (ctx.city), disposición de
+   cada edificio (layoutB), esqueleto del generador (genB), celdas, streaming y topes. La geometría la ponen los hooks:
+     · interiors.js → planta baja (portal, comercios, ventanas con reja);
+     · details.js   → pisos, coronación y tramos lisos/ciegos.
+   Contratos (env, run, ctx.city, ctx.detail, tipos de material): DESARROLLO.md §6. */
 (function () {
 'use strict';
-
-const K = { STUCCO: 0, STONE: 1, GLASS: 2, SHUT: 3, WOOD: 4, METAL: 5, IRON: 6, SGRAF: 7, SIGN: 8, AWN: 9, BAL: 10, GSHOP: 11, LAMP: 12, PLAIN: 13, LEAF: 14 };
-
-// ------------------------------------------------------------------ geometría acumulada (posición + color/tipo + auxiliar)
-class GB {
-  constructor(ox, oz) { this.ox = ox; this.oz = oz; this.cap = 4096; this.p = new Float32Array(this.cap * 3); this.c = new Uint8Array(this.cap * 4); this.a = new Uint8Array(this.cap * 4); this.n = new Uint8Array(this.cap * 4);
-    this.icap = 6144; this.i = new Uint32Array(this.icap); this.nv = 0; this.ni = 0; }
-  grow(nv, ni) {
-    if (this.nv + nv > this.cap) { let c = this.cap; while (this.nv + nv > c) c *= 2;
-      const p = new Float32Array(c * 3); p.set(this.p); this.p = p; const cc = new Uint8Array(c * 4); cc.set(this.c); this.c = cc; const a = new Uint8Array(c * 4); a.set(this.a); this.a = a; const nn = new Uint8Array(c * 4); nn.set(this.n); this.n = nn; this.cap = c; }
-    if (this.ni + ni > this.icap) { let c = this.icap; while (this.ni + ni > c) c *= 2; const i = new Uint32Array(c); i.set(this.i); this.i = i; this.icap = c; }
-  }
-}
-// marco de una fachada: origen (relativo al de la celda), tangente y normal exterior
-// punto (u, y, d): u a lo largo de la fachada, y altura absoluta, d hacia fuera (+) o hacia dentro (−)
-function quad(B, F, u0, y0, d0, u1, y1, d1, u2, y2, d2, u3, y3, d3, col, kind, aux) {
-  if (!B) return;
-  B.grow(4, 6);
-  const v = B.nv, p = B.p, c = B.c, a = B.a;
-  const U = [u0, u1, u2, u3], Y = [y0, y1, y2, y3], D = [d0, d1, d2, d3];
-  // normal exacta del quad (el shader la orienta hacia la cámara)
-  const ex = F.tx * (u1 - u0) + F.nx * (d1 - d0), ey = y1 - y0, ez = F.tz * (u1 - u0) + F.nz * (d1 - d0);
-  const fx = F.tx * (u3 - u0) + F.nx * (d3 - d0), fy = y3 - y0, fz = F.tz * (u3 - u0) + F.nz * (d3 - d0);
-  let nx = ey * fz - ez * fy, ny = ez * fx - ex * fz, nz = ex * fy - ey * fx; const nl = Math.hypot(nx, ny, nz) || 1;
-  nx = Math.round(nx / nl * 127 + 128); ny = Math.round(ny / nl * 127 + 128); nz = Math.round(nz / nl * 127 + 128);
-  const N = B.n;
-  for (let k = 0; k < 4; k++) {
-    const o = (v + k) * 3;
-    p[o] = F.x + F.tx * U[k] + F.nx * D[k]; p[o + 1] = Y[k]; p[o + 2] = F.z + F.tz * U[k] + F.nz * D[k];
-    const q = (v + k) * 4; N[q] = nx; N[q + 1] = ny; N[q + 2] = nz; c[q] = col[0]; c[q + 1] = col[1]; c[q + 2] = col[2]; c[q + 3] = kind;
-    if (aux) { a[q] = aux[k * 4]; a[q + 1] = aux[k * 4 + 1]; a[q + 2] = aux[k * 4 + 2]; a[q + 3] = aux[k * 4 + 3]; }
-    else { a[q] = 0; a[q + 1] = 0; a[q + 2] = 0; a[q + 3] = 0; }
-  }
-  const i = B.i, n = B.ni; i[n] = v; i[n + 1] = v + 1; i[n + 2] = v + 2; i[n + 3] = v; i[n + 4] = v + 2; i[n + 5] = v + 3;
-  B.nv += 4; B.ni += 6;
-}
-// rectángulo en el plano de fachada (profundidad d)
-const rect = (B, F, u0, u1, y0, y1, d, col, k) => {
-  if (u1 - u0 < 1e-3 || y1 - y0 < 1e-3) return;
-  if (d === 0 && (k === 0 || k === 1)) { u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; }   // los paños de muro se solapan: sin grietas
-  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, col, k); };
-// plano perpendicular a la fachada en u (jamba, derrame lateral)
-const jamb = (B, F, u, y0, y1, d0, d1, col, k) => { if (y1 - y0 > 1e-3) quad(B, F, u, y0, d0, u, y0, d1, u, y1, d1, u, y1, d0, col, k); };
-// plano horizontal a altura y (dintel, alféizar)
-const hpl = (B, F, u0, u1, y, d0, d1, col, k) => { if (u1 - u0 > 1e-3) quad(B, F, u0, y, d0, u1, y, d0, u1, y, d1, u0, y, d1, col, k); };
-// caja adosada: frente, techo, suelo y laterales (sin cara trasera, que queda contra el muro)
-function box(B, F, u0, u1, y0, y1, d0, d1, col, k, mask) {
-  if (!B || u1 - u0 < 1e-3 || y1 - y0 < 1e-3) return;
-  k = k || 0; mask = mask === undefined ? 7 : mask;
-  quad(B, F, u0, y0, d1, u1, y0, d1, u1, y1, d1, u0, y1, d1, col, k);
-  if (mask & 1) hpl(B, F, u0, u1, y1, d0, d1, shade(col, 1.04), k);
-  if (mask & 2) hpl(B, F, u0, u1, y0, d0, d1, shade(col, 0.8), k);
-  if (mask & 4) { jamb(B, F, u0, y0, y1, d0, d1, shade(col, 0.9), k); jamb(B, F, u1, y0, y1, d0, d1, shade(col, 0.9), k); }
-}
-// paño calado (forja o balaustrada): v de 0 (abajo) a 255 (arriba) en el canal auxiliar
-const latAux = vr => { const w = vr ? 255 : 0; return [0, w, 0, 0, 0, w, 0, 0, 255, w, 0, 0, 255, w, 0, 0]; };
-const lattice = (B, F, u0, u1, y0, y1, d, col, k, variant) => { if (u1 - u0 > 1e-3) quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, col, k, latAux(variant)); };
-const latticeSide = (B, F, u, y0, y1, d0, d1, col, k, variant) => { if (d1 - d0 > 1e-3) quad(B, F, u, y0, d0, u, y0, d1, u, y1, d1, u, y1, d0, col, k, latAux(variant)); };
-
-const shade = (c, f) => [Math.min(255, c[0] * f) | 0, Math.min(255, c[1] * f) | 0, Math.min(255, c[2] * f) | 0];
-const mixc = (a, b, t) => [(a[0] + (b[0] - a[0]) * t) | 0, (a[1] + (b[1] - a[1]) * t) | 0, (a[2] + (b[2] - a[2]) * t) | 0];
-
-// azar reproducible por edificio (la capa base y la de ornamento deben salir idénticas)
-let _s = 1;
-const R = (a, b) => { _s |= 0; _s = _s + 0x6D2B79F5 | 0; let t = Math.imul(_s ^ _s >>> 15, 1 | _s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; const r = ((t ^ t >>> 14) >>> 0) / 4294967296;
-  return a === undefined ? r : b === undefined ? r * a : a + r * (b - a); };
-const signAux = id => [0, 0, id, 0, 255, 0, id, 0, 255, 255, id, 0, 0, 255, id, 0];
-const pick = arr => arr[Math.floor(R() * arr.length)];
+const GEO = window.BCN_GEO;
+const { K, GB, rect, jamb, hpl, shade, mixc, seed, R, pick } = GEO;
 
 // paletas (de Transeúnte)
 const SHUTTERS = [[43, 77, 51], [84, 87, 69], [36, 59, 77], [107, 77, 48], [60, 92, 64], [120, 118, 104]];
 const WOODS = [[64, 38, 20], [38, 28, 20], [36, 51, 41], [79, 48, 26]];
-const AWNINGS = [[166, 36, 33], [31, 77, 56], [219, 204, 168], [38, 56, 107]];
-const SHOPS = ['FORN DE PA', 'FARMÀCIA', 'FERRETERIA', 'BAR TAPES', 'FRUITERIA', 'LLIBRERIA', 'FLORISTERIA', 'RESTAURANT', 'PERRUQUERIA', 'MODA', 'GELATERIA', 'CAFÈ', 'QUEVIURES', 'ÒPTICA', 'PAPERERIA', 'FORMATGERIA'];
+const CAR = new Set([0, 1, 2, 3, 4, 5, 6, 8, 10, 11]);      // clases de vía con calzada: ahí no hay acera
 
-window.BCN_FACADES = async function (ctx) {
-  const { scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, SEG, META, PAL, WX, WZ, blobURL, cam } = ctx;
+window.BCN_FACADES = { init: async function (ctx) {
+  const { scene, engine, mkMat, reg, heightAt, BREC, bldChunks, SEG, ROFF, META, PAL, WX, WZ, blobURL } = ctx;
   const VB = BABYLON.VertexBuffer;
 
   // ---------------------------------------------------------------- materiales
-  const FS_DET = `#extension GL_OES_standard_derivatives : enable
-` + COMMON + `
-varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN;
+  // El preludio común lo antepone mkMat. Ramas por tipo de material («kind»): las del núcleo van aquí; las que registran
+  // los demás módulos con GEO.regKind() se insertan antes de la rama final (variables disponibles: DESARROLLO.md §6).
+  const FS_DET = `
+varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN;
 uniform vec2 uFade; uniform float uDusk;
 uniform sampler2D tPlD; uniform sampler2D tPlN; uniform sampler2D tAsD; uniform sampler2D tAsN; uniform sampler2D tSign;
+` + GEO.kindsDecl() + `
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   float dt = dith();
@@ -134,7 +74,7 @@ void main(){
     c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.5;
     if (kind < 2.5) c += vec3(1.0,0.74,0.42)*step(h, 0.05 + uDusk*0.30)*uDusk*0.55;
     else c += vec3(1.0,0.85,0.62)*uDusk*0.35;
-    gl_FragColor = vec4(fog(c, vPos), 1.0); return;
+    FRAG(c); return;
   } else if (kind < 3.5) {                            // persiana enrollable de lamas
     float s = fract(vLoc.y*14.0), fw = fwidth(vLoc.y*14.0);
     alb *= mix(mix(0.55, 1.06, smoothstep(0.0, 0.5, s)), 0.86, smoothstep(0.3, 1.0, fw)) * mix(0.85, 1.05, vnoise(P*3.0));
@@ -185,14 +125,14 @@ void main(){
   } else if (kind < 12.5) {                           // farol
     emis = vec3(1.0, 0.86, 0.6)*(0.35 + uDusk*1.6);
   } else if (kind < 13.5) {                           // liso
-  } else {                                            // hojas
+  }` + GEO.kindsGLSL() + ` else {                                            // hojas
     alb *= 0.6 + 0.7*vnoise(P*9.0); N = normalize(n + vec3(vnoise(P*7.0) - 0.5, 0.0, vnoise(P*7.0 + 3.0) - 0.5)*1.4);
   }
   vec3 c = lit(alb, N);
   vec3 hlf = normalize(uSunDir + V);
   c += uSunCol*spec*pow(max(dot(N, hlf), 0.0), shin)*step(0.0, dot(N, uSunDir));
   c += emis;
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
   const VS_DET = `precision highp float;
 attribute vec3 position; attribute vec4 color; attribute vec4 uv; attribute vec4 nrm; uniform mat4 world; uniform mat4 viewProjection;
@@ -203,16 +143,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   const tex = async (f) => { const t = new BABYLON.Texture(await blobURL('data/' + f), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
     t.wrapU = t.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE; t.anisotropicFilteringLevel = 8; return t; };
   const [tPlD, tPlN, tAsD, tAsN] = await Promise.all(['fx_plaster_d.webp', 'fx_plaster_n.webp', 'fx_ashlar_d.webp', 'fx_ashlar_n.webp'].map(tex));
-  // rótulos: 16 comercios en un atlas 4×4
-  const sign = new BABYLON.DynamicTexture('signs', { width: 1024, height: 512 }, scene, true);
-  {
-    const g = sign.getContext(), cols = ['#143d33', '#7c1d22', '#1c2c52', '#2b2b2f', '#5c3b16', '#17594c', '#3d1c4c', '#6b5a1e'];
-    SHOPS.forEach((s, r) => { const x = (r % 4) * 256, y = (3 - (r >> 2)) * 128;
-      g.fillStyle = cols[r % cols.length]; g.fillRect(x, y, 256, 128); g.strokeStyle = '#d8c9a3'; g.lineWidth = 4; g.strokeRect(x + 8, y + 10, 240, 108);
-      g.fillStyle = '#f6e8c9'; g.font = 'bold 36px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s, x + 128, y + 66, 228); });
-    sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
-  }
-  for (const m of [matB, matH]) { m.setTexture('tPlD', tPlD); m.setTexture('tPlN', tPlN); m.setTexture('tAsD', tAsD); m.setTexture('tAsN', tAsN); m.setTexture('tSign', sign); m.setFloat('uDusk', 0); }
+  for (const m of [matB, matH]) { m.setTexture('tPlD', tPlD); m.setTexture('tPlN', tPlN); m.setTexture('tAsD', tAsD); m.setTexture('tAsN', tAsN); m.setTexture('tSign', tPlD); m.setFloat('uDusk', 0); }
+  // para los hooks y para streets.js: materiales de detalle (cada módulo fija ahí sus texturas y uniformes; tSign lo pone interiors.js)
+  ctx.detail = { matB, matH, mats: [matB, matH], mkMesh: mkMeshFrom };
 
   // ---------------------------------------------------------------- índices espaciales
   const CS = 100, NX = Math.ceil(WX / CS), NZ = Math.ceil(WZ / CS), NC = NX * NZ;
@@ -285,6 +218,23 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
     return best;
   }
+  // --- tramos de calle (los usan también streets.js y sus hooks)
+  const segDist = (s, x, z) => { const o = s * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, l2 = dx * dx + dz * dz;
+    let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - ax - dx * t, z - az - dz * t); };
+  // cota de la calzada junto a (x,z), igual que la cinta de calle de app.js
+  function roadY(s, x, z) {
+    const o = s * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, hw = SEG[o + 4], cls = SEG[o + 5], l2 = dx * dx + dz * dz;
+    let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = ax + dx * t, cz = az + dz * t, ex0 = x - cx, ez0 = z - cz, el = Math.hypot(ex0, ez0) || 1;
+    const yc = heightAt(cx, cz); let ye = heightAt(cx + ex0 / el * hw, cz + ez0 / el * hw);
+    if (hw > 2.5) { ye = Math.max(ye, yc - hw * 0.08); if (hw > 9) ye = Math.max(ye, yc); }
+    return ye + (ROFF[cls] || 0.15);
+  }
+  const walkY = (s, x, z) => s >= 0 ? Math.max(roadY(s, x, z) + 0.15, heightAt(x, z) + 0.2) : heightAt(x, z) + 0.2;
+  function nearestCar(x, z) { const c = cellOf(x, z); let best = -1, bd = 1e9;
+    for (let k = ROADS.start[c]; k < ROADS.start[c + 1]; k++) { const s = ROADS.list[k]; if (!CAR.has(SEG[s * 6 + 5])) continue; const d = segDist(s, x, z) - SEG[s * 6 + 4]; if (d < bd) { bd = d; best = s; } }
+    return [best, bd]; }
+  const walkAt = (x, z) => walkY(nearestCar(x, z)[0], x, z);   // cota de la acera en un punto cualquiera
   // tramos rectos de fachada: une vértices casi alineados (las plantas de OSM vienen muy troceadas)
   function runsOf(r) {
     const pts = []; const m0 = r.length / 2;
@@ -306,6 +256,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
     return out;
   }
+  ctx.city = { CS, NX, NZ, cellOf, ALL, ELIG, ROADS, BB, CAR, bget, inside, coverAt, roadDist, segDist, nearestCar, roadY, walkY, walkAt };
 
   // ---------------------------------------------------------------- disposición de un edificio (se calcula una vez)
   function layoutB(b) {
@@ -334,10 +285,21 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     return { d, gHi, gLo, H, runs, portal };
   }
 
+  // ---------------------------------------------------------------- hooks: quién pone la geometría de cada parte
+  // Si un módulo falta o falla al iniciarse, su parte de la fachada sale como un paño liso en vez de dejar un agujero.
+  const wall = (env, run, ya, yb, col) => rect(env.W0, run.F, 0, run.L, Math.max(ya, run.cover - 0.3), yb, 0, col, K.STUCCO);
+  const I = ctx.hooks('interiores (interiors.js): planta baja lisa', 'BCN_INTERIORS', { groundFloor(env, run) { wall(env, run, env.y0, env.F1, run.wallC); } });
+  const D = ctx.hooks('detalle de fachada (details.js): pisos y coronación lisos', 'BCN_DETAILS', {
+    floors(env, run) { wall(env, run, env.F1, env.C, run.wallC); }, crown(env, run) { wall(env, run, env.C, env.y1, run.wallC); },
+    plainRun(env, run) { wall(env, run, env.y0, env.y1, env.p); }, blindRun(env, run) { wall(env, run, env.y0, env.y1, env.p); } });
+
   // ---------------------------------------------------------------- generador de fachada (capa base W0, ornamento W1)
+  // Esqueleto: decide estilo, colores y cotas del edificio (env), prepara cada tramo (run) y reparte el trabajo entre los
+  // hooks. El orden de las llamadas al azar es sagrado: edificio (estilo, colores, banderas) → por tramo: M → planta baja
+  // (6 por vano) → pisos (7 por vano y planta). BASE y ORNAMENTO se generan en pasadas distintas y deben consumir lo mismo.
   function genB(lay, b, W0, W1, ox, oz) {
     const { d, gHi, H, runs } = lay;
-    _s = (b * 2654435761) ^ 0x5bd1e995;
+    seed((b * 2654435761) ^ 0x5bd1e995);
     const cls6 = d.cls === 6;
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
     const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [150, 138, 120], 0.6), 0.92);
@@ -351,131 +313,29 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const m = nF ? Rm / nF : 0;
     const shopsHere = shops && F1 - gHi > 3.6;
     const glass = [33, 43, 54], rv = shade(p, 0.58);
+    const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
+      p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole };
 
     for (const r of runs) {
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
       const F = { x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz };
-      const L = r.L, y0 = d.y0;
-      const cover = r.cover;
-      if (r.kind === 'blind') {
-        rect(W0, F, 0, L, Math.max(y0, cover - 0.5), d.y1 + 0.35, 0, shade(p, 0.86), K.STUCCO);
-        box(W0, F, 0, L, d.y1 + 0.35, d.y1 + 0.45, -0.03, 0.08, u, K.STUCCO);
-        continue;
-      }
-      if (r.kind === 'plain') {
-        rect(W0, F, 0, L, y0, C, 0, p, K.STUCCO);
-        rect(W0, F, 0, L, C, d.y1 + 0.9, 0, p, K.STUCCO);
-        box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, 0.3, u, K.STUCCO);
-        box(W0, F, 0, L, C, C + 0.4, 0, 0.5, u, K.STUCCO);
-        box(W0, F, 0, L, d.y1 + 0.9, d.y1 + 1.0, -0.03, 0.2, u, K.STUCCO);
-        continue;
-      }
-      const street = r.kind === 'street';
+      const run = { r, F, L: r.L, kind: r.kind, cover: r.cover, street: false };
+      if (r.kind === 'blind') { D.blindRun(env, run); continue; }
+      if (r.kind === 'plain') { D.plainRun(env, run); continue; }
+      const L = r.L, street = r.kind === 'street';
       const bwT = street ? 3.7 : 3.2, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
       const N = r === lay.portal && L >= 9 ? nb >> 1 : -1;
       const M = street && tribunaOK && nb >= 3 && nF >= 3 && R() < 0.6 ? nb >> 1 : -9;
       const gnd = c => heightAt(r.ax + r.tx * c + r.nx * 1.0, r.az + r.tz * c + r.nz * 1.0) + 0.32;   // cota de la acera
       const wallC = street ? p : shade(p, 0.95);
-
-      // --- planta baja
-      for (let W = 0; W < nb; W++) {
-        const a = W * bw, c = a + bw / 2;
-        const rr = [R(), R(), R(), R(), R(), R()];
-        let gl = Math.min(gnd(c), F1 - 2.7);
-        if (F1 <= cover + 0.3) continue;                        // tapado por el vecino
-        const yB = Math.max(y0, cover - 0.3);
-        if (street && W === N) { portalBay(W0, W1, F, a, bw, c, gl, yB, F1, stone, wood, glass, rr); continue; }
-        if (street && shopsHere) { shopBay(W0, W1, F, a, bw, c, gl, yB, F1, stone, rr); continue; }
-        // ventana de planta baja (con reja si da a la calle)
-        const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
-        const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
-        const gc = street && shops ? stone : wallC, gk = street && shops ? K.STONE : K.STUCCO;
-        if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk); continue; }
-        windowHole(W0, F, a, a + bw, tt, ct, yB, F1, st, yt, street ? 0.3 : 0.2, gc, gk, rr[0] < 0.6 ? 0.2 + rr[1] * 0.5 : 0);
-        if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
-        else box(W1, F, tt - 0.06, ct + 0.06, st - 0.07, st, 0, 0.09, u, K.STUCCO);
-      }
-      // faja sobre la planta baja
-      if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, u, K.STUCCO);
-
-      // --- plantas de pisos
-      for (let D = 1; D <= nF; D++) {
-        const k = F1 + (D - 1) * m, P = k + m, U = D === nF;
-        if (P <= cover + 0.2) { for (let W = 0; W < nb; W++) { R(); R(); R(); R(); R(); R(); R(); } continue; }
-        if (D > 1) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, street ? 0.16 : 0.08, u, K.STUCCO);
-        for (let W = 0; W < nb; W++) {
-          const a = W * bw, c = a + bw / 2;
-          const rr = [R(), R(), R(), R(), R(), R(), R()];
-          if (k < cover) { rect(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, 0, wallC, K.STUCCO); continue; }
-          if (!street) { yardWin(W0, W1, F, a, bw, c, k, P, wallC, u, rr); continue; }
-          if (W === M && D <= 3 && !U) { tribuna(W0, W1, F, a, bw, k, P, p, u, wood, glass); continue; }
-          const Vw = Math.min(1.3, bw - 0.95), Bh = U ? Math.min(1.7, m - 1.15) : Math.min(2.45, m - 0.72), Q = U ? Math.min(0.85, m - Bh - 0.32) : 0.08;
-          const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh;
-          const se = rr[0] < 0.75 ? 0.15 + rr[1] * 0.6 : 0;
-          windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.32, p, K.STUCCO, se);
-          // carpintería
-          const qt = yt - se * Bh;
-          if (W1) {
-            box(W1, F, c - 0.035, c + 0.035, st, qt, -0.32, -0.26, wood, K.WOOD, 4);
-            const z = st + (qt - st) * 0.58; if (z < qt - 0.1) box(W1, F, tt, ct, z - 0.025, z + 0.025, -0.32, -0.27, wood, K.WOOD, 3);
-            box(W1, F, tt, tt + 0.06, st, qt, -0.32, -0.25, wood, K.WOOD, 4); box(W1, F, ct - 0.06, ct, st, qt, -0.32, -0.25, wood, K.WOOD, 4);
-            box(W1, F, tt, ct, Math.min(qt, yt) - 0.06, Math.min(qt, yt), -0.32, -0.25, wood, K.WOOD, 2);
-          }
-          if (porticones) { rect(W0, F, tt - 0.62, tt - 0.04, st + 0.02, yt, 0.05, shut, K.SHUT); rect(W0, F, ct + 0.04, ct + 0.62, st + 0.02, yt, 0.05, shut, K.SHUT);
-            box(W1, F, tt - 0.62, tt - 0.04, st + 0.02, yt, 0.0, 0.05, shut, K.WOOD); box(W1, F, ct + 0.04, ct + 0.62, st + 0.02, yt, 0.0, 0.05, shut, K.WOOD); }
-          // recercado, guardapolvo y clave
-          box(W1, F, tt - 0.15, tt, st - 0.02, yt, 0, 0.09, shade(u, 0.96), K.STUCCO); box(W1, F, ct, ct + 0.15, st - 0.02, yt, 0, 0.09, shade(u, 0.96), K.STUCCO);
-          box(W1, F, c - 0.13, c + 0.13, yt - 0.05, yt + 0.4, 0, 0.2, shade(u, 1.05), K.STUCCO);
-          box(W0, F, tt - 0.12, ct + 0.12, yt, yt + 0.18, 0, 0.17, u, K.STUCCO);
-          if (style === 'modernista' && !U) { box(W1, F, c - 0.55, c + 0.55, yt + 0.18, yt + 0.34, 0, 0.13, u, K.STUCCO); box(W1, F, c - 0.22, c + 0.22, yt + 0.34, yt + 0.5, 0, 0.1, u, K.STUCCO); }
-          else if (style === 'clasico' && !U) box(W1, F, tt - 0.2, ct + 0.2, yt + 0.18, yt + 0.26, 0, 0.24, shade(u, 1.05), K.STUCCO);
-          if (!U && style !== 'sobrio') { box(W1, F, a - 0.12, a + 0.12, k + 0.12, P - 0.22, 0, 0.1, shade(u, 0.94), K.STUCCO); box(W1, F, a - 0.19, a + 0.19, P - 0.22, P - 0.1, 0, 0.17, shade(u, 1.02), K.STUCCO); }
-          if (style === 'modernista' || (style === 'clasico' && D % 2 === 0)) rect(W1, F, a + 0.13, a + bw - 0.13, P - 0.52, P - 0.14, 0.012, p, K.SGRAF);
-          // balcón
-          if (!U) {
-            const full = D === 1 && rr[2] < 0.6, te = full ? bw / 2 - 0.04 : Math.min(1.05, bw / 2 - 0.05), jt = D === 1 ? 1.35 : 1.05, e0 = c - te, e1 = c + te;
-            const slab = mixc(u, stone, 0.35);
-            box(W0, F, e0, e1, k - 0.06, k + 0.12, 0, jt, slab, K.STONE);
-            lattice(W0, F, e0, e1, k + 0.12, k + 1.14, jt - 0.03, iron, K.IRON, rr[6] < 0.5 ? 1 : 0);
-            latticeSide(W0, F, e0 + 0.02, k + 0.12, k + 1.14, 0, jt - 0.03, iron, K.IRON, 0); latticeSide(W0, F, e1 - 0.02, k + 0.12, k + 1.14, 0, jt - 0.03, iron, K.IRON, 0);
-            if (W1) {
-              box(W1, F, e0 - 0.03, e1 + 0.03, k - 0.13, k - 0.05, 0, jt + 0.06, shade(slab, 0.92), K.STONE);
-              box(W1, F, e0, e1, k + 1.14, k + 1.19, jt - 0.06, jt, iron, K.METAL);
-              box(W1, F, e0, e0 + 0.05, k + 1.14, k + 1.19, 0, jt, iron, K.METAL); box(W1, F, e1 - 0.05, e1, k + 1.14, k + 1.19, 0, jt, iron, K.METAL);
-              box(W1, F, e0, e0 + 0.05, k + 0.12, k + 1.14, jt - 0.06, jt, iron, K.METAL); box(W1, F, e1 - 0.05, e1, k + 0.12, k + 1.14, jt - 0.06, jt, iron, K.METAL);
-              for (const pe of [e0 + 0.22, e1 - 0.32]) box(W1, F, pe, pe + 0.1, k - 0.36, k - 0.06, 0, jt * 0.78, shade(slab, 0.88), K.STONE);
-              if (rr[3] < 0.32) { const pe = e0 + 0.25 + rr[4] * Math.max(0, e1 - e0 - 0.8);
-                box(W1, F, pe, pe + 0.28, k + 0.12, k + 0.38, jt - 0.42, jt - 0.12, [158, 82, 56], K.PLAIN);
-                box(W1, F, pe - 0.08, pe + 0.36, k + 0.38, k + 0.62 + rr[5] * 0.3, jt - 0.5, jt - 0.04, [52 + rr[5] * 30 | 0, 100 + rr[5] * 40 | 0, 46], K.LEAF); }
-            }
-          }
-        }
-      }
-      // --- coronación
-      if (C > cover) {
-        if (street) {
-          if (style === 'sobrio') { box(W0, F, 0, L, C + 0.2, C + 0.45, 0, 0.45, u, K.STUCCO); }
-          else {
-            box(W0, F, 0, L, C, C + 0.16, 0, 0.22, u, K.STUCCO); box(W0, F, 0, L, C + 0.16, C + 0.32, 0, 0.42, u, K.STUCCO); box(W0, F, 0, L, C + 0.32, C + 0.48, 0, 0.66, shade(u, 1.05), K.STUCCO);
-            if (W1) { const nd = Math.round(L / 0.36); for (let q = 0; q < nd; q += 2) { const uu = q * L / nd; box(W1, F, uu, uu + L / nd * 0.8, C + 0.04, C + 0.15, 0.2, 0.34, shade(u, 0.94), K.STUCCO); }
-              for (let W = 0; W <= nb; W++) { const a = Math.min(L - 0.1, Math.max(0.1, W * bw)); box(W1, F, a - 0.09, a + 0.09, C - 0.35, C + 0.32, 0, 0.5, shade(u, 1.02), K.STUCCO); } }
-          }
-          rect(W0, F, 0, L, C, d.y1, 0, p, K.STUCCO);
-          if (balusters) {
-            box(W0, F, 0, L, d.y1, d.y1 + 0.2, -0.02, 0.2, u, K.STUCCO);
-            lattice(W0, F, 0, L, d.y1 + 0.2, d.y1 + 0.76, 0.09, u, K.BAL, 0);
-            for (let W = 0; W <= nb; W++) { const a = Math.min(L - 0.15, Math.max(0.15, W * bw)); box(W0, F, a - 0.16, a + 0.16, d.y1 + 0.2, d.y1 + 0.76, -0.02, 0.22, u, K.STUCCO); }
-          } else rect(W0, F, 0, L, d.y1, d.y1 + 0.76, 0, p, K.STUCCO);
-          box(W0, F, 0, L, d.y1 + 0.76, d.y1 + 0.9, -0.05, 0.26, shade(u, 1.04), K.STUCCO);
-        } else {
-          rect(W0, F, 0, L, C, d.y1 + 0.3, 0, wallC, K.STUCCO);
-          box(W0, F, 0, L, d.y1 + 0.3, d.y1 + 0.4, -0.03, 0.12, u, K.STUCCO);
-        }
-      }
+      run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd;
+      I.groundFloor(env, run);
+      D.floors(env, run);
+      D.crown(env, run);
     }
     return true;
 
-    // ----- piezas
+    // ----- pieza común: los hooks la reciben como env.windowHole
     // hueco con derrame: paños de muro alrededor, jambas, dintel, alféizar, vidrio y persiana
     function windowHole(W0, F, a0, a1, tt, ct, k, P, st, yt, dep, col, kind, se) {
       rect(W0, F, a0, tt, k, P, 0, col, kind); rect(W0, F, ct, a1, k, P, 0, col, kind);
@@ -486,73 +346,6 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const qt = yt - se * (yt - st);
       rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
-    }
-    function yardWin(W0, W1, F, a, bw, c, k, P, col, u, rr) {
-      const ww = Math.min(1.05, bw - 0.8), tt = c - ww / 2, ct = c + ww / 2, st = k + 0.95, yt = Math.min(P - 0.35, st + 1.4);
-      if (yt - st < 0.5) { rect(W0, F, a, a + bw, k, P, 0, col, K.STUCCO); return; }
-      windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.2, col, K.STUCCO, rr[0] < 0.65 ? 0.2 + rr[1] * 0.7 : 0);
-      box(W1, F, tt - 0.06, ct + 0.06, st - 0.07, st, 0, 0.09, u, K.STUCCO);
-      if (W1 && rr[2] < 0.25) lattice(W1, F, tt - 0.1, ct + 0.1, st, st + 0.9, 0.12, iron, K.IRON, 0);
-    }
-    function tribuna(W0, W1, F, a, bw, k, P, p, u, wood, glass) {
-      const zt = a + 0.25, te = a + bw - 0.25;
-      rect(W0, F, a, zt, k, P, 0, p, K.STUCCO); rect(W0, F, te, a + bw, k, P, 0, p, K.STUCCO);
-      box(W0, F, zt, te, k, k + 0.75, 0, 0.95, u, K.STUCCO); box(W0, F, zt, te, P - 0.3, P, 0, 1.05, u, K.STUCCO);
-      rect(W0, F, zt, te, k + 0.75, P - 0.3, 0.85, glass, K.GLASS);
-      jamb(W0, F, zt + 0.02, k + 0.75, P - 0.3, 0, 0.85, glass, K.GLASS); jamb(W0, F, te - 0.02, k + 0.75, P - 0.3, 0, 0.85, glass, K.GLASS);
-      if (W1) {
-        for (let h = 0; h <= 4; h++) { const pe = zt + (te - zt) * h / 4; box(W1, F, pe - 0.04, pe + 0.04, k + 0.75, P - 0.3, 0.82, 0.96, wood, K.WOOD); }
-        const hm = (k + 0.75 + P - 0.3) / 2; box(W1, F, zt, te, hm + 0.25, hm + 0.3, 0.82, 0.95, wood, K.WOOD);
-        for (const pe of [zt, te - 0.03]) box(W1, F, pe, pe + 0.03, k + 0.75, P - 0.3, 0, 0.85, wood, K.WOOD);
-        box(W1, F, zt - 0.05, te + 0.05, k - 0.1, k, 0, 1.0, shade(u, 0.9), K.STUCCO);
-      }
-    }
-    function shopBay(W0, W1, F, a, bw, c, gl, yB, F1, stone, rr) {
-      const Uw = bw * 0.84, B_ = a + (bw - Uw) / 2, V_ = B_ + Uw;
-      const top = Math.min(F1 - 0.6, gl + 3.7), sill = gl + 0.5;
-      const sc = stone, dk = shade(sc, 0.55);
-      rect(W0, F, a, B_, yB, F1, 0, sc, K.STONE); rect(W0, F, V_, a + bw, yB, F1, 0, sc, K.STONE);
-      rect(W0, F, B_, V_, top, F1, 0, sc, K.STONE); rect(W0, F, B_, V_, yB, sill, 0, shade(sc, 0.85), K.STONE);
-      jamb(W0, F, B_, sill, top, -0.4, 0, dk, K.STONE); jamb(W0, F, V_, sill, top, -0.4, 0, dk, K.STONE);
-      hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), K.STONE); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
-      const tint = [[170, 150, 120], [120, 140, 150], [160, 120, 100], [140, 150, 120]][rr[0] * 4 | 0];
-      rect(W0, F, B_, V_, sill, top, -0.36, tint, K.GSHOP);
-      const met = [24, 24, 27];
-      box(W0, F, B_ + Uw * 0.5 - 0.035, B_ + Uw * 0.5 + 0.035, sill, top, -0.38, -0.3, met, K.METAL);
-      box(W0, F, B_ + 0.05, V_ - 0.05, sill, sill + 0.1, -0.4, -0.3, met, K.METAL);
-      const sv0 = top + 0.08, sv1 = Math.min(F1 - 0.3, top + 0.58);
-      if (rr[1] < 0.75 && sv1 - sv0 > 0.25) quad(W0, F, B_ + 0.15, sv0, 0.06, V_ - 0.15, sv0, 0.06, V_ - 0.15, sv1, 0.06, B_ + 0.15, sv1, 0.06, [255, 255, 255], K.SIGN, signAux((rr[2] * SHOPS.length) | 0));
-      if (rr[3] < 0.4) { const ac = AWNINGS[rr[4] * 4 | 0];
-        quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, top - 0.75, 1.45, B_, top - 0.75, 1.45, ac, K.AWN);
-        quad(W1, F, B_, top - 0.75, 1.45, V_, top - 0.75, 1.45, V_, top - 0.95, 1.45, B_, top - 0.95, 1.45, ac, K.AWN); }
-      if (W1) {
-        box(W1, F, B_, B_ + 0.16, sill, top, -0.4, 0, shade(sc, 0.62), K.STONE); box(W1, F, V_ - 0.16, V_, sill, top, -0.4, 0, shade(sc, 0.62), K.STONE);
-        box(W1, F, B_, V_, top - 0.16, top, -0.4, 0, shade(sc, 0.62), K.STONE);
-        const fr = shade(sc, 0.35);
-        box(W1, F, B_ - 0.08, B_ + 0.03, sill, top + 0.06, -0.05, -0.004, fr, K.STONE); box(W1, F, V_ - 0.03, V_ + 0.08, sill, top + 0.06, -0.05, -0.004, fr, K.STONE);
-        box(W1, F, B_ - 0.08, V_ + 0.08, top - 0.02, top + 0.06, -0.05, -0.004, fr, K.STONE);
-        for (const y of [sill + 1.0, top - 0.7]) box(W1, F, B_ + 0.16, V_ - 0.16, y - 0.02, y + 0.02, -0.37, -0.33, met, K.METAL);
-      }
-    }
-    function portalBay(W0, W1, F, a, bw, c, gl, yB, F1, stone, wood, glass, rr) {
-      const dw = Math.min(1.2, bw / 2 - 0.35), dtop = Math.min(F1 - 0.55, gl + 3.5), x0 = c - dw, x1 = c + dw, sc = stone;
-      rect(W0, F, a, x0, yB, F1, 0, sc, K.STONE); rect(W0, F, x1, a + bw, yB, F1, 0, sc, K.STONE); rect(W0, F, x0, x1, dtop, F1, 0, sc, K.STONE);
-      jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE);
-      hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), K.STONE);
-      const tr = dtop - 0.95;
-      rect(W0, F, x0, x1, gl, tr, -0.42, wood, K.WOOD); rect(W0, F, x0, x1, tr, dtop, -0.43, glass, K.GLASS);
-      box(W0, F, x0 - 0.25, x1 + 0.25, gl - 0.2, gl + 0.12, 0, 0.55, shade(sc, 1.15), K.STONE);
-      if (W1) {
-        box(W1, F, x0 - 0.34, x0, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE); box(W1, F, x1, x1 + 0.34, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE);
-        box(W1, F, x0 - 0.44, x1 + 0.44, dtop + 0.1, dtop + 0.3, 0, 0.4, shade(sc, 1.08), K.STONE);
-        box(W1, F, c - 0.24, c + 0.24, dtop - 0.08, dtop + 0.42, 0, 0.5, shade(sc, 1.15), K.STONE);
-        box(W1, F, c - 0.02, c + 0.02, gl, tr, -0.42, -0.39, shade(wood, 0.6), K.WOOD);
-        for (const [l0, l1] of [[x0 + 0.12, c - 0.12], [c + 0.12, x1 - 0.12]]) {
-          box(W1, F, l0, l1, gl + 0.3, gl + 1.1, -0.42, -0.37, shade(wood, 1.15), K.WOOD); box(W1, F, l0, l1, gl + 1.35, tr - 0.2, -0.42, -0.37, shade(wood, 1.15), K.WOOD); }
-        for (const s of [-1, 1]) box(W1, F, c + s * 0.09 - 0.025, c + s * 0.09 + 0.025, gl + 1.0, gl + 1.32, -0.39, -0.33, [184, 140, 56], K.METAL);
-        for (let q = 1; q < 6; q++) { const xx = x0 + (x1 - x0) * q / 6; box(W1, F, xx - 0.015, xx + 0.015, tr, dtop, -0.42, -0.39, iron, K.METAL); }
-        if (rr[0] < 0.6) { box(W1, F, x1 + 0.42, x1 + 0.6, gl + 2.6, gl + 3.0, 0.12, 0.32, [235, 220, 180], K.LAMP); box(W1, F, x1 + 0.48, x1 + 0.54, gl + 3.0, gl + 3.2, 0, 0.3, iron, K.METAL); }
-      }
     }
   }
 
@@ -585,7 +378,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       yield;
     }
     if (cells.get(ci) !== cell || (hi && !cell.base)) return;   // la celda se descartó mientras se construía
-    const mesh = mkMeshFrom(W, hi ? matH : matB, (hi ? 'fh' : 'fb') + ci);
+    const mesh = reg(mkMeshFrom(W, hi ? matH : matB, (hi ? 'fh' : 'fb') + ci), hi ? { cast: false, layer: 'orn' } : { cast: true, layer: 'base' });
     const t = W.ni / 3;
     if (hi) { cell.hi = mesh; cell.hiTris = t; tris[1] += t; }
     else { cell.base = mesh; cell.baseTris = t; tris[0] += t; cell.blds = done; for (const b of done) setFlag(b, 1); }
@@ -657,7 +450,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     planT = 0;
   }
   setRange(1);
-  return { lib: { GB, quad, box, rect, jamb, hpl, K, shade, mixc, mkMeshFrom, matB, matH, ROADS, cellOf, CS, NX, NZ, coverAt, bget, inside, ALL, BB }, update, setRange, nElig, busy: () => !!job || queue.length > 0,
+  return { update, setRange, nElig, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
-};
+} };
 })();

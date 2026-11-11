@@ -64,10 +64,15 @@ const cam = new BABYLON.FreeCamera('cam', new BABYLON.Vector3(WX / 2, 2500, WZ /
 cam.inputs.clear(); cam.fov = 0.86; cam.minZ = 2; cam.maxZ = 170000;
 
 // ------------------------------------------------------------------ shaders
-const COMMON = `
+// PRELUDIO GLSL. mkMat lo antepone a TODOS los fragment shaders, así que los cuerpos no repiten nada de esto: ni la línea
+// «#extension», ni precision, ni los uniformes comunes, ni «varying vec3 vPos», ni las utilidades. A cambio, todo vertex
+// shader debe escribir vPos (posición de mundo). Los cuerpos tampoco escriben gl_FragColor: acaban con FRAG(color), que
+// aplica la niebla, o con FRAG_NOFOG(color). Es la única salida de color de todo el proyecto.
+const PRELUDE = `#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec3 uCam; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform vec3 uSkyCol; uniform vec3 uGndCol;
 uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime;
+varying vec3 vPos;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float dith(){ return fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
 float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -80,6 +85,8 @@ vec3 fog(vec3 c, vec3 wp){ vec3 d = wp-uCam; float dist = length(d); float rd = 
   float fa = 1.0-exp(-uFogD*exp(-max(uCam.y,0.0)*b)*f);
   float s = max(dot(d/max(dist,1e-3), uSunDir),0.0); vec3 fc = uFogCol + uSunCol*pow(s,8.0)*0.10;
   return mix(c, fc, clamp(fa,0.0,1.0)); }
+#define FRAG(c) gl_FragColor = vec4(fog(c, vPos), 1.0)
+#define FRAG_NOFOG(c) gl_FragColor = vec4(c, 1.0)
 `;
 const VS_BASIC = `precision highp float;
 attribute vec3 position; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos;
@@ -92,9 +99,8 @@ const VS_NRM = `precision highp float;
 attribute vec3 position; attribute vec3 normal; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vN;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_Position = viewProjection*wp; }`;
 
-const FS_BLD = `#extension GL_OES_standard_derivatives : enable
-` + COMMON + `
-varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; uniform vec2 uFx;
+const FS_BLD = `
+varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; uniform vec2 uFx;
 void main(){
   vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc)));
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
@@ -150,11 +156,11 @@ void main(){
     base *= 1.0;
   }
   vec3 c = lit(base, n);
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
-const FS_TER = COMMON + `
-varying vec3 vPos; uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
+const FS_TER = `
+uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
 void main(){
   vec2 uv = vPos.xz/uSize;
   vec3 alb = texture2D(groundTex, uv).rgb;
@@ -171,11 +177,11 @@ void main(){
   alb *= mix(1.0, mix(0.80 + 0.36*canFar, 0.58 + 0.80*can*can, nearF), veg*dark);
   alb *= 0.94 + 0.12*d2;
   vec3 c = lit(alb, n);
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
-const FS_OUT = COMMON + `
-varying vec3 vPos; varying vec3 vN; uniform sampler2D outTex; uniform float uUseTex; uniform vec4 uOutRect;
+const FS_OUT = `
+varying vec3 vN; uniform sampler2D outTex; uniform float uUseTex; uniform vec4 uOutRect;
 void main(){
   vec3 n = normalize(vN); float slope = 1.0 - n.y; float h = vPos.y;
   float nz = vnoise(vPos.xz*0.0016)*0.6 + vnoise(vPos.xz*0.007)*0.4;
@@ -190,12 +196,14 @@ void main(){
     alb = t.rgb*(0.92 + 0.16*nz);
   }
   vec3 c = lit(alb, n);
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
-const FS_ROAD = `#extension GL_OES_standard_derivatives : enable
-` + COMMON + `
-varying vec3 vPos; varying vec4 vCol; varying vec4 vInfo;
+// El detalle cercano del asfalto (cuerpo del «if (near > 0.0 && car)») lo aporta ground.js: BCN_GROUND.roadGLSL, que
+// documenta sus variables de entrada y salida. Sin ese módulo, la calzada se queda con el color liso.
+const ROAD_NEAR = (window.BCN_GROUND && window.BCN_GROUND.roadGLSL) || '';
+const FS_ROAD = `
+varying vec4 vCol; varying vec4 vInfo;
 uniform sampler2D tAsD; uniform sampler2D tAsN; uniform vec2 uOrg; uniform float uAsph;
 void main(){
   float cls = floor(vCol.a*255.0 + 0.5);
@@ -221,55 +229,23 @@ void main(){
   vec3 N = vec3(0.0, 1.0, 0.0);
   float near = (1.0 - smoothstep(140.0, 480.0, dist))*uAsph;
   bool car = cls < 6.5 || abs(cls-8.0) < 0.5 || abs(cls-10.0) < 0.5 || abs(cls-11.0) < 0.5;
-  if (near > 0.0 && car) {
-    // asfalto fotografiado de Transeúnte, con mezcla de dos escalas para que no se repita
-    float gB = smoothstep(0.42, 0.62, vnoise(P*0.02));
-    vec3 t1 = texture2D(tAsD, P/6.0).rgb, t2 = texture2D(tAsD, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).rgb;
-    vec3 tx = mix(t1, t2, gB);
-    float lum = dot(tx, vec3(0.3, 0.6, 0.1));
-    vec3 asf = vCol.rgb*0.8*mix(0.7, 1.22, smoothstep(0.12, 0.5, lum))*mix(0.9, 1.06, vnoise(P*0.025));
-    // parches de reparación y zonas más nuevas
-    vec2 pc = floor(P/vec2(4.8, 9.6)); float ph = hash21(pc + 0.5);
-    vec2 pf = fract(P/vec2(4.8, 9.6));
-    float rpatch = step(0.88, ph)*step(0.15, pf.x)*step(pf.x, 0.85)*step(0.1, pf.y)*step(pf.y, 0.8);
-    asf *= mix(1.0, 0.72 + 0.1*ph, rpatch);
-    // rodadas: más oscuras en el centro de cada carril
-    float lane = abs(fract((x + hw)/3.3) - 0.5);
-    asf *= mix(1.0, 0.9, smoothstep(0.32, 0.05, lane)*(0.5 + 0.5*vnoise(P*0.3)));
-    // tapas de alcantarilla en el eje y rejas de imbornal junto al bordillo
-    float mh = length(vec2((fract(v/31.0 + 0.37) - 0.5)*31.0, x - hw*0.3));
-    float mhole = (1.0 - smoothstep(0.32, 0.34, mh))*step(2.5, hw);
-    float ring = smoothstep(0.26, 0.28, mh)*(1.0 - smoothstep(0.32, 0.34, mh));
-    vec2 dg = vec2((fract(v/23.0 + 0.11) - 0.5)*23.0, abs(x) - (hw - 0.32));
-    float drain = step(abs(dg.x), 0.45)*step(abs(dg.y), 0.2)*step(2.5, hw);
-    float bars = step(0.5, fract(dg.x*11.0));
-    asf = mix(asf, vec3(0.13, 0.13, 0.14)*(0.8 + 0.4*step(0.5, fract((P.x + P.y)*8.0))), mhole*(1.0 - ring));
-    asf = mix(asf, vec3(0.20, 0.19, 0.18), mhole*ring);
-    asf = mix(asf, vec3(0.05, 0.05, 0.06) + bars*0.08, drain);
-    alb = mix(alb, asf, near);
-    vec3 tn = mix(texture2D(tAsN, P/6.0).xyz, texture2D(tAsN, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).xyz, gB)*2.0 - 1.0;
-    N = normalize(vec3(tn.x, 1.0, tn.y)*vec3(near*0.9, 1.0, near*0.9));
-    // pintura gastada
-    mk *= mix(1.0, smoothstep(0.2, 0.55, vnoise(P*0.9)*0.6 + vnoise(P*4.3)*0.4), near);
-  }
+  if (near > 0.0 && car) {` + ROAD_NEAR + `  }
   alb = mix(alb, vec3(0.86,0.86,0.82), mk*fade*0.8);
   vec3 c = lit(alb, N);
   c += uSunCol*0.05*pow(max(dot(reflect(-uSunDir, N), normalize(uCam - vPos)), 0.0), 24.0)*near;
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
-const FS_QUAY = COMMON + `
-varying vec3 vPos;
+const FS_QUAY = `
 void main(){
   vec3 alb = mix(vec3(0.25,0.26,0.25), vec3(0.62,0.60,0.56), smoothstep(-0.2, 1.4, vPos.y));
   alb *= 0.9 + 0.2*vnoise(vPos.xz*0.3 + vPos.y);
   vec3 c = alb*(uSunCol*0.45 + uSkyCol);
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
-const FS_SEA = `#extension GL_OES_standard_derivatives : enable
-` + COMMON + `
-varying vec3 vPos; uniform sampler2D coastTex; uniform vec2 uSize;
+const FS_SEA = `
+uniform sampler2D coastTex; uniform vec2 uSize;
 void main(){
   vec2 p = vPos.xz; vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   vec2 g = vec2(0.0); float t = uTime;
@@ -297,13 +273,13 @@ void main(){
   c += uSunCol*sp*mix(2.2, 0.35, rough);
   float foam = (1.0 - smoothstep(0.0, 0.04, cd))*inside*(0.35 + 0.65*vnoise(p*0.12 + vec2(t*0.25, -t*0.1)));
   c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.6);
-  gl_FragColor = vec4(fog(c, vPos), 1.0);
+  FRAG(c);
 }`;
 
 const VS_SKY = `precision highp float;
-attribute vec3 position; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vDir;
-void main(){ vDir = position; vec4 wp = world*vec4(position,1.0); gl_Position = viewProjection*wp; }`;
-const FS_SKY = COMMON + `
+attribute vec3 position; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vDir;
+void main(){ vDir = position; vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; gl_Position = viewProjection*wp; }`;
+const FS_SKY = `
 varying vec3 vDir;
 void main(){
   vec3 d = normalize(vDir); vec3 c = skyColor(d);
@@ -316,15 +292,19 @@ void main(){
     c = mix(c, cc, cov*0.85);
   }
   if (d.y < 0.0) c = mix(uFogCol, uFogCol*0.8, clamp(-d.y*4.0, 0.0, 1.0));
-  gl_FragColor = vec4(c, 1.0);
+  FRAG_NOFOG(c);
 }`;
 
+// mkMat: la ÚNICA forma de crear materiales. Antepone el preludio al fragment shader, declara los uniformes comunes y
+// apunta el material en «mats» (ahí se actualizan cámara, sol, cielo y niebla). El vertex shader se usa tal cual.
+// opts (opcional): { defines: ['#define X', …] para #ifdef en ambos shaders · cull: true para descartar caras traseras }
 const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime'];
 const mats = [];
-function mkMat(name, vs, fs, attributes, uniforms, samplers) {
-  const m = new BABYLON.ShaderMaterial(name, scene, { vertexSource: vs, fragmentSource: fs },
-    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: samplers || [] });
-  m.backFaceCulling = false;
+function mkMat(name, vs, fs, attributes, uniforms, samplers, opts) {
+  opts = opts || {};
+  const m = new BABYLON.ShaderMaterial(name, scene, { vertexSource: vs, fragmentSource: PRELUDE + fs },
+    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: samplers || [], defines: opts.defines || [] });
+  m.backFaceCulling = !!opts.cull;
   mats.push(m);
   return m;
 }
@@ -354,6 +334,17 @@ function mkMesh(name, pos, idx, mat, extra, px, pz) {
   m.freezeWorldMatrix(); m.doNotSyncBoundingInfo = true;
   return m;
 }
+// Registro de mallas (sombras y demás pases auxiliares): TODA malla que se crea pasa por reg(malla, { cast, alphaTex, layer }).
+//   cast: proyecta sombra · alphaTex: textura cuyo alfa recorta la malla (hojas) · layer: a qué capa pertenece
+// Las opciones quedan en mesh.metadata.bcn y la malla en reg.meshes (un Set), del que se da de baja sola al hacer dispose.
+const MESHES = new Set();
+function reg(mesh, o) {
+  if (!mesh) return mesh;
+  mesh.metadata = Object.assign(mesh.metadata || {}, { bcn: Object.assign({ cast: false, alphaTex: null, layer: '' }, o) });
+  MESHES.add(mesh); mesh.onDisposeObservable.addOnce(() => MESHES.delete(mesh));
+  return mesh;
+}
+reg.meshes = MESHES;
 
 // ------------------------------------------------------------------ luz / hora
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
@@ -382,8 +373,10 @@ function setHour(hh) {
 // ------------------------------------------------------------------ cielo y mar
 const sky = BABYLON.MeshBuilder.CreateSphere('sky', { diameter: 2, segments: 24 }, scene);
 sky.material = matSky; sky.scaling.setAll(150000); sky.isPickable = false; sky.renderingGroupId = 0; sky.alwaysSelectAsActiveMesh = true;
+reg(sky, { cast: false, layer: 'sky' });
 const sea = BABYLON.MeshBuilder.CreateGround('sea', { width: 420000, height: 420000, subdivisions: 160 }, scene);
 sea.position.set(WX / 2, 0, WZ / 2); sea.material = matSea; sea.isPickable = false; sea.renderingGroupId = 1; sea.alwaysSelectAsActiveMesh = true;
+reg(sea, { cast: false, layer: 'sea' });
 matSea.setVector2('uSize', new BABYLON.Vector2(WX, WZ));
 const texOpts = (t, aniso) => { t.wrapU = t.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; t.anisotropicFilteringLevel = aniso || 1; return t; };
 const waitTex = t => new Promise((res, rej) => { if (t.isReady()) return res(t); t.onLoadObservable.addOnce(() => res(t)); });
@@ -417,11 +410,11 @@ await tick();
     const idx = new Uint16Array(nI);
     for (let v = 0; v < nI; v++, p += 2) idx[v] = dv.getUint16(p, true);
     if ((nI * 2) % 4) p += 2;
-    mkMesh('t' + k, pos, idx, matTer, null, cx * CH, cz * CH); tris += nI / 3;
+    reg(mkMesh('t' + k, pos, idx, matTer, null, cx * CH, cz * CH), { cast: true, layer: 'terrain' }); tris += nI / 3;
   }
   // muelles
   const qv = new Float32Array(terr.sec('quayV')), qi = new Uint32Array(terr.sec('quayI'));
-  mkMesh('quays', qv, qi, matQuay);
+  reg(mkMesh('quays', qv, qi, matQuay), { cast: true, layer: 'terrain' });
   // entorno lejano
   const O = M.outer, oh = new Int16Array(terr.sec('outer')), ox = O.E0 - M.E0, oz = O.N0 - M.N0, oc = O.cell;
   const [i0, i1, j0, j1] = O.hole;
@@ -437,7 +430,7 @@ await tick();
   BABYLON.VertexData.ComputeNormals(op, oi, on);
   for (let k = 1; k < on.length; k += 3) if (on[k] < 0) { on[k - 1] = -on[k - 1]; on[k] = -on[k]; on[k + 1] = -on[k + 1]; }
   const om = mkMesh('outer', op, new Uint32Array(oi), matOut, [vbuf(on, 'normal', 3, VB.FLOAT, false)]);
-  om.alwaysSelectAsActiveMesh = true;
+  om.alwaysSelectAsActiveMesh = true; reg(om, { cast: false, layer: 'far' });
   matOut.setFloat('uUseTex', 0); matOut.setVector4('uOutRect', new BABYLON.Vector4(ox, oz, (O.W - 1) * oc, (O.H - 1) * oc));
   matOut.setTexture('outTex', coastTex);
   try {
@@ -499,8 +492,8 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
     }
     if (idx.length) {
       const nv = pos.length / 3;
-      mkMesh('r' + bi, new Float32Array(pos), nv > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), matRoad,
-        [vbuf(new Uint8Array(col), 'color', 4, VB.UNSIGNED_BYTE, true), vbuf(new Float32Array(uvs), 'uv', 4, VB.FLOAT, false)]);
+      reg(mkMesh('r' + bi, new Float32Array(pos), nv > 65535 ? new Uint32Array(idx) : new Uint16Array(idx), matRoad,
+        [vbuf(new Uint8Array(col), 'color', 4, VB.UNSIGNED_BYTE, true), vbuf(new Float32Array(uvs), 'uv', 4, VB.FLOAT, false)]), { cast: false, layer: 'road' });
       roadTris += idx.length / 3;
     }
     if ((++bi & 15) === 0) { setMsg('Trazando calles…', 0.25 + 0.1 * bi / rd.meta.buckets.length); await tick(); }
@@ -592,6 +585,7 @@ const BREC = { dv: [], n: 0 };
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);
       const mesh = mkMesh('b' + cx + '_' + cz, pos.subarray(0, vp * 3), idx.subarray(0, ip), matBld,
         [vbuf(col.subarray(0, vp * 4), 'color', 4, VB.UNSIGNED_BYTE, true), vbInfo], cx * CH, cz * CH);
+      reg(mesh, { cast: true, layer: 'coarse' });
       bldChunks.push({ mesh, x: (cx + 0.5) * CH, z: (cz + 0.5) * CH, ox, oz, inf: infBuf, vbInfo, dirty: false });
       bldTris += ip / 3;
       if ((++done % 12) === 0) { setMsg('Construyendo edificios… ' + bldCount.toLocaleString('es-ES'), 0.45 + 0.5 * done / total); await tick(); }
@@ -617,23 +611,37 @@ function barriAt(x, z) {
   return null;
 }
 
-// ------------------------------------------------------------------ fachadas de detalle (calidad Transeúnte al acercarse)
+// ------------------------------------------------------------------ módulos
+// CTX: el único contexto que reciben todos los módulos. facades.js le añade ctx.city (índices espaciales y consultas) y
+// ctx.detail (materiales del shader de detalle) al iniciarse; cada módulo iniciado queda además en ctx.mods[id].
+const st = { yaw: 0, pitch: 0.5, walk: false, keys: {}, fly: null, showLabels: true, maxDist: 40000 };   // cámara y controles
+const CTX = { scene, engine, canvas, cam, st, SHOT, GEO: window.BCN_GEO, mkMat, mats, reg, heightAt, WX, WZ, CH, SEG, ROFF, RCOL, META, PAL,
+  BREC, bldChunks, blobURL, L, matBld, mods: {} };
+// Módulos con protocolo común { update(P, groundY, dt, frame), busy(), stats(), setRange?(q), flush?(P, groundY) }, en orden
+// de actualización. Si uno falla al iniciarse, la ciudad sigue funcionando sin él.
+const MODS = [];
+async function addMod(id, glob, what) {
+  try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); const m = await M.init(CTX); MODS.push({ id, m }); return (CTX.mods[id] = m); }
+  catch (e) { console.warn('Sin ' + what, e); return null; }
+}
+// Módulos de hooks (interiors, details, furniture, ground): los inicia el núcleo que los usa con ctx.hooks(qué, global, respaldo).
+// Devuelve el respaldo completado con lo que dé init(ctx); si el módulo falta o falla, se queda el respaldo y se avisa.
+CTX.hooks = (what, glob, fb) => {
+  try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); return Object.assign(fb, M.init(CTX)); }
+  catch (e) { console.warn('Sin ' + what, e); return fb; }
+};
+// fachadas de detalle (calidad Transeúnte al acercarse)
 setMsg('Preparando fachadas de detalle…', 0.97);
 await tick();
-let FXS = null;
-try {
-  FXS = await window.BCN_FACADES({ scene, engine, mkMat, COMMON, VS_COL, heightAt, BREC, bldChunks, SEG, META, PAL, WX, WZ, blobURL, cam, L, matBld });
-} catch (e) { console.warn('Sin fachadas de detalle', e); }
-// ------------------------------------------------------------------ calles de detalle (aceras, árboles, mobiliario)
+const FXS = await addMod('fx', 'BCN_FACADES', 'fachadas de detalle');
+// calles de detalle (aceras, árboles, mobiliario): necesitan los índices espaciales y el shader de detalle de las fachadas
 setMsg('Preparando calles: aceras, árboles y mobiliario…', 0.985);
 await tick();
-let STS = null;
-try {
-  if (FXS) STS = await window.BCN_STREETS({ scene, engine, mkMat, COMMON, heightAt, SEG, WX, WZ, blobURL, FX: FXS, ROFF });
-} catch (e) { console.warn('Sin calles de detalle', e); }
+const STS = FXS ? await addMod('st', 'BCN_STREETS', 'calles de detalle') : null;
+// iluminación: siempre el último
+const LIGHT = await addMod('light', 'BCN_LIGHTING', 'módulo de iluminación');
 
 // ------------------------------------------------------------------ cámara y controles
-const st = { yaw: 0, pitch: 0.5, walk: false, keys: {}, fly: null, showLabels: true, maxDist: 40000 };
 const poi = n => META.poi.find(q => q.n === n).p;
 const D2R = Math.PI / 180;
 function orbitView(name, dist, azFrom, alt, opt) {
@@ -731,8 +739,7 @@ function update(dt) {
   sky.position.copyFrom(P);
   for (const m of mats) m.setVector3('uCam', P);
   { const ox = Math.floor(P.x / 1200) * 1200, oz = Math.floor(P.z / 1200) * 1200; if (ox !== st._ox || oz !== st._oz) { st._ox = ox; st._oz = oz; matRoad.setVector2('uOrg', new BABYLON.Vector2(ox, oz)); } }
-  if (FXS) FXS.update(P, g, dt, frame);
-  if (STS) STS.update(P, g, dt, frame);
+  for (const o of MODS) o.m.update(P, g, dt, frame);
   if (SHOT || (frame & 7) === 0) { const md = st.maxDist + P.y * 1.2, m2 = md * md; for (const c of bldChunks) { const dx = c.x - P.x, dz = c.z - P.z; c.mesh.setEnabled(st.maxDist >= 40000 || dx * dx + dz * dz < m2); } }
   hudT -= dt;
   if (hudT <= 0) {
@@ -775,11 +782,19 @@ engine.runRenderLoop(() => scene.render());
 addEventListener('resize', () => engine.resize());
 setMsg('¡Listo!', 1);
 setTimeout(() => { $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 700); }, 150);
+// vacía de golpe el trabajo pendiente de TODOS los módulos (el arnés de capturas lo llama antes de fotografiar)
+function flushAll() {
+  const P = cam.position, g = groundY(P.x, P.z);
+  for (const { m } of MODS) {
+    if (m.flush) { m.flush(P, g); continue; }
+    let n = 0; do { m.update(P, g, 0.3, 0); } while (m.busy && m.busy() && ++n < 100000);
+  }
+}
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
-  fx: FXS, streets: STS, detailBusy: () => (!!FXS && FXS.busy()) || (!!STS && STS.busy()), detailStats: () => ({ fx: FXS && FXS.stats(), st: STS && STS.stats() }),
-  fxFlush: () => { const P = cam.position, g = groundY(P.x, P.z); let n = 0;
-    if (FXS) do { FXS.update(P, g, 0.3, 0); } while (FXS.busy() && ++n < 100000);
-    if (STS) { n = 0; do { STS.update(P, g, 0.5, 0); } while (STS.busy() && ++n < 100000); STS.update(P, g, 0.5, 0); } } });
+  ctx: CTX, reg, mods: MODS, fx: FXS, streets: STS, light: LIGHT,
+  detailBusy: () => MODS.some(o => !!o.m.busy && o.m.busy()),
+  detailStats: () => { const o = { fx: null, st: null }; for (const { id, m } of MODS) o[id] = m.stats ? m.stats() : null; return o; },
+  fxFlush: flushAll });
 } catch (e) {
   console.error(e); window.BCN.error = String(e && e.stack || e);
   $('err').textContent = 'No se ha podido cargar la ciudad: ' + (e && e.message || e);
