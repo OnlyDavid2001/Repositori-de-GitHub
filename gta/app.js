@@ -267,12 +267,17 @@ const VS_COL = `precision highp float;
 attribute vec3 position; attribute vec4 color; attribute vec4 uv; uniform mat4 world; uniform mat4 viewProjection;
 varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; gl_Position = viewProjection*wp; }`;
+// volúmenes: además, el eje del edificio (uv2 = cos, sin del ángulo de sus muros) para alinear la textura de la cubierta
+const VS_BLD = `precision highp float;
+attribute vec3 position; attribute vec4 color; attribute vec4 uv; attribute vec2 uv2; uniform mat4 world; uniform mat4 viewProjection;
+varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx;
+void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; vAx = uv2; gl_Position = viewProjection*wp; }`;
 const VS_NRM = `precision highp float;
 attribute vec3 position; attribute vec3 normal; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vN;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_Position = viewProjection*wp; }`;
 
 const FS_BLD = `
-varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; uniform vec2 uFx;
+varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx; uniform vec2 uFx;
 uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uRoofPal;
 void main(){
   vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc)));
@@ -348,38 +353,64 @@ void main(){
     // Solo los muros que dan a una calle (máscara de calles, 3 m por delante del muro): los patios de manzana quedan a oscuras
     if (uGlow.y > 0.001) glow += kAura*base*(exp(-max(h, 0.0)/6.0)*uGlow.y*mix(0.08, 1.0, texture2D(uStreet, (vPos.xz + normalize(n.xz + vec2(1e-4))*3.0 - uStreetR.xy)*uStreetR.zw).r)*mix(0.45, 1.0, smoothstep(90.0, 380.0, dist))*(1.0 - 0.8*smoothstep(200.0, 380.0, vPos.y)));
   } else {
-    vec3 roof;
+    // CUBIERTA: una por edificio, de un material y un color (palette.js), con su textura fina ALINEADA con los muros del
+    // propio edificio (vAx = su eje) y en metros de la propia cubierta: ni costuras por triángulo ni cambios de tono. Toda la
+    // textura tiene media cero y se apaga cuando su motivo baja de ~2 píxeles, así que de lejos queda exactamente el color
+    // de la tabla: el mismo a cualquier distancia
+    vec3 roof; float rt = -1.0;
     float r = hash21(vCol.rg*91.7 + seed);
     if (palB) {
-      // DIA: la cubierta horneada (tabla de 64 colores de palette.js, índice en los bits bajos del color). De noche, las de siempre
       vec3 c8 = floor(vCol.rgb*255.0 + 0.5);
       float ri = mod(c8.r, 4.0) + 4.0*mod(c8.g, 4.0) + 16.0*mod(c8.b, 4.0);
       vec3 rD = texture2D(uRoofPal, vec2((ri + 0.5)/64.0, 0.5)).rgb;
-      // grano de cubierta ESTABLE (el de antes era ruido por píxel): losas de ~9 m de la propia cubierta, cada una con su
-      // tono, y una de cada cuatro con el color hermano (rasilla rojiza ↔ baldosa clara, otro gris, otra grava). Cuando la
-      // losa baja de ~3 píxeles se pinta su media exacta, así que el color de conjunto es el mismo a cualquier distancia
-      vec3 rA = texture2D(uRoofPal, vec2((mod(ri + 8.0, 16.0) + 16.0*floor(ri/16.0) + 0.5)/64.0, 0.5)).rgb;
-      vec2 cid = floor(vLoc.xz/9.0 + vec2(seed*0.37, seed*0.61));
-      float hc = hash21(cid + vec2(seed*17.0, ri*3.1)), hk = fract(hc*13.7);
-      vec3 rC = mix(rD, rA, step(0.75, hk))*(0.90 + 0.20*hc);
-      vec3 rM = mix(rD, rA, 0.25);
-      rD = mix(rC, rM, smoothstep(2.5, 4.5, length(fwidth(vLoc.xz))));
+      rt = floor(ri/16.0);
       vec3 rN = abs(style-2.0) < 0.5 ? mix(vec3(0.60,0.50,0.42), vec3(0.52,0.50,0.48), r) : abs(style-6.0) < 0.5 ? mix(vec3(0.72,0.44,0.32), vec3(0.64,0.40,0.30), r) :
                 mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r));
       roof = mix(rD, rN, uNight);
+      if (rt < 0.5 && mod(ri, 16.0) > 7.5) rt = 4.0;          // baldosa clara (losas más grandes que la rasilla)
     }
-    else if (abs(style-1.0) < 0.5) roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r);
+    else if (abs(style-1.0) < 0.5) { roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r); rt = 2.0; }
     else if (abs(style-3.0) < 0.5) roof = vec3(0.46,0.48,0.52);
-    else if (abs(style-9.0) < 0.5) roof = vec3(0.76,0.76,0.77);
-    else if (abs(style-10.0) < 0.5) roof = vec3(0.80,0.82,0.84);
-    else roof = base*0.95;
-    // grano de cubierta en coordenadas locales del trozo (precisión), apagado cuando su celda baja de unos pocos píxeles
-    float pxr = length(fwidth(vLoc.xz))*0.35;
-    base = roof*(0.99 + 0.12*(vnoise(vLoc.xz*0.35) - 0.5)*(1.0 - smoothstep(0.4, 1.6, pxr)));
+    else if (abs(style-9.0) < 0.5) { roof = vec3(0.76,0.76,0.77); rt = 2.0; }
+    else if (abs(style-10.0) < 0.5) { roof = vec3(0.80,0.82,0.84); rt = 2.0; }
+    else { roof = base*0.95; rt = 3.0; }
+    vec2 ax = vAx/max(length(vAx), 1e-3);
+    vec2 q = vec2(dot(vLoc.xz, ax), dot(vLoc.xz, vec2(-ax.y, ax.x))) + seed*vec2(37.0, 53.0);   // metros, en ejes del edificio
+    float pw = max(length(fwidth(q)), 1e-4);                  // metros por píxel
+    float tx = 0.0;                                           // relieve de la textura (media cero)
+    if (rt > -0.5) {
+      float gf = 1.0 - smoothstep(0.30, 0.65, pw/0.45);       // ¿se distingue el motivo fino?
+      if (rt < 0.5 || rt > 3.5) {
+        // rasilla (28 × 14 cm, a soga) o baldosa clara (40 cm): juntas claras y algo de tono por pieza
+        vec2 sz = rt < 0.5 ? vec2(0.28, 0.14) : vec2(0.40, 0.40);
+        vec2 g = q/sz; g.x += 0.5*step(1.0, mod(floor(g.y), 2.0));
+        vec2 f = abs(fract(g) - 0.5)*sz;                       // distancia al centro de la pieza (m)
+        float jw = 0.012, lj = 1.0 - smoothstep(-0.5, 0.5, (min(sz.x*0.5 - f.x, sz.y*0.5 - f.y) - jw)/max(pw, 1e-4));
+        float jf = 2.0*jw*(1.0/sz.x + 1.0/sz.y);               // fracción media de junta
+        float fs = 1.0 - smoothstep(0.3, 0.7, pw/sz.y);
+        tx = (0.10*(hash21(floor(g) + seed*7.0) - 0.5) + 0.22*(lj - jf))*fs;
+      } else if (rt < 1.5) {
+        // teja árabe: canales de 22 cm a lo largo del eje y cursos de 40 cm (borde de cada teja, en sombra)
+        float cu = q.x/0.22, co = q.y/0.40 + 0.5*step(1.0, mod(floor(cu), 2.0));
+        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.22);
+        float sh = sin(6.2832*cu)*0.16, cv = (smoothstep(0.80, 0.95, fract(co)) - 0.15)*-0.16;
+        tx = (sh + cv + 0.12*(hash21(vec2(floor(cu), floor(co)) + seed*5.0) - 0.5))*fs;
+      } else if (rt < 2.5) {
+        // tela asfáltica: rollos de 1 m solapados (junta clara) y algún tono distinto por rollo
+        float rl = q.y/1.0, fr = fract(rl);
+        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.5);
+        tx = ((smoothstep(0.90, 0.94, fr) - smoothstep(0.97, 1.0, fr) - 0.045)*0.20 + 0.07*(hash21(vec2(floor(rl), seed*3.0)) - 0.5))*fs;
+      } else {
+        // grava
+        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.12);
+        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.3, 0.7, pw/0.6));
+      }
+      // manchas de uso y de humedad (escala de metros), también de media cero
+      tx += 0.07*(vnoise(q*0.21) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/3.0));
+    }
+    base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
     // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
     base *= 1.0 - 0.55*uNight;
-    // peto / borde de cubierta
-    base *= 1.0;
   }
   // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
   // DIA: de lejos (sin mapa de sombras) la parte baja de los muros queda en la sombra de la acera de enfrente: calle de
@@ -628,7 +659,7 @@ function setLDR() {
   for (const m of mats) m.options.defines.push('#define LDR');
   for (const f of OUT.onLDR) { try { f(); } catch (e) { console.warn(e); } }
 }
-const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx', 'uStreetR'], ['uStreet', 'uRoofPal']);
+const matBld = mkMat('bld', VS_BLD, FS_BLD, ['position', 'color', 'uv', 'uv2'], ['uFx', 'uStreetR'], ['uStreet', 'uRoofPal']);
 // tabla de colores de cubierta de palette.js (64 × 1, sin filtrar)
 if (window.BCN_PAL) matBld.setTexture('uRoofPal', BABYLON.RawTexture.CreateRGBATexture(window.BCN_PAL.ROOF, 64, 1, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE));
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
@@ -958,7 +989,7 @@ const BREC = { dv: [], n: 0 };
     for (const ck of c.meta.chunks) {
       const [cx, cz, off, len, nB, nV, nR] = ck;
       const maxV = (nV + nR) * 2, maxI = nV * 6 + (nV + 2 * nR) * 3;
-      const pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4);
+      const pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4), axv = new Int8Array(maxV * 2);
       const idx = maxV > 65535 ? new Uint32Array(maxI) : new Uint16Array(maxI);
       let vp = 0, ip = 0, p = off; const end = off + len; const flat = [], holes = [], rsz = [], topIdx = [];
       const ox = cx * CH, oz = cz * CH;
@@ -976,6 +1007,12 @@ const BREC = { dv: [], n: 0 };
         // color horneado: el de la paleta por familia de barrio (palette.js) o, en las clases sin paleta, el de PAL
         const pal = PAL[cls] || PAL[0], a = (cls << 4) | (seed & 15);
         const c3 = (PALJ && PALJ.pick(bi, cls, seed, (bx0 + bx1) / 2 + ox, (bz0 + bz1) / 2 + oz, Ht / 10)) || pal[seed % pal.length];
+        // eje del edificio (para alinear la textura de su cubierta con sus muros): media de la dirección de las aristas del
+        // anillo exterior, ponderada por longitud, con el ángulo ×4 (así las aristas a 0°, 90°, 180° y 270° suman a lo mismo)
+        let s4c = 0, s4s = 0;
+        for (let k = 0, m0 = rsz[0]; k < m0; k++) { const j = (k + 1) % m0, dx = flat[j * 2] - flat[k * 2], dz = flat[j * 2 + 1] - flat[k * 2 + 1], L = Math.hypot(dx, dz);
+          if (L > 0.05) { const a4 = 4 * Math.atan2(dz, dx); s4c += L * Math.cos(a4); s4s += L * Math.sin(a4); } }
+        const axA = Math.atan2(s4s, s4c) / 4, axC = Math.round(Math.cos(axA) * 127), axS = Math.round(Math.sin(axA) * 127);
         let rs = 0; holes.length = 0;
         for (let r = 0; r < rsz.length; r++) {
           const m = rsz[r]; if (r > 0) holes.push(rs);
@@ -987,6 +1024,7 @@ const BREC = { dv: [], n: 0 };
             let o = vp * 3; pos[o] = x; pos[o + 1] = y0; pos[o + 2] = z; pos[o + 3] = x; pos[o + 4] = y1; pos[o + 5] = z;
             o = vp * 4; col[o] = c3[0]; col[o + 1] = c3[1]; col[o + 2] = c3[2]; col[o + 3] = a; col[o + 4] = c3[0]; col[o + 5] = c3[1]; col[o + 6] = c3[2]; col[o + 7] = a;
             inf[o] = hb; inf[o + 1] = Ht; inf[o + 2] = uq; inf[o + 4] = Ht; inf[o + 5] = Ht; inf[o + 6] = uq;
+            o = vp * 2; axv[o] = axC; axv[o + 1] = axS; axv[o + 2] = axC; axv[o + 3] = axS;
             if (k < m) topIdx[kk] = vp + 1;
             if (k > 0) { const a0 = vp - 2; idx[ip++] = a0; idx[ip++] = vp; idx[ip++] = vp + 1; idx[ip++] = a0; idx[ip++] = vp + 1; idx[ip++] = a0 + 1; }
             vp += 2;
@@ -1005,7 +1043,7 @@ const BREC = { dv: [], n: 0 };
       const infBuf = inf.subarray(0, vp * 4);
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);
       const mesh = mkMesh('b' + cx + '_' + cz, pos.subarray(0, vp * 3), idx.subarray(0, ip), matBld,
-        [vbuf(col.subarray(0, vp * 4), 'color', 4, VB.UNSIGNED_BYTE, true), vbInfo], cx * CH, cz * CH);
+        [vbuf(col.subarray(0, vp * 4), 'color', 4, VB.UNSIGNED_BYTE, true), vbInfo, vbuf(axv.subarray(0, vp * 2), 'uv2', 2, VB.BYTE, true)], cx * CH, cz * CH);
       reg(mesh, { cast: true, layer: 'coarse' });
       bldChunks.push({ mesh, x: (cx + 0.5) * CH, z: (cz + 0.5) * CH, ox, oz, inf: infBuf, vbInfo, dirty: false });
       bldTris += ip / 3;
