@@ -10,8 +10,17 @@
 - Calibración a las 17:00 (exposición 1,6 · contraste 1,08 · sol 2,3 · cielo 1,6 · suelo 1,5 · viñeta 0,3).
 - Probados sin errores de consola: calidades alta/media/baja/auto, `?ldr=1` y `?nolight=1`.
 
-## Pendiente
-- (nada de LZ1). LZ2: cuerpo de `sunVis()`. LZ3: oclusión con la distancia del alfa, atardecer.
+- Verificación final a 960x540 (8 vistas de `tools/views_luz.json` + `eix_acera` con `?ldr=1`): sin errores ni avisos.
+  Brillo medio frente a `golden_a`: a pie igual (70/70, 67/68, 79/78; rambla 88→95), aéreas algo más claras (128→146, 118→129).
+- `DESARROLLO.md` §7 escrito.
+
+## Pendiente / flojo
+- Nada pendiente del alcance de LZ1. No se ha mirado ninguna captura a 1600x900 (la máquina iba muy cargada).
+- 20,25 h: la calle queda muy oscura (media 30) porque el ambiente lineal al anochecer es bajo y la exposición es fija.
+  Para LZ3 (atardecer): subir la exposición con `L.dusk` o las ganancias `L.K.sky/gnd` al anochecer.
+- Las vistas aéreas quedan ~10–15 % más claras que antes (mucho paño al sol). Si molesta: `sun` 2,3 → 2,0.
+- Algún píxel suelto muy brillante en vidrios de escaparate (brillo especular HDR + nitidez), visible ampliando `eix_fachada`.
+- LZ2: cuerpo de `sunVis()`. LZ3: oclusión con la distancia del alfa.
 
 ## Trampas
 - El arnés tarda ~130 s en la primera vista (SwiftShader compila los shaders), luego 5–10 s por vista.

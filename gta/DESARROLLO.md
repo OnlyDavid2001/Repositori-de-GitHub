@@ -651,7 +651,79 @@ luz hecha a mano, tres sitios de `app.js`: el brillo del asfalto en `FS_ROAD`, l
 
 ## 7. Carril LUZ
 
-_Pendiente: aquí documentará el carril LUZ (`app.js`, `lighting.js`) lo que añada o cambie._
+Etapa LZ1 (HDR lineal y postproceso). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
+no hace nada» de §6.12; el contrato (nombres y firmas de `lit`, `shade`, `envRefl`, `emit`, `fog`, `FRAG*`) no cambia.
+Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `gqRow`, `gq0`…`gq3`, `gqV`).
+
+### 7.1 Preludio lineal/HDR (`PRELUDE`, en `app.js`)
+
+- **Espacios de color.** Los cuerpos de los shaders siguen en «espacio de pantalla» (colores de autor). Por dentro la luz
+  se calcula en lineal: `toLin(c) = c^2.2`, `toScr(c) = c^(1/2.2)`. `lit` y `shade` reciben y devuelven espacio de
+  pantalla (el resultado puede pasar de 1: eso es HDR), así que lo que un cuerpo suma a mano sigue valiendo.
+- **Luz lineal.** Tres uniformes nuevos: `uSunL` (sol a incidencia normal), `uSkyL` (cielo, normales hacia arriba) y
+  `uGndL` (rebote cálido del suelo, normales hacia abajo). Unidad: 1 = «un albedo se ve tal cual». `setHour` los saca de
+  los colores de pantalla de siempre: `color^2.2 × ctx.L.K.{sun, sky, gnd}` (2,3 · 1,6 · 1,5; a mediodía sol : cielo ≈ 8 : 1).
+  `ambL(n)` es el ambiente hemisférico. `uSunCol`, `uSkyCol` y `uGndCol` siguen existiendo.
+- **`sunVis()`**: visibilidad del sol en el fragmento, hoy `return 1.0;`. Multiplica **solo** la luz directa de `lit` y
+  `shade`, el brillo especular de `shade`, el disco del sol de `envRefl` y los brillos hechos a mano del asfalto
+  (`FS_ROAD`) y del mar (`FS_SEA`). La etapa de sombras cambia únicamente su cuerpo (tiene `vPos` y `uCam` a mano).
+- **Salida.** `FRAG(c)`: pasa a lineal, aplica la niebla en lineal (`fogL`) y escribe RGB = radiancia HDR lineal (tope
+  4000) y A = distancia a la cámara en metros (tope 60000). `FRAG_NOFOG`: igual, sin niebla y con A = 60000. `FRAGA(c, a)`:
+  A = opacidad (los materiales con mezcla no tocan el alfa del búfer, §6.4). `fog()` (mezcla en espacio de pantalla) se
+  conserva por compatibilidad, pero ya no la usa la salida.
+- **`emit(col, gain)`** = `col*gain` en espacio de pantalla: gain 1 se ve como el color de autor. En lineal son
+  `gain^2.2`, así que gain 2 ≈ 4,6× y gain 4 ≈ 21×: con el umbral de bloom actual florece a partir de gain ≈ 1,6 sobre
+  un color claro.
+- **Cielo y mar.** `skyColor` lleva un disco solar de 9× `uSunCol` (más el halo); el brillo del sol en el mar llega a 7×.
+  Los muelles (`FS_QUAY`) pasan por `lit`.
+- **Uniformes y muestreadores globales.** `BASEU` (uniformes) y `BASES` (muestreadores, hoy vacío) se añaden a todo
+  material. Para añadir uno: declararlo en `PRELUDE`, apuntar el nombre en `BASEU`/`BASES` y darle valor en `lightTo()`
+  (depende de la hora), en el `onBeforeRender` junto a `uTime` (cada fotograma) o desde un módulo con
+  `ctx.eachMat(m => m.setTexture('uX', tex))`, que se aplica a los materiales ya creados y a los que se creen después.
+
+### 7.2 Cadena de postproceso (`lighting.js`)
+
+`BABYLON.DefaultRenderingPipeline('bcnPost', hdr = true)` sobre la cámara, todo dentro de `scene.render()`:
+búfer HalfFloat con MSAA → nitidez leve → bloom (umbral alto) → exposición + ACES + gamma + contraste + viñeta + tramado
+→ FXAA (solo si no hay MSAA). El lienzo es opaco (`alpha: false`) y sin antialiasing propio en el camino HDR.
+
+- Ajustes (`P` en `lighting.js` y `ctx.L.tone`): exposición 1,6 · contraste 1,08 · `bloomT` 2,6 (umbral de luminancia
+  lineal ya expuesta) · `bloomW` 0,16 · `bloomK` 64 · `sharpen` 0,10 · `vignette` 0,3.
+- **Calibrar en caliente**: `BCN.light.set({ exposure, contrast, sun, sky, gnd, bloomT, bloomW, bloomK, sharpen, vignette })`
+  (en la consola o en el `eval` de una vista del arnés). `BCN.light.pipe` es la cadena de Babylon.
+- Trampas: el ACES de Babylon no lleva la ganancia 1/0,6 (por eso la exposición no es 1); la viñeta con peso 1 deja las
+  esquinas al 28 %; `bloomThreshold` se pasa elevado a 2,2 porque Babylon lo compara como `umbral^(1/2.2)`.
+
+### 7.3 Calidad gráfica
+
+Fila «Gráficos: Auto / Baja / Media / Alta» del panel → `BCN.light.setQuality('auto' | 'baja' | 'media' | 'alta')`
+(también 1, 2, 3). Tabla `QUAL` de `lighting.js` (las etapas de sombras y oclusión añaden ahí sus columnas):
+
+| | escala de render | MSAA | bloom | nitidez |
+| --- | --- | --- | --- | --- |
+| baja | 0,67 | no (FXAA) | no | no |
+| media | 0,85 | 2 | sí (búfer a 0,35) | sí |
+| alta | 1 | 4 | sí (búfer a 0,5) | sí |
+
+Auto empieza en alta y baja un escalón cuando el tiempo medio de fotograma real supera 34 ms en dos ventanas seguidas
+de 2 s (nunca en modo captura, con la pestaña oculta o tras un parón; nunca sube solo). `BCN.light.stats()` →
+`{ hdr, quality, auto, scale, msaa, bloom, ms, w, h }`.
+
+### 7.4 Camino LDR
+
+Sin postproceso: los materiales llevan `#define LDR` y `FRAG` aplica exposición, ACES, gamma y contraste (`uTone`) y
+escribe A = 1; el lienzo usa su propio antialiasing. Se usa con `?ldr=1`, sin WebGL2 o sin render a HalfFloat
+(`ctx.out.hdr = false` desde el arranque), y **en caliente** (`ctx.setLDR()`: recompila todos los materiales) si
+`lighting.js` falta, falla al iniciarse (`?nolight=1` lo simula) o no consigue montar la cadena. En ese último caso el
+lienzo ya se creó sin antialiasing: se ve correcto pero con dientes de sierra. No hay viñeta ni bloom en este camino.
+
+### 7.5 Cómo se depura
+
+- `node tools/shot.js tools/out/lz/v @tools/views_luz.json` (las vistas de verificación de LUZ); `Q='?ldr=1'` y
+  `Q='?nolight=1'` para los otros dos caminos. `detailStats().light` sale en cada línea del arnés.
+- Imagen negra o blanca: mira `BCN.light.stats().hdr` y `BCN.ctx.out.hdr`; deben coincidir. Si un shader nuevo escribe
+  `gl_FragColor` a mano, saldrá en gamma dentro de un búfer lineal (lavado y sin niebla): que acabe en `FRAG`.
+- Para ver el búfer sin tono: `BCN.light.pipe.imageProcessingEnabled = false`.
 
 
 
