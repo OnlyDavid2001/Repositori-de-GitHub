@@ -73,7 +73,7 @@ window.BCN_LIGHTING = { init(ctx) {
   // cambia su tamaño (altura de la cámara), la hora o la lista de mallas que proyectan dentro de ella. Como mucho una por
   // fotograma, salvo al cambiar la hora y en modo captura (ahí todo queda al día en el mismo fotograma).
   const SH = { res: 0, filt: 0, R: 4000, base: [45, 400], casc: [], X: new B.Vector3(), Y: new B.Vector3(), Z: new B.Vector3(0, 1, 0),
-               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true };
+               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true };
   const SH_VS = `precision highp float;
 attribute vec3 position;
 #ifdef INF
@@ -159,7 +159,7 @@ void main(){
       rtt.wrapU = rtt.wrapV = B.Texture.CLAMP_ADDRESSMODE; rtt.clearColor = new B.Color4(1, 1, 1, 1);
       rtt.renderParticles = false; rtt.renderSprites = false; rtt.ignoreCameraViewport = true;
       rtt.refreshRate = B.RenderTargetTexture.REFRESHRATE_RENDER_ONCE; rtt.renderList = [];
-      const c = { k, rtt, C: new B.Vector3(), U: new B.Vector4(0, 0, 0, 1), K: new B.Vector2(1, 1), half: 0, cx: 0, cy: 0, dirty: true, sig: '', n: 0, late: 0, set: new WeakSet() };
+      const c = { k, rtt, C: new B.Vector3(), U: new B.Vector4(0, 0, 0, 1), K: new B.Vector2(1, 1), half: 0, cx: 0, cy: 0, dirty: true, sig: '', n: 0, tris: 0, late: 0, set: new WeakSet() };
       // una malla cuyo material de profundidad aún se está compilando se deja para el fotograma siguiente (y se repinta)
       rtt.customIsReadyFunction = mesh => { const m = mesh.getMaterialForRenderPass(rtt.renderPassId);
         const ok = !m || m.isReady(mesh, mesh.hasThinInstances, mesh.subMeshes && mesh.subMeshes[0]); if (!ok) c.late = 2; return ok; };
@@ -197,6 +197,7 @@ void main(){
     const o = shList(c, c.C, half);
     for (const m of o.list) if (!c.set.has(m)) { c.set.add(m); c.rtt.setMaterialForRendering(m, shMat(c.k, m)); }
     c.rtt.renderList = o.list; c.sig = o.sig; c.n = o.list.length; c.dirty = false; c.late = 0;
+    c.tris = 0; for (const m of o.list) c.tris += m.getTotalIndices() / 3 * (m.hasThinInstances ? m.thinInstanceCount : 1);
     c.rtt.resetRefreshCounter(); SH.renders++;
   }
   function shUpdate(Pc, groundY) {
@@ -217,7 +218,7 @@ void main(){
       let need = c.dirty || half !== c.half || Math.abs(B.Vector3.Dot(Pc, SH.X) - c.cx) > 0.18 * half || Math.abs(B.Vector3.Dot(Pc, SH.Y) - c.cy) > 0.18 * half;
       if (!need && check && shList(c, c.C, half).sig !== c.sig) need = true;
       if (need) c.dirty = true;
-      if (!need || (did > 0 && !SHOT && !hour)) continue;
+      if (!need || (did > 0 && !SH.all && !hour)) continue;
       shRender(c, Pc, half); did++;
     }
     if (did) { for (const m of SH.mats.values()) shMatU(m); for (const m of ctx.mats) shPush(m); }
@@ -266,7 +267,7 @@ void main(){
     flush: () => { for (const c of SH.casc) c.dirty = true; },
     stats: () => ({ hdr: !!pipe, quality: cur, auto, scale: QUAL[cur].scale, msaa: pipe ? pipe.samples : 0, bloom: !!(pipe && pipe.bloomEnabled),
       ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight(),
-      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), renders: SH.renders, ok: !SH.casc.some(c => c.dirty || c.late > 0) } }) };
+      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: !SH.casc.some(c => c.dirty || c.late > 0) } }) };
   Object.defineProperty(M, 'shadow', { get: () => SH });        // depuración: BCN.light.shadow (cascadas, mapas, materiales)
   Object.defineProperty(M, 'pipe', { get: () => pipe });         // depuración: BCN.light.pipe
   return M;
