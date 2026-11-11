@@ -88,7 +88,9 @@ add({ id: 'camp_nou', nombre: 'Camp Nou', nivel: 'A', x: 8253.4, z: 13411.6, rot
     yF = Math.min(6, Math.max(-4, yF)) + 0.3;
     const se = (rx, rz) => SE(rx, rz, P, N);
     // césped y su orla
-    L.poly(B, [[-36, yF + 0.05, -55], [36, yF + 0.05, -55], [36, yF + 0.05, 55], [-36, yF + 0.05, 55]], [62, 128, 60], K.CESPED, L.aux.cesped(5.25));
+    // campo: emisivo solo de noche (de día, alb × 0,45 ≈ el verde del césped); de noche, campo iluminado por los focos
+    L.poly(B, [[-36, yF + 0.05, -55], [36, yF + 0.05, -55], [36, yF + 0.05, 55], [-36, yF + 0.05, 55]], [128, 250, 120], K.EMISIVO, L.aux.emisivo(1.5, true));
+    for (let i = -5; i <= 5; i += 2) L.poly(B, [[-36, yF + 0.07, i * 5], [36, yF + 0.07, i * 5], [36, yF + 0.07, i * 5 + 5], [-36, yF + 0.07, i * 5 + 5]], [110, 222, 104], K.EMISIVO, L.aux.emisivo(1.3, true));
     L.poly(B, se(42, 62).map(p => [p[0], yF, p[1]]), [52, 104, 54], K.CESPED, L.aux.cesped(5.25));
     // tres graderíos continuos: sectores azul y grana (cada graderío desfasado), frentes blancos
     const sect = (off, w) => i => (((i + off) / w | 0) % 2 ? BLAU : GRANA);
@@ -114,8 +116,10 @@ add({ id: 'camp_nou', nombre: 'Camp Nou', nivel: 'A', x: 8253.4, z: 13411.6, rot
     banda(B, SO, yF + 55, yF + 59.5, BLA, K.METAL, L.aux.panel(3, 0.1, 0));
     const RI = se(60, 82), RO = se(100.5, 122.5);
     corona(B, RI, yF + 57.2, RO, yF + 59.5, [238, 238, 236], K.METAL, L.aux.panel(4, 0.12, 0));
-    banda(B, RI, yF + 55.6, yF + 57.2, [90, 92, 98], K.METAL, L.aux.panel(2, 0.1, 0));
-    corona(B, RI, yF + 55.6, se(66, 88), yF + 56.6, [180, 182, 186], K.METAL);
+    // canto interior de la cubierta: la corona de focos (blanco frío, muy fuerte de noche) y su reflejo en el intradós
+    banda(B, RI, yF + 55.6, yF + 57.2, [250, 250, 244], K.EMISIVO, L.aux.emisivo(4, true));
+    banda(B, se(62, 84), yF + 54.8, yF + 55.7, [255, 246, 226], K.EMISIVO, L.aux.emisivo(3, true));
+    corona(B, RI, yF + 55.6, se(66, 88), yF + 56.6, [240, 240, 236], K.EMISIVO, L.aux.emisivo(1.6, true));
     // pasarelas de acceso (dos puentes en los fondos) que bajan del primer anillo a la calle
     for (const s of [-1, 1]) L.caja(B, 0, s * 128, y0, 26, 14, yF + 2 - y0, 0, [200, 200, 196], K.LISO);
   } });
@@ -225,7 +229,7 @@ add({ id: 'torre_calatrava', nombre: 'Torre de Calatrava', nivel: 'A', x: 10559.
 // elíptica que domina, dos cúpulas menores y cuatro torres-campanario en las esquinas. Rasgos: cúpula central, torres,
 // escalinatas y cascadas que bajan hacia la Font Màgica.
 // Marco: rot 334 → +Z = la fachada principal (al NNO), X a lo largo de la fachada.
-add({ id: 'palau_nacional', nombre: 'Palau Nacional (MNAC)', nivel: 'A', x: 10820.8, z: 11985, rot: 334, alto: 52, ancho: 168, largo: 147,
+add({ id: 'palau_nacional', nombre: 'Palau Nacional (MNAC)', nivel: 'A', x: 10820.8, z: 11985, rot: 334, alto: 80, ancho: 168, largo: 147,
   noche: 'focos', edificios: [52387, 52388, 52389],
   build(B, h, L) {
     const OCRE = L.color('#d6c39c'), CLA = [226, 212, 182], DOM = L.color('#8c8478'), PI = L.aux.piedra(0.7, 1.4);
@@ -239,22 +243,30 @@ add({ id: 'palau_nacional', nombre: 'Palau Nacional (MNAC)', nivel: 'A', x: 1082
     L.caja(B, cx, fz + 3, 11, 46, 8, 17, 0, OCRE, K.PIEDRA, { aux: PI });
     L.columnata(B, cx - 20, fz + 8.5, cx + 20, fz + 8.5, 12, 15, 8, 0.9, { col: CLA, entablamento: 2.2 });
     L.caja(B, cx, fz + 6, 26.5, 50, 12, 2.5, 0, CLA, K.PIEDRA);
+    // noche: cornisas y frontón bañados (emisivos solo de noche) y la hilera de focos al pie de la fachada principal
+    const LUZ = L.aux.emisivo(1.3, true), CAL = [255, 228, 186];
+    L.caja(B, cx, fz + 12.2, 26.6, 50.4, 0.3, 2.3, 0, CAL, K.EMISIVO, { aux: LUZ });
+    L.caja(B, cx, cz + D / 2 + 0.95, 23.6, W + 1.4, 0.2, 1.2, 0, CAL, K.EMISIVO, { aux: LUZ });
+    for (const s2 of [-1, 1]) L.caja(B, cx + s2 * (W / 2 + 0.95), cz, 23.6, 0.2, D + 1.4, 1.2, 0, CAL, K.EMISIVO, { aux: LUZ });
+    for (const s2 of [-1, 1]) L.caja(B, cx + s2 * W * 0.3, fz + 1.2, 11, W * 0.36, 0.6, 0.6, 0, [255, 220, 170], K.EMISIVO, { aux: L.aux.emisivo(4, true) });
     // gran cúpula central elíptica sobre tambor con linterna
     let v0 = B.nv;
     L.tambor(B, 0, 0, 24, 33, 17, { lados: 28, col: OCRE, k: K.VENTANAS, aux: L.aux.ventanas(9, 4.5, 0.4, 0.55) });
-    L.cupula(B, 0, 0, 33, 17.6, 13, { lados: 28, col: DOM, k: K.METAL, aux: L.aux.panel(2, 0.15, 0), linterna: { r: 3, alto: 7, col: CLA, k: K.PIEDRA } });
+    // la cúpula: emisiva solo de noche (bañada por los focos, cálida); de día, gris piedra (alb × 0,45)
+    L.cupula(B, 0, 0, 33, 17.6, 13, { lados: 28, col: [236, 214, 178], k: K.EMISIVO, aux: L.aux.emisivo(1.1, true), linterna: { r: 3, alto: 7, col: [255, 236, 200], k: K.EMISIVO, aux: L.aux.emisivo(1.6, true) } });
     L.xf(B, v0, cx, cz - 4, 0, 1, 1.32);
     // dos cúpulas menores a los lados
     for (const s of [-1, 1]) { const x = cx + s * 36, z = cz + 6;
       L.tambor(B, x, z, 24, 29, 7.5, { lados: 16, col: OCRE, k: K.PIEDRA, aux: PI });
-      L.cupula(B, x, z, 29, 7.8, 7, { lados: 16, col: DOM, k: K.METAL, linterna: { r: 1.3, alto: 3, col: CLA, k: K.PIEDRA } }); }
+      L.cupula(B, x, z, 29, 7.8, 7, { lados: 16, col: [230, 210, 176], k: K.EMISIVO, aux: L.aux.emisivo(0.9, true), linterna: { r: 1.3, alto: 3, col: CLA, k: K.PIEDRA } }); }
     // cuatro torres-campanario en las esquinas del cuerpo principal
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const x = cx + sx * (W / 2 - 5), z = cz + sz * (D / 2 - 5);
       L.caja(B, x, z, 24, 7, 7, 15, 0, OCRE, K.PIEDRA, { aux: PI });
       L.caja(B, x, z, 39, 6, 6, 5, 0, CLA, K.PIEDRA);
       for (const f of [[0, 1], [0, -1], [1, 0], [-1, 0]])
         hueco(B, x + f[0] * 3.05, z + f[1] * 3.05, f[1], -f[0], f[0], f[1], 39.6, 43.4, 2.2, 'medio', [50, 44, 38]);
-      L.cupula(B, x, z, 44, 3.2, 4, { lados: 10, col: DOM, k: K.METAL, linterna: { r: 0.6, alto: 2.5, col: CLA, k: K.PIEDRA } }); }
+      L.caja(B, x, z, 39.2, 6.3, 6.3, 0.35, 0, [255, 230, 190], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) });
+      L.cupula(B, x, z, 44, 3.2, 4, { lados: 10, col: [230, 210, 176], k: K.EMISIVO, aux: L.aux.emisivo(1.0, true), linterna: { r: 0.6, alto: 2.5, col: CLA, k: K.PIEDRA } }); }
     // escalinatas y cascadas que bajan hacia la Pl. d'Espanya
     for (let i = 0; i < 9; i++) { const z = c.z1 + 4 + i * 8, yt = hy(h, cx, z) + 0.6;
       L.caja(B, cx, z, yt - 4, 46, 8.4, 4, 0, [210, 198, 170], K.PIEDRA, { aux: L.aux.piedra(0.35, 1.2) });

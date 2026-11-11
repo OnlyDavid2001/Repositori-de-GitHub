@@ -23,25 +23,28 @@ add({ id: 'torre_glories', nombre: 'Torre Glòries', nivel: 'A', x: 13855, z: 15
 // este a oeste (unos 58 × 25 m), canto oeste vertical y el borde de arriba que baja hacia el este (hasta ~65 m).
 // Rasgos: la vela; vidrio espejo azul grisáceo con las líneas de los forjados; de noche, habitaciones encendidas.
 add({ id: 'hotel_w', nombre: 'Hotel W', nivel: 'A', x: 13859, z: 11984, rot: 0, alto: 87, ancho: 58, largo: 26,
-  noche: 'ventanas', edificios: [52511, 52520, 52521, 52522, 52523, 52524, 52525, 52526, 52527, 52528, 52529, 52530, 52531, 52532,
+  noche: 'nada', edificios: [52511, 52520, 52521, 52522, 52523, 52524, 52525, 52526, 52527, 52528, 52529, 52530, 52531, 52532,
     52533, 52534, 52535, 52536, 52537, 52538, 52539, 52540],
   build(B, h, L) {
-    // canto sur casi recto y cara norte curva (de la huella real), de oeste a este; z en función de x
-    const sur = [[-17, -6], [-13, -10], [-5, -14], [3, -16.5], [12, -18], [21, -19], [30, -19], [37, -18], [41.5, -14]];
-    const norte = [[-16.5, 1.5], [-13, 4.5], [-8, 6], [-2, 7], [6, 7], [15, 6], [23, 4.3], [30, 2], [37, -1.5], [41.5, -7]];
+    // planta en vela (lente asimétrica): canto sur casi recto, frente norte convexo hacia el mar abierto y la playa, y
+    // los dos extremos afilados (proa al oeste, baluma al este); z en función de x
+    const sur = [[-18, -3.5], [-13, -10], [-5, -14], [3, -16.5], [12, -18], [21, -19], [30, -19], [37, -17.5], [43, -11.5]];
+    const norte = [[-18, -3.5], [-13, 3.5], [-8, 6.5], [-2, 8], [6, 8.3], [15, 7.2], [23, 5], [30, 1.8], [37, -3.5], [43, -11.5]];
     const zAt = (pl, x) => { if (x <= pl[0][0]) return pl[0][1]; for (let i = 1; i < pl.length; i++) if (x <= pl[i][0]) { const t = (x - pl[i - 1][0]) / (pl[i][0] - pl[i - 1][0]); return pl[i - 1][1] + (pl[i][1] - pl[i - 1][1]) * t; } return pl[pl.length - 1][1]; };
     // la vela: el canto de proa (oeste) es vertical; la baluma (este) baja de 87 a 64 m. Cada nivel es la misma planta
-    // recortada por el este a la altura que toca, con la cara norte algo hinchada a media altura
-    const HT = 87.4, xEnd = y => Math.min(41.5, 9 + (HT - y) / 0.76), N = 12, niv = [];
-    for (const y of [-1, 20, 40, 62.7, 68, 73, 78, 83, HT]) {
-      const x0 = -17, x1 = xEnd(y), bul = 1.6 * Math.sin(Math.PI * Math.min(1, Math.max(0, y / HT))), pl = [];
-      for (let i = 0; i <= N; i++) { const x = x0 + (x1 - x0) * i / N; pl.push([x, zAt(sur, x)]); }
-      for (let i = N; i >= 0; i--) { const x = x0 + (x1 - x0) * i / N; pl.push([x, zAt(norte, x) + bul]); }
-      niv.push([y, pl]);
-    }
-    L.loft(B, niv, [140, 160, 182], K.CORTINA, { aux: L.aux.cortina(3.15, 1.7, 0.3), techo: [70, 74, 80] });
-    // remate de la proa (un canto algo más alto) y la cubierta técnica
-    L.prisma(B, L.mover(L.rect(3.5, 8), -14.5, -1.5, -55), 86.5, 90, [150, 160, 170], K.METAL, { aux: L.aux.panel(1.2) });
+    // recortada por el este a la altura que toca, con el frente norte algo hinchado a media altura
+    const HT = 87.4, xEnd = y => Math.min(43, 9 + (HT - y) / 0.76), N = 14, niv = [];
+    const nivel = (y, d) => { const x0 = -18, x1 = xEnd(y), bul = 2.2 * Math.sin(Math.PI * Math.min(1, Math.max(0, y / HT))), pl = [];
+      for (let i = 0; i <= N; i++) { const x = x0 + (x1 - x0) * i / N; pl.push([x, zAt(sur, x) - d]); }
+      for (let i = N - 1; i >= 1; i--) { const x = x0 + (x1 - x0) * i / N, f = Math.sin(Math.PI * i / N); pl.push([x, zAt(norte, x) + bul * f + d]); }
+      return pl; };
+    for (const y of [-1, 20, 40, 62.7, 68, 73, 78, 83, HT]) niv.push([y, nivel(y, 0)]);
+    // vidrio espejo azul uniforme: solo las líneas finas de los forjados (montantes cada 25 m: casi no se ven)
+    L.loft(B, niv, [96, 136, 186], K.CORTINA, { aux: L.aux.cortina(3.15, 25.5, 0), techo: [70, 74, 80] });
+    // coronación: la cima de la vela, un listón claro que de noche se enciende (luz blanca azulada)
+    const LZ = [214, 230, 255], LA = L.aux.emisivo(1.5, true);
+    L.prisma(B, nivel(HT, 0.25), HT - 3.2, HT + 0.2, LZ, K.EMISIVO, { aux: LA, sinTecho: true });
+    L.prisma(B, L.mover(L.rect(3.5, 7), -15.5, -0.5, -55), 86.5, 90, [220, 232, 255], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) });
     L.prisma(B, L.mover(L.rect(12, 8), -2, -4, -8), 86.8, 88.8, [120, 124, 128], K.LISO);
   } });
 
@@ -49,6 +52,7 @@ add({ id: 'hotel_w', nombre: 'Hotel W', nivel: 'A', x: 13859, z: 11984, rot: 0, 
 // Plantas reales: las de los datos (BREC), copiadas en metros relativos al centro del hito con rot 0 (x al este, z al
 // norte), para que el constructor no dependa de h.plantas (vacías en tris.js) y la forma sea siempre la misma.
 const areaPl = pl => { let a = 0; for (let i = 0; i < pl.length; i++) { const p = pl[i], q = pl[(i + 1) % pl.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+const hy0 = h => { try { const v = h && h.y ? h.y(0, 0) : 0; return isFinite(v) ? v : 0; } catch (e) { return 0; } };
 const centro = pl => { let x = 0, z = 0; for (const p of pl) { x += p[0]; z += p[1]; } return [x / pl.length, z / pl.length]; };
 // desplaza una planta d m hacia fuera (inglete; vale para plantas poco cóncavas)
 function inflar(pl, d) {
@@ -203,19 +207,27 @@ add({ id: 'edifici_colon', nombre: 'Edifici Colón', nivel: 'B', x: 12628.4, z: 
   } });
 
 // ================================================================== Les Corts (Diagonal)
-// Torres «la Caixa». Silueta: dos prismas negros de planta cuadrada con las esquinas achaflanadas a los dos lados de la
-// sede (86 y 48 m, alturas de los datos), unidos por cuerpos bajos. Rasgos: muro cortina negro con montantes de aluminio.
+// Torres «la Caixa» (Coderch y Mitjans, 1983). Silueta: dos prismas de vidrio negro tintado (85 m, 26 plantas, y 48 m,
+// 14 plantas) a los dos lados de la sede, de planta casi cuadrada con las esquinas achaflanadas (la huella de los datos),
+// esbeltos, rematados por un ático metálico; unidos por cuerpos bajos. Rasgos: el vidrio oscuro que refleja el cielo y los
+// montantes verticales de aluminio muy marcados (aletas), sin bandas horizontales.
 add({ id: 'torres_caixa', nombre: 'Torres «la Caixa»', nivel: 'A', x: 8536.9, z: 14129.8, rot: 0, alto: 86, ancho: 34, largo: 138,
   noche: 'ventanas', edificios: [90403, 90429, 90811, 90812],
   build(B, h, L) {
-    const N = [30, 34, 38], cw = L.aux.cortina(3.6, 1.25, 0.1), AL = [124, 132, 140];
-    const t1 = [[-66, -19], [-62, -27], [-59, -29], [-55, -33], [-47, -32], [-43, -30], [-36, -26], [-35, -22], [-33, -17], [-34, -9], [-38, -6], [-41, 0], [-48, -1], [-53, 1], [-60, -3], [-63, -7], [-66, -11], [-65, -19]];
-    const t2 = [[33, 13], [37, 6], [41, 3], [45, 0], [53, 1], [57, 2], [63, 6], [65, 10], [66, 15], [65, 24], [61, 26], [58, 32], [51, 32], [46, 33], [39, 29], [36, 25], [33, 21], [34, 13]];
-    for (const [pl, al] of [[t1, 85.4], [t2, 48.2]]) {
-      L.prisma(B, pl, -2.5, 5, [70, 74, 78], K.CORTINA, { aux: L.aux.cortina(5, 2.5, 0.05) });
-      L.prisma(B, inflar(pl, 0.4), 5, al - 3, N, K.CORTINA, { aux: cw, techo: [60, 62, 64] });
-      L.prisma(B, inflar(pl, 0.6), al - 3, al, AL, K.METAL, { aux: L.aux.panel(1.25, 0.1), techo: [70, 72, 74] });
-      bandas(L, B, inflar(pl, 0.4), 5, al - 3, 3.6 * 4, 0.5, 0.25, AL);
+    const VID = [58, 70, 86], cw = L.aux.cortina(3.27, 1.1, 0.06), AL = [150, 156, 164], N = [44, 52, 62];
+    // octógono achaflanado (lado 27 m, chaflán 3,5 m) centrado en la huella de cada torre
+    const oct = (cx, cz, r, c) => [[cx - r + c, cz - r], [cx + r - c, cz - r], [cx + r, cz - r + c], [cx + r, cz + r - c], [cx + r - c, cz + r], [cx - r + c, cz + r], [cx - r, cz + r - c], [cx - r, cz - r + c]];
+    const s = areaPl(oct(0, 0, 1, 0.3)) > 0 ? 1 : -1;
+    for (const [cx, cz, al] of [[-50, -16, 85.4], [49.5, 17, 48.2]]) {
+      const pl = oct(cx, cz, 13.5, 3.5);
+      L.prisma(B, oct(cx, cz, 12, 3.1), -2.5, 5, [70, 74, 78], K.CORTINA, { aux: L.aux.cortina(5, 2.5, 0.05) });
+      L.prisma(B, pl, 5, al - 4, VID, K.CORTINA, { aux: cw, techo: [60, 62, 64] });
+      L.prisma(B, oct(cx, cz, 13.8, 3.6), al - 4, al, AL, K.METAL, { aux: L.aux.panel(1.1, 0.06), techo: [70, 72, 74] });
+      // aletas verticales de aluminio cada 2,2 m, de arriba abajo, en todas las caras
+      for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], dx = b[0] - a[0], dz = b[1] - a[1], w = Math.hypot(dx, dz), m = Math.max(1, Math.round(w / 2.2));
+        const tx = dx / w, tz = dz / w, nx = s * tz, nz = -s * tx;
+        for (let j = 0; j <= m; j++) { const px = a[0] + dx * j / m + nx * 0.35, pz = a[1] + dz * j / m + nz * 0.35;
+          L.caja(B, px, pz, 5, 0.32, 0.7, al - 9, Math.atan2(tx, tz) * 180 / Math.PI, AL, K.METAL); } }
     }
     L.prisma(B, [[-53, 1], [-52, -1], [-49, 1], [-48, -1], [-45, 0], [-44, -1], [-41, 0], [-41, -3], [-39, -2], [-38, -6], [-37, -6], [-36, -9], [-34, -9], [-38, 4], [-42, 3], [-42, 4]], -2.5, 14.2, N, K.CORTINA, { aux: cw });
     L.prisma(B, [[28, 27], [33, 13], [34, 13], [33, 17], [34, 17], [33, 21], [35, 22], [34, 24], [36, 25], [36, 26], [40, 28], [39, 29], [43, 30], [42, 32]], -2.5, 14, N, K.CORTINA, { aux: cw });
@@ -255,17 +267,30 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
       if (i % 2 === 0) L.tambor(B, mid[i][0], mid[i][1], -1, mid[i][2], 0.5, { lados: 6, col: [190, 190, 192], k: K.METAL }); }
   } });
 
-// Disseny Hub (la «grapadora»). Bloque de chapa oscura levantado del suelo que vuela hacia la plaza de les Glòries,
-// apoyado en una lámina alta del lado suroeste.
+// Disseny Hub (la «grapadora», MBM 2013). Silueta: gran volumen prismático de zinc gris oscuro levantado a ~14 m que vuela
+// unos 28 m hacia la plaza de les Glòries (NE), sobre una base medio enterrada en un talud verde que sube desde la plaza;
+// por debajo del voladizo, el sofito y la planta baja acristalada. Rasgos: el voladizo y la base en talud.
 add({ id: 'disseny_hub', nombre: 'Disseny Hub', nivel: 'B', x: 13725.2, z: 15753.1, rot: 0, alto: 34, ancho: 40, largo: 54,
-  noche: 'ventanas', edificios: [141731, 141732, 141744, 141745],
+  noche: 'nada', edificios: [141731, 141732, 141744, 141745],
   build(B, h, L) {
-    const OS = [62, 62, 64], aux = L.aux.panel(2.2, 0.15, 0.12);
-    L.prisma(B, [[-19, 19], [19, -19], [33, -5], [-4, 33]], 14, 33.5, OS, K.METAL, { aux, techo: [80, 80, 82] });
-    L.prisma(B, [[-12, 2], [12, -22], [17, -17], [-7, 7]], -3.5, 30.3, OS, K.METAL, { aux });
-    L.prisma(B, [[-19, 19], [19, -19], [24, -14], [-14, 24]], -3.5, 14, [44, 52, 60], K.CORTINA, { aux: L.aux.cortina(4.5, 2, 0.1) });
-    L.prisma(B, [[-8, -18], [-4, -22], [0, -18], [-4, -14]], -2, 3.1, [180, 180, 178], K.LISO);
-    L.prisma(B, [[-18, -10], [-15, -13], [-12, -10], [-15, -7]], -1, 5, [180, 180, 178], K.LISO);
+    const ZN = [96, 100, 104], aux = L.aux.panel(1.6, 0.18, 0), y0 = Math.min(-2, hy0(h) - 2);
+    // volumen principal: de la lámina SO hasta 30 m de voladizo hacia el NE (u = a lo largo de la diagonal SO→NE)
+    const P = (u, v) => [u * 0.7071 + v * 0.7071, u * 0.7071 - v * 0.7071];   // u hacia el NE, v hacia el SE
+    const caja2D = (u0, u1, v0, v1) => [P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)];
+    L.prisma(B, caja2D(-14, 34, -27, 27), 14, 33.5, ZN, K.METAL, { aux, techo: [84, 86, 90] });
+    // franja de ventanal corrido en la cara del voladizo y bajo el remate (vidrio oscuro; de noche, encendido)
+    L.prisma(B, caja2D(-14.3, 34.3, -27.3, 27.3), 27.5, 29.2, [150, 200, 240], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) });
+    // sofito del voladizo con su línea de luz, y la base: muro bajo de hormigón y talud verde hasta la cota 13
+    L.poly(B, caja2D(6, 33.5, -26.5, 26.5).map(p => [p[0], 13.95, p[1]]).reverse(), [190, 196, 204], K.METAL, L.aux.panel(1.2, 0.1));
+    L.prisma(B, caja2D(9, 32, -1.2, 1.2), 13.6, 13.9, [255, 240, 210], K.EMISIVO, { aux: L.aux.emisivo(3, true) });
+    L.prisma(B, caja2D(-14, -2, -27, 27), y0, 14, ZN, K.METAL, { aux });
+    L.prisma(B, caja2D(-2, 6, -22, 22), y0, 14, [44, 52, 60], K.CORTINA, { aux: L.aux.cortina(4.5, 2, 0.1) });
+    const T0 = P(-14, -30), T1 = P(-14, 30), U0 = P(-40, -30), U1 = P(-40, 30);
+    L.poly(B, [[T0[0], 13, T0[1]], [T1[0], 13, T1[1]], [U1[0], 0.2, U1[1]], [U0[0], 0.2, U0[1]]], [96, 132, 78], K.CESPED, L.aux.cesped(3));
+    L.poly(B, [[U0[0], 0.2, U0[1]], [U1[0], 0.2, U1[1]], [T1[0], 13, T1[1]], [T0[0], 13, T0[1]]], [96, 132, 78], K.CESPED, L.aux.cesped(3));
+    for (const v of [-30, 30]) { const A = P(-14, v), C = P(-40, v);
+      L.poly(B, [[A[0], y0, A[1]], [A[0], 13, A[1]], [C[0], 0.2, C[1]], [C[0], y0, C[1]]], [150, 150, 146], K.LISO);
+      L.poly(B, [[C[0], y0, C[1]], [C[0], 0.2, C[1]], [A[0], 13, A[1]], [A[0], y0, A[1]]], [150, 150, 146], K.LISO); }
   } });
 
 // Hotel Melià Sky (Perrault). Lámina alta de 116 m con un cuerpo que vuela arriba sobre otra lámina más baja.
@@ -290,18 +315,18 @@ add({ id: 'melia_sky', nombre: 'Hotel Melià Sky', nivel: 'B', x: 14791.3, z: 16
 add({ id: 'edifici_forum', nombre: 'Edifici Fòrum', nivel: 'A', x: 16520.2, z: 16706.1, rot: 0, alto: 25, ancho: 164, largo: 177,
   noche: 'focos', edificios: [161386, 161387],
   build(B, h, L) {
-    const AZ = [34, 64, 140], pl = [[-120, 10], [-95, -10], [-79, -35], [-54, -62], [-48, -62], [-1, -120], [13, -69], [17, -53], [20, -50], [35, 1], [40, 18], [35, 56], [10, 50], [6, 48], [-7, 41], [-53, 31], [-61, 28], [-81, 19]];
+    const AZ = [38, 76, 172], pl = [[-120, 10], [-95, -10], [-79, -35], [-54, -62], [-48, -62], [-1, -120], [13, -69], [17, -53], [20, -50], [35, 1], [40, 18], [35, 56], [10, 50], [6, 48], [-7, 41], [-53, 31], [-61, 28], [-81, 19]];
     const Y0 = 6, Y1 = 24.5;
-    L.prisma(B, pl, Y0, Y1, AZ, K.PIEDRA, { aux: L.aux.piedra(0.9, 2.2), techo: [150, 150, 146] });
+    L.prisma(B, pl, Y0, Y1, AZ, K.PIEDRA, { aux: L.aux.piedra(0.45, 0.7), techo: [150, 150, 146] });   // hormigón proyectado azul, rugoso
     L.poly(B, pl.map(p => [p[0], Y0 - 0.05, p[1]]), [150, 160, 176], K.METAL, L.aux.panel(2.5, 0.25));   // sofito
-    // grietas de vidrio: tiras quebradas sobre las caras largas
+    // grietas de vidrio: tiras quebradas sobre las caras largas (de día vidrio oscuro; de noche, los cortes de luz)
     const s = areaPl(pl) > 0 ? 1 : -1;
     for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], dx = b[0] - a[0], dz = b[1] - a[1], w = Math.hypot(dx, dz); if (w < 18) continue;
       const tx = dx / w, tz = dz / w, nx = s * tz * 0.25, nz = -s * tx * 0.25, n = Math.floor(w / 20);
       for (let k = 0; k < n; k++) { let u = (k + 0.5) * w / n + ((i * 13 + k * 7) % 5 - 2);
         for (let j = 0; j < 4; j++) { const ya = Y0 + (Y1 - Y0) * j / 4, yb = Y0 + (Y1 - Y0) * (j + 1) / 4, u2 = Math.max(1, Math.min(w - 2.5, u + ((i + k + j) % 3 - 1) * 2.5)), wd = 1.2 + ((k + j) % 2) * 0.8;
           const P = (uu, y) => [a[0] + tx * uu + nx, y, a[1] + tz * uu + nz];
-          L.q4(B, P(u, ya), P(u + wd, ya), P(u2 + wd, yb), P(u2, yb), [70, 96, 120], K.CORTINA, L.aux.cortina(3, 1, 0.3)); u = u2; } } }
+          L.q4(B, P(u, ya), P(u + wd, ya), P(u2 + wd, yb), P(u2, yb), [170, 214, 245], K.EMISIVO, L.aux.emisivo(1.8, true)); u = u2; } } }
     // pilares y núcleos bajo el triángulo, y los recintos acristalados de la planta baja
     const T = [[-120, 10], [-1, -120], [35, 56]];
     for (const [p, q, r] of [[0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6], [0.34, 0.33, 0.33], [0.45, 0.45, 0.1], [0.1, 0.45, 0.45], [0.45, 0.1, 0.45], [0.7, 0.05, 0.25], [0.05, 0.7, 0.25]])
