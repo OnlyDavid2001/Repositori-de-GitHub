@@ -75,7 +75,7 @@ add({ id: 'sagrada_familia', nombre: 'Sagrada Família', nivel: 'A', x: 12597.9,
     const AX = -1.9, CZ = -18.4;                                   // eje de la nave y centro del crucero
     const OCRE = [186, 165, 128], OSCURO = [142, 130, 110], CLARO = [198, 190, 172], BLANCO = [238, 234, 224];
     const aV = L.aux.ventanas(11, 7.8, 0.36, 0.72);                // ventanales altos de las naves (de noche, vidrieras)
-    const ORO = [232, 190, 70], ROJO = [206, 74, 56], VERDE = [70, 128, 78];
+    const ORO = [196, 170, 112], ROJO = [168, 104, 84], VERDE = [92, 124, 90];   // trencadís envejecido: tonos apagados
     const aP = L.aux.piedra(0.7, 1.4), y0 = -2.5;
 
     // celosías de las agujas: anillos alternos más oscuros entre ya y yb (cada `paso` m) sobre un perfil [[r, y], …]
@@ -109,7 +109,7 @@ add({ id: 'sagrada_familia', nombre: 'Sagrada Família', nivel: 'A', x: 12597.9,
     L.caja(B, AX - 1.5, CZ, 33, 66, 17, 13, 0, OCRE, K.VENTANAS, { aux: L.aux.ventanas(13, 7.8, 0.4, 0.7), techo: [150, 136, 110] });   // crucero central
     L.cubierta(B, AX - 1.5, CZ, 46, 66, 17.6, 13, { tipo: 'dos', ang: 90, col: [170, 150, 118], k: K.PIEDRA, colHastial: OCRE });
     // frutas de colores sobre los pináculos de la nave y del crucero
-    const FR = [[214, 72, 52], [236, 176, 52], [226, 120, 46], [120, 160, 70], [200, 60, 90]];
+    const FR = [[176, 100, 80], [200, 168, 96], [190, 132, 86], [128, 148, 98], [170, 104, 110]];
     let fi = 0;
     for (let z = -44; z <= 26; z += 7.8) for (const s of [-1, 1]) {
       if (Math.abs(z - CZ) < 10) continue;
@@ -314,7 +314,7 @@ add({ id: 'casa_amatller', nombre: 'Casa Amatller', nivel: 'B', x: 11788.5, z: 1
 // otra con la seta; (2) el banco serpenteante multicolor al borde de la plaza; (3) columnas dóricas blancas bajo la plaza
 // y el dragón de la escalinata. Posición (comprobada en planta, no la del catálogo): origen en la puerta, entre los dos
 // pabellones de los datos; +Z = 315° (escalinata arriba); la plaza, del suelo del juego: centro (−3,5, 78), 87 × 41 m.
-add({ id: 'park_guell', nombre: 'Park Güell', nivel: 'A', x: 10820.3, z: 17006.7, rot: 315, alto: 22, ancho: 60, largo: 130,
+add({ id: 'park_guell', nombre: 'Park Güell', nivel: 'A', x: 10820.3, z: 17006.7, rot: 315, alto: 22, ancho: 50, largo: 80,   // (ancho y largo: el encuadre de la vista, el núcleo entrada–plaza)
   noche: 'focos', edificios: ED.park_guell,
   build(B, h, L) {
     const PI = Math.PI, PEDRA = [142, 112, 82], CREMA = [236, 228, 208], MARRO = [152, 100, 66], BLAU = [70, 118, 186], BLANC = [232, 226, 212];
@@ -324,22 +324,31 @@ add({ id: 'park_guell', nombre: 'Park Güell', nivel: 'A', x: 10820.3, z: 17006.
       const y0 = Math.min(gy(x - 5, z - 5), gy(x + 5, z + 5), gy(x - 5, z + 5), gy(x + 5, z - 5)) - 1, yt = gy(x, z) + 7;
       L.caja(B, x, z, y0, 9.5, 11, yt - y0, 0, PEDRA, K.PIEDRA, { aux: L.aux.piedra(0.5, 0.7), sinTecho: true });
       const v0 = B.nv;
-      huso(B, 0, 0, [[6.1, 0, CREMA], [5.8, 1.1, MARRO], [4.8, 3, MARRO], [3.6, 4.1, CREMA], [1.8, 5.3, MARRO], [0, 6.1, CREMA]], 12, MARRO, K.TRENCADIS);
-      L.xf(B, v0, x, z, 0, 0.88, 1.02, yt - 0.2);
+      huso(B, 0, 0, [[6.4, 0, CREMA], [6.1, 1.1, MARRO], [5.0, 3, CREMA], [3.8, 4.3, BLAU], [2.0, 5.6, BLANC], [0, 6.6, BLANC]], 12, MARRO, K.TRENCADIS);
+      L.xf(B, v0, x, z, 0, 1.0, 1.15, yt - 0.2);
       for (let i = 0; i < 10; i++) { const a = 2 * PI * i / 10; L.esfera(B, x + Math.cos(a) * 5.3, yt + 0.9, z + Math.sin(a) * 5.6, 0.55, { gajos: 5, anillos: 3, col: BLANC, k: K.TRENCADIS }); }
       if (torre) {                                                   // torre de damero azul y blanco con la cruz de cuatro brazos
         const tx = x + 3.3, tz = z - 3.6;
-        L.tambor(B, tx, tz, y0, yt + 10.5, 1.55, { lados: 10, r1: 1.2, col: BLAU, k: K.TRENCADIS });
-        huso(B, tx, tz, [[1.2, yt + 10.5], [1.55, yt + 11.4], [0.8, yt + 12.6], [0, yt + 13.2]], 10, CREMA, K.TRENCADIS);
-        L.caja(B, tx, tz, yt + 13, 0.35, 0.35, 1.9, 0, BLANC, K.LISO);
-        L.caja(B, tx, tz, yt + 14, 1.6, 0.35, 0.35, 0, BLANC, K.LISO);
-        L.caja(B, tx, tz, yt + 14, 0.35, 1.6, 0.35, 0, BLANC, K.LISO);
+        L.tambor(B, tx, tz, y0, yt + 13, 1.8, { lados: 10, r1: 1.4, col: BLAU, k: K.TRENCADIS });
+        for (let j = 0; j < 5; j++) L.tambor(B, tx, tz, yt + 1 + j * 2.4, yt + 2.2 + j * 2.4, 1.85 - j * 0.08, { lados: 10, col: BLANC, k: K.TRENCADIS });   // damero blanco
+        huso(B, tx, tz, [[1.4, yt + 13], [1.8, yt + 14], [0.9, yt + 15.3], [0, yt + 16]], 10, CREMA, K.TRENCADIS);
+        L.caja(B, tx, tz, yt + 15.8, 0.45, 0.45, 2.4, 0, BLANC, K.LISO);
+        L.caja(B, tx, tz, yt + 17.1, 2.2, 0.45, 0.45, 0, BLANC, K.LISO);
+        L.caja(B, tx, tz, yt + 17.1, 0.45, 2.2, 0.45, 0, BLANC, K.LISO);
       } else {                                                       // la seta (amanita) en lo alto
         L.tambor(B, x, z, yt + 5.6, yt + 7.4, 0.35, { lados: 6, col: BLANC, k: K.LISO });
-        huso(B, x, z, [[0.3, yt + 7.2], [1.4, yt + 7.7, [196, 56, 46]], [1.1, yt + 8.3, [196, 56, 46]], [0, yt + 8.7, [210, 70, 56]]], 10, [196, 56, 46], K.TRENCADIS);
+        huso(B, x, z, [[0.3, yt + 7.2], [2.2, yt + 7.9, BLANC], [1.8, yt + 8.8, BLANC], [0, yt + 9.4, BLANC]], 10, BLANC, K.TRENCADIS);   // la seta blanca
+        for (let j = 0; j < 6; j++) { const a = j * PI / 3; L.esfera(B, x + Math.cos(a) * 1.4, yt + 8.9, z + Math.sin(a) * 1.4, 0.32, { gajos: 5, anillos: 3, col: BLAU, k: K.TRENCADIS }); }
       }
     }
     pabellon(11.9, -0.85, true); pabellon(-11.9, 0.85, false);
+    // de noche: farolas junto a los pabellones y en la escalinata, y ventanas encendidas en los pabellones
+    const aE = L.aux.emisivo(2.2, true), LUZ = [255, 222, 150];
+    for (const [x, z] of [[5, -3], [-5, -3], [5, 8], [-5, 8], [5, 20], [-5, 20], [18, -5], [-18, -5]]) {
+      const y = gy(x, z); L.tambor(B, x, z, y - 0.3, y + 3.2, 0.12, { lados: 5, col: [40, 40, 38], k: K.METAL });
+      L.esfera(B, x, y + 3.5, z, 0.42, { gajos: 6, anillos: 4, col: LUZ, k: K.EMISIVO, aux: aE }); }
+    for (const [x, z] of [[11.9, -0.85], [-11.9, 0.85]]) { const y = gy(x, z) + 2.4;
+      for (const dx of [-2.2, 2.2]) L.caja(B, x + dx, z - 5.55, y, 1.1, 0.2, 1.6, 0, LUZ, K.EMISIVO, { aux: aE }); }
     // muro de la calle con remate de trencadís y la verja negra
     for (const [xa, xb] of [[-44, -17.5], [17.5, 44]]) { const xm = (xa + xb) / 2;
       L.caja(B, xm, -1.2, gy(xm, -1.2) - 1.5, xb - xa, 1.1, 4.2, 0, PEDRA, K.PIEDRA, { aux: L.aux.piedra(0.5, 0.7) });
@@ -358,9 +367,9 @@ add({ id: 'park_guell', nombre: 'Park Güell', nivel: 'A', x: 10820.3, z: 17006.
     const PCX = -3.5, PCZ = 78, R = 20.5, HL = 23, pl = [];
     for (let i = 0; i <= 12; i++) { const a = PI + PI * i / 12; pl.push([PCX + Math.cos(a) * R, PCZ - HL + Math.sin(a) * R]); }      // extremo SE (−Z)
     for (let i = 0; i <= 12; i++) { const a = PI * i / 12; pl.push([PCX + Math.cos(a) * R, PCZ + HL + Math.sin(a) * R]); }          // extremo NO
-    L.poly(B, pl.map(p => [p[0], PY, p[1]]), [214, 200, 172], K.LISO);
+    L.poly(B, pl.map(p => [p[0], PY, p[1]]), [232, 220, 192], K.LISO);
     // muro de contención (salvo bajo la columnata del extremo SE) y el banco serpenteante de trencadís
-    const FR = [[230, 226, 214], [64, 120, 190], [214, 178, 64], [86, 156, 96], [200, 80, 60]];
+    const FR = [[236, 232, 220], [56, 118, 196], [226, 186, 60], [70, 160, 96], [210, 84, 60], [236, 232, 220], [90, 170, 190]];
     for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length];
       const front = a[1] < PCZ - HL + 2 && b[1] < PCZ - HL + 2;
       const ya = Math.min(gy(a[0], a[1]), PY) - 1, yb = Math.min(gy(b[0], b[1]), PY) - 1;
@@ -374,7 +383,10 @@ add({ id: 'park_guell', nombre: 'Park Güell', nivel: 'A', x: 10820.3, z: 17006.
     for (let i = 0; i + 1 < ben.length; i++) {
       const w = j => { const p = ben[j], dx = p[0] - PCX, dz = p[1] - Math.max(PCZ - HL, Math.min(PCZ + HL, p[1])), l = Math.hypot(dx, dz) || 1, o = 0.9 * Math.sin(j * 0.9) - 0.6; return [p[0] + dx / l * o, p[1] + dz / l * o]; };
       const a = w(i), b = w(i + 1), col = FR[Math.floor(i / 3) % FR.length];
-      L.q4(B, [a[0], PY - 0.6, a[1]], [b[0], PY - 0.6, b[1]], [b[0], PY + 1.05, b[1]], [a[0], PY + 1.05, a[1]], col, K.TRENCADIS);
+      L.q4(B, [a[0], PY - 0.6, a[1]], [b[0], PY - 0.6, b[1]], [b[0], PY + 1.6, b[1]], [a[0], PY + 1.6, a[1]], col, K.TRENCADIS);
+      const c = L.shade(col, 1.08);
+      L.q4(B, [a[0], PY + 1.6, a[1]], [b[0], PY + 1.6, b[1]], [b[0] + (PCX - b[0]) * 0.03, PY + 1.6, b[1] + (PCZ - b[1]) * 0.03], [a[0] + (PCX - a[0]) * 0.03, PY + 1.6, a[1] + (PCZ - a[1]) * 0.03], c, K.TRENCADIS);   // respaldo visto desde arriba
+      if (i % 9 === 4) L.esfera(B, a[0], PY + 3.2, a[1], 0.45, { gajos: 6, anillos: 4, col: [255, 226, 160], k: K.EMISIVO, aux: L.aux.emisivo(2.2, true) });   // farolas de la plaza
     }
     // ---- Sala Hipòstila: columnas dóricas blancas bajo el extremo SE de la plaza, fondo en sombra
     const ins = (x, z) => { const dz = Math.max(0, (PCZ - HL) - z); return Math.hypot(x - PCX, dz) < R - 1.6; };
@@ -444,11 +456,18 @@ add({ id: 'sant_pau', nombre: 'Recinte Modernista de Sant Pau', nivel: 'A', x: 1
     }
     // torre del reloj sobre la entrada (cara sur del cuerpo central)
     const tx = -6, tz = -100;
-    L.caja(B, tx, tz, y0, 8.5, 8.5, y1 + 10 - y0, 0, LAD, K.LADRILLO, { aux: aL });
-    L.caja(B, tx, tz, y1 + 9, 9.4, 9.4, 1.2, 0, PIE, K.PIEDRA);
-    L.esfera(B, tx, y1 + 6, tz - 4.35, 1.4, { gajos: 10, anillos: 4, sy: 1, col: [236, 232, 220], k: K.LISO });   // esfera del reloj
-    L.tambor(B, tx, tz, y1 + 10.2, y1 + 14.5, 3.4, { lados: 8, col: PIE, k: K.PIEDRA });
-    L.aguja(B, tx, tz, y1 + 14.5, 11, 3.9, { lados: 8, pasos: 5, pot: 1, exp: 0.8, col: TEJ[0], cols: [[0, '#d6a640'], [0.5, '#4f9a72'], [1, '#3f7f9a']], k: K.TEJA, remate: { r: 0.5, col: [214, 176, 80] } });
+    // (más alta que los pabellones: la referencia vertical del recinto, también de noche)
+    const TT = y1 + 17, aE = L.aux.emisivo(1.6, true);
+    L.caja(B, tx, tz, y0, 8.5, 8.5, TT - y0, 0, LAD, K.LADRILLO, { aux: aL });
+    for (const yy of [y1 + 1, TT - 7]) L.caja(B, tx, tz, yy, 9, 9, 0.8, 0, PIE, K.PIEDRA);                       // impostas de piedra
+    L.caja(B, tx, tz, TT - 1, 9.6, 9.6, 1.4, 0, PIE, K.PIEDRA);
+    for (const [dx, dz] of [[0, -4.4], [0, 4.4], [-4.4, 0], [4.4, 0]])                                            // reloj en las cuatro caras
+      L.esfera(B, tx + dx, TT - 3.8, tz + dz, 1.6, { gajos: 10, anillos: 4, sy: 1, col: [250, 238, 200], k: K.EMISIVO, aux: aE });
+    L.tambor(B, tx, tz, TT + 0.4, TT + 5, 3.2, { lados: 8, col: [250, 226, 160], k: K.EMISIVO, aux: aE });       // linterna (de día, piedra clara)
+    L.tambor(B, tx, tz, TT + 0.4, TT + 5, 3.35, { lados: 8, col: PIE, k: K.PIEDRA });
+    L.aguja(B, tx, tz, TT + 5, 15, 3.7, { lados: 8, pasos: 5, pot: 1, exp: 0.8, col: TEJ[0], cols: [[0, '#d6a640'], [0.5, '#4f9a72'], [1, '#3f7f9a']], k: K.TEJA, remate: { r: 0.6, col: [214, 176, 80] } });
+    // fachada principal de la Administració más clara (piedra) para que se lea desde la avenida
+    L.caja(B, tx, tz - 4.6, y0, 15, 1, y1 - y0 + 2.5, 0, PIE, K.PIEDRA, { aux: L.aux.piedra(0.5, 0.8) });
   } });
 
 // ================================================================== NIVEL B: arquetipos y plantas reales
@@ -489,19 +508,27 @@ function almenas(B, pl, y0, alto, paso, col, k, punta) {
 add({ id: 'palau_musica', nombre: 'Palau de la Música Catalana', nivel: 'B', x: 12647.4, z: 14115.6, rot: 137, alto: 25, ancho: 28, largo: 59,
   noche: 'focos', edificios: ED.palau_musica,
   build(B, h, L) {
-    const LAD = [180, 84, 58], PIE = [226, 212, 182], pl = plantaMayor(h, 28, 59);
+    const LAD = [190, 80, 52], PIE = [234, 222, 196], pl = plantaMayor(h, 28, 59);
     L.prisma(B, pl, -1.5, 17, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [120, 100, 90] });
     let x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of pl) { x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
     // logia: columnas de mosaico floral (verde, ocre, rojo) entre las plantas 2 y 4
     for (let z = z0 + 4; z < z1 - 3; z += 3.4) {
-      L.tambor(B, x1 + 0.6, z, 8, 15.2, 0.55, { lados: 6, col: [92, 150, 98], k: K.TRENCADIS });
+      L.tambor(B, x1 + 0.6, z, 8, 15.2, 0.6, { lados: 6, col: [[92, 150, 98], [224, 186, 80], [214, 120, 70]][Math.round((z - z0) / 3.4) % 3], k: K.TRENCADIS });
       L.caja(B, x1 + 0.6, z, 15.2, 1.5, 1.5, 0.5, 0, PIE, K.PIEDRA); }
     L.caja(B, x1 + 0.6, (z0 + z1) / 2, 15.7, 1.6, z1 - z0 - 5, 1.3, 0, PIE, K.PIEDRA);
     L.caja(B, x1 + 0.1, (z0 + z1) / 2, 7, 1, z1 - z0 - 5, 1, 0, PIE, K.PIEDRA);
     // esquina: grupo escultórico (bloque de piedra) y cupulín de mosaico
     L.caja(B, x1 - 1, z0 + 1.5, 7, 4, 4, 9, 0, PIE, K.PIEDRA);
-    L.tambor(B, x1 - 3, z0 + 3, 17, 20, 2.6, { lados: 10, col: LAD, k: K.LADRILLO });
-    L.cupula(B, x1 - 3, z0 + 3, 20, 2.8, 3, { lados: 10, anillos: 4, col: [214, 170, 80], k: K.TRENCADIS, linterna: { r: 0.6, alto: 2.4, col: PIE } });
+    L.tambor(B, x1 - 3, z0 + 3, 17, 21, 3.4, { lados: 10, col: LAD, k: K.LADRILLO });
+    L.cupula(B, x1 - 3, z0 + 3, 21, 3.7, 4.2, { lados: 10, anillos: 4, col: [214, 170, 80], k: K.TRENCADIS, linterna: { r: 0.8, alto: 3.2, col: PIE } });
+    // lo que lo hace reconocible: friso de mosaico de colores bajo la cornisa, bustos-pilastras blancos, columnas de
+    // mosaico alternando colores y, de noche, la logia y la vidriera iluminadas
+    const MOS = [[214, 120, 70], [92, 150, 98], [224, 186, 80], [90, 130, 180], [200, 84, 84]], aE = L.aux.emisivo(1.8, true);
+    for (let z = z0 + 1; z < z1 - 1; z += 1.6) L.caja(B, x1 + 0.35, z + 0.8, 15.6, 0.5, 1.6, 1.4, 0, MOS[Math.floor((z - z0) / 1.6) % MOS.length], K.TRENCADIS);
+    for (let z = z0 + 2.3; z < z1 - 2; z += 3.4) L.caja(B, x1 + 0.4, z, 3, 0.9, 0.9, 13, 0, PIE, K.PIEDRA);
+    L.caja(B, x1 - 0.1, (z0 + z1) / 2, 8.4, 0.3, z1 - z0 - 6, 6.4, 0, [255, 214, 140], K.EMISIVO, { aux: aE });   // logia encendida
+    let x0 = 1e9; for (const p of pl) x0 = Math.min(x0, p[0]);
+    L.cupula(B, (x0 + x1) / 2, (z0 + z1) / 2, 17, 7, 1.8, { lados: 14, anillos: 3, col: [210, 170, 110], k: K.TRENCADIS });   // claraboya de la vidriera
   } });
 
 // Casa Vicens: casa de aire mudéjar, ladrillo abajo y arriba franjas de azulejo verde y blanco a cuadros; torrecillas.
@@ -549,17 +576,24 @@ add({ id: 'palau_guell', nombre: 'Palau Güell', nivel: 'B', x: 12550.1, z: 1313
 add({ id: 'bellesguard', nombre: 'Torre Bellesguard', nivel: 'B', x: 8623.3, z: 16590.7, rot: 146, alto: 32, ancho: 17, largo: 18,
   noche: 'focos', edificios: ED.bellesguard,
   build(B, h, L) {
-    const pl = plantaMayor(h, 17, 18), GRIS = [124, 120, 108], H = 15;
+    const pl = plantaMayor(h, 17, 18), GRIS = [146, 128, 102], H = 15;     // pizarra y piedra de tono cálido
     L.prisma(B, pl, -2, H, GRIS, K.VENTANAS, { aux: L.aux.ventanas(4, 3.2, 0.25, 0.55), techo: [110, 106, 98] });
     almenas(B, pl, H, 1.4, 1.8, GRIS, K.PIEDRA, true);
     const o = cajaMin(pl); let best = null, by = 1e9;
     for (const c of esquinas(o, 2)) { const y = h.y(c[0], c[1]); if (isFinite(y) && y < by) { by = y; best = c; } }
     const [tx, tz] = best || esquinas(o, 2)[0];
-    L.caja(B, tx, tz, H - 2, 3.4, 3.4, 8, o.ang, GRIS, K.PIEDRA);
-    L.aguja(B, tx, tz, H + 6, 9, 1.9, { lados: 8, pasos: 5, pot: 1, exp: 1, cols: [[0, '#c8a24a'], [0.5, '#c0503c'], [1, '#d4b050']], k: K.TRENCADIS });
-    L.caja(B, tx, tz, H + 15, 0.3, 0.3, 2, 0, [230, 220, 200], K.LISO);
-    L.caja(B, tx, tz, H + 16.2, 1.4, 0.3, 0.3, 0, [230, 220, 200], K.LISO);
-    L.caja(B, tx, tz, H + 16.2, 0.3, 1.4, 0.3, 0, [230, 220, 200], K.LISO);
+    L.caja(B, tx, tz, H - 2, 3, 3, 11, o.ang, GRIS, K.PIEDRA);
+    L.aguja(B, tx, tz, H + 9, 13, 1.6, { lados: 8, pasos: 6, pot: 1, exp: 1, cols: [[0, '#b89a58'], [0.5, '#a8604a'], [1, '#c4a860']], k: K.TRENCADIS });
+    const XC = [236, 226, 196];                                       // cruz de cuatro brazos, más grande
+    L.caja(B, tx, tz, H + 21.6, 0.45, 0.45, 3, 0, XC, K.LISO);
+    L.caja(B, tx, tz, H + 23.2, 2.2, 0.45, 0.45, 0, XC, K.LISO);
+    L.caja(B, tx, tz, H + 23.2, 0.45, 2.2, 0.45, 0, XC, K.LISO);
+    // jardín: césped y pinos y encinas alrededor de la casa (rompe la explanada lisa)
+    for (let i = 0; i < 14; i++) { const a = 2 * Math.PI * i / 14 + h.R(0, 0.3), d = 14 + h.R(0, 7), x = o.cx + Math.cos(a) * d, z = o.cz + Math.sin(a) * d;
+      const gy = h.y(x, z), y = isFinite(gy) ? gy : 0, hh = 5 + h.R(0, 4);
+      L.tambor(B, x, z, y - 0.5, y + hh * 0.5, 0.35, { lados: 5, col: [92, 72, 56], k: K.LISO });
+      L.disco(B, x, z, 3.6, y + 0.12, { lados: 9, col: [88, 110, 62], k: K.LISO });                       // mata de sotobosque
+      L.esfera(B, x, y + hh * 0.72, z, 1.8 + h.R(0, 1.2), { gajos: 7, anillos: 4, sy: 0.8, col: i % 3 ? [62, 92, 52] : [82, 104, 60], k: K.LISO }); }
   } });
 
 // Casa de les Punxes (Terrades): manzana triangular de ladrillo rojo; las partes pequeñas y altas de los datos son sus torres
@@ -677,15 +711,25 @@ add({ id: 'casa_calvet', nombre: 'Casa Calvet', nivel: 'C', x: 12477.1, z: 14467
   build(B, h, L) {                                                  // los dos remates curvos sobre la fachada de Casp (+Z)
     let z1 = -1e9; for (const pl of h.plantas || []) for (const p of pl || []) if (p && isFinite(p[1])) z1 = Math.max(z1, p[1]);
     if (!(z1 > 0)) z1 = 26;
-    for (const s of [-1, 1]) { const pts = [];
-      for (let i = 0; i <= 8; i++) { const t = Math.PI * i / 8; pts.push([s * 3.6 + Math.cos(t) * 2.6, 21 + Math.sin(t) * 3, z1 - 0.3]); }
-      L.poly(B, pts, [214, 202, 178], K.PIEDRA); }
+    // remates grandes de piedra más oscura que la fachada, con grosor (se ven de los dos lados), y la cornisa
+    const RM = [170, 146, 112];
+    L.caja(B, 0, z1 - 0.6, 20.2, 15, 1.4, 0.8, 0, RM, K.PIEDRA);
+    for (const s of [-1, 1]) for (const dz of [-0.05, -1.05]) { const pts = [];
+      for (let i = 0; i <= 10; i++) { const t = Math.PI * i / 10; pts.push([s * 3.9 + Math.cos(t) * 3.3, 21 + Math.sin(t) * 4.4, z1 + dz]); }
+      L.poly(B, dz < -0.5 ? pts.slice().reverse() : pts, RM, K.PIEDRA); }
+    for (const s of [-1, 1]) { L.caja(B, s * 3.9, z1 - 0.55, 25.3, 1.2, 1.2, 1.2, 0, RM, K.PIEDRA);
+      L.esfera(B, s * 3.9, 26.9, z1 - 0.55, 0.7, { gajos: 6, anillos: 4, col: RM, k: K.PIEDRA }); }
   } });
 // Fundació Antoni Tàpies: ladrillo rojo y, en la azotea, la nube de tubos metálicos «Núvol i cadira»
-add({ id: 'fundacio_tapies', nombre: 'Fundació Antoni Tàpies', nivel: 'C', x: 11675.5, z: 14576.8, rot: 137, alto: 34, edificios: ED.fundacio_tapies, ocultar: false,
-  noche: 'nada', retoque: { color: '#b5543a', estilo: 1 }, fachada: false,
+// (el retoque de color del volumen genérico no se veía: el sombreado de fachada lo dejaba beis; ahora se oculta el volumen
+//  y se levanta en ladrillo rojo sobre su planta real, con huecos oscuros de arcos en planta baja)
+add({ id: 'fundacio_tapies', nombre: 'Fundació Antoni Tàpies', nivel: 'C', x: 11675.5, z: 14576.8, rot: 137, alto: 34, edificios: ED.fundacio_tapies,
+  noche: 'nada', fachada: false,
   build(B, h, L) {
-    const e = (h.edif || [])[0], y = e && isFinite(e.alto) ? e.alto : 25.3, R = h.R;
+    const e = (h.edif || [])[0], y = e && isFinite(e.alto) ? e.alto : 25.3, R = h.R, LAD = [170, 78, 54];
+    const pl = e && e.plantas[0] && e.plantas[0].length > 2 ? e.plantas[0] : L.rect(18, 22);
+    L.prisma(B, pl, (e ? e.y0 : 0) - 0.6, y, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [120, 84, 70] });
+    L.caja(B, cajaMin(pl).cx, cajaMin(pl).cz, y - 1, cajaMin(pl).w + 0.4, cajaMin(pl).l + 0.4, 1, cajaMin(pl).ang, [130, 60, 44], K.LADRILLO);
     for (let i = 0; i < 26; i++) { const pts = []; let x = R(-4, 4), yy = y + R(1, 8), z = R(-6, 6);
       for (let k = 0; k < 4; k++) { pts.push([x, yy, z]); x += R(-3, 3); yy = Math.max(y + 0.5, Math.min(y + 9.5, yy + R(-2.5, 2.5))); z += R(-3, 3); }
       L.tube(B, L.F0, pts, 0.12, 4, [150, 152, 156], K.METAL); }

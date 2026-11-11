@@ -572,7 +572,7 @@ window.BCN_LANDMARKS = { init(ctx) {
   // vista de cámara que encuadra el hito: órbita a k veces su tamaño, con elevación elev (grados) desde el rumbo dado
   function view(id, rumbo, k, elev) {
     const r = byId.get(id); if (!r) return null;
-    const S = Math.max(r.alto, 2 * r.r, r.ancho || 0, r.largo || 0, 12), D = S * (k || 2.4), az = (rumbo === undefined ? 210 : rumbo) * Math.PI / 180, el = (elev === undefined ? 30 : elev) * Math.PI / 180;
+    const S = Math.max(r.alto || 0, 2 * (r.r || 0), r.ancho || 0, r.largo || 0, 12), D = Math.max(S * (k || 2.4), 60), az = (rumbo === undefined ? 210 : rumbo) * Math.PI / 180, el = (elev === undefined ? 30 : elev) * Math.PI / 180;
     const ty = r.yb + r.alto * 0.42, hd = D * Math.cos(el), x = r.x + Math.sin(az) * hd, z = r.z + Math.cos(az) * hd;
     const y = Math.max(ty + D * Math.sin(el), heightAt(x, z) + 6);
     return { x, y, z, yaw: Math.atan2(r.x - x, r.z - z), pitch: Math.atan2(y - ty, hd), walk: false };
