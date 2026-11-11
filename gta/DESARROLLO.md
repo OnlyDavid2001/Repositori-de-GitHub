@@ -761,7 +761,7 @@ el dibujo de un interior; la comprobación final, con `tools/shot.js`.
 `shelf` [capa `LY.*`, color] a ~3,1 m, a 1,7 m y en la repisa del escaparate (0,42 m), `acc` color de acento, `pal`
 (`PAL.*`) y `shape` (`SH.*`): colores y forma del género que llena baldas, vitrinas y tarimas. **Añadir un tipo = añadir
 una fila**; si hace falta un dibujo nuevo, una rama más en `shBack` (fondo) o `shLayer` (capas) y su nombre en `BACK`/`LY`.
-La tabla viaja al shader en la textura `tShop` (8 × 32 RGBA8, sin filtrar; fila = tipo; columnas: 0 pared + patrón de
+La tabla viaja al shader en la textura `tShop` (16 × 32 RGBA8, sin filtrar; fila = tipo; columnas 0–7: 0 pared + patrón de
 suelo · 1 suelo A + calidez · 2 suelo B + luminarias · 3 mueble + id del fondo · 4, 5, 6 color + id de las capas lejana,
 cercana y repisa · 7 acento + `paleta + 16·forma`), que `paramData()` genera a partir de `TYPES`.
 
@@ -792,13 +792,37 @@ de acera del vano de la puerta (+3 cm), el alto ≥ 3,3 m (siempre por encima de
   3. **tres capas de mobiliario** en planos paralelos al vidrio (`shLayer`, alfa premultiplicado), que dan el paralaje al
      caminar: lejana (3,1 m), cercana (1,7 m) y repisa del escaparate (0,42 m): mostrador con vitrina, barra con
      taburetes, mesas y sillas (con o sin mantel), sillones, burras de ropa, isla con género, caballete de cajas de fruta,
-     cubos de flores, tarima con género, maniquíes, carteles de oferta, cruz de farmacia.
+     cubos de flores, tarima con género, maniquíes (de cuerpo entero —cabeza, cuello, hombros, cintura, caderas, brazos y
+     piernas separadas— con pantalón y chaqueta o camiseta, o vestido; y bustos de sastre con peana), carteles de oferta
+     (papel, franja de color con el reclamo, dos líneas de texto y un precio grande de tres cifras de siete segmentos),
+     cruz de farmacia.
   Piezas comunes: `shItems` (fila de artículos: caja, redondo, botella, lomo de libro, herramienta, gafas), `shShelf`
   (mueble de baldas lleno), `shPal` (paletas del género), `shR`/`shC`/`shT` (rectángulo, círculo y trapecio suavizados).
-- `shGlass(room, V, N)` → el vidrio: `emit(room, 1,05 → 2,3 con uDusk)` más `envRefl` con Fresnel (9 % de frente, casi
-  todo en rasante). Al interior no le da el sol.
+- `shGlass(room, V, N)` → el vidrio: `emit(room, g)` más `envRefl` con Fresnel de vidrio de dos caras (7 % de frente,
+  12 % a 55°, 23 % a 65°, 42 % a 75°, 64 % a 82°). Al interior no le da el sol. La ganancia `g` es 1,05 de día y al
+  anochecer (`uDusk`) depende de la luminancia del píxel: lo claro sube solo a 1,5 (con la cadena HDR un color claro
+  florece por encima de ~1,6), lo oscuro hasta 2,2 y lo que ya pasa de 1,2 (las luminarias) se queda como de día.
+  OJO: a pie, con el campo de visión del juego, el vidrio más cercano que cabe en pantalla se ve como mucho a ~55° de
+  incidencia; el reflejo fuerte solo aparece en los escaparates lejanos de la misma acera, que es lo físicamente correcto.
 - **Filtrado**: todo borde se suaviza con `px`, y cada patrón se funde a su color medio cuando el píxel se acerca a su
   tamaño (los artículos pasan a ser una banda de color; el techo, una franja de luz): no parpadea de lejos.
+
+**Cómo se prueba.** `tools/views_interiores.json` son las vistas del carril (`node tools/shot.js tools/out/iy/v
+@tools/views_interiores.json`): `iy_frente` e `iy_oblicuo` (el comercio de `eix_tienda`, en el Eixample, a ~5 m de frente y a
+~6 m en oblicuo), `iy_acera30` e `iy_acera120` (la misma acera a 30 y a 120 m), `iy_rasante` (pegado a la fachada: el
+reflejo crece con el ángulo), las cinco vistas con tienda de `views.json`, `gotic_calle` y dos al anochecer (20,25 h).
+`tools/shop_sheet.py` monta las **hojas de contacto de los 17 tipos dentro de la ciudad**: `python3 tools/shop_sheet.py
+vistas v.json alta` escribe 34 vistas (cada tipo forzado en caliente, de frente y en oblicuo, en el mismo comercio),
+`SIZE=480x270 node tools/shot.js tools/out/hs/t @v.json` las captura (con la máquina cargada, ~1 min por vista) y
+`python3 tools/shop_sheet.py hoja tools/out/hs/t frente hoja_frente.jpg` (y `oblicuo`) las junta rotuladas.
+
+**Límites conocidos (IY1).** El interior es un decorado plano por capas: el género de la repisa y los muebles no tienen
+grosor (de muy cerca y muy en oblicuo se nota que son planos a 0,42, 1,7 y 3,1 m). No hay gente dentro. El género de las
+paletas `VARIADO` (súper, queviures, papereria) es un arcoíris saturado, poco creíble de cerca. El reflejo del vidrio es
+el de `envRefl` (cielo y «calle de enfrente» lisa): no refleja los edificios ni los árboles reales. Los toldos no dan
+sombra sobre el interior (no le llega el sol a propósito). La cuña oscura de `gotic_calle` (`reglas2.md` §4) ya no aparece:
+la planta baja de ese tramo es ahora un comercio con su geometría nueva (machones, jambas y vidrio); no se llegó a aislar
+la causa en el código antiguo.
 
 **Para IY2 (portales y pisos).** La habitación es reutilizable tal cual: emite un quad con `glassQuad` (o el mismo
 empaquetado) y un tipo nuevo = filas nuevas de `TYPES` (portal, salón, cocina…; con `w: 0` no entran en el sorteo de
@@ -808,7 +832,7 @@ persiana delante como hasta ahora.
 
 **Cambios respecto a §6** (que este carril no edita): el ámbito de azar `env.rnd(10, tramo, primer vano)` = comercio;
 `K.SHOPWIN` = 20; el atlas de `K.SIGN` es de 2 × 16; `K.GSHOP` (11) ya no lo usa nadie; `BCN_INTERIORS` exporta además
-`TYPES`, `force` y `paramData()`.
+`TYPES`, `force`, `paramData()` y `paramSize`. La textura `tShop` es de 16 × 32 (columnas 8–15: los 8 colores de cada paleta `PAL`, fila = paleta).
 
 
 
