@@ -1,0 +1,68 @@
+[
+ {
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "name": "eix_acera"
+ },
+ {
+  "x": 12077.4,
+  "z": 14536.6,
+  "walk": true,
+  "yaw": -0.7792,
+  "pitch": -0.32,
+  "name": "eix_fachada"
+ },
+ {
+  "x": 12405.9,
+  "z": 13505.8,
+  "walk": true,
+  "yaw": 2.584,
+  "pitch": 0.0,
+  "name": "rambla_pie"
+ },
+ {
+  "x": 12712.0,
+  "z": 13385.3,
+  "walk": true,
+  "yaw": 0.704,
+  "pitch": -0.02,
+  "name": "gotic_calle"
+ },
+ {
+  "x": 11900,
+  "y": 160,
+  "z": 14500,
+  "yaw": 0.5,
+  "pitch": 0.42,
+  "name": "aereo_eixample"
+ },
+ {
+  "x": 13300,
+  "y": 260,
+  "z": 12700,
+  "yaw": -0.6,
+  "pitch": 0.35,
+  "name": "port_vell"
+ },
+ {
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "name": "eix_acera_13",
+  "hour": 13
+ },
+ {
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "name": "eix_acera_2025",
+  "hour": 20.25
+ }
+]

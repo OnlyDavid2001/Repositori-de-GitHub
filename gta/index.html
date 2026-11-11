@@ -27,7 +27,7 @@
     background:rgba(255,255,255,.06); color:var(--ink); border:1px solid transparent; font:inherit; }
   #side button:hover { background:rgba(255,255,255,.14); }
   #side button.on { border-color:var(--acc); color:var(--acc); }
-  #side .row { display:flex; gap:4px; } #side .row button { text-align:center; }
+  #side .row { display:flex; gap:4px; } #side .row button { text-align:center; } #gqRow button { padding:7px 2px; }
   #side label { display:block; margin:6px 4px 2px; color:var(--dim); font-size:12px; }
   #side input[type=range] { width:100%; accent-color:var(--acc); }
   #help { bottom:12px; right:12px; padding:8px 12px; color:var(--dim); font-size:12px; max-width:216px; }
@@ -73,6 +73,8 @@
   <div class="row" id="fxRow"><button id="fx0">No</button><button id="fx1" class="on">Normal</button><button id="fx2">Alta</button></div>
   <label>Calles de detalle (aceras, árboles, mobiliario)</label>
   <div class="row" id="stRow"><button id="st0">No</button><button id="st1" class="on">Normal</button><button id="st2">Alta</button></div>
+  <label id="gqLab">Gráficos <span id="gqV"></span></label>
+  <div class="row" id="gqRow"><button id="gq0" class="on">Auto</button><button id="gq1">Baja</button><button id="gq2">Media</button><button id="gq3">Alta</button></div>
   <button id="tLabels" class="on">Nombres de barrios</button>
   <h4>Datos</h4>
   <div id="stats" style="color:var(--dim);font-size:12px;margin:0 4px 6px"></div>
