@@ -73,7 +73,8 @@ def main(a):
     if not tiles:
         print('no hay capturas'); return 1
     tw = 480; th = int(tiles[0][0].height * tw / tiles[0][0].width)
-    cols = int(o['cols']) if o['cols'] else len(rumbos) * len(horas) if len(rumbos) * len(horas) <= 4 else 4
+    per = len(rumbos) * len(horas)                       # vistas por hito: una fila por hito si caben (2–4)
+    cols = int(o['cols']) if o['cols'] else per if 2 <= per <= 4 else min(4, len(tiles))
     rows = (len(tiles) + cols - 1) // cols
     sheet = Image.new('RGB', (cols * tw, rows * (th + 18)), (24, 24, 24))
     d = ImageDraw.Draw(sheet)

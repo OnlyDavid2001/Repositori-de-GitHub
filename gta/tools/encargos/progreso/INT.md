@@ -13,5 +13,17 @@
   (en el juego hay más triángulos que en tris.js porque varios hitos extruyen las plantas reales de `h.edif`).
   Muy por debajo del objetivo de 400 000.
 
-## En curso
-- Hojas de contacto por lote (día, rumbo 210) y una de noche con los 27 de nivel A.
+- Hojas de contacto (rumbo 210, k 2,4, elev 30; arnés sin errores de consola en las seis ejecuciones, ~17 min por lote),
+  en el scratchpad de la sesión: `hitos/hoja_a.jpg` … `hoja_e.jpg` (16 h, los 105 hitos/fichas) y
+  `hitos/hoja_noche_A.jpg` (22 h, los 27 de nivel A); vistas generales en `hitos/int_generales.jpg`.
+- `tools/hitos/hoja.py`: con una sola vista por hito la hoja salía en UNA columna (ilegible); ahora usa 4 columnas.
+
+## Para REV (lo que salta a la vista en las hojas, sin revisar a fondo)
+- Encuadre: las fichas de nivel C sin `alto` o pequeñas salen con la cámara pegada (palau_blaugrana, picornell,
+  piscina_montjuic, estel_ferit) o tapada por árboles (cap_barcelona). Es la vista, no el modelo.
+- Arc de Triomf visto desde 210° parece una torre roja (se ve de canto); comprobar desde otro rumbo.
+- Noche: torre de Collserola y Park Güell casi no se ven; Sant Pau, poco. Torres «la Caixa», Disseny Hub y Peix ya
+  señalados por el lote c. Bellesguard: caja oscura.
+
+## Pendiente (otras etapas)
+- REV y FIX de `final.md`.
