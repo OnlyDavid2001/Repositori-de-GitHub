@@ -85,7 +85,10 @@ cam.inputs.clear(); cam.fov = 0.86; cam.minZ = 2; cam.maxZ = 170000;
 //   shade(alb, N, V, rough, metal, ao)     difusa + brillo del sol con lóbulo según la rugosidad + reflejo del entorno
 //   envRefl(r, rough)                      lo que se refleja en la dirección r: cielo analítico y, bajo el horizonte, la calle
 //   emit(col, gain)                        color autoiluminado: gain 1 = se ve como el color de autor. Más de 1 es HDR (hace bloom)
-//   sunVis()                               visibilidad del sol (0 en sombra … 1). Hoy 1: la etapa de sombras cambia SOLO su cuerpo
+//   sunVis() / sunVisN(n)                  visibilidad del sol (0 en sombra … 1): la sombra proyectada. La calcula una vez por
+//                                          fragmento (con la primera normal que se le pase) y la reutiliza. lit y shade ya la aplican
+// SOMBRAS DEL SOL: dos cascadas (uShadow0 cerca, uShadow1 lejos) con la profundidad vista desde el sol empaquetada en RGB.
+// Las pinta y las mantiene lighting.js, que da valor a los uniformes uSh*. Sin ese módulo uShP vale 0 y sunVis() da 1.
 // LUZ LINEAL: uSunL (irradiancia del sol a incidencia normal), uSkyL (cielo, normales hacia arriba) y uGndL (rebote cálido
 // del suelo, normales hacia abajo). Unidad: 1 = «un albedo se ve tal cual es». Las calcula setHour a partir de los colores
 // de pantalla de siempre (uSunCol, uSkyCol, uGndCol), que siguen ahí para lo que los cuerpos suman a mano.
@@ -96,6 +99,8 @@ precision highp float;
 uniform vec3 uCam; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform vec3 uSkyCol; uniform vec3 uGndCol;
 uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk;
 uniform vec3 uSunL; uniform vec3 uSkyL; uniform vec3 uGndL; uniform vec2 uTone;
+uniform sampler2D uShadow0; uniform sampler2D uShadow1;
+uniform vec3 uShX; uniform vec3 uShY; uniform vec3 uShZ; uniform vec4 uShC0; uniform vec4 uShC1; uniform vec4 uShP;
 varying vec3 vPos;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float dith(){ return fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
@@ -103,15 +108,58 @@ float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
   return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x), f.y); }
 vec3 toLin(vec3 c){ return pow(max(c, vec3(0.0)), vec3(2.2)); }
 vec3 toScr(vec3 c){ return pow(max(c, vec3(0.0)), vec3(0.4545)); }
-// visibilidad del sol en este fragmento: multiplica SOLO la luz directa y los brillos del sol
-float sunVis(){ return 1.0; }
+// SOMBRAS. uShX, uShY, uShZ: ejes del espacio de luz (Z hacia el sol) · uShC0, uShC1: centro de cada cascada (mundo) y
+// 1/semilado · uShP: x resolución del mapa, y 1/(rango de profundidad), z filtro (0 sin sombras, 1 = 2x2, 2 = 3x3)
+// una muestra: 1 si lo guardado en el mapa (lo más cercano al sol) no tapa la profundidad t
+float shTap(sampler2D s, vec2 p, float t){ return step(t, dot(texture2D(s, p).rgb, vec3(1.0, 0.00392156863, 0.0000153787005))); }
+// PCF con pesos bilineales (el borde de la sombra se mueve de forma continua, sin escalones de téxel)
+float shMap(sampler2D s, vec3 d, float inv, float t){
+  vec2 q = (vec2(dot(d, uShX), dot(d, uShY))*inv*0.5 + 0.5)*uShP.x;
+  float px = 1.0/uShP.x;
+  if (uShP.z < 1.5) {
+    vec2 f2 = fract(q - 0.5), b2 = (floor(q - 0.5) + 0.5)*px;
+    return mix(mix(shTap(s, b2, t), shTap(s, b2 + vec2(px, 0.0), t), f2.x),
+               mix(shTap(s, b2 + vec2(0.0, px), t), shTap(s, b2 + vec2(px, px), t), f2.x), f2.y);
+  }
+  vec2 f = fract(q - 1.0), b = (floor(q - 1.0) + 0.5)*px;
+  vec3 wx = vec3(1.0 - f.x, 1.0, f.x), r;
+  r.x = dot(wx, vec3(shTap(s, b, t), shTap(s, b + vec2(px, 0.0), t), shTap(s, b + vec2(2.0*px, 0.0), t)));
+  r.y = dot(wx, vec3(shTap(s, b + vec2(0.0, px), t), shTap(s, b + vec2(px, px), t), shTap(s, b + vec2(2.0*px, px), t)));
+  r.z = dot(wx, vec3(shTap(s, b + vec2(0.0, 2.0*px), t), shTap(s, b + vec2(px, 2.0*px), t), shTap(s, b + vec2(2.0*px, 2.0*px), t)));
+  return dot(r, vec3(1.0 - f.y, 1.0, f.y))*0.25; }
+// una cascada: el punto se separa de la superficie a lo largo de la normal (más cuanto más rasante es la luz: evita el
+// acné sin despegar la sombra) y se compara con un pequeño margen. tx = tamaño de un téxel en metros
+float shCasc(sampler2D s, vec3 d, vec3 n, float sl, float inv){
+  float tx = 2.0/(inv*uShP.x);
+  d += n*(tx*(0.4 + 1.2*sl));
+  return shMap(s, d, inv, 0.5 - (dot(d, uShZ) + 0.25*tx + 0.01)*uShP.y); }
+float gSunVis = -1.0;
+// visibilidad del sol en este fragmento (n = normal de la superficie): multiplica SOLO la luz directa y los brillos del sol
+float sunVisN(vec3 n){
+  if (gSunVis >= 0.0) return gSunVis;
+  gSunVis = 1.0;
+  if (uShP.z < 0.5) return 1.0;
+  float ndl = dot(n, uShZ);
+  if (ndl <= 0.0) { gSunVis = 0.0; return 0.0; }
+  float sl = sqrt(max(1.0 - ndl*ndl, 0.0));
+  vec3 d0 = vPos - uShC0.xyz, d1 = vPos - uShC1.xyz;
+  vec2 a0 = abs(vec2(dot(d0, uShX), dot(d0, uShY)))*uShC0.w, a1 = abs(vec2(dot(d1, uShX), dot(d1, uShY)))*uShC1.w;
+  // peso de cada cascada: 1 dentro, 0 al llegar a su borde. Fuera de la lejana no hay sombra
+  float w0 = 1.0 - smoothstep(0.80, 0.95, max(a0.x, a0.y)), w1 = 1.0 - smoothstep(0.80, 0.97, max(a1.x, a1.y));
+  float v = 1.0;
+  if (w0 < 1.0 && w1 > 0.0) v = mix(1.0, shCasc(uShadow1, d1, n, sl, uShC1.w), w1);
+  if (w0 > 0.0) v = mix(v, shCasc(uShadow0, d0, n, sl, uShC0.w), w0);
+  gSunVis = v;
+  return v; }
+// sin normal a mano (reflejos del sol en vidrios, asfalto, mar): el punto se separa unos 3 téxeles hacia el sol
+float sunVis(){ return sunVisN(uShZ*7.0); }
 // cielo: degradado horizonte-cenit, halo y disco del sol (el disco vale mucho más que 1: es lo que hace bloom)
 vec3 skyGrad(vec3 d){ return mix(uFogCol, uZenCol, pow(clamp(d.y,0.0,1.0), 0.42)); }
 vec3 skyColor(vec3 d){ float s = max(dot(d,uSunDir),0.0);
   return skyGrad(d) + uSunCol*(smoothstep(0.99972, 0.99990, s)*9.0 + pow(s,420.0)*1.6 + pow(s,14.0)*0.22); }
 // luz ambiente hemisférica, lineal: cielo por arriba, rebote del suelo por abajo
 vec3 ambL(vec3 n){ return mix(uGndL, uSkyL, n.y*0.5+0.5); }
-vec3 lit(vec3 alb, vec3 n){ float ndl = max(dot(n,uSunDir),0.0); return alb*toScr(uSunL*(ndl*sunVis()) + ambL(n)); }
+vec3 lit(vec3 alb, vec3 n){ float ndl = max(dot(n,uSunDir),0.0); return alb*toScr(uSunL*(ndl*sunVisN(n)) + ambL(n)); }
 vec3 envRefl(vec3 r, float rough){
   vec3 d = normalize(vec3(r.x, max(r.y, 0.02), r.z));
   float s = max(dot(d,uSunDir),0.0);
@@ -120,7 +168,7 @@ vec3 envRefl(vec3 r, float rough){
   // por debajo del horizonte se refleja la calle de enfrente, oscura. Con rugosidad el horizonte se difumina
   return mix(uFogCol*vec3(0.62,0.6,0.58), c, smoothstep(-0.02 - rough, 0.22 + rough, r.y)); }
 vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao){
-  float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough, vis = sunVis();   // pol: lo pulido que está
+  float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough, vis = sunVisN(N);   // pol: lo pulido que está
   vec3 albL = toLin(alb), f0 = mix(vec3(0.04), albL, metal);
   vec3 c = albL*(1.0 - metal)*(uSunL*(ndl*vis) + ambL(N)*ao);
   // brillo del sol: lóbulo de Blinn-Phong normalizado, más estrecho e intenso cuanto más pulido
@@ -373,8 +421,10 @@ void main(){
 // junto a uCam si cambia cada fotograma, o desde un módulo con ctx.eachMat(m => m.setTexture(…)), que vale también para
 // los materiales que se creen después.
 const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk',
-               'uSunL', 'uSkyL', 'uGndL', 'uTone'];
-const BASES = [];
+               'uSunL', 'uSkyL', 'uGndL', 'uTone', 'uShX', 'uShY', 'uShZ', 'uShC0', 'uShC1', 'uShP'];
+const BASES = ['uShadow0', 'uShadow1'];
+// textura de relleno para los mapas de sombra (blanco = nada tapa) mientras lighting.js no ponga los suyos
+const SH_NONE = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array([255, 255, 255, 255]), 1, 1, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
 const mats = [], MATFN = [];
 const eachMat = fn => { MATFN.push(fn); for (const m of mats) fn(m); };
 // Babylon no trae ese modo de mezcla. Se elige un alphaMode que no usa nadie más (así su caché de estado no lo confunde con
@@ -389,6 +439,7 @@ function mkMat(name, vs, fs, attributes, uniforms, samplers, opts) {
   m.backFaceCulling = !!opts.cull;
   if (opts.blend) { m.alphaMode = BLEND_MODE;
     m.onBindObservable.add(() => engine.alphaState.setAlphaBlendFunctionParameters(GLB.SRC_ALPHA, GLB.ONE_MINUS_SRC_ALPHA, GLB.ZERO, GLB.ONE)); }
+  m.setTexture('uShadow0', SH_NONE); m.setTexture('uShadow1', SH_NONE);
   mats.push(m);
   if (lightOn) lightTo(m);                                   // un material creado más tarde recibe la luz de la hora actual
   for (const f of MATFN) f(m);
@@ -431,14 +482,15 @@ function mkMesh(name, pos, idx, mat, extra, px, pz) {
 // Registro de mallas (sombras y demás pases auxiliares): TODA malla que se crea pasa por reg(malla, { cast, alphaTex, layer }).
 //   cast: proyecta sombra · alphaTex: textura cuyo alfa recorta la malla (hojas) · layer: a qué capa pertenece
 // Las opciones quedan en mesh.metadata.bcn y la malla en reg.meshes (un Set), del que se da de baja sola al hacer dispose.
+// reg.ver cuenta altas y bajas (las sombras lo miran para saber si tienen que repintarse).
 const MESHES = new Set();
 function reg(mesh, o) {
   if (!mesh) return mesh;
   mesh.metadata = Object.assign(mesh.metadata || {}, { bcn: Object.assign({ cast: false, alphaTex: null, layer: '' }, o) });
-  MESHES.add(mesh); mesh.onDisposeObservable.addOnce(() => MESHES.delete(mesh));
+  MESHES.add(mesh); reg.ver++; mesh.onDisposeObservable.addOnce(() => { MESHES.delete(mesh); reg.ver++; });
   return mesh;
 }
-reg.meshes = MESHES;
+reg.meshes = MESHES; reg.ver = 0;
 
 // ------------------------------------------------------------------ luz / hora
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
@@ -725,7 +777,7 @@ function barriAt(x, z) {
 // CTX: el único contexto que reciben todos los módulos. facades.js le añade ctx.city (índices espaciales y consultas) y
 // ctx.detail (materiales del shader de detalle) al iniciarse; cada módulo iniciado queda además en ctx.mods[id].
 const st = { yaw: 0, pitch: 0.5, walk: false, keys: {}, fly: null, showLabels: true, maxDist: 40000 };   // cámara y controles
-const CTX = { scene, engine, canvas, cam, st, SHOT, GEO: window.BCN_GEO, mkMat, mats, eachMat, out: OUT, setLDR, relight: () => setHour(L.hour), reg, heightAt, WX, WZ, CH, SEG, ROFF, RCOL, META, PAL,
+const CTX = { scene, engine, canvas, cam, st, SHOT, GEO: window.BCN_GEO, mkMat, mats, eachMat, out: OUT, setLDR, shNone: SH_NONE, relight: () => setHour(L.hour), reg, heightAt, WX, WZ, CH, SEG, ROFF, RCOL, META, PAL,
   BREC, bldChunks, blobURL, L, matBld, mods: {} };
 // Módulos con protocolo común { update(P, groundY, dt, frame), busy(), stats(), setRange?(q), flush?(P, groundY) }, en orden
 // de actualización. Si uno falla al iniciarse, la ciudad sigue funcionando sin él.

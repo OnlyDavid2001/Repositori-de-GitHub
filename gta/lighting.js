@@ -3,29 +3,34 @@
    detrás la cadena de postproceso con BABYLON.DefaultRenderingPipeline (hdr): nitidez leve → bloom de umbral alto →
    exposición + tono fílmico ACES + gamma + contraste + viñeta + tramado → FXAA (solo sin MSAA), con MSAA en el primer búfer.
    Toda la cadena se ejecuta dentro de scene.render() (el arnés de capturas depende de eso).
-   También gobierna la calidad gráfica (escala de render, MSAA, bloom) y la baja sola si el equipo no puede (modo Auto).
+   SOMBRAS DEL SOL: dos cascadas cuadradas alrededor de la cámara (±45 m y ±400 m, que crecen con la altura), cada una un
+   mapa de profundidad visto desde el sol (RenderTargetTexture RGBA8 con la profundidad empaquetada), repintado solo cuando
+   hace falta. Las recibe sunVisN() en el preludio de app.js, para todos los materiales de mkMat. Ver «SOMBRAS» más abajo.
+   También gobierna la calidad gráfica (escala de render, MSAA, bloom, sombras) y la baja sola si el equipo no puede (modo Auto).
    Si no hay camino HDR (ctx.out.hdr = false: ?ldr=1, sin WebGL2…) no monta postproceso: tono y gamma van en los shaders y
    aquí solo queda la escala de render. Si el postproceso falla al montarse, llama a ctx.setLDR() y sigue igual.
    window.BCN_LIGHTING = { init(ctx) → { update(P, groundY, dt, frame), setQuality(q), set(o), busy(), stats(), pipe } }.
-   Pendiente en este fichero (siguientes etapas del carril): sombras del sol (cuerpo de sunVis() en el preludio) y oclusión
-   ambiental (lee la distancia del alfa del búfer HDR). Las dos se añaden a la tabla QUAL. */
+   Pendiente en este fichero (siguiente etapa del carril): oclusión ambiental (lee la distancia del alfa del búfer HDR),
+   que se añade a la tabla QUAL. */
 (function () {
 'use strict';
 
 window.BCN_LIGHTING = { init(ctx) {
   const B = BABYLON, { scene, engine, cam, SHOT, L } = ctx;
   // TABLA DE CALIDADES. scale: fracción de la resolución completa · msaa: muestras (1 = sin MSAA, entonces FXAA) ·
-  // bloom: escala del búfer de bloom (0 = sin bloom) · sharpen: pase de nitidez
+  // bloom: escala del búfer de bloom (0 = sin bloom) · sharpen: pase de nitidez · shadow: lado del mapa de sombras de cada
+  // cascada (0 = sin sombras) · sfilt: filtro de la sombra (1 = 2x2 muestras, 2 = 3x3)
   const QUAL = {
-    baja:  { scale: 0.67, msaa: 1, bloom: 0,    sharpen: false },
-    media: { scale: 0.85, msaa: 2, bloom: 0.35, sharpen: true },
-    alta:  { scale: 1.0,  msaa: 4, bloom: 0.5,  sharpen: true },
+    baja:  { scale: 0.67, msaa: 1, bloom: 0,    sharpen: false, shadow: 0,    sfilt: 0 },
+    media: { scale: 0.85, msaa: 2, bloom: 0.35, sharpen: true,  shadow: 1024, sfilt: 1 },
+    alta:  { scale: 1.0,  msaa: 4, bloom: 0.5,  sharpen: true,  shadow: 2048, sfilt: 2 },
   };
   const ORDER = ['baja', 'media', 'alta'];
   // AJUSTES DE LA CADENA (se cambian en caliente con set({…}), para calibrar). bloomT: umbral de luminancia YA EXPUESTA
   // a partir del cual un píxel florece (alto: sol, brillos y emisivos, no las paredes al sol) · bloomW: peso del halo ·
   // bloomK: ancho del desenfoque (px) · sharpen: cantidad de nitidez · vignette: peso de la viñeta
-  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3 };
+  // shadows: 0 apaga las sombras (para comparar) · shOrn: la capa ORNAMENTO de las fachadas también proyecta (cascada cercana)
+  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1 };
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
   let pipe = null, cur = 'alta', auto = true;
 
@@ -45,6 +50,7 @@ window.BCN_LIGHTING = { init(ctx) {
   function apply() {
     const q = QUAL[cur];
     const hsl = baseScale / q.scale; if (engine.getHardwareScalingLevel() !== hsl) engine.setHardwareScalingLevel(hsl);
+    try { shSetup(P.shadows ? q.shadow : 0, q.sfilt); } catch (e) { console.warn('Sin sombras: ' + (e && e.message || e)); shOff(); SH.dead = true; }
     if (!pipe) return;
     const ip = scene.imageProcessingConfiguration;
     put(ip, 'exposure', L.tone.x); put(ip, 'contrast', L.tone.y); put(ip, 'vignetteWeight', P.vignette);
@@ -58,6 +64,165 @@ window.BCN_LIGHTING = { init(ctx) {
   // camino LDR en marcha: fuera el postproceso (lo llama ctx.setLDR a través de ctx.out.onLDR)
   function dropPipe() { if (pipe) { try { pipe.dispose(); } catch (e) { console.warn(e); } pipe = null; } }
   ctx.out.onLDR.push(dropPipe);
+
+  // ---------------------------------------------------------------- SOMBRAS DEL SOL
+  // Espacio de luz: Z hacia el sol, X horizontal y perpendicular al sol, Y = Z × X. Cada cascada es un cuadrado de semilado
+  // «half» en XY, centrado en la cámara y ajustado a un múltiplo del téxel (así el mapa no «nada» al moverse), y guarda en
+  // RGB la profundidad t = 0,5 − (distancia hacia el sol respecto al centro)/(2·R): lo más cercano al sol gana.
+  // Actualización perezosa: una cascada se repinta si la cámara se ha alejado de su centro más de un 18 % del semilado, si
+  // cambia su tamaño (altura de la cámara), la hora o la lista de mallas que proyectan dentro de ella. Como mucho una por
+  // fotograma, salvo al cambiar la hora y en modo captura (ahí todo queda al día en el mismo fotograma).
+  const SH = { res: 0, filt: 0, R: 4000, base: [45, 400], casc: [], X: new B.Vector3(), Y: new B.Vector3(), Z: new B.Vector3(0, 1, 0),
+               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true };
+  const SH_VS = `precision highp float;
+attribute vec3 position;
+#ifdef INF
+attribute vec4 uv; varying float vW; varying vec3 vL;
+#endif
+#ifdef ALPHA
+attribute vec2 uv; varying vec2 vUV;
+#endif
+#include<instancesDeclaration>
+uniform vec3 uC; uniform vec3 uX; uniform vec3 uY; uniform vec3 uZ; uniform vec2 uK;
+varying float vT;
+void main(){
+#include<instancesVertex>
+  vec3 d = (finalWorld*vec4(position, 1.0)).xyz - uC;
+  vT = 0.5 - dot(d, uZ)*uK.y;
+#ifdef INF
+  vW = uv.w; vL = position;
+#endif
+#ifdef ALPHA
+  vUV = uv;
+#endif
+  gl_Position = vec4(dot(d, uX)*uK.x, dot(d, uY)*uK.x, clamp(vT, 0.0, 1.0)*2.0 - 1.0, 1.0); }`;
+  // INF (volúmenes simples): el muro de un edificio que ya tiene fachada de detalle se aleja 0,6 m del sol, para que no tape
+  // los huecos de la fachada (retranqueados respecto a ese muro) pero siga cerrando el edificio. ALPHA: hojas recortadas
+  const SH_FS = `#extension GL_OES_standard_derivatives : enable
+precision highp float;
+varying float vT;
+#ifdef INF
+varying float vW; varying vec3 vL; uniform vec2 uK;
+#endif
+#ifdef ALPHA
+varying vec2 vUV; uniform sampler2D tA;
+#endif
+void main(){
+  float t = vT;
+#ifdef ALPHA
+  if (texture2D(tA, vUV).a < 0.5) discard;
+#endif
+#ifdef INF
+  vec3 n = cross(dFdx(vL), dFdy(vL));
+  if (vW > 0.5 && abs(n.y) < 0.5*length(n)) t += 0.6*uK.y;
+#endif
+  vec3 e = fract(clamp(t, 0.0, 0.99999)*vec3(1.0, 255.0, 65025.0));
+  e.xy -= e.yz*0.00392156863;
+  gl_FragColor = vec4(e, 1.0); }`;
+  // material de profundidad de una malla en la cascada k: una variante por formato (normal, volúmenes simples, recortada por alfa)
+  function shMat(k, mesh) {
+    const b = mesh.metadata.bcn, kind = b.layer === 'coarse' ? 'i' : b.alphaTex ? 'a' + b.alphaTex.uniqueId : 'p', key = k + kind;
+    let m = SH.mats.get(key);
+    if (!m) {
+      m = new B.ShaderMaterial('bcnSh' + key, scene, { vertexSource: SH_VS, fragmentSource: SH_FS },
+        { attributes: kind === 'p' ? ['position'] : ['position', 'uv'], uniforms: ['world', 'uC', 'uX', 'uY', 'uZ', 'uK'],
+          samplers: b.alphaTex ? ['tA'] : [], defines: kind === 'i' ? ['#define INF'] : b.alphaTex ? ['#define ALPHA'] : [] });
+      m.backFaceCulling = false; m.bcnK = k;
+      if (b.alphaTex) m.setTexture('tA', b.alphaTex);
+      SH.mats.set(key, m); shMatU(m);
+    }
+    return m;
+  }
+  function shMatU(m) { const c = SH.casc[m.bcnK]; if (!c) return;
+    m.setVector3('uC', c.C); m.setVector3('uX', SH.X); m.setVector3('uY', SH.Y); m.setVector3('uZ', SH.Z); m.setVector2('uK', c.K); }
+  // uniformes de recepción de un material de mkMat (los del preludio)
+  function shPush(m) {
+    m.setVector4('uShP', SH.uP);
+    if (SH.off) { m.setTexture('uShadow0', ctx.shNone); m.setTexture('uShadow1', ctx.shNone); return; }
+    m.setVector3('uShX', SH.X); m.setVector3('uShY', SH.Y); m.setVector3('uShZ', SH.Z);
+    for (let k = 0; k < 2; k++) { const c = SH.casc[k]; m.setVector4('uShC' + k, c.U); m.setTexture('uShadow' + k, c.rtt); }
+  }
+  function shOff() {
+    const old = SH.casc;
+    SH.casc = []; SH.res = 0; SH.off = true; SH.uP.set(0, 0, 0, 0);
+    for (const m of ctx.mats) shPush(m);                         // primero se sueltan los mapas de todos los materiales
+    for (const c of old) { const i = scene.customRenderTargets.indexOf(c.rtt); if (i >= 0) scene.customRenderTargets.splice(i, 1); c.rtt.dispose(); }
+  }
+  // crea (o quita) los mapas según la calidad
+  function shSetup(res, filt) {
+    if (SH.dead) return;
+    if (res === SH.res) { if (res && SH.filt !== filt) { SH.filt = filt; SH.uP.z = filt; for (const m of ctx.mats) shPush(m); } return; }
+    shOff();
+    if (!res) return;
+    for (let k = 0; k < 2; k++) {
+      const rtt = new B.RenderTargetTexture('bcnShadow' + k, res, scene, false, true, B.Constants.TEXTURETYPE_UNSIGNED_BYTE, false, B.Texture.NEAREST_SAMPLINGMODE, true);
+      rtt.wrapU = rtt.wrapV = B.Texture.CLAMP_ADDRESSMODE; rtt.clearColor = new B.Color4(1, 1, 1, 1);
+      rtt.renderParticles = false; rtt.renderSprites = false; rtt.ignoreCameraViewport = true;
+      rtt.refreshRate = B.RenderTargetTexture.REFRESHRATE_RENDER_ONCE; rtt.renderList = [];
+      const c = { k, rtt, C: new B.Vector3(), U: new B.Vector4(0, 0, 0, 1), K: new B.Vector2(1, 1), half: 0, cx: 0, cy: 0, dirty: true, sig: '', n: 0, late: 0, set: new WeakSet() };
+      // una malla cuyo material de profundidad aún se está compilando se deja para el fotograma siguiente (y se repinta)
+      rtt.customIsReadyFunction = mesh => { const m = mesh.getMaterialForRenderPass(rtt.renderPassId);
+        const ok = !m || m.isReady(mesh, mesh.hasThinInstances, mesh.subMeshes && mesh.subMeshes[0]); if (!ok) c.late = 2; return ok; };
+      scene.customRenderTargets.push(rtt); SH.casc.push(c);
+    }
+    SH.res = res; SH.filt = filt; SH.off = false; SH.uP.set(res, 1 / (2 * SH.R), filt, 0); SH.sun.set(0, 0, 0);
+    for (const m of SH.mats.values()) shMatU(m);
+  }
+  // mallas que proyectan dentro de la cascada c (centro C, semilado half): las del registro marcadas con cast cuya caja toca
+  // el cuadrado en el plano XY de luz (a lo largo del sol entran todas). Cerca no entra el relieve; lejos, ni las fachadas de
+  // detalle ni el mobiliario (los volúmenes simples ya dan la masa del edificio)
+  const shBox = new WeakMap();
+  function shList(c, C, half) {
+    const X = SH.X, Y = SH.Y, list = []; let sig = 0;
+    for (const m of ctx.reg.meshes) {
+      const b = m.metadata.bcn;
+      if (!(b.cast || (c.k === 0 && P.shOrn && b.layer === 'orn')) || !m.isEnabled() || (c.k === 0 ? b.layer === 'terrain' : (b.layer === 'base' || b.layer === 'furn'))) continue;
+      if (m.hasThinInstances) { if (m.thinInstanceCount > 0) { list.push(m); sig += m.uniqueId * 7 + m.thinInstanceCount; } continue; }
+      let bb = shBox.get(m);
+      if (!bb) { const o = m.getBoundingInfo().boundingBox, w = m.getWorldMatrix().m, a = o.minimum, z = o.maximum;
+        bb = [(a.x + z.x) / 2 + w[12], (a.y + z.y) / 2 + w[13], (a.z + z.z) / 2 + w[14], (z.x - a.x) / 2, (z.y - a.y) / 2, (z.z - a.z) / 2]; shBox.set(m, bb); }
+      const dx = bb[0] - C.x, dy = bb[1] - C.y, dz = bb[2] - C.z;
+      if (Math.abs(dx * X.x + dy * X.y + dz * X.z) > half + bb[3] * Math.abs(X.x) + bb[4] * Math.abs(X.y) + bb[5] * Math.abs(X.z)) continue;
+      if (Math.abs(dx * Y.x + dy * Y.y + dz * Y.z) > half + bb[3] * Math.abs(Y.x) + bb[4] * Math.abs(Y.y) + bb[5] * Math.abs(Y.z)) continue;
+      list.push(m); sig += m.uniqueId;
+    }
+    return { list, sig: list.length + ':' + sig };
+  }
+  function shRender(c, Pc, half) {
+    const tx = 2 * half / SH.res, X = SH.X, Y = SH.Y, Z = SH.Z;
+    c.cx = Math.round(B.Vector3.Dot(Pc, X) / tx) * tx; c.cy = Math.round(B.Vector3.Dot(Pc, Y) / tx) * tx; c.half = half;
+    const cz = Math.round(B.Vector3.Dot(Pc, Z));
+    c.C.set(X.x * c.cx + Y.x * c.cy + Z.x * cz, X.y * c.cx + Y.y * c.cy + Z.y * cz, X.z * c.cx + Y.z * c.cy + Z.z * cz);
+    c.U.set(c.C.x, c.C.y, c.C.z, 1 / half); c.K.set(1 / half, 1 / (2 * SH.R));
+    const o = shList(c, c.C, half);
+    for (const m of o.list) if (!c.set.has(m)) { c.set.add(m); c.rtt.setMaterialForRendering(m, shMat(c.k, m)); }
+    c.rtt.renderList = o.list; c.sig = o.sig; c.n = o.list.length; c.dirty = false; c.late = 0;
+    c.rtt.resetRefreshCounter(); SH.renders++;
+  }
+  function shUpdate(Pc, groundY) {
+    if (SH.off) return;
+    const S = L.sunDir, hour = Math.abs(S.x - SH.sun.x) + Math.abs(S.y - SH.sun.y) + Math.abs(S.z - SH.sun.z) > 1e-6;
+    if (hour) {
+      SH.sun.copyFrom(S); SH.Z.copyFrom(S); SH.X.set(S.z, 0, -S.x).normalize(); B.Vector3.CrossToRef(SH.Z, SH.X, SH.Y);
+      for (const c of SH.casc) c.dirty = true;
+    }
+    // las cascadas crecen con la altura sobre el suelo, en escalones del 25 % (para no repintar a cada metro que se sube)
+    const s = Math.min(10, Math.pow(1.25, Math.round(Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25))));
+    const check = ctx.reg.ver !== SH.ver || ++SH.tick >= 30;
+    if (check) { SH.ver = ctx.reg.ver; SH.tick = 0; }
+    let did = 0;
+    for (const c of SH.casc) {
+      const half = SH.base[c.k] * s;
+      if (c.late > 0) c.late--;                                 // (el propio mapa se repinta solo mientras falte algún material)
+      let need = c.dirty || half !== c.half || Math.abs(B.Vector3.Dot(Pc, SH.X) - c.cx) > 0.18 * half || Math.abs(B.Vector3.Dot(Pc, SH.Y) - c.cy) > 0.18 * half;
+      if (!need && check && shList(c, c.C, half).sig !== c.sig) need = true;
+      if (need) c.dirty = true;
+      if (!need || (did > 0 && !SHOT && !hour)) continue;
+      shRender(c, Pc, half); did++;
+    }
+    if (did) { for (const m of SH.mats.values()) shMatU(m); for (const m of ctx.mats) shPush(m); }
+  }
+  ctx.eachMat(shPush);                                           // también los materiales que se creen después
 
   if (ctx.out.hdr) {
     try { mkPipe(); }
@@ -79,11 +244,13 @@ window.BCN_LIGHTING = { init(ctx) {
       else if (k in L.K) L.K[k] = o[k]; else if (k in P) P[k] = o[k];
     }
     ctx.relight(); apply();
+    for (const c of SH.casc) c.dirty = true;
   }
   // modo Auto: tiempo medio de fotograma REAL en ventanas de 2 s. Dos ventanas seguidas por encima de 34 ms → un escalón menos
   const win = { t: 0, n: 0, bad: 0, last: 0, ms: 0 };
   function update(P_, groundY, dt, frame) {
     if (pipe) put(scene.imageProcessingConfiguration, 'exposure', L.tone.x);   // la exposición cambia con la hora (setHour)
+    try { shUpdate(P_, groundY); } catch (e) { console.warn('Sin sombras: ' + (e && e.stack || e)); shOff(); SH.dead = true; }
     const now = performance.now(), d = now - win.last; win.last = now;
     if (SHOT || d > 400 || document.hidden) return;             // capturas, pestaña oculta o parón: no cuenta
     win.t += d; win.n++;
@@ -94,9 +261,13 @@ window.BCN_LIGHTING = { init(ctx) {
     const i = ORDER.indexOf(cur);
     if (win.bad >= 2 && i > 0) { cur = ORDER[i - 1]; win.bad = -1; apply(); }   // -1: una ventana de gracia tras el cambio
   }
-  const M = { update, setQuality, set, busy: () => false,
+  // flush (lo llama BCN.fxFlush, el arnés, después de construir todo el detalle): las dos cascadas se repintan en el fotograma siguiente
+  const M = { update, setQuality, set, busy: () => SH.casc.some(c => c.dirty || c.late > 0),
+    flush: () => { for (const c of SH.casc) c.dirty = true; },
     stats: () => ({ hdr: !!pipe, quality: cur, auto, scale: QUAL[cur].scale, msaa: pipe ? pipe.samples : 0, bloom: !!(pipe && pipe.bloomEnabled),
-      ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight() }) };
+      ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight(),
+      shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), renders: SH.renders, ok: !SH.casc.some(c => c.dirty || c.late > 0) } }) };
+  Object.defineProperty(M, 'shadow', { get: () => SH });        // depuración: BCN.light.shadow (cascadas, mapas, materiales)
   Object.defineProperty(M, 'pipe', { get: () => pipe });         // depuración: BCN.light.pipe
   return M;
 } };
