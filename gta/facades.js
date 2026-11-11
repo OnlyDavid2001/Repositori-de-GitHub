@@ -483,7 +483,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // (b, 6); se guarda por edificio. Depuración: ?fxv=familia:n fuerza la variante n en todos; ?fxv=familia, la familia;
   // ?fxv=off, la fachada de antes. Las familias sin variantes en el catálogo siguen con details.js.
   const EST = window.BCN_FX_ESTILOS, VAR = new Array(NB); let FXV = new URLSearchParams(location.search).get('fxv');
-  const KW = { estuco: K.STUCCO, piedra: K.STONE, ladrillo: 16, gresite: 17, revoco: 18, hormigon: 19 };
+  const KW = { estuco: K.STUCCO, piedra: K.FXPIEDRA || K.STONE, ladrillo: 16, gresite: 17, revoco: 18, hormigon: 19 };
   const famOf = b => { const B = window.BCN_BARRI; return EST ? EST.familia(B ? B.at((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2) : null) : null; };
   function varOf(b) {
     if (VAR[b] !== undefined) return VAR[b];
@@ -498,7 +498,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // paño de muro: los acabados propios (16–19) se solapan 12 mm como el estuco y la piedra, para que no haya grietas
   function wr(B, F, u0, u1, y0, y1, col, kw) { if (kw >= 16) { u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; } rect(B, F, u0, u1, y0, y1, 0, col, kw); }
   const ROPA = [[232, 230, 222], [150, 62, 60], [64, 86, 132], [206, 190, 150], [118, 160, 190], [222, 168, 176], [96, 128, 96], [52, 52, 60], [240, 240, 236], [170, 150, 190]];
-  const VID = [150, 172, 168], VIDA = pbrAux(0.12, 0.2, 0, 0), RQV = () => window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;
+  const VID = [148, 158, 156], VIDA = pbrAux(0.32, 0.1, 0, 0), RQV = () => window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;
   // barandilla de balcón de e0 a e1, de y hacia arriba, con el frente a jt; sl/sr: lados
   function rail(env, F, e0, e1, y, jt, sl, sr) {
     const { W0, W1, V, iron, uV, kw } = env, t = y + 1.02, wc = env.runWall;

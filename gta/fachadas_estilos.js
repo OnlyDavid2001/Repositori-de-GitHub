@@ -15,7 +15,7 @@
      carp   cierre: 'librillo' (hojas de lamas abatibles) · 'porticon' (hojas de madera) · 'enrollable' · 'mallorquina'
             (hojas de lamas a medio cerrar en el hueco) · 'alicantina' (persiana de cadeneta colgada por fuera)
      carpCol tonos del cierre (uno por edificio, al azar)        marco  tonos del marco del vidrio
-     acab   acabado del muro: 'estuco' · 'piedra' · 'ladrillo' · 'revoco' (gastado, con desconchados) · 'gresite' · 'hormigon'
+     acab   acabado del muro: 'estuco' · 'piedra' (sillería, tipo K.FXPIEDRA = 100) · 'ladrillo' · 'revoco' (gastado, con desconchados) · 'gresite' · 'hormigon'
      remate cuánto se aclaran los remates (impostas, recercados, cornisa) respecto al muro, 0–1
      imposta 0 nada · 1 fina · 2 marcada                         recerc 0 nada · 1 recercado · 2 + guardapolvo · 3 + clave y frontón
      pil    pilastras entre vanos                                esgr   esgrafiado: 0 · 1 plantas pares · 2 todas
@@ -28,6 +28,15 @@
    (desde 0) en todos los edificios; ?fxv=familia, la familia con variante al azar; ?fxv=off, la fachada de antes. */
 (function () {
 'use strict';
+// acabado «piedra» de los estilos: sillería con la textura de sillar, pero SOLO en luminancia sobre el color del muro (d.col),
+// para que el edificio no cambie de tono al acercarse (el K.STONE del núcleo tiñe con el color de la foto). Id fuera de los
+// rangos reservados de los módulos (0–99).
+window.BCN_GEO.regKind('FXPIEDRA', 100, `
+    rough = 0.82;
+    vec3 tx = texture2D(tAsD, P*vec2(0.30, 0.38)).rgb; float l = dot(tx, vec3(0.3, 0.6, 0.1));
+    alb *= clamp(mix(1.0, l*1.95, nearF*0.8 + 0.2), 0.7, 1.25)*mix(0.9, 1.06, vnoise(P*0.6));
+    alb *= mix(1.0, 0.84, smoothstep(0.45, 0.85, vnoise(vec2(P.x*0.9, P.y*0.04))));
+    vec3 tn = texture2D(tAsN, P*vec2(0.30, 0.38)).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*1.0*nearF);`);
 // tonos de carpintería (de las fotos de calle): verdes de librillo, marrones, grises, azules de la costa, blanco de aluminio
 const VERDE = [[43, 77, 51], [60, 92, 64], [52, 84, 70]], MARRON = [[84, 56, 34], [107, 77, 48], [70, 48, 32]];
 const GRIS = [[84, 87, 69], [120, 118, 104], [96, 98, 96]], AZUL = [[36, 59, 77], [52, 88, 112], [40, 96, 110]];

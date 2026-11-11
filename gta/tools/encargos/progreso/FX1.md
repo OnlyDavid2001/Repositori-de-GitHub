@@ -21,7 +21,8 @@ Rama `wt-n2-fx`. Encargo: `tools/encargos/n2/FX.md` (reparto FX1).
   - Ámbitos de azar: vano de piso `env.rnd(3, i, W*64 + D)` (12 números), coronación `env.rnd(4, i)` (1), edificio `(b, 6)`.
   - Ventanas abiertas con habitación (IY2, `roomQuad`) ~25 % de los huecos sin persiana; log `BCN_INTERIORS.log` igual.
   - Acabados nuevos en el shader de detalle (ids del núcleo 16–19): 16 ladrillo visto, 17 gresite, 18 revoco gastado con
-    desconchados (deja ver ladrillo), 19 hormigón con tablilla. El color base sigue siendo `d.col` (de PALETA): el patrón
+    desconchados pequeños (deja ver ladrillo), 19 hormigón con tablilla; y `FXPIEDRA` (id 100, registrado con regKind en
+    `fachadas_estilos.js`): sillería que solo modula la luminancia, para que la piedra NO cambie el tono de `d.col`. El color base sigue siendo `d.col` (de PALETA): el patrón
     solo modula alrededor de él y de lejos se promedia.
   - Depuración: `?fxv=familia:n` / `?fxv=familia` / `?fxv=off`; en consola `BCN.fx.force('raval:2')` rehace las celdas con
     ese estilo; `BCN.fx.spot(fam, k, up)` da una vista a pie frente al k-ésimo edificio de la familia; `setRange(q<1)` reduce
@@ -40,5 +41,28 @@ Rama `wt-n2-fx`. Encargo: `tools/encargos/n2/FX.md` (reparto FX1).
 `SIZE=640x360 FMT=jpg node tools/shot.js <prefijo> @hoja.json` con las vistas de arriba; `?fxv=off` (o `force('off')`) da el
 ANTES para comparar triángulos (`detailStats().fx.trisBase/trisHi`).
 
+## Medidas (mismas vistas a pie, 640×360, `detailStats().fx`; ANTES = `force('off')`)
+| vista | BASE antes → después | ORNAMENTO antes → después |
+|---|---|---|
+| Eixample (spot 0) | 634 422 → 633 016 (−0,2 %) | 576 150 → 361 386 (−37 %) |
+| Raval (spot 0) | 1 322 266 → 1 278 988 (−3 %) | 1 186 861 → 796 615 (−33 %) |
+| Sant Gervasi (spot 0) | 975 608 → 931 184 (−5 %) | 949 671 → 612 401 (−36 %) |
+Por debajo de lo de antes en las dos capas (la ORNAMENTO baja sobre todo porque las macetas y molduras van por variante).
+Consola: sin errores ni avisos en todas las ejecuciones (hojaA, hojaB, hojaC, pie, fix).
+
+## Capturas (scratchpad `n2/fx1/`)
+`ANTES_DESPUES.jpg` (Eixample, Raval, Sant Gervasi de día y Eixample a las 23:00), hojas por familia con todas sus variantes
+a las 10:30 (`hoja_eixample_gracia.jpg`, `hoja_cv_raval.jpg`, `hoja_bcn_ps.jpg`, `hoja_sg_revoco.jpg`), `hoja_pie.jpg`
+(una vista a pie por familia), `hoja_noche.jpg` (23:00) y `hoja_fix.jpg` (piedra corregida).
+Ojo: en `hoja_eixample_gracia.jpg` (eixample_3) y `hoja_cv_raval.jpg` (ciutat_vella_2) la piedra aún salía amarillenta: es de
+antes del arreglo FXPIEDRA; la buena es `hoja_fix.jpg`.
+
 ## Pendiente / flojo
-(se completa al cerrar la etapa; ver más abajo)
+- FX2: familias `sants`, `les_corts`, `sarria_pedralbes`, `poblenou`, `sant_andreu`, `horta_guinardo`, `nou_barris`,
+  `periferia` (hoy salen con la fachada de antes) y el repaso de variedad.
+- Barandilla de vidrio: es un paño opaco gris verdoso (no hay transparencia en el material de detalle): de lejos parece una
+  banda de obra. Ropa tendida: rectángulos planos (sin pinzas ni cuerda), aceptable a la distancia de paseo.
+- Variante por edificio al azar: dos vecinos pueden salir iguales (sin regla de «no repetir al lado»).
+- La terraza corrida de `eix_60`/`sg_terrasses` tapa mucho los huecos vistos desde la acera (huecos que parecen pequeños).
+- No se han revisado a fondo los tramos de patio (solo ventanas + tendederos) ni edificios en pendiente fuerte.
+- Las vistas `spot()` eligen el edificio por familia; algunas caen en zonas poco típicas (p. ej. Poble-sec junto a Montjuïc).
