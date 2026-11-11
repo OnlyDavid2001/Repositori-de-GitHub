@@ -40,13 +40,13 @@ add({ id: 'torre_collserola', nombre: 'Torre de Collserola', nivel: 'A', x: 7580
     const A0 = 30, Y0 = 84, PASO = 5.4;
     // edificio de la base (planta baja de acceso, hormigón) y fuste troncocónico hasta 205 m
     L.prisma(B, triRed(16, 5, A0 + 60), -4, 6.5, [176, 176, 172], K.LISO, { aux: L.aux.liso(2.5) });
-    L.tambor(B, 0, 0, -4, 205, 2.6, { r1: 1.8, lados: 14, col: HOR, k: K.LISO });
+    L.tambor(B, 0, 0, -4, 205, 2.6, { r1: 1.8, lados: 20, col: HOR, k: K.LISO });
     // 13 plataformas: forjado claro + banda de vidrio retranqueada; la planta crece hasta la 5.ª y luego mengua (como los datos)
     const RR = [12.5, 14, 15.5, 16.5, 17.3, 17.3, 16.8, 16.3, 15.6, 14.8, 13.8, 12.8, 11.6];
     for (let i = 0; i < 13; i++) {
-      const y = Y0 + i * PASO, R = RR[i] * 1.12, pl = triRed(R, R * 0.36, A0, 4);
+      const y = Y0 + i * PASO, R = RR[i] * 1.12, pl = triRed(R, R * 0.36, A0, 7);
       L.prisma(B, pl, y, y + 1.1, PLAT, K.METAL, { aux: L.aux.panel(2, 0.15, 0), suelo: true });
-      if (i < 12) L.prisma(B, triRed(R - 1.2, R * 0.33, A0, 4), y + 1.1, y + PASO, i === 9 ? [150, 170, 186] : VID, K.CORTINA, { aux: L.aux.cortina(4.3, 1.6, 0.2), sinTecho: true });
+      if (i < 12) L.prisma(B, triRed(R - 1.2, R * 0.33, A0, 7), y + 1.1, y + PASO, i === 9 ? [150, 170, 186] : VID, K.CORTINA, { aux: L.aux.cortina(4.3, 1.6, 0.2), sinTecho: true });
     }
     // remate de las plataformas: corona técnica y el tramo del fuste por encima
     const YT = Y0 + 12 * PASO + 1.1;
@@ -57,7 +57,7 @@ add({ id: 'torre_collserola', nombre: 'Torre de Collserola', nivel: 'A', x: 7580
       ra = 1.5 - 1.05 * i / N, rb = 1.5 - 1.05 * (i + 1) / N;
       prof.push([ra, a, c], [rb, b, c]); }
     prof.push([0, y1, ROJO]);
-    L.rev(B, L.F0, 0, 0, prof, 8, ROJO, K.METAL);
+    L.rev(B, L.F0, 0, 0, prof, 12, ROJO, K.METAL);
     L.tambor(B, 0, 0, 286, 288.3, 0.25, { lados: 6, col: ROJO, k: K.METAL });
     // balizas (de noche se ven como puntos rojos)
     for (const yb of [205, 246, 286]) L.esfera(B, 0, yb + 0.6, 0, 0.9, { gajos: 6, anillos: 4, col: [255, 40, 30], k: K.EMISIVO, aux: L.aux.emisivo(2.5, true) });
@@ -100,6 +100,14 @@ add({ id: 'sagrat_cor', nombre: 'Temple del Sagrat Cor', nivel: 'A', x: 7959.3, 
     const cx = -2, cz = 2;
     L.caja(B, cx, cz, 14.5, 22, 50, 15, 0, CLA, K.PIEDRA, { aux: aP2 });
     L.caja(B, cx, cz + 2, 14.5, 40, 16, 13.5, 0, CLA, K.PIEDRA, { aux: aP2 });
+    // ventanales apuntados de la iglesia alta (un hueco alto por crujía) y pináculos a lo largo de los muros
+    L.caja(B, cx, cz, 17, 22.3, 50.3, 10, 0, CLA, K.VENTANAS, { aux: L.aux.ventanas(10, 5.5, 0.32, 0.85), sinTecho: true });
+    L.caja(B, cx, cz + 2, 17, 40.3, 16.3, 9, 0, CLA, K.VENTANAS, { aux: L.aux.ventanas(9, 4.5, 0.32, 0.85), sinTecho: true });
+    for (const s of [-1, 1]) for (let i = 0; i < 9; i++) { const pz = cz - 22 + i * 5.5; if (Math.abs(pz - cz - 2) < 9) continue;
+      L.aguja(B, cx + s * 11.2, pz, 29.5, 5, 0.6, { lados: 4, pasos: 2, pot: 1, exp: 1, col: CLA2, k: K.PIEDRA }); }
+    for (const s of [-1, 1]) L.aguja(B, cx + s * 20.2, cz + 2, 28, 6, 0.8, { lados: 4, pasos: 2, pot: 1, exp: 1, col: CLA2, k: K.PIEDRA });
+    // rosetón de la fachada
+    L.tube(B, L.F0, [[cx, 23.5, cz + 25], [cx, 23.5, cz + 25.35]], 3.2, 16, [86, 80, 88], K.LISO, { caps: true });
     L.cubierta(B, cx, cz, 29.5, 22, 50, 7, { tipo: 'dos', col: TEJ, colHastial: CLA2, kHastial: K.PIEDRA });
     L.cubierta(B, cx, cz + 2, 28, 40, 16, 6, { tipo: 'dos', ang: 90, col: TEJ, colHastial: CLA2, kHastial: K.PIEDRA });
     // cuatro torres-pináculo en los ángulos de la cruz y dos en la fachada
@@ -116,9 +124,11 @@ add({ id: 'sagrat_cor', nombre: 'Temple del Sagrat Cor', nivel: 'A', x: 7959.3, 
     L.tambor(B, cx, cz + 3, 57.5, 62.5, 1.9, { r1: 1.4, lados: 8, col: CLA, k: K.PIEDRA });
     // la estatua dorada (≈ 7,5 m): túnica, cabeza y brazos abiertos (a lo largo de X, mirando a +Z)
     const sx = cx, sz = cz + 3, SY = 62.5;
-    L.tambor(B, sx, sz, SY, SY + 5.4, 1.15, { r1: 0.62, lados: 10, col: ORO, k: K.METAL });
-    L.esfera(B, sx, SY + 6.3, sz, 0.55, { gajos: 8, anillos: 5, col: ORO, k: K.METAL });
-    for (const s of [-1, 1]) L.bar(B, [sx + s * 0.4, SY + 5.0, sz], [sx + s * 3.5, SY + 3.9, sz + 0.5], 0.36, ORO, K.METAL);
+    // (algo exagerada, ×1,2, para que se lea de lejos)
+    L.tambor(B, sx, sz, SY, SY + 6.4, 1.4, { r1: 0.75, lados: 12, col: ORO, k: K.METAL });
+    L.esfera(B, sx, SY + 7.5, sz, 0.66, { gajos: 10, anillos: 6, col: ORO, k: K.METAL });
+    for (const s of [-1, 1]) { L.bar(B, [sx + s * 0.5, SY + 6.0, sz], [sx + s * 4.2, SY + 4.7, sz + 0.6], 0.42, ORO, K.METAL);
+      L.esfera(B, sx + s * 4.3, SY + 4.6, sz + 0.6, 0.45, { gajos: 6, anillos: 4, col: ORO, k: K.METAL }); }
   } });
 
 // Hotel Porta Fira (Toyo Ito, 113 m). Silueta: torre de planta casi redonda que se ensancha hacia arriba y se tuerce,
@@ -350,7 +360,7 @@ add({ id: 'tnc', nombre: 'Teatre Nacional de Catalunya', nivel: 'B', x: 13530.2,
   } });
 
 // Mistos (Oldenburg): cerillas gigantes: una de pie, inclinada, con la llama; otras tiradas por el suelo, de colores.
-add({ id: 'mistos', nombre: 'Mistos', nivel: 'B', x: 10183.1, z: 18492.5, rot: 0, alto: 21, ancho: 12, largo: 24,
+add({ id: 'mistos', nombre: 'Mistos', nivel: 'B', x: 10168, z: 18482, rot: 0, alto: 21, ancho: 12, largo: 24,
   noche: 'nada', edificios: [],
   build(B, h, L) {
     const AM = [232, 196, 72], RO = [210, 72, 56], AZ = [43, 95, 168];
@@ -376,12 +386,12 @@ add({ id: 'pont_bac_de_roda', nombre: 'Pont de Bac de Roda', nivel: 'B', x: 1410
     L.caja(B, 0, 0, -2.6, 12, 126, 1.0, 0, BL, K.LISO);
     for (const s of [-1, 1]) {
       L.caja(B, s * 12.6, 0, 0, 0.6, 130, 1.1, 0, BL, K.METAL);                      // barandillas
-      const vert = arcoPts(s * 6.5, -24, 24, 0, 17, 0, 18), incl = arcoPts(s * 7.5, -24, 24, 0, 16, s * 24, 18);
-      L.tube(B, L.F0, vert, 0.7, 6, BL, K.LISO);
-      L.tube(B, L.F0, incl, 0.6, 6, BL, K.LISO);
+      const vert = arcoPts(s * 6.5, -26, 26, 0, 20, 0, 18), incl = arcoPts(s * 7.5, -26, 26, 0, 19, s * 24, 18);
+      L.tube(B, L.F0, vert, 0.9, 8, BL, K.LISO);
+      L.tube(B, L.F0, incl, 0.8, 8, BL, K.LISO);
       for (let i = 2; i < 17; i += 2) { L.bar(B, vert[i], [s * 6.5, 0, vert[i][2]], 0.07, [210, 210, 210], K.METAL);
         L.bar(B, incl[i], [s * 12.2, 0, incl[i][2]], 0.07, [210, 210, 210], K.METAL); }
-      for (const z of [-24, 24]) L.caja(B, s * 7, z, -6, 4, 4, 6.4, 0, BL, K.LISO);        // estribos
+      for (const z of [-26, 26]) L.caja(B, s * 7, z, -6, 4, 4, 6.4, 0, BL, K.LISO);        // estribos
     }
   } });
 
