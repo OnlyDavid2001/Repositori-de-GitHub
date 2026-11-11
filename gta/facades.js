@@ -204,8 +204,11 @@ void main(){
     } else if (kind < 18.5) {
       alb *= mix(0.74, 1.16, smoothstep(0.15, 0.75, lum))*mix(1.0, 0.74, grime);
       float s = vnoise(vec2(P.x*1.3, P.y*0.07))*0.75 + vnoise(vec2(P.x*3.1, P.y*0.15))*0.25; alb *= mix(1.02, 0.82, smoothstep(0.5, 0.9, s));
-      float sp = vnoise(P*vec2(0.8, 1.2))*0.7 + vnoise(P*3.7)*0.3, mk = smoothstep(0.69, 0.72, sp);
-      alb = mix(alb, vec3(0.50, 0.30, 0.21)*mix(0.8, 1.15, hash21(floor(q))), mk*0.85);
+      // desconchados pequeños y sueltos, más en la parte baja de cada paño; borde claro de mortero
+      float sp = vnoise(P*vec2(1.7, 2.3))*0.55 + vnoise(P*5.3)*0.45, lo = 0.8 + 0.04*sin(P.y*0.35);
+      float mk = smoothstep(lo, lo + 0.015, sp), rim = smoothstep(lo - 0.035, lo - 0.01, sp)*(1.0 - mk);
+      alb = mix(alb, alb*vec3(1.04, 1.02, 0.97) + 0.04, rim*0.6);
+      alb = mix(alb, mix(alb, vec3(0.52, 0.33, 0.24)*mix(0.82, 1.12, hash21(floor(q))), 0.75), mk);
       vec3 tn = texture2D(tPlN, P*0.21).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.9*nearF);
     } else {
       float b = vnoise(vec2(P.x*0.35, floor(P.y/0.12)*3.1));
@@ -703,9 +706,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (r.kind !== 'street' || r.L < 13) continue;
         const mx = r.ax + r.tx * r.L / 2, mz = r.az + r.tz * r.L / 2; let w = 0;
         for (let t = 1.5; t <= 16; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
-        if (w < 5) continue;
+        if (w < 6) continue;
+        const dc = Math.min(w - 1, Math.max(3.5, w * 0.8)), o = Math.min(r.L * 0.3, 7), x = mx + r.nx * dc - r.tx * o, z = mz + r.nz * dc - r.tz * o;
+        if (coverAt(x, z, -1) > -1e8 || roadDist(x, z) > 7) continue;
         if (n++ < k) break;
-        const dc = Math.min(w - 1, Math.max(3.5, w * 0.8)), x = mx + r.nx * dc - r.tx * r.L * 0.3, z = mz + r.nz * dc - r.tz * r.L * 0.3;
         const ty = lay.gHi + Math.min(lay.H * 0.5, 10) * (up === undefined ? 1 : up), dx = mx - x, dz = mz - z, hd = Math.hypot(dx, dz);
         return { x, z, walk: true, yaw: Math.atan2(dx, dz), pitch: -Math.atan2(ty - heightAt(x, z) - 1.75, hd), b, V: varOf(b) && varOf(b).id };
       }
