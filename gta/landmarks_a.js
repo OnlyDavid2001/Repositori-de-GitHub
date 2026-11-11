@@ -451,4 +451,244 @@ add({ id: 'sant_pau', nombre: 'Recinte Modernista de Sant Pau', nivel: 'A', x: 1
     L.aguja(B, tx, tz, y1 + 14.5, 11, 3.9, { lados: 8, pasos: 5, pot: 1, exp: 0.8, col: TEJ[0], cols: [[0, '#d6a640'], [0.5, '#4f9a72'], [1, '#3f7f9a']], k: K.TEJA, remate: { r: 0.5, col: [214, 176, 80] } });
   } });
 
+// ================================================================== NIVEL B: arquetipos y plantas reales
+// Utilidades: planta real (primer anillo del mayor volumen sustituido) con plan B rectangular; rectángulo mínimo; rumbo libre
+function plantaMayor(h, ancho, largo) {
+  let best = null, ar = 0;
+  for (const e of h.edif || []) { const pl = e.plantas && e.plantas[0]; if (!pl || pl.length < 3) continue;
+    let a = 0; for (let i = 0; i < pl.length; i++) { const p = pl[i], q = pl[(i + 1) % pl.length]; a += p[0] * q[1] - q[0] * p[1]; }
+    if (Math.abs(a) > ar) { ar = Math.abs(a); best = pl; } }
+  return best || L.rect(ancho, largo);
+}
+function cajaMin(pl) {
+  let best = null;
+  for (let a = 0; a < 90; a += 3) { const r = a * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+    for (const p of pl) { const u = p[0] * c - p[1] * s, v = p[0] * s + p[1] * c; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+    const ar = (u1 - u0) * (v1 - v0);
+    if (!best || ar < best.ar) { const um = (u0 + u1) / 2, vm = (v0 + v1) / 2; best = { ar, cx: um * c + vm * s, cz: -um * s + vm * c, w: u1 - u0, l: v1 - v0, ang: a }; } }
+  return best;
+}
+// esquinas de una caja mínima (o), hundidas `d` m hacia dentro
+function esquinas(o, d) {
+  const a = o.ang * Math.PI / 180, ux = [Math.cos(a), -Math.sin(a)], uz = [Math.sin(a), Math.cos(a)], out = [];
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const u = sx * (o.w / 2 - d), v = sz * (o.l / 2 - d); out.push([o.cx + ux[0] * u + uz[0] * v, o.cz + ux[1] * u + uz[1] * v]); }
+  return out;
+}
+// almenas o merlones a lo largo de un polígono: cajitas cada `paso` m entre y0 e y0 + alto
+function almenas(B, pl, y0, alto, paso, col, k, punta) {
+  for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.floor(len / paso);
+    const ang = Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI;
+    for (let j = 0; j < n; j++) { const t = (j + 0.5) / n, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+      if (punta) L.piramide(B, x, z, y0, paso * 0.5, paso * 0.5, alto, { ang, col, k });
+      else L.caja(B, x, z, y0, 0.6, paso * 0.5, alto, ang, col, k); } }
+}
+
+// Palau de la Música Catalana: ladrillo rojo, logia de columnas de mosaico en la fachada de Sant Pere més Alt (+X) y el
+// grupo escultórico de la esquina con su cupulín.
+add({ id: 'palau_musica', nombre: 'Palau de la Música Catalana', nivel: 'B', x: 12647.4, z: 14115.6, rot: 137, alto: 25, ancho: 28, largo: 59,
+  noche: 'focos', edificios: ED.palau_musica,
+  build(B, h, L) {
+    const LAD = [180, 84, 58], PIE = [226, 212, 182], pl = plantaMayor(h, 28, 59);
+    L.prisma(B, pl, -1.5, 17, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [120, 100, 90] });
+    let x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of pl) { x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+    // logia: columnas de mosaico floral (verde, ocre, rojo) entre las plantas 2 y 4
+    for (let z = z0 + 4; z < z1 - 3; z += 3.4) {
+      L.tambor(B, x1 + 0.6, z, 8, 15.2, 0.55, { lados: 6, col: [92, 150, 98], k: K.TRENCADIS });
+      L.caja(B, x1 + 0.6, z, 15.2, 1.5, 1.5, 0.5, 0, PIE, K.PIEDRA); }
+    L.caja(B, x1 + 0.6, (z0 + z1) / 2, 15.7, 1.6, z1 - z0 - 5, 1.3, 0, PIE, K.PIEDRA);
+    L.caja(B, x1 + 0.1, (z0 + z1) / 2, 7, 1, z1 - z0 - 5, 1, 0, PIE, K.PIEDRA);
+    // esquina: grupo escultórico (bloque de piedra) y cupulín de mosaico
+    L.caja(B, x1 - 1, z0 + 1.5, 7, 4, 4, 9, 0, PIE, K.PIEDRA);
+    L.tambor(B, x1 - 3, z0 + 3, 17, 20, 2.6, { lados: 10, col: LAD, k: K.LADRILLO });
+    L.cupula(B, x1 - 3, z0 + 3, 20, 2.8, 3, { lados: 10, anillos: 4, col: [214, 170, 80], k: K.TRENCADIS, linterna: { r: 0.6, alto: 2.4, col: PIE } });
+  } });
+
+// Casa Vicens: casa de aire mudéjar, ladrillo abajo y arriba franjas de azulejo verde y blanco a cuadros; torrecillas.
+add({ id: 'casa_vicens', nombre: 'Casa Vicens', nivel: 'B', x: 10603, z: 15898.1, rot: 60, alto: 20, ancho: 19, largo: 22,
+  noche: 'focos', edificios: ED.casa_vicens,
+  build(B, h, L) {
+    const pl = plantaMayor(h, 19, 22), VERD = [47, 122, 74], BLANC = [238, 234, 222];
+    L.prisma(B, pl, -1.5, 7, [188, 110, 76], K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), sinTecho: true });
+    // damero de azulejos de 7 a 14 m: dos filas por planta, piezas de ~1,2 m alternas
+    for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.2));
+      for (let j = 0; j < n; j++) for (let r = 0; r < 5; r++) { const t0 = j / n, t1 = (j + 1) / n, y0 = 7 + r * 1.4;
+        const A = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0], C2 = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
+        L.q4(B, [A[0], y0, A[1]], [C2[0], y0, C2[1]], [C2[0], y0 + 1.4, C2[1]], [A[0], y0 + 1.4, A[1]], (j + r) % 2 ? VERD : (r === 2 ? [226, 186, 64] : BLANC), K.LISO); } }
+    L.poly(B, pl.map(p => [p[0], 14, p[1]]), [150, 110, 90], K.TEJA);
+    const o = cajaMin(pl);
+    for (const [x, z] of esquinas(o, 1.2)) {
+      L.tambor(B, x, z, 12, 16.5, 1.1, { lados: 8, col: BLANC, k: K.LISO });
+      L.aguja(B, x, z, 16.5, 3.4, 1.3, { lados: 8, pasos: 4, pot: 1, exp: 1, col: VERD, k: K.TEJA });
+    }
+  } });
+
+// Palau Güell: piedra gris entre medianeras; fachada (−X, a Nou de la Rambla) con dos arcos parabólicos; azotea con
+// chimeneas de trencadís de colores y la aguja cónica central.
+add({ id: 'palau_guell', nombre: 'Palau Güell', nivel: 'B', x: 12550.1, z: 13139.3, rot: 38, alto: 32, ancho: 24, largo: 27,
+  noche: 'focos', edificios: ED.palau_guell,
+  build(B, h, L) {
+    const pl = plantaMayor(h, 24, 27), GRIS = [142, 136, 122], H = 21;
+    L.prisma(B, pl, -1.5, H, GRIS, K.VENTANAS, { aux: L.aux.ventanas(4.2, 3, 0.3, 0.5), techo: [128, 122, 112] });
+    let x0 = 1e9, z0 = 1e9, z1 = -1e9; for (const p of pl) { x0 = Math.min(x0, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+    const zc = (z0 + z1) / 2;
+    for (const s of [-1, 1]) { const pts = [];                       // arcos parabólicos (vanos oscuros)
+      for (let i = 0; i <= 10; i++) { const t = -1 + 2 * i / 10; pts.push([x0 - 0.08, 6.2 * (1 - t * t), zc + s * 4.5 + t * 2.1]); }
+      L.poly(B, pts, [36, 34, 32], K.LISO); }
+    const v0 = B.nv; huso(B, 0, 0, [[2.3, 0], [2.0, 6], [1.0, 11], [0, 14]], 10, [200, 186, 150], K.TRENCADIS);
+    L.xf(B, v0, (x0 + 0) / 2 + 4, zc, 0, 1, 1, H);
+    const CH = [[214, 72, 52], [232, 190, 70], [70, 120, 190], [86, 156, 96], [230, 226, 214]];
+    const o = cajaMin(pl);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 2 * Math.PI, r = 0.32 * Math.min(o.w, o.l) * (i % 2 ? 1 : 0.75);
+      const x = o.cx + Math.cos(a) * r, z = o.cz + Math.sin(a) * r, hh = 2.6 + (i % 3) * 0.5;
+      huso(B, x, z, [[0.45, H], [0.55, H + hh * 0.6], [0.75, H + hh * 0.8], [0, H + hh]], 6, CH[i % CH.length], K.TRENCADIS); }
+  } });
+
+// Torre Bellesguard: cubo neogótico de pizarra gris, merlones puntiagudos y la torre-aguja con cruz de cuatro brazos en la
+// esquina que mira a la ciudad (la más baja).
+add({ id: 'bellesguard', nombre: 'Torre Bellesguard', nivel: 'B', x: 8623.3, z: 16590.7, rot: 146, alto: 32, ancho: 17, largo: 18,
+  noche: 'focos', edificios: ED.bellesguard,
+  build(B, h, L) {
+    const pl = plantaMayor(h, 17, 18), GRIS = [124, 120, 108], H = 15;
+    L.prisma(B, pl, -2, H, GRIS, K.VENTANAS, { aux: L.aux.ventanas(4, 3.2, 0.25, 0.55), techo: [110, 106, 98] });
+    almenas(B, pl, H, 1.4, 1.8, GRIS, K.PIEDRA, true);
+    const o = cajaMin(pl); let best = null, by = 1e9;
+    for (const c of esquinas(o, 2)) { const y = h.y(c[0], c[1]); if (isFinite(y) && y < by) { by = y; best = c; } }
+    const [tx, tz] = best || esquinas(o, 2)[0];
+    L.caja(B, tx, tz, H - 2, 3.4, 3.4, 8, o.ang, GRIS, K.PIEDRA);
+    L.aguja(B, tx, tz, H + 6, 9, 1.9, { lados: 8, pasos: 5, pot: 1, exp: 1, cols: [[0, '#c8a24a'], [0.5, '#c0503c'], [1, '#d4b050']], k: K.TRENCADIS });
+    L.caja(B, tx, tz, H + 15, 0.3, 0.3, 2, 0, [230, 220, 200], K.LISO);
+    L.caja(B, tx, tz, H + 16.2, 1.4, 0.3, 0.3, 0, [230, 220, 200], K.LISO);
+    L.caja(B, tx, tz, H + 16.2, 0.3, 1.4, 0.3, 0, [230, 220, 200], K.LISO);
+  } });
+
+// Casa de les Punxes (Terrades): manzana triangular de ladrillo rojo; las partes pequeñas y altas de los datos son sus torres
+// redondas, que aquí acaban en agujas cónicas de teja oscura.
+add({ id: 'casa_punxes', nombre: 'Casa de les Punxes', nivel: 'B', x: 11696.8, z: 15279.1, rot: 86, alto: 42, ancho: 39, largo: 84,
+  noche: 'focos', edificios: ED.casa_punxes,
+  build(B, h, L) {
+    const LAD = [178, 88, 64], aL = L.aux.ladrillo(0.3, 0.6), tor = [];
+    for (const e of h.edif || []) { const pl = e.plantas && e.plantas[0]; if (!pl || pl.length < 3 || !(e.alto - e.y0 > 2)) continue;
+      let a = 0, cx = 0, cz = 0; for (let i = 0; i < pl.length; i++) { const p = pl[i], q = pl[(i + 1) % pl.length]; a += p[0] * q[1] - q[0] * p[1]; cx += p[0]; cz += p[1]; }
+      a = Math.abs(a) / 2; cx /= pl.length; cz /= pl.length;
+      if (a < 45 && e.alto > 22) { const t = tor.find(q => Math.hypot(q.x - cx, q.z - cz) < 3);
+        if (t) { t.top = Math.max(t.top, e.alto); t.r = Math.max(t.r, Math.sqrt(a / Math.PI)); } else tor.push({ x: cx, z: cz, top: e.alto, y0: e.y0, r: Math.sqrt(a / Math.PI) }); continue; }
+      L.prisma(B, pl, e.y0 - 0.5, e.alto, LAD, K.VENTANAS, { aux: L.aux.ventanas(3.4, 2.6, 0.35, 0.5), techo: [120, 70, 56] });
+    }
+    if (!tor.length) for (const [x, z] of [[-12, -30], [12, -30], [14, 0], [-14, 0], [-8, 30], [8, 30]]) tor.push({ x, z, top: 30, y0: -1, r: 2.8 });
+    for (const t of tor) { const r = Math.max(2.2, Math.min(3.6, t.r)), ht = Math.max(28, t.top - 6);
+      L.tambor(B, t.x, t.z, t.y0 - 0.5, ht, r, { lados: 10, col: LAD, k: K.LADRILLO, aux: aL });
+      L.aguja(B, t.x, t.z, ht, Math.max(7, r * 3.2), r * 1.15, { lados: 10, pasos: 4, pot: 1, exp: 1, col: [98, 70, 62], k: K.TEJA, remate: { r: 0.25, alto: 1.6, forma: 'cono', col: [70, 70, 70] } });
+    }
+  } });
+
+// Pavellons Güell: portería y caballerizas de ladrillo ocre con cupulines de trencadís y la verja negra del dragón.
+add({ id: 'pavellons_guell', nombre: 'Pavellons Güell', nivel: 'B', x: 7950.5, z: 14348, rot: 63, alto: 14, ancho: 13, largo: 32,
+  noche: 'focos', edificios: ED.pavellons_guell,
+  build(B, h, L) {
+    const pl = plantaMayor(h, 13, 32), o = cajaMin(pl), OCRE = [196, 150, 104];
+    L.prisma(B, pl, -1.5, 7.5, OCRE, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [160, 120, 90] });
+    const a = o.ang * Math.PI / 180, dz = [Math.sin(a), Math.cos(a)];
+    for (const s of [-1, 1]) { const x = o.cx + dz[0] * s * (o.l / 2 - 3.5), z = o.cz + dz[1] * s * (o.l / 2 - 3.5);
+      L.tambor(B, x, z, 7.5, 9.5, 2.3, { lados: 10, col: OCRE, k: K.LADRILLO });
+      L.cupula(B, x, z, 9.5, 2.5, 2.8, { lados: 10, anillos: 4, col: [214, 190, 120], k: K.TRENCADIS, linterna: { r: 0.6, alto: 1.8, col: [200, 160, 70] } }); }
+    const gx = o.cx + dz[0] * (o.l / 2 + 3.5), gz = o.cz + dz[1] * (o.l / 2 + 3.5);
+    L.caja(B, gx, gz, -1, 0.3, 5.5, 5.6, o.ang + 90, [30, 30, 30], K.METAL);           // verja del dragón
+    L.caja(B, gx, gz, -1, 1.1, 1.1, 6.6, o.ang, OCRE, K.LADRILLO);
+  } });
+
+// Plaça de toros Monumental: anillo neomudéjar de ladrillo con arcadas, torres en las entradas con cúpulas en forma de
+// huevo de cerámica blanca y azul; ruedo de arena y graderío.
+add({ id: 'monumental', nombre: 'Plaça de toros Monumental', nivel: 'B', x: 13156.7, z: 15496.1, rot: 167, alto: 37, ancho: 100, largo: 100,
+  noche: 'focos', edificios: ED.monumental,
+  build(B, h, L) {
+    const LAD = [182, 92, 62], R = 49.5, H = 21;
+    L.rev(B, L.F0, 0, 0, [[R, -1.5], [R, H]], 48, C(LAD), K.VENTANAS, { aux: L.aux.ventanas(5.2, 4.6, 0.5, 0.62) });   // sin tapa
+    for (let i = 0; i < 48; i++) { const a0 = i / 48 * 2 * Math.PI, a1 = (i + 1) / 48 * 2 * Math.PI;      // muro interior sobre el graderío
+      L.q4(B, [Math.sin(a0) * 40, 12.5, Math.cos(a0) * 40], [Math.sin(a1) * 40, 12.5, Math.cos(a1) * 40], [Math.sin(a1) * 40, H, Math.cos(a1) * 40], [Math.sin(a0) * 40, H, Math.cos(a0) * 40], LAD, K.VENTANAS, L.aux.ventanas(4, 4.6, 0.5, 0.5)); }
+    L.anillo(B, 0, 0, 40, R + 0.3, H, { col: [160, 96, 72], k: K.TEJA, lados: 48 });
+    L.grada(B, 0, 0, 27, 27, 1.6, 40, 40, 13, { lados: 48, col: [176, 150, 120], k: K.GRADA, aux: L.aux.grada(0.85, 12) });
+    L.disco(B, 0, 0, 27.2, 0.3, { col: [214, 182, 130], k: K.LISO, lados: 40 });
+    // torres de las entradas (dos en Gran Via) con huevos de cerámica a franjas blancas y azules
+    const BL = [238, 238, 236], AZ = [64, 104, 176];
+    for (const hd of [-43, -19, 59, -121]) { const a = hd * Math.PI / 180, x = Math.sin(a) * (R + 1), z = Math.cos(a) * (R + 1);
+      L.caja(B, x, z, -1.5, 8, 8, 27.5, hd, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6) });
+      const pr = []; [[3.6, 27], [4.3, 28.6], [4.6, 30.4], [4.4, 32.2], [3.7, 34], [2.6, 35.4], [1.2, 36.4], [0, 36.9]].forEach((p, i) => pr.push([p[0], p[1], i % 2 ? AZ : BL]));
+      huso(B, x, z, pr, 12, BL, K.LISO);
+    }
+  } });
+
+// Universitat de Barcelona (edifici històric): volúmenes reales en piedra ocre con ventanas; las dos torres de la fachada
+// de Gran Via (+X) con remate piramidal y el cuerpo central del paraninfo con cubierta a dos aguas.
+add({ id: 'universitat', nombre: 'Universitat de Barcelona', nivel: 'B', x: 11685, z: 14026.8, rot: 46, alto: 38, ancho: 59, largo: 132,
+  noche: 'focos', edificios: ED.universitat,
+  build(B, h, L) {
+    const PIE = [204, 180, 136], aV = L.aux.ventanas(5, 3.6, 0.32, 0.55);
+    let n = 0;
+    for (const e of h.edif || []) { const pl = e.plantas && e.plantas[0]; if (!pl || pl.length < 3 || !(e.alto - e.y0 > 2)) continue;
+      L.prisma(B, pl, e.y0 - 0.5, e.alto, PIE, K.VENTANAS, { aux: aV, techo: [150, 120, 96] }); n++;
+      const o = cajaMin(pl);
+      if (o && e.alto > 27 && o.w * o.l < 160) L.piramide(B, o.cx, o.cz, e.alto, o.w + 0.6, o.l + 0.6, 6.5, { ang: o.ang, col: [120, 96, 80], k: K.TEJA });
+      else if (o && e.alto > 24 && o.w * o.l > 400) L.cubierta(B, o.cx, o.cz, e.alto, o.w, o.l, 4, { tipo: 'dos', ang: o.ang, col: [150, 100, 80], k: K.TEJA, colHastial: PIE });
+    }
+    if (!n) { L.caja(B, 0, 0, -1, 59, 132, 22, 0, PIE, K.VENTANAS, { aux: aV });
+      for (const s of [-1, 1]) { L.caja(B, 24.5, s * 61, -1, 10, 10, 31, 0, PIE, K.VENTANAS, { aux: aV }); L.piramide(B, 24.5, s * 61, 30, 10.6, 10.6, 6.5, { col: [120, 96, 80], k: K.TEJA }); } }
+  } });
+
+// Mercat de Sant Antoni: naves de hierro en aspa por las diagonales de la manzana y en cruz por los ejes, cubiertas grises de
+// cinc a dos aguas y el octógono central con su linterna (formas de los datos).
+add({ id: 'mercat_sant_antoni', nombre: 'Mercat de Sant Antoni', nivel: 'B', x: 11531.5, z: 13128.1, rot: 46, alto: 24, ancho: 108, largo: 108,
+  noche: 'nada', edificios: ED.mercat_sant_antoni,
+  build(B, h, L) {
+    const MUR = [122, 138, 122], CINC = [150, 158, 160], aP = L.aux.panel(1.6, 0.3, 0.25);
+    for (const [len, ang] of [[133, 45], [133, -45], [48, 0], [48, 90]]) {
+      L.caja(B, 0, 0, -1.5, 19, len, 12, ang, MUR, K.METAL, { aux: aP, sinTecho: true });
+      L.cubierta(B, 0, 0, 10.5, 20.4, len + 1, 5, { tipo: 'dos', ang, col: CINC, k: K.METAL, colHastial: [200, 196, 180] });
+      L.cubierta(B, 0, 0, 15.3, 4, len - 4, 1.2, { tipo: 'dos', ang, col: [120, 126, 128], k: K.METAL });      // linternón
+    }
+    L.prisma(B, L.poligono(12.5, 8, 22.5), -1.5, 16, MUR, K.METAL, { aux: aP });
+    L.piramide(B, 0, 0, 16, 26, 26, 4.5, { col: CINC, k: K.METAL, ang: 22.5 });
+    L.prisma(B, L.poligono(3, 8, 22.5), 19, 22, [200, 196, 180], K.METAL);
+    L.piramide(B, 0, 0, 22, 7, 7, 2, { col: CINC, k: K.METAL, ang: 22.5 });
+  } });
+
+// Castell dels Tres Dragons: castillo de ladrillo rojo en la Ciutadella, almenas, torretas en las esquinas y escudos
+// cerámicos blancos en el friso (lisos, sin dibujo).
+add({ id: 'castell_tres_dragons', nombre: 'Castell dels Tres Dragons', nivel: 'B', x: 13318.8, z: 14168, rot: 137, alto: 25, ancho: 47, largo: 53,
+  noche: 'focos', edificios: ED.castell_tres_dragons,
+  build(B, h, L) {
+    const pl = plantaMayor(h, 47, 53), LAD = [178, 84, 58], H = 16;
+    L.prisma(B, pl, -1.5, H, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [140, 96, 80] });
+    almenas(B, pl, H, 1.3, 3.2, LAD, K.LADRILLO, false);
+    for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.floor(len / 6.5);
+      const ang = Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI, nx = (b[1] - a[1]) / len, nz = -(b[0] - a[0]) / len;
+      for (let j = 0; j < n; j++) { const t = (j + 0.5) / n; L.caja(B, a[0] + (b[0] - a[0]) * t + nx * 0.1, a[1] + (b[1] - a[1]) * t + nz * 0.1, H - 2.6, 0.3, 1.1, 1.4, ang, [236, 234, 226], K.LISO); } }
+    const o = cajaMin(pl);
+    for (const [x, z] of esquinas(o, 2.6)) {
+      L.caja(B, x, z, -1.5, 5.6, 5.6, H + 6.5, o.ang, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6) });
+      almenas(B, L.mover(L.rect(5.6, 5.6), x, z, o.ang), H + 5, 1.2, 1.4, LAD, K.LADRILLO, false); }
+  } });
+
+// ================================================================== NIVEL C: retoques del volumen existente
+add({ id: 'casa_lleo_morera', nombre: 'Casa Lleó i Morera', nivel: 'C', x: 11821.7, z: 14518.1, rot: 47, alto: 30, edificios: [115079], ocultar: false,
+  noche: 'focos', retoque: { color: '#e3d9c6', estilo: 0, alto: 24 } });
+add({ id: 'casa_calvet', nombre: 'Casa Calvet', nivel: 'C', x: 12477.1, z: 14467.9, rot: 135, alto: 25, edificios: ED.casa_calvet, ocultar: false,
+  noche: 'nada', retoque: { color: '#d8ccb4', estilo: 0, alto: 21 },
+  build(B, h, L) {                                                  // los dos remates curvos sobre la fachada de Casp (+Z)
+    let z1 = -1e9; for (const pl of h.plantas || []) for (const p of pl || []) if (p && isFinite(p[1])) z1 = Math.max(z1, p[1]);
+    if (!(z1 > 0)) z1 = 26;
+    for (const s of [-1, 1]) { const pts = [];
+      for (let i = 0; i <= 8; i++) { const t = Math.PI * i / 8; pts.push([s * 3.6 + Math.cos(t) * 2.6, 21 + Math.sin(t) * 3, z1 - 0.3]); }
+      L.poly(B, pts, [214, 202, 178], K.PIEDRA); }
+  } });
+// Fundació Antoni Tàpies: ladrillo rojo y, en la azotea, la nube de tubos metálicos «Núvol i cadira»
+add({ id: 'fundacio_tapies', nombre: 'Fundació Antoni Tàpies', nivel: 'C', x: 11675.5, z: 14576.8, rot: 137, alto: 34, edificios: ED.fundacio_tapies, ocultar: false,
+  noche: 'nada', retoque: { color: '#b5543a', estilo: 1 },
+  build(B, h, L) {
+    const e = (h.edif || [])[0], y = e && isFinite(e.alto) ? e.alto : 25.3, R = h.R;
+    for (let i = 0; i < 26; i++) { const pts = []; let x = R(-4, 4), yy = y + R(1, 8), z = R(-6, 6);
+      for (let k = 0; k < 4; k++) { pts.push([x, yy, z]); x += R(-3, 3); yy = Math.max(y + 0.5, Math.min(y + 9.5, yy + R(-2.5, 2.5))); z += R(-3, 3); }
+      L.tube(B, L.F0, pts, 0.12, 4, [150, 152, 156], K.METAL); }
+  } });
+
 })();
