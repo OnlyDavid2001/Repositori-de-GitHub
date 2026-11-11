@@ -97,7 +97,17 @@ cam.inputs.clear(); cam.fov = 0.86; cam.minZ = 2; cam.maxZ = 170000;
 const PRELUDE = `#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec3 uCam; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform vec3 uSkyCol; uniform vec3 uGndCol;
-uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk;
+uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk; uniform float uNight; uniform float uLate;
+// NOCHE: qué se enciende y cuándo (lo fija setHour; vale para todos los shaders).
+//   uDusk  0 de día → 1 cuando hay que encender luces: del anochecer al amanecer, TODA la noche (farolas, semáforos, portales).
+//   uNight 0 → 1 noche cerrada (cielo negro, estrellas, luna).
+//   uLate  0 por la tarde-noche → 1 de madrugada (≈ 0:00–6:00): la ciudad duerme.
+//   shopOn()   comercios y rótulos: encendidos al anochecer, apagados de madrugada (queda una luz de vigilancia).
+//   homeOn(h)  ¿está encendida esta ventana de piso? h = azar estable por ventana. Muchas al anochecer, casi ninguna de madrugada.
+// No se encienden nunca: árboles y parques, cubiertas, el mar y la montaña (solo reciben la luna).
+float shopOn(){ return uDusk*(1.0 - 0.94*uLate); }
+float homeFrac(){ return mix(0.05 + 0.33*uDusk, 0.06, uLate); }
+float homeOn(float h){ return uDusk*step(h, homeFrac()); }
 uniform vec3 uSunL; uniform vec3 uSkyL; uniform vec3 uGndL; uniform vec2 uTone;
 uniform sampler2D uShadow0; uniform sampler2D uShadow1;
 uniform vec3 uShX; uniform vec3 uShY; uniform vec3 uShZ; uniform vec4 uShC0; uniform vec4 uShC1; uniform vec4 uShP;
@@ -222,7 +232,7 @@ void main(){
   // edificio con fachada de detalle ya construida: la pared simple cede el sitio con un fundido tramado
   if (vInfo.w > 0.5 && abs(n.y) < 0.5 && dith() >= smoothstep(uFx.x, uFx.y, dist)) discard;
   float a255 = floor(vCol.a*255.0 + 0.5); float style = floor(a255/16.0); float seed = (a255 - style*16.0)/15.0;
-  vec3 base = vCol.rgb;
+  vec3 base = vCol.rgb; vec3 glow = vec3(0.0);
   float h = vInfo.x*0.1, Ht = vInfo.y*0.1;
   float fade = 1.0 - smoothstep(260.0, 1100.0, dist);
   if (abs(n.y) < 0.5) {
@@ -233,6 +243,7 @@ void main(){
       float fy = fract(h/3.6), fx = fract(u/1.9);
       float mull = max(1.0 - smoothstep(0.05,0.09,fy), 1.0 - smoothstep(0.04,0.08,fx));
       float cell = hash21(vec2(floor(u/1.9), floor(h/3.6)));
+      if (uDusk > 0.01) glow = vec3(0.80, 0.90, 1.0)*((1.0 - mull)*step(fract(cell*5.3), 0.45*homeFrac())*uDusk*mix(0.5, 1.0, fade));   // oficinas: pocas plantas encendidas
       vec3 gl = mix(base*0.62, mix(base, uSkyCol*1.25, 0.45), cell*0.6 + 0.2);
       base = mix(mix(base*0.85, gl, 0.7), mix(gl, base*0.55, mull*0.8), fade);
     } else if (!plain) {
@@ -244,6 +255,12 @@ void main(){
       if (fl < 0.5) w = smoothstep(0.10,0.16,fx)*(1.0 - smoothstep(0.84,0.90,fx))*smoothstep(0.12,0.18,fy)*(1.0 - smoothstep(0.84,0.9,fy));
       w *= step(0.0, h)*step(h, Ht - 0.7);
       float cell = hash21(vec2(floor(u/2.7 + seed*3.7), fl + seed*13.0));
+      if (uDusk > 0.01) {                                // de noche: ventanas de pisos encendidas (de lejos, su media) y bajos comerciales
+        float hw = fract(cell*9.7 + 0.37);
+        float fr = 0.65*homeFrac();                      // de lejos, algo menos que en las fachadas de detalle
+        float on = fl < 0.5 ? w*shopOn()*step(0.35, hw)*fade : mix(0.22*uDusk*fr, w*uDusk*step(hw, fr), fade);
+        glow = (fl < 0.5 ? vec3(1.0, 0.88, 0.70) : mix(vec3(1.0, 0.70, 0.38), vec3(0.78, 0.88, 1.0), step(0.90, fract(hw*7.3))))*on;
+      }
       vec3 glass = mix(vec3(0.11,0.13,0.17), uSkyCol*0.85, 0.25 + 0.35*cell);
       float amt = abs(style-2.0) < 0.5 ? 0.55 : 0.9;
       base = mix(base, glass, mix(0.20, w*amt, fade));
@@ -270,6 +287,7 @@ void main(){
     base *= 1.0;
   }
   vec3 c = lit(base, n);
+  c += emit(glow, 0.8);
   FRAG(c);
 }`;
 
@@ -398,12 +416,18 @@ const FS_SKY = `
 varying vec3 vDir;
 void main(){
   vec3 d = normalize(vDir); vec3 c = skyColor(d);
+  if (uNight > 0.01 && d.y > 0.0) {                       // estrellas: solo de noche cerrada
+    vec2 g = d.xz/(d.y + 0.55)*64.0; vec2 id = floor(g); float hs = hash21(id);
+    vec2 o = (vec2(hash21(id + 7.31), hash21(id + 3.17)) - 0.5)*0.7;
+    float st = smoothstep(0.12, 0.02, length(fract(g) - 0.5 - o))*step(0.90, hs);
+    c += vec3(0.86, 0.92, 1.0)*st*(0.25 + 1.9*fract(hs*37.0)*fract(hs*37.0))*uNight*smoothstep(0.03, 0.25, d.y);
+  }
   if (d.y > 0.012 && uCam.y < 2400.0) {
     float tp = (2600.0 - uCam.y)/d.y;
     vec2 q = (uCam.xz + d.xz*tp)*0.00015 + vec2(uTime*0.003, 0.0);
     float n = vnoise(q)*0.5 + vnoise(q*2.03 + 7.1)*0.25 + vnoise(q*4.1 + 3.3)*0.125 + vnoise(q*8.3 + 1.7)*0.0625;
     float cov = smoothstep(0.50, 0.76, n)*smoothstep(0.012, 0.11, d.y);
-    vec3 cc = mix(uFogCol, vec3(0.80) + uSunCol*0.32, 0.8);
+    vec3 cc = mix(uFogCol, vec3(0.80)*(1.0 - 0.93*uNight) + uSunCol*0.32, 0.8);
     c = mix(c, cc, cov*0.85);
   }
   if (d.y < 0.0) c = mix(uFogCol, uFogCol*0.8, clamp(-d.y*4.0, 0.0, 1.0));
@@ -420,7 +444,7 @@ void main(){
 // apuntar su nombre en BASEU (o en BASES si es un sampler) y darle valor: en lightTo() si depende de la hora, en update()
 // junto a uCam si cambia cada fotograma, o desde un módulo con ctx.eachMat(m => m.setTexture(…)), que vale también para
 // los materiales que se creen después.
-const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk',
+const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk', 'uNight', 'uLate',
                'uSunL', 'uSkyL', 'uGndL', 'uTone', 'uShX', 'uShY', 'uShZ', 'uShC0', 'uShC1', 'uShP'];
 const BASES = ['uShadow0', 'uShadow1'];
 // textura de relleno para los mapas de sombra (blanco = nada tapa) mientras lighting.js no ponga los suyos
@@ -494,44 +518,60 @@ reg.meshes = MESHES; reg.ver = 0;
 
 // ------------------------------------------------------------------ luz / hora
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
-            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0, hour: 17,
+            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0, night: 0, late: 0, hour: 17,
             // luz lineal (uSunL, uSkyL, uGndL) = color de pantalla ^2.2 por estas ganancias. A mediodía, sol : cielo ≈ 8 : 1
             sunL: new BABYLON.Color3(), skyL: new BABYLON.Color3(), gndL: new BABYLON.Color3(),
             // exp: exposición de día. Al anochecer el ojo se adapta: el ambiente (cielo y suelo) sube hasta ×(1 + dAmb) y la
             // exposición hasta ×(1 + dExp), con el sol ya bajo (L.dusk de 0 a 0,6). Poco de exposición para no lavar el cielo
             // des: cuánto se desatura el cielo como luz ambiente (0…1). Su color de pantalla, al pasar a lineal, sale mucho más
             // azul de lo que parece y teñía de azul todo lo que queda en sombra
-            K: { sun: 2.1, sky: 3.6, gnd: 4.0, exp: 1.5, dAmb: 0.78, dExp: 0.38, des: 0.55 },
+            // De día manda que lo soleado no se queme: con el ACES de Babylon, una acera clara al sol debe quedar cerca de su
+            // color de autor (≈ +15 %) y una pared blanca por debajo de 0,85; la sombra, hacia la mitad de lo soleado.
+            // moon: ganancia de la luna respecto al sol · nAmb / nExp: adaptación extra del ambiente y la exposición de noche
+            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.9, nAmb: 0.0, nExp: 0.25 },
             tone: new BABYLON.Vector2(1.6, 1.08) };            // exposición (la fija setHour) y contraste (postproceso, o FRAG en el camino LDR)
 // uniformes de luz de un material (los comunes del preludio que dependen de la hora)
 function lightTo(m) {
   m.setVector3('uSunDir', L.sunDir); m.setColor3('uSunCol', L.sunCol); m.setColor3('uSkyCol', L.skyCol); m.setColor3('uGndCol', L.gndCol);
-  m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD); m.setFloat('uDusk', L.dusk);
+  m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD); m.setFloat('uDusk', L.dusk); m.setFloat('uNight', L.night); m.setFloat('uLate', L.late);
   m.setColor3('uSunL', L.sunL); m.setColor3('uSkyL', L.skyL); m.setColor3('uGndL', L.gndL); m.setVector2('uTone', L.tone);
 }
 const lin22 = v => Math.pow(Math.max(v, 0), 2.2);
 const linTo = (o, c, k) => o.set(lin22(c.r) * k, lin22(c.g) * k, lin22(c.b) * k);
 const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// Ciclo de 24 h. El sol sale a las 6:00 y se pone a las 21:00 (verano); de noche sigue bajando bajo el horizonte y la luz
+// direccional pasa a ser la luna (misma dirección «uSunDir»: así las sombras y los brillos siguen valiendo sin tocar nada).
+let clockAcc = 0;
 function setHour(hh) {
-  const az = (95 + (hh - 6.5) / 14 * 170) * Math.PI / 180;                 // el sol va de E (mañana) a O (tarde) por el sur
-  const el = Math.max(Math.sin((hh - 6.0) / 15 * Math.PI), 0.02) * 64 * Math.PI / 180;
+  hh = ((hh % 24) + 24) % 24;
+  const D = Math.PI / 180, isDay = hh >= 6 && hh <= 21, nn = ((hh - 21 + 24) % 24) / 9;      // nn: 0 a las 21:00 … 1 a las 6:00
+  const elS = isDay ? Math.sin((hh - 6) / 15 * Math.PI) * 64 : -Math.sin(nn * Math.PI) * 38;   // altura real del sol, en grados
+  const moon = elS < -4.3;                                                                     // la luz direccional es la luna
+  const sf = sstep(-3.5, 1.0, elS), mf = sstep(-5.2, -10, elS);                                // el sol se apaga y la luna se enciende (sin solaparse)
+  const az = (moon ? 110 + nn * 140 : 95 + (hh - 6.5) / 14 * 170) * D;                         // de E a O por el sur, los dos
+  const el = (moon ? 22 + 26 * Math.sin(nn * Math.PI) : Math.max(elS, 1.28)) * D;
   L.sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-  const e = Math.min(1, Math.max(0, (el * 180 / Math.PI - 2) / 26));
-  const sc = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e), sk = mix3([0.34, 0.32, 0.42], [0.40, 0.48, 0.60], e);
-  const fg = mix3([0.96, 0.66, 0.46], [0.74, 0.83, 0.92], e), zn = mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e);
-  const k = 0.55 + 0.45 * e;
-  L.sunCol.set(sc[0] * k * 0.82, sc[1] * k * 0.82, sc[2] * k * 0.82); L.skyCol.set(sk[0] * 0.80, sk[1] * 0.80, sk[2] * 0.80);
-  L.gndCol.set(0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04);
+  const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-2, -10, elS);                // e: sol bajo … alto · nt: noche cerrada
+  const k = 0.55 + 0.45 * e, sc = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
+  const sk = mix3(mix3([0.272, 0.256, 0.336], [0.32, 0.384, 0.48], e), [0.12, 0.145, 0.23], nt);
+  const gn = mix3([0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04], [0.10, 0.105, 0.13], nt);
+  const fg = mix3(mix3([0.96, 0.66, 0.46], [0.74, 0.83, 0.92], e), [0.085, 0.095, 0.15], nt);
+  const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.012, 0.018, 0.045], nt);
+  if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
+  L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);
   L.fogCol.set(fg[0], fg[1], fg[2]); L.zenCol.set(zn[0], zn[1], zn[2]);
-  L.dusk = 1 - Math.min(1, Math.max(0, (L.sunDir.y - 0.02) / 0.22));        // 0 de día … 1 al anochecer (uDusk, en todos los materiales)
-  const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), amb = 1 + L.K.dAmb * dk;   // adaptación al anochecer
-  linTo(L.sunL, L.sunCol, L.K.sun); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
+  // uDusk: 0 de día … 1 cuando hay que encender luces (toda la noche) · uNight: noche cerrada · uLate: madrugada
+  L.dusk = 1 - Math.min(1, Math.max(0, (Math.sin(elS * D) - 0.02) / 0.22)); L.night = nt;
+  L.late = hh >= 12 ? sstep(22.75, 24, hh) : (hh < 5.5 ? 1 : 1 - sstep(5.5, 6.5, hh));
+  const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), amb = (1 + L.K.dAmb * dk) * (1 + L.K.nAmb * nt);   // el ojo se adapta
+  linTo(L.sunL, L.sunCol, L.K.sun * (moon ? L.K.moon : 1)); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
   { const c = L.skyL, g = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, t = L.K.des; c.r += (g * 1.03 - c.r) * t; c.g += (g - c.g) * t; c.b += (g * 0.98 - c.b) * t; }
-  L.tone.x = L.K.exp * (1 + L.K.dExp * dk);
+  L.tone.x = L.K.exp * (1 + L.K.dExp * dk) * (1 + L.K.nExp * nt);
   L.hour = hh; lightOn = true;
   for (const m of mats) lightTo(m);
   scene.clearColor.set(fg[0], fg[1], fg[2], 1);
-  const h = Math.floor(hh), mi = Math.round((hh - h) * 60);
+  const tm = Math.round(hh * 60) % 1440, h = Math.floor(tm / 60), mi = tm % 60;
   $('hourV').textContent = h + ':' + (mi < 10 ? '0' : '') + mi;
 }
 
@@ -844,6 +884,8 @@ $('mDron').onclick = () => { if (st.walk) { st.walk = false; cam.position.y += 1
 $('mPie').onclick = () => { st.walk = true; st.fly = null; if (cam.position.x < 0 || cam.position.x > WX || cam.position.z < 0 || cam.position.z > WZ) { const t = poi('Plaça de Catalunya'); cam.position.x = t[0]; cam.position.z = t[2]; } st.pitch = 0; syncMode(); };
 $('menuBtn').onclick = () => document.body.classList.toggle('menu');
 $('hour').oninput = e => setHour(+e.target.value);
+[['hDia', 12], ['hTarde', 19.5], ['hNoche', 23]].forEach(([id, h]) => { const b = $(id); if (b) b.onclick = () => { $('hour').value = h; setHour(h); }; });
+{ const b = $('hRun'); if (b) b.onclick = () => { st.clock = !st.clock; b.classList.toggle('on', st.clock); }; }
 $('dist').oninput = e => { st.maxDist = +e.target.value * 1000; $('distV').textContent = (+e.target.value >= 40 ? 'todo' : e.target.value + ' km'); };
 $('distV').textContent = 'todo';
 [['fx0', 0], ['fx1', 1], ['fx2', 2]].forEach(([id, q]) => { $(id).onclick = () => { if (FXS) FXS.setRange(q); for (const k of ['fx0', 'fx1', 'fx2']) $(k).classList.toggle('on', k === id); }; });
@@ -944,7 +986,10 @@ $('stats').innerHTML = sN(bldCount) + ' volúmenes de edificio<br>' + (FXS ? sN(
   sN(Math.round((bldTris + roadTris + (window.BCN.terrTris || 0)) / 1000) / 1000) + ' M de triángulos<br><span style="opacity:.75">© OpenStreetMap · MDT IGN/PNOA · Aj. de Barcelona</span>';
 let t0 = performance.now(), time = 0;
 scene.onBeforeRenderObservable.add(() => {
-  const now = performance.now(), dt = Math.min(0.1, (now - t0) / 1000); t0 = now; time = SHOT ? 10 : time + dt; frame++;   // en modo captura el tiempo se congela (capturas reproducibles)
+  const now = performance.now(), dt = Math.min(0.1, (now - t0) / 1000); t0 = now; time = SHOT ? 10 : time + dt; frame++;
+  // reloj: 1 s real = 1 min de juego (un día en 24 min); la luz se recalcula una vez por segundo
+  if (st.clock && !SHOT) { clockAcc += dt; if (clockAcc >= 1) { const h = (L.hour + clockAcc / 60) % 24; clockAcc = 0; setHour(h); $('hour').value = h; } }
+    // en modo captura el tiempo se congela (capturas reproducibles)
   update(dt);
   for (const m of mats) m.setFloat('uTime', time);
 });

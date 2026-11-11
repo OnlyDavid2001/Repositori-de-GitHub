@@ -79,8 +79,8 @@ void main(){
     if (kind > 10.5) inside = vec3(0.30,0.26,0.20)*(0.7 + 0.6*vnoise(P*2.3)) + vCol.rgb*0.25;   // escaparate iluminado
     vec3 c = mix(inside*(uSkyCol*1.4 + uSunCol*0.25), refl, clamp(fres*0.92 + 0.10, 0.0, 1.0));
     c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.5;
-    if (kind < 2.5) c += emit(vec3(1.0,0.74,0.42), step(h, 0.05 + uDusk*0.30)*uDusk*0.55);
-    else c += emit(vec3(1.0,0.85,0.62), uDusk*0.35);
+    if (kind < 2.5) c += emit(vec3(1.0,0.74,0.42), homeOn(h)*0.55);                    // pisos: muchas al anochecer, casi ninguna de madrugada
+    else c += emit(vec3(1.0,0.85,0.62), shopOn()*0.35);                              // bajos: hasta la madrugada
     FRAG(c); return;
   } else if (kind < 3.5) {                            // persiana enrollable de lamas
     float s = fract(vLoc.y*14.0), fw = fwidth(vLoc.y*14.0);
@@ -125,7 +125,7 @@ void main(){
     float id = floor(vInfo.z*255.0 + 0.5);
     vec2 uv = vec2((mod(id, 2.0) + vInfo.x)/2.0, (floor(id/2.0) + vInfo.y)/16.0);   // atlas de 2 x 16 celdas
     alb = texture2D(tSign, uv).rgb; rough = 0.5;
-    emis = emit(alb, uDusk*0.3);
+    emis = emit(alb, shopOn()*0.4);                  // rótulo: encendido mientras el comercio está abierto
   } else if (kind < 9.5) {                            // toldo a rayas
     float s = step(0.5, fract(P.x*2.4));
     alb = mix(alb, vec3(0.88, 0.86, 0.80), s*0.85) * (0.85 + 0.2*vnoise(P*4.0)); rough = 0.9;

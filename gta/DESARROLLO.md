@@ -728,6 +728,35 @@ lienzo ya se creó sin antialiasing: se ve correcto pero con dientes de sierra. 
 
 
 
+### 7.6 Ciclo de 24 horas y reglas de noche
+
+`setHour(hh)` admite de 0 a 24 (el deslizador también; botones «Día», «Tarde», «Noche» y «▶ Pasa», que hace correr el
+reloj: 1 s real = 1 min de juego, un día cada 24 min, recalculando la luz una vez por segundo).
+
+- **Sol**: sale a las 6:00 y se pone a las 21:00 (verano); de noche sigue bajando bajo el horizonte. Entre −3,5° y 1° se
+  apaga (`sf`). **Luna**: con el sol 4,3° bajo el horizonte, la luz direccional pasa a ser la luna (se enciende entre −5,2°
+  y −10°, `mf`). Usa los MISMOS uniformes (`uSunDir`, `uSunCol`, `uSunL`): las sombras en cascada, los brillos y el disco
+  del cielo valen sin tocar nada (de noche el «disco del sol» es la luna). El cambio de dirección ocurre con la luz a cero.
+- **Paletas** (espacio de pantalla): atardecer ↔ día según la altura del sol (`e`) y todo ello hacia la paleta de noche
+  según `nt` (0 con el sol a −2°, 1 a −10°). Estrellas y nubes oscuras en el shader del cielo.
+- **Adaptación del ojo**: `K.dAmb`/`K.dExp` al anochecer y `K.nAmb`/`K.nExp` de noche; `K.moon` es la ganancia de la luna.
+  De día, `K = sol 1,7 · cielo 4,4 · suelo 4,8 · exposición 1,2`: lo soleado NO debe quemarse (con el ACES de Babylon una
+  acera clara al sol queda ≈ +15 % sobre su color de autor y una pared blanca por debajo de 0,85) y la sombra queda hacia
+  la mitad de lo soleado. Se calibra en caliente con `BCN.light.set({...})`.
+
+**Qué se enciende de noche** (uniformes globales del preludio, en todos los materiales):
+
+| Uniforme / función | Valor | Quién lo usa |
+| --- | --- | --- |
+| `uDusk` | 0 de día → 1 del anochecer al amanecer, toda la noche | farolas y su charco de luz, semáforos, faroles de fachada, portales |
+| `uNight` | 0 → 1 noche cerrada | cielo (estrellas, nubes), adaptación |
+| `uLate` | 0 por la tarde-noche → 1 de madrugada (sube de 22:45 a 0:00 y baja de 5:30 a 6:30) | «la ciudad duerme» |
+| `shopOn()` | `uDusk·(1 − 0,94·uLate)` | comercios, rótulos y bajos comerciales: encendidos al anochecer, apagados de madrugada (queda una luz de vigilancia) |
+| `homeOn(h)` / `homeFrac()` | ¿encendida la ventana de azar `h`? Fracción: ~38 % al anochecer, 6 % de madrugada | ventanas de pisos (fachadas de detalle y volúmenes lejanos) |
+
+No se enciende nunca: árboles y parques, cubiertas, el mar y la montaña (solo reciben la luna). Pendiente: comercios de
+horario distinto (bares hasta más tarde, cruz de farmacia de guardia) y monumentos iluminados.
+
 ## 8. Carril INTERIORES
 
 ### 8.1 Comercios que se ven por dentro (etapa IY1)

@@ -27,7 +27,7 @@
     background:rgba(255,255,255,.06); color:var(--ink); border:1px solid transparent; font:inherit; }
   #side button:hover { background:rgba(255,255,255,.14); }
   #side button.on { border-color:var(--acc); color:var(--acc); }
-  #side .row { display:flex; gap:4px; } #side .row button { text-align:center; } #gqRow button { padding:7px 2px; }
+  #side .row { display:flex; gap:4px; } #side .row button { text-align:center; } #gqRow button, #hRow button { padding:7px 2px; }
   #side label { display:block; margin:6px 4px 2px; color:var(--dim); font-size:12px; }
   #side input[type=range] { width:100%; accent-color:var(--acc); }
   #help { bottom:12px; right:12px; padding:8px 12px; color:var(--dim); font-size:12px; max-width:216px; }
@@ -66,7 +66,8 @@
   <div id="views"></div>
   <h4>Ajustes</h4>
   <label>Hora del día: <span id="hourV"></span></label>
-  <input id="hour" type="range" min="6.5" max="20.5" step="0.25" value="17">
+  <input id="hour" type="range" min="0" max="24" step="0.25" value="17">
+  <div class="row" id="hRow"><button id="hDia">Día</button><button id="hTarde">Tarde</button><button id="hNoche">Noche</button><button id="hRun" title="Un día completo cada 24 minutos">▶ Pasa</button></div>
   <label>Distancia de edificios: <span id="distV"></span></label>
   <input id="dist" type="range" min="2" max="40" step="1" value="40">
   <label>Fachadas de detalle al acercarse</label>

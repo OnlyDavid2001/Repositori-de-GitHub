@@ -446,7 +446,8 @@ vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, f
 // el vidrio delante de la habitación: el interior con su luz propia (más al anochecer) y el reflejo del entorno con Fresnel
 vec3 shGlass(vec3 room, vec3 V, vec3 N){
   float k = clamp(0.09 + 0.91*pow(1.0 - max(dot(N, V), 0.0), 5.0), 0.0, 1.0);
-  return emit(room, mix(1.05, 2.3, uDusk))*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
+  // de noche la exposición sube (el ojo se adapta) y la ganancia apenas cambia. De madrugada el comercio está cerrado
+  return emit(room, mix(1.05, 1.2, uDusk)*(1.0 - 0.93*uLate*uDusk))*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
 }`;
 regKind('SHOPWIN', 20, `
     float sw = vCol.r*16.0, stb = floor(vCol.g*255.0 + 0.5), stp = mod(stb, 32.0), sfl = floor(stb/32.0);
