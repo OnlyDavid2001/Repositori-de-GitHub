@@ -58,7 +58,7 @@ void main(){
     U('uView', ...(mode === 'oblicuo' ? [0.61, 6, 1] : mode === 'lejos' ? [0.3, 60, 0.25] : [0, 5, 1]));
     U('uSunDir', 0.42, 0.68, -0.6); U('uSunCol', ...(night ? [0.25, 0.14, 0.08] : [1.0, 0.94, 0.84])); U('uSkyCol', ...(night ? [0.10, 0.12, 0.2] : [0.36, 0.43, 0.54]));
     U('uGndCol', 0.2, 0.19, 0.18); U('uFogCol', ...(night ? [0.16, 0.16, 0.24] : [0.72, 0.80, 0.90])); U('uZenCol', ...(night ? [0.04, 0.06, 0.16] : [0.25, 0.45, 0.80])); U('uDusk', night ? 1 : 0);
-    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 8, 32, 0, gl.RGBA, gl.UNSIGNED_BYTE, I.paramData());
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, I.paramSize[0], I.paramSize[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, I.paramData());
     for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
     gl.uniform1i(gl.getUniformLocation(pr, 'tShop'), 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);

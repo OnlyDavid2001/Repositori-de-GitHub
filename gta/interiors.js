@@ -64,14 +64,28 @@ const TYPES = [
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
 const WSUM = TYPES.reduce((s, t) => s + t.w, 0);
 const pickType = r => { let x = r * WSUM; for (let i = 0; i < TYPES.length; i++) { x -= TYPES[i].w; if (x < 0) return i; } return 0; };
-// textura de parámetros: 8 columnas × 32 filas RGBA8 (fila = tipo). Columnas: 0 pared + patrón de suelo · 1 suelo A + calidez ·
-// 2 suelo B + luminarias · 3 mueble del fondo + qué hay al fondo · 4, 5, 6 color + id de las capas lejana, cercana y repisa ·
-// 7 acento + (paleta + 16·forma)
+// colores del género: 8 por paleta (repetir un color le da más peso). La paleta 0 (VARIADO) es un arcoíris que hace el shader
+const PALS = { [PAL.FARMACIA]: [[240, 245, 242], [240, 245, 242], [236, 240, 244], [244, 244, 238], [240, 245, 242], [170, 215, 180], [160, 200, 230], [235, 170, 190]],
+  [PAL.LIBROS]: [[110, 40, 30], [40, 60, 100], [150, 120, 60], [60, 90, 60], [170, 150, 120], [90, 30, 60], [30, 40, 50], [190, 80, 40]],
+  [PAL.BOTELLAS]: [[26, 61, 31], [26, 61, 31], [20, 50, 30], [107, 51, 15], [107, 51, 15], [90, 40, 12], [158, 168, 153], [150, 160, 150]],
+  [PAL.PAN]: [[168, 102, 41], [190, 125, 55], [210, 150, 75], [225, 170, 95], [237, 189, 107], [200, 140, 60], [180, 110, 50], [230, 180, 110]],
+  [PAL.FERRETERIA]: [[115, 120, 128], [115, 120, 128], [100, 104, 110], [191, 41, 26], [191, 41, 26], [230, 173, 26], [230, 173, 26], [31, 77, 140]],
+  [PAL.FRUTA]: [[204, 31, 20], [204, 31, 20], [242, 133, 15], [242, 133, 15], [237, 204, 36], [92, 153, 36], [92, 153, 36], [102, 31, 87]],
+  [PAL.QUESO]: [[242, 214, 122], [242, 214, 122], [242, 214, 122], [235, 200, 100], [235, 200, 100], [219, 128, 36], [219, 128, 36], [250, 235, 170]],
+  [PAL.FLORES]: [[230, 64, 102], [230, 64, 102], [245, 209, 51], [245, 242, 235], [148, 77, 191], [230, 51, 31], [245, 140, 40], [245, 170, 190]],
+  [PAL.ROPA]: [[23, 23, 28], [23, 23, 28], [204, 189, 158], [204, 189, 158], [31, 46, 87], [128, 31, 41], [199, 153, 41], [120, 120, 125]],
+  [PAL.HELADO]: [[245, 168, 189], [245, 168, 189], [168, 209, 133], [247, 235, 184], [247, 235, 184], [92, 56, 36], [250, 184, 66], [230, 90, 110]],
+  [PAL.GAFAS]: [[18, 15, 15], [18, 15, 15], [18, 15, 15], [18, 15, 15], [18, 15, 15], [107, 61, 26], [107, 61, 26], [107, 61, 26]] };
+// textura de datos del shader: 16 columnas × 32 filas RGBA8. Columnas 0–7, parámetros del tipo (fila = tipo): 0 pared + patrón
+// de suelo · 1 suelo A + calidez · 2 suelo B + luminarias · 3 mueble del fondo + qué hay al fondo · 4, 5, 6 color + id de las
+// capas lejana, cercana y repisa · 7 acento + (paleta + 16·forma). Columnas 8–15, los 8 colores de cada paleta (fila = paleta)
+const PARW = 16, PARH = 32;
 function paramData() {
-  const d = new Uint8Array(8 * 32 * 4);
-  TYPES.forEach((t, r) => { const put = (c, rgb, a) => d.set([rgb[0], rgb[1], rgb[2], a], (r * 8 + c) * 4);
-    put(0, t.wall, t.floor[0]); put(1, t.floor[1], Math.round(t.warm * 255)); put(2, t.floor[2], t.lamp); put(3, t.back[1], t.back[0]);
-    put(4, t.far[1], t.far[0]); put(5, t.near[1], t.near[0]); put(6, t.shelf[1], t.shelf[0]); put(7, t.acc, t.pal + 16 * t.shape); });
+  const d = new Uint8Array(PARW * PARH * 4), put = (r, c, rgb, a) => d.set([rgb[0], rgb[1], rgb[2], a], (r * PARW + c) * 4);
+  TYPES.forEach((t, r) => {
+    put(r, 0, t.wall, t.floor[0]); put(r, 1, t.floor[1], Math.round(t.warm * 255)); put(r, 2, t.floor[2], t.lamp); put(r, 3, t.back[1], t.back[0]);
+    put(r, 4, t.far[1], t.far[0]); put(r, 5, t.near[1], t.near[0]); put(r, 6, t.shelf[1], t.shelf[0]); put(r, 7, t.acc, t.pal + 16 * t.shape); });
+  for (const k in PALS) PALS[k].forEach((c, i) => put(+k, 8 + i, c, 255));
   return d;
 }
 // depuración: ?shop=<índice o nombre> fuerza el tipo de todos los comercios (también BCN_INTERIORS.force = n y reconstruir)
@@ -91,7 +105,8 @@ function parseForce() {
 // Funciones reutilizables (prefijo «sh»): shRoom() devuelve lo que se ve dentro de la habitación y shGlass() le pone el vidrio.
 const SHOP_DECL = `
 uniform sampler2D tShop;
-vec4 shPar(float c, float t){ return texture2D(tShop, vec2((c + 0.5)/8.0, (t + 0.5)/32.0)); }
+// textura de datos: columnas 0-7 parámetros del tipo (fila = tipo), columnas 8-15 colores de cada paleta (fila = paleta)
+vec4 shPar(float c, float t){ return texture2D(tShop, vec2((c + 0.5)/16.0, (t + 0.5)/32.0)); }
 // cobertura suavizada (px = metros por píxel): rectángulo [a, b], círculo de radio r y trapecio simétrico de y0 a y1
 float shR(vec2 p, vec2 a, vec2 b, float px){ vec2 d = min(p - a, b - p); return clamp(min(d.x, d.y)/px + 0.5, 0.0, 1.0); }
 float shC(vec2 p, float r, float px){ return clamp((r - length(p))/px + 0.5, 0.0, 1.0); }
@@ -100,27 +115,19 @@ float shT(vec2 q, float y0, float y1, float w0, float w1, float px){ float w = m
 // las capas se componen con alfa premultiplicado
 vec4 shOv(vec4 d, vec3 c, float a){ return vec4(c*a, a) + d*(1.0 - a); }
 float shPitch(float s){ return s < 0.5 ? 0.15 : (s < 1.5 ? 0.24 : (s < 2.5 ? 0.10 : (s < 3.5 ? 0.045 : (s < 5.5 ? 0.24 : 0.13)))); }
-// colores del género, por paleta
+// color de un artículo: la paleta 0 es un arcoíris suave y las demás salen de la textura (8 colores por paleta)
 vec3 shPal(float pal, float h){
-  vec3 vv = 0.52 + 0.35*cos(6.2832*(h + vec3(0.0, 0.33, 0.67)));
-  float k = fract(h*5.71 + 0.13);
-  if (pal < 0.5) return vv;
-  if (pal < 1.5) return mix(vec3(0.94, 0.96, 0.95), vv*0.5 + 0.45, step(0.62, k));
-  if (pal < 2.5) return mix(vec3(0.40, 0.20, 0.14), vv, 0.5)*(0.55 + 0.6*k);
-  if (pal < 3.5) return k < 0.4 ? vec3(0.10, 0.24, 0.12) : (k < 0.75 ? vec3(0.42, 0.20, 0.06) : vec3(0.62, 0.66, 0.60));
-  if (pal < 4.5) return mix(vec3(0.66, 0.40, 0.16), vec3(0.93, 0.74, 0.42), k);
-  if (pal < 5.5) return k < 0.45 ? vec3(0.45, 0.47, 0.50) : (k < 0.7 ? vec3(0.75, 0.16, 0.10) : (k < 0.88 ? vec3(0.90, 0.68, 0.10) : vec3(0.12, 0.30, 0.55)));
-  if (pal < 6.5) return k < 0.25 ? vec3(0.80, 0.12, 0.08) : (k < 0.5 ? vec3(0.95, 0.52, 0.06) : (k < 0.7 ? vec3(0.93, 0.80, 0.14) : (k < 0.9 ? vec3(0.36, 0.60, 0.14) : vec3(0.40, 0.12, 0.34))));
-  if (pal < 7.5) return mix(vec3(0.95, 0.84, 0.48), vec3(0.86, 0.50, 0.14), step(0.7, k))*(0.85 + 0.2*h);
-  if (pal < 8.5) return k < 0.3 ? vec3(0.90, 0.25, 0.40) : (k < 0.5 ? vec3(0.96, 0.82, 0.20) : (k < 0.7 ? vec3(0.96, 0.95, 0.92) : (k < 0.85 ? vec3(0.58, 0.30, 0.75) : vec3(0.90, 0.20, 0.12))));
-  if (pal < 9.5) return k < 0.25 ? vec3(0.09, 0.09, 0.11) : (k < 0.45 ? vec3(0.80, 0.74, 0.62) : (k < 0.62 ? vec3(0.12, 0.18, 0.34) : (k < 0.8 ? vec3(0.50, 0.12, 0.16) : vec3(0.78, 0.60, 0.16))));
-  if (pal < 10.5) return k < 0.2 ? vec3(0.96, 0.66, 0.74) : (k < 0.4 ? vec3(0.66, 0.82, 0.52) : (k < 0.6 ? vec3(0.97, 0.92, 0.72) : (k < 0.8 ? vec3(0.36, 0.22, 0.14) : vec3(0.98, 0.72, 0.26))));
-  return mix(vec3(0.07, 0.06, 0.06), vec3(0.42, 0.24, 0.10), step(0.7, k));
+  if (pal < 0.5) return 0.52 + 0.35*cos(6.2832*(h + vec3(0.0, 0.33, 0.67)));
+  return shPar(8.0 + floor(fract(h*5.71 + 0.13)*8.0), pal).rgb*(0.86 + 0.26*fract(h*13.7));
 }
 // fila de artículos de pie sobre y = 0 (p en metros), uno cada pitch metros y de hasta hm de alto.
 // Formas: 0 caja con etiqueta · 1 redondo (pan, fruta, queso) · 2 botella · 3 lomo de libro · 4 herramienta colgada (y hacia abajo) · 5 gafas · 6 cajas y botellas
+// OJO: cada llamada se copia entera al compilar. Las funciones de abajo preparan los argumentos y la llaman UNA vez cada una
 vec4 shItems(vec2 p, float pitch, float hm, float shape, float pal, float sd, float px){
   if (p.y < -px || p.y > hm + px) return vec4(0.0);
+  // de lejos los artículos se agrupan en bloques de al menos píxel y medio de ancho: manchas de color estables, sin parpadeo
+  float grp = exp2(ceil(log2(max(px/pitch*1.6, 1.0))));
+  if (grp > 1.5) { pitch *= grp; if (shape < 4.5) shape = 0.0; }
   float xi = p.x/pitch, i = floor(xi), fx = fract(xi) - 0.5, ax = abs(fx), e = px/pitch;
   float h1 = hash21(vec2(i, sd)), h2 = hash21(vec2(i + 7.0, sd + 2.3)), h3 = fract(h1*37.7 + h2*3.1);
   if (shape > 5.5) shape = h3 < 0.55 ? 0.0 : 2.0;
@@ -128,7 +135,7 @@ vec4 shItems(vec2 p, float pitch, float hm, float shape, float pal, float sd, fl
   float hh = hm*(0.62 + 0.38*h2), wy = p.y/hh, m;
   if (shape < 0.5) {
     m = clamp((0.30 + 0.14*h3 - ax)/e + 0.5, 0.0, 1.0);
-    if (pal < 8.5 || pal > 9.5) col = mix(col, vec3(0.93, 0.92, 0.88), 0.6*step(0.35, wy)*step(wy, 0.7)*step(0.45, h3));
+    if (pal < 8.5 || pal > 9.5) col = mix(col, vec3(0.93, 0.92, 0.88), 0.6*step(0.35, wy)*step(wy, 0.7)*step(0.45, h3)*step(grp, 1.5));
     col *= 0.86 + 0.28*fx;
   } else if (shape < 1.5) {
     hh = min(hm, pitch*(0.55 + 0.3*h2)); wy = p.y/hh;
@@ -156,136 +163,110 @@ vec4 shItems(vec2 p, float pitch, float hm, float shape, float pal, float sd, fl
     m = max(m, 0.35*step(rq, 0.15));
   }
   m *= clamp(p.y/px + 0.5, 0.0, 1.0)*clamp((hh - p.y)/px + 0.5, 0.0, 1.0);
-  // de lejos, la fila pasa a ser una banda con el color medio del género
-  float lod = smoothstep(0.3, 1.0, e);
-  if (lod > 0.0) { col = mix(col, (shPal(pal, 0.15) + shPal(pal, 0.5) + shPal(pal, 0.85))/3.0, lod); m = mix(m, 0.6*step(0.0, p.y)*step(p.y, hm*0.8), lod); }
   return vec4(col*m, m);
 }
-// mueble de baldas lleno de artículos: p con origen abajo a la izquierda, tamaño sz, una balda cada rh metros
-vec4 shShelf(vec2 p, vec2 sz, float rh, float pitch, float shape, float pal, vec3 wood, float sd, float px){
-  float a = shR(p, vec2(0.0), sz, px);
-  if (a <= 0.0) return vec4(0.0);
-  float r = floor(p.y/rh), y = p.y - r*rh;
-  vec3 c = wood*0.40*mix(1.0, 0.6, smoothstep(rh*0.45, rh, y));
-  vec4 it = shItems(vec2(p.x + r*0.37, y - 0.04), pitch*(0.85 + 0.3*hash21(vec2(r, sd))), rh - 0.10, shape, pal, sd + r*3.1, px);
-  c = c*(1.0 - it.a) + it.rgb*mix(1.0, 0.8, smoothstep(rh*0.4, rh, y));
-  float lv = smoothstep(0.03, 0.12, px);
-  c = mix(c, wood, (1.0 - smoothstep(0.04 - px, 0.04 + px, y))*(1.0 - 0.5*lv));
-  float mw = sz.x/max(1.0, floor(sz.x/1.05 + 0.5)), mx = abs(fract(p.x/mw + 0.5) - 0.5)*mw;
-  c = mix(c, wood*0.9, (1.0 - smoothstep(0.025 - px, 0.025 + px, mx))*(1.0 - lv));
-  return vec4(c*a, a);
-}
-// pared del fondo: q = (x, y) sobre la pared, sz = (ancho, alto, fondo) de la habitación
-vec3 shBack(float id, vec2 q, vec3 sz, vec3 wall, vec3 furn, vec3 acc, float shape, float pal, float sd, float px){
-  vec3 c = wall*(q.y < 0.1 ? 0.6 : 1.0);
-  if (id < 0.5) return c;
-  if (id < 1.5) {
-    // 1 estanterías de pared a pared y un friso de color encima
-    vec4 s = shShelf(q - vec2(0.12, 0.0), vec2(sz.x - 0.24, 2.3), 0.4, shPitch(shape), shape, pal, furn, sd, px);
-    c = c*(1.0 - s.a) + s.rgb;
-    return mix(c, acc, 0.85*shR(q, vec2(0.12, 2.45), vec2(sz.x - 0.12, 2.68), px));
-  }
-  if (id < 2.5) {
+// UNA PARED con lo que lleve: la del fondo, las laterales y las caras de las góndolas. q = (x, y) sobre la pared, ww = su
+// ancho, x0 = tramo libre al principio (las laterales no llevan estantes en el primer metro), gon = 1 en una góndola.
+// Cada rama prepara el fondo (c), su fila de artículos (i…) y lo que va por delante (ov), y al final se pinta todo de una vez
+vec3 shBack(float id, vec2 q, float ww, float x0, float gon, vec3 wall, vec3 furn, vec3 acc, float shape, float pal, float sd, float px){
+  vec3 c = wall*(q.y < 0.1 ? 0.6 : (q.y < 0.95 ? 0.88 : (q.y < 1.0 ? 1.06 : 1.0)));
+  vec2 ip = vec2(0.0, -9.0); float ipit = shPitch(shape), ihm = 0.3, ish = shape, ipal = pal, isd = sd, im = 1.0;
+  vec4 ov = vec4(0.0);
+  if (id < 0.5) { if (gon > 0.5) c = wall; }
+  else if (id < 1.5) {
+    // 1 estanterías llenas de pared a pared, con un friso de color encima (en una góndola, el mueble entero)
+    float mg = gon > 0.5 ? 0.0 : 0.12, rh = gon > 0.5 ? 0.36 : 0.4;
+    vec2 u = vec2(q.x - x0 - mg, q.y), usz = vec2(ww - x0 - 2.0*mg, gon > 0.5 ? 1.8 : 2.3);
+    float a = shR(u, vec2(0.0), usz, px), r = floor(u.y/rh), y = u.y - r*rh, lv = smoothstep(0.03, 0.12, px);
+    c = mix(c, furn*0.40*mix(1.0, 0.6, smoothstep(rh*0.45, rh, y)), a);
+    ip = vec2(u.x + r*0.37, y - 0.04); ipit *= 0.85 + 0.3*hash21(vec2(r, sd)); ihm = rh - 0.10; isd = sd + r*3.1; im = a;
+    float mw = usz.x/max(1.0, floor(usz.x/1.05 + 0.5)), mx = abs(fract(u.x/mw + 0.5) - 0.5)*mw;
+    ov = shOv(ov, furn, a*(1.0 - smoothstep(0.04 - px, 0.04 + px, y))*(1.0 - 0.5*lv));
+    ov = shOv(ov, furn*0.9, a*(1.0 - smoothstep(0.025 - px, 0.025 + px, mx))*(1.0 - lv));
+    if (gon < 0.5) ov = shOv(ov, acc, 0.85*shR(q, vec2(x0 + 0.12, 2.45), vec2(ww - 0.12, 2.68), px));
+  } else if (id < 2.5) {
     // 2 botellero retroiluminado sobre un mueble bajo
-    c = wall*0.8;
-    float r = floor((q.y - 1.02)/0.46), y = q.y - 1.02 - r*0.46;
-    vec3 bl = mix(vec3(1.05, 0.74, 0.36), vec3(1.35, 1.10, 0.70), smoothstep(0.0, 0.46, y));
-    vec4 it = shItems(vec2(q.x + r*0.031, y - 0.03), 0.105, 0.37, 2.0, 3.0, sd + r, px);
-    bl = bl*(1.0 - it.a) + it.rgb;
-    bl = mix(bl, vec3(1.5, 1.4, 1.2), 1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.015)));
-    c = mix(c, bl, shR(q, vec2(0.5, 1.02), vec2(sz.x - 0.5, 2.40), px));
-    return mix(c, furn*(0.7 + 0.3*step(0.05, fract(q.x/0.7))), shR(q, vec2(0.3, 0.0), vec2(sz.x - 0.3, 0.95), px));
-  }
-  if (id < 3.5) {
+    float r = floor((q.y - 1.02)/0.46), y = q.y - 1.02 - r*0.46, a = shR(q, vec2(0.5, 1.02), vec2(ww - 0.5, 2.40), px);
+    c = mix(wall*0.8, mix(vec3(1.05, 0.74, 0.36), vec3(1.35, 1.10, 0.70), smoothstep(0.0, 0.46, y)), a);
+    ip = vec2(q.x + r*0.031, y - 0.03); ipit = 0.105; ihm = 0.37; ish = 2.0; ipal = 3.0; isd = sd + r; im = a;
+    ov = shOv(ov, vec3(1.5, 1.4, 1.2), a*(1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.015))));
+    ov = shOv(ov, furn*(0.7 + 0.3*step(0.05, fract(q.x/0.7))), shR(q, vec2(0.3, 0.0), vec2(ww - 0.3, 0.95), px));
+  } else if (id < 3.5) {
     // 3 espejos con marco de bombillas y repisa
-    float cw = sz.x/max(1.0, floor(sz.x/1.6)), cx = (fract(q.x/cw) - 0.5)*cw;
+    float cw = ww/max(1.0, floor(ww/1.6)), cx = (fract(q.x/cw) - 0.5)*cw;
     vec2 m = vec2(cx, q.y - 1.6);
-    float mr = shR(m, vec2(-0.44, -0.64), vec2(0.44, 0.64), px), mi = shR(m, vec2(-0.36, -0.56), vec2(0.36, 0.56), px);
-    c = mix(c, furn, mr);
-    c = mix(c, mix(vec3(0.50, 0.58, 0.62), vec3(0.86, 0.90, 0.92), smoothstep(-0.6, 0.6, m.y + m.x*0.6)), mi);
+    c = mix(c, furn, shR(m, vec2(-0.44, -0.64), vec2(0.44, 0.64), px));
+    c = mix(c, mix(vec3(0.50, 0.58, 0.62), vec3(0.86, 0.90, 0.92), smoothstep(-0.6, 0.6, m.y + m.x*0.6)), shR(m, vec2(-0.36, -0.56), vec2(0.36, 0.56), px));
     float ds = length(vec2(abs(m.x) - 0.40, (fract(m.y/0.16) - 0.5)*0.16)), dtp = length(vec2((fract(m.x/0.16) - 0.5)*0.16, m.y - 0.60));
     float db = min(ds + step(0.62, abs(m.y)), dtp + step(0.42, abs(m.x)));
     c += vec3(1.0, 0.92, 0.72)*(3.0*clamp((0.03 - db)/px + 0.5, 0.0, 1.0) + 0.5*exp(-db*db*500.0));
-    return mix(c, furn*1.4, shR(q, vec2(0.2, 0.80), vec2(sz.x - 0.2, 0.86), px));
-  }
-  if (id < 4.5) {
+    ov = shOv(ov, furn*1.4, shR(q, vec2(0.2, 0.80), vec2(ww - 0.2, 0.86), px));
+  } else if (id < 4.5) {
     // 4 panel perforado con herramientas colgadas, sobre cajoneras
-    float r = floor((q.y - 1.0)/0.5), yy = 0.46 - (q.y - 1.0 - r*0.5);
-    vec3 pc = furn*(1.0 - 0.22*(1.0 - smoothstep(0.008, 0.012 + px, length(fract(q/0.05) - 0.5)*0.05))*(1.0 - smoothstep(0.008, 0.03, px)));
-    vec4 it = shItems(vec2(q.x + r*0.11, yy), 0.21, 0.42, 4.0, 5.0, sd + r*2.0, px);
-    pc = pc*(1.0 - it.a) + it.rgb;
-    c = mix(c, pc, shR(q, vec2(0.3, 1.0), vec2(sz.x - 0.3, 2.5), px));
+    float r = floor((q.y - 1.0)/0.5), a = shR(q, vec2(0.3, 1.0), vec2(ww - 0.3, 2.5), px);
+    c = mix(c, furn*(1.0 - 0.22*(1.0 - smoothstep(0.008, 0.012 + px, length(fract(q/0.05) - 0.5)*0.05))*(1.0 - smoothstep(0.008, 0.03, px))), a);
+    ip = vec2(q.x + r*0.11, 0.46 - (q.y - 1.0 - r*0.5)); ipit = 0.21; ihm = 0.42; ish = 4.0; ipal = 5.0; isd = sd + r*2.0; im = a;
     vec2 g = fract(q/vec2(0.3, 0.18));
-    return mix(c, vec3(0.42, 0.45, 0.48)*(0.72 + 0.28*step(0.08, g.x)*step(0.12, g.y)), shR(q, vec2(0.3, 0.0), vec2(sz.x - 0.3, 0.92), px));
-  }
-  if (id < 5.5) {
+    ov = shOv(ov, vec3(0.42, 0.45, 0.48)*(0.72 + 0.28*step(0.08, g.x)*step(0.12, g.y)), shR(q, vec2(0.3, 0.0), vec2(ww - 0.3, 0.92), px));
+  } else if (id < 5.5) {
     // 5 pizarras con la carta, balda de tarros, mueble bajo y cafetera
-    float cw = sz.x/max(1.0, floor(sz.x/1.5)), cx = (fract(q.x/cw) - 0.5)*cw;
+    float cw = ww/max(1.0, floor(ww/1.5)), cx = (fract(q.x/cw) - 0.5)*cw, mx = ww*0.3;
     vec2 m = vec2(cx, q.y - 2.3);
-    vec3 bc = vec3(0.07, 0.09, 0.08);
     float ln = step(0.55, fract(m.y/0.11))*step(0.35, vnoise(vec2(q.x*30.0, floor(m.y/0.11)*7.0 + sd)))*step(abs(cx), cw*0.5 - 0.25);
-    bc = mix(bc, vec3(0.85), ln*0.7*(1.0 - smoothstep(0.008, 0.035, px)));
-    c = mix(c, bc, shR(m, vec2(-cw*0.5 + 0.12, -0.38), vec2(cw*0.5 - 0.12, 0.38), px));
-    vec4 it = shItems(vec2(q.x, q.y - 1.42), 0.14, 0.26, 0.0, 0.0, sd + 4.0, px);
-    c = c*(1.0 - it.a) + it.rgb;
-    c = mix(c, furn*1.25, shR(q, vec2(0.2, 1.37), vec2(sz.x - 0.2, 1.42), px));
-    c = mix(c, furn, shR(q, vec2(0.2, 0.0), vec2(sz.x - 0.2, 0.92), px));
-    float mx = sz.x*0.3;
-    return mix(c, vec3(0.72, 0.73, 0.75)*(0.8 + 0.3*step(1.12, q.y)), shR(q, vec2(mx, 0.92), vec2(mx + 0.7, 1.32), px));
-  }
-  if (id < 6.5) {
-    // 6 barra con ropa colgada y balda de prendas dobladas
-    float inx = shR(q, vec2(0.3, -1.0), vec2(sz.x - 0.3, 9.0), px);
-    vec4 it = shItems(vec2(q.x, 1.72 - q.y), 0.16, 0.95, 0.0, 9.0, sd, px)*inx;
-    c = c*(1.0 - it.a) + it.rgb;
-    c = mix(c, vec3(0.75), shR(q, vec2(0.3, 1.72), vec2(sz.x - 0.3, 1.75), px));
-    it = shItems(vec2(q.x, q.y - 2.05), 0.34, 0.2, 0.0, 9.0, sd + 3.0, px)*inx;
-    c = c*(1.0 - it.a) + it.rgb;
-    return mix(c, furn, shR(q, vec2(0.3, 2.0), vec2(sz.x - 0.3, 2.05), px));
-  }
-  if (id < 7.5) {
+    c = mix(c, mix(vec3(0.07, 0.09, 0.08), vec3(0.85), ln*0.7*(1.0 - smoothstep(0.008, 0.035, px))), shR(m, vec2(-cw*0.5 + 0.12, -0.38), vec2(cw*0.5 - 0.12, 0.38), px));
+    ip = vec2(q.x, q.y - 1.42); ipit = 0.14; ihm = 0.26; ish = 0.0; ipal = 0.0; isd = sd + 4.0;
+    ov = shOv(ov, furn*1.25, shR(q, vec2(0.2, 1.37), vec2(ww - 0.2, 1.42), px));
+    ov = shOv(ov, furn, shR(q, vec2(0.2, 0.0), vec2(ww - 0.2, 0.92), px));
+    ov = shOv(ov, vec3(0.72, 0.73, 0.75)*(0.8 + 0.3*step(1.12, q.y)), shR(q, vec2(mx, 0.92), vec2(mx + 0.7, 1.32), px));
+  } else if (id < 6.5) {
+    // 6 barra con ropa colgada y, encima, balda de prendas dobladas
+    float up = step(1.9, q.y);
+    ip = up > 0.5 ? vec2(q.x, q.y - 2.05) : vec2(q.x, 1.72 - q.y); ipit = up > 0.5 ? 0.34 : 0.16; ihm = up > 0.5 ? 0.2 : 0.95;
+    ish = 0.0; ipal = 9.0; isd = sd + up*3.0; im = shR(q, vec2(0.3, -1.0), vec2(ww - 0.3, 9.0), px);
+    ov = shOv(ov, vec3(0.75), shR(q, vec2(0.3, 1.72), vec2(ww - 0.3, 1.75), px));
+    ov = shOv(ov, furn, shR(q, vec2(0.3, 2.0), vec2(ww - 0.3, 2.05), px));
+  } else if (id < 7.5) {
     // 7 paneles retroiluminados con filas de gafas
-    float cw = sz.x/max(1.0, floor(sz.x/1.3)), ci = floor(q.x/cw);
+    float cw = ww/max(1.0, floor(ww/1.3)), ci = floor(q.x/cw);
     vec2 m = vec2(q.x - ci*cw - 0.15, q.y - 0.85);
-    float r = floor(m.y/0.25), y = m.y - r*0.25;
-    vec3 pc = vec3(1.22, 1.24, 1.20);
-    vec4 it = shItems(vec2(m.x + 0.03, y - 0.06), 0.26, 0.15, 5.0, 11.0, sd + r + ci*5.0, px);
-    pc = pc*(1.0 - it.a) + it.rgb;
-    pc = mix(pc, vec3(0.78), 0.7*(1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.045))));
-    return mix(c, pc, shR(m, vec2(0.0), vec2(cw - 0.3, 1.5), px));
+    float r = floor(m.y/0.25), y = m.y - r*0.25, a = shR(m, vec2(0.0), vec2(cw - 0.3, 1.5), px);
+    c = mix(c, vec3(1.22, 1.24, 1.20), a);
+    ip = vec2(m.x + 0.03, y - 0.06); ipit = 0.26; ihm = 0.15; ish = 5.0; ipal = 11.0; isd = sd + r + ci*5.0; im = a;
+    ov = shOv(ov, vec3(0.78), a*0.7*(1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.045))));
+  } else {
+    // 8 cuadros y arrimadero de madera
+    float ci = floor(q.x/1.5), cx = (fract(q.x/1.5) - 0.5)*1.5, hq = hash21(vec2(ci, sd));
+    vec2 hs = vec2(0.32 + 0.2*hq, 0.26 + 0.22*fract(hq*7.7)), m = vec2(cx, q.y - 1.8);
+    vec3 pa = 0.45 + 0.25*cos(6.2832*(hq + vec3(0.0, 0.33, 0.67))), pb = 0.40 + 0.25*cos(6.2832*(hq + vec3(0.35, 0.68, 1.02)));
+    c = mix(c, furn*0.7, shR(m, -hs, hs, px));
+    c = mix(c, mix(pa, pb, smoothstep(-hs.y, hs.y, m.y + 0.3*sin(m.x*9.0))), shR(m, -hs + 0.04, hs - 0.04, px));
+    ov = shOv(ov, furn*(0.8 + 0.2*step(0.04, fract(q.x/0.5))), shR(q, vec2(0.0), vec2(ww, 1.0), px));
+    ov = shOv(ov, furn*1.3, shR(q, vec2(0.0, 1.0), vec2(ww, 1.05), px));
   }
-  // 8 cuadros y arrimadero de madera
-  float ci = floor(q.x/1.5), cx = (fract(q.x/1.5) - 0.5)*1.5, hq = hash21(vec2(ci, sd));
-  vec2 hs = vec2(0.32 + 0.2*hq, 0.26 + 0.22*fract(hq*7.7)), m = vec2(cx, q.y - 1.8);
-  c = mix(c, furn*0.7, shR(m, -hs, hs, px));
-  c = mix(c, mix(shPal(0.0, hq)*0.6 + 0.2, shPal(0.0, hq + 0.3)*0.7, smoothstep(-hs.y, hs.y, m.y + 0.3*sin(m.x*9.0))), shR(m, -hs + 0.04, hs - 0.04, px));
-  c = mix(c, furn*(0.8 + 0.2*step(0.04, fract(q.x/0.5))), shR(q, vec2(0.0), vec2(sz.x, 1.0), px));
-  return mix(c, furn*1.3, shR(q, vec2(0.0, 1.0), vec2(sz.x, 1.05), px));
+  vec4 it = shItems(ip, ipit, ihm, ish, ipal, isd, px)*im;
+  c = c*(1.0 - it.a) + it.rgb;
+  return c*(1.0 - ov.a) + ov.rgb;
 }
-// capa de mobiliario en un plano paralelo al vidrio: p = (x, y) en metros, W = ancho del local. Color premultiplicado + alfa
+// capa de mobiliario en un plano paralelo al vidrio: p = (x, y) en metros, W = ancho del local. Color premultiplicado + alfa.
+// Como shBack: cada rama pinta lo de detrás (o), prepara su fila de artículos (i…) y lo de delante (ov)
 vec4 shLayer(float id, vec2 p, float W, vec3 col, vec3 acc, float shape, float pal, float sd, float px){
-  vec4 o = vec4(0.0);
+  vec4 o = vec4(0.0), ov = vec4(0.0);
   if (id < 0.5 || p.y > 2.9) return o;
-  float pit = shPitch(shape);
+  vec2 ip = vec2(0.0, -9.0); float ipit = shPitch(shape), ihm = 0.3, ish = shape, ipal = pal, isd = sd, im = 1.0;
   if (id < 1.5) {
-    // 1 mostrador con vitrina de vidrio y caja registradora
-    float L = clamp(W - 1.4, 1.2, 3.6), x0 = hash21(vec2(sd, 1.7)) < 0.5 ? 0.6 : W - 0.6 - L;
+    // 1 mostrador con vitrina de vidrio (género en dos alturas) y caja registradora
+    float L = clamp(W - 1.4, 1.2, 3.6), x0 = hash21(vec2(sd, 1.7)) < 0.5 ? 0.6 : W - 0.6 - L, vx = L*0.66;
     vec2 q = vec2(p.x - x0, p.y);
     vec3 c = col*(0.78 + 0.22*step(0.05, fract(q.x/0.6)));
     c = mix(c, col*0.45, step(q.y, 0.1));
     c = mix(c, min(col*1.35 + 0.08, vec3(1.0)), step(0.87, q.y));
     o = shOv(o, c, shR(q, vec2(0.0), vec2(L, 0.92), px));
-    float vx = L*0.66;
-    vec3 g = vec3(0.86, 0.92, 0.92);
-    vec4 it = shItems(vec2(q.x, q.y - 0.95), pit, 0.17, shape, pal, sd + 5.0, px);
-    g = g*(1.0 - it.a) + it.rgb;
-    it = shItems(vec2(q.x + 0.07, q.y - 1.17), pit, 0.15, shape, pal, sd + 9.0, px);
-    g = g*(1.0 - it.a) + it.rgb;
-    g = mix(g, vec3(0.97), 1.0 - smoothstep(0.012, 0.012 + px, min(abs(q.y - 1.15), abs(q.y - 1.37))));
-    o = shOv(o, g, shR(q, vec2(0.12, 0.92), vec2(vx, 1.38), px));
-    return shOv(o, vec3(0.13, 0.13, 0.15), shR(q, vec2(vx + 0.3, 0.92), vec2(vx + 0.72, 1.2), px));
-  }
-  if (id < 2.5) {
+    float a = shR(q, vec2(0.12, 0.92), vec2(vx, 1.38), px), up = step(1.16, q.y);
+    o = shOv(o, vec3(0.86, 0.92, 0.92), a);
+    ip = vec2(q.x + up*0.07, q.y - 0.95 - up*0.22); ihm = 0.16; isd = sd + 5.0 + up*4.0; im = a;
+    ov = shOv(ov, vec3(0.97), a*(1.0 - smoothstep(0.012, 0.012 + px, min(abs(q.y - 1.15), abs(q.y - 1.37)))));
+    ov = shOv(ov, vec3(0.13, 0.13, 0.15), shR(q, vec2(vx + 0.3, 0.92), vec2(vx + 0.72, 1.2), px));
+  } else if (id < 2.5) {
     // 2 barra de bar con reposapiés de latón y taburetes delante
     vec2 q = vec2(p.x - 0.7, p.y); float L = W - 1.4;
     vec3 c = col*(0.75 + 0.25*step(0.04, fract(q.x/0.45)));
@@ -294,104 +275,89 @@ vec4 shLayer(float id, vec2 p, float W, vec3 col, vec3 acc, float shape, float p
     o = shOv(o, c, shR(q, vec2(0.0), vec2(L, 1.12), px));
     vec2 s = vec2((fract(q.x/0.72) - 0.5)*0.72, q.y);
     float st = max(shR(s, vec2(-0.17, 0.72), vec2(0.17, 0.80), px), shR(s, vec2(-0.02, 0.0), vec2(0.02, 0.72), px));
-    st = max(st, shR(s, vec2(-0.14, 0.26), vec2(0.14, 0.29), px))*step(0.0, q.x)*step(q.x, L);
-    return shOv(o, vec3(0.10, 0.09, 0.09), st);
-  }
-  if (id < 4.5) {
+    o = shOv(o, vec3(0.10, 0.09, 0.09), max(st, shR(s, vec2(-0.14, 0.26), vec2(0.14, 0.29), px))*step(0.0, q.x)*step(q.x, L));
+  } else if (id < 4.5) {
     // 3 mesas y sillas · 4 lo mismo con mantel
     float cw = W/max(1.0, floor(W/1.9)), ci = floor(p.x/cw);
     vec2 q = vec2((fract(p.x/cw) - 0.5)*cw + (hash21(vec2(ci, sd)) - 0.5)*0.3, p.y), aq = vec2(abs(q.x), q.y);
     float ch = max(shR(aq, vec2(0.50, 0.42), vec2(0.90, 0.47), px), shR(aq, vec2(0.86, 0.42), vec2(0.90, 0.92), px));
-    ch = max(ch, max(shR(aq, vec2(0.51, 0.0), vec2(0.54, 0.42), px), shR(aq, vec2(0.86, 0.0), vec2(0.89, 0.42), px)));
-    o = shOv(o, col, ch);
+    o = shOv(o, col, max(ch, max(shR(aq, vec2(0.51, 0.0), vec2(0.54, 0.42), px), shR(aq, vec2(0.86, 0.0), vec2(0.89, 0.42), px))));
     o = shOv(o, col*1.3, max(shR(q, vec2(-0.42, 0.72), vec2(0.42, 0.76), px), shR(q, vec2(-0.03, 0.0), vec2(0.03, 0.72), px)));
-    if (id > 3.5) o = shOv(o, acc*(0.9 + 0.1*step(0.74, q.y)), shT(vec2(q.x, q.y), 0.42, 0.77, 0.47, 0.43, px));
+    if (id > 3.5) o = shOv(o, acc*(0.9 + 0.1*step(0.74, q.y)), shT(q, 0.42, 0.77, 0.47, 0.43, px));
     o = shOv(o, vec3(0.12, 0.22, 0.12), shR(q, vec2(-0.20, 0.77), vec2(-0.14, 1.03), px));
-    return shOv(o, vec3(0.90, 0.92, 0.92), 0.8*max(shR(q, vec2(0.02, 0.77), vec2(0.08, 0.90), px), shR(q, vec2(0.20, 0.77), vec2(0.26, 0.90), px)));
-  }
-  if (id < 5.5) {
+    o = shOv(o, vec3(0.90, 0.92, 0.92), 0.8*max(shR(q, vec2(0.02, 0.77), vec2(0.08, 0.90), px), shR(q, vec2(0.20, 0.77), vec2(0.26, 0.90), px)));
+  } else if (id < 5.5) {
     // 5 sillones de peluquería, de espaldas, con pie cromado
     float cw = W/max(1.0, floor(W/1.6)); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
     float m = max(shR(q, vec2(-0.30, 0.42), vec2(0.30, 0.60), px), shR(q, vec2(-0.26, 0.55), vec2(0.26, 1.18), px));
     m = max(m, shR(vec2(abs(q.x), q.y), vec2(0.28, 0.58), vec2(0.36, 0.78), px));
     o = shOv(o, col*(1.0 + 1.5*(1.0 - smoothstep(0.0, 0.2, abs(q.x + 0.1)))*step(0.6, q.y)), m);
-    return shOv(o, vec3(0.72, 0.74, 0.76), max(shR(q, vec2(-0.04, 0.08), vec2(0.04, 0.42), px), shR(q, vec2(-0.28, 0.0), vec2(0.28, 0.06), px)));
-  }
-  if (id < 7.5) {
+    o = shOv(o, vec3(0.72, 0.74, 0.76), max(shR(q, vec2(-0.04, 0.08), vec2(0.04, 0.42), px), shR(q, vec2(-0.28, 0.0), vec2(0.28, 0.06), px)));
+  } else if (id < 7.5) {
     // 7 burras con ropa colgada
     float cw = W/max(1.0, floor(W/2.3)), ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
-    o = shItems(vec2(q.x + ci*0.31, 1.5 - q.y), 0.13, 0.85, 0.0, 9.0, sd + ci, px)*step(abs(q.x), 0.72);
-    return shOv(o, vec3(0.70, 0.71, 0.73), max(shR(q, vec2(-0.78, 1.5), vec2(0.78, 1.53), px), shR(vec2(abs(q.x), q.y), vec2(0.75, 0.0), vec2(0.78, 1.53), px)));
-  }
-  if (id < 8.5) {
+    ip = vec2(q.x + ci*0.31, 1.5 - q.y); ipit = 0.13; ihm = 0.85; ish = 0.0; ipal = 9.0; isd = sd + ci; im = step(abs(q.x), 0.72);
+    ov = shOv(ov, vec3(0.70, 0.71, 0.73), max(shR(q, vec2(-0.78, 1.5), vec2(0.78, 1.53), px), shR(vec2(abs(q.x), q.y), vec2(0.75, 0.0), vec2(0.78, 1.53), px)));
+  } else if (id < 8.5) {
     // 8 isla: mesa baja con género encima
     float cw = W/max(1.0, floor(W/2.6)), ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
     o = shOv(o, col*(0.8 + 0.2*step(0.7, q.y)), shR(q, vec2(-0.72, 0.0), vec2(0.72, 0.78), px));
-    vec4 it = shItems(vec2(q.x + ci*0.4, q.y - 0.78), pit, 0.3, shape, pal, sd + ci*3.0, px)*step(abs(q.x), 0.68);
-    return it + o*(1.0 - it.a);
-  }
-  if (id < 9.5) {
+    ip = vec2(q.x + ci*0.4, q.y - 0.78); isd = sd + ci*3.0; im = step(abs(q.x), 0.68);
+  } else if (id < 9.5) {
     // 9 caballete de cajas inclinadas: tres filas escalonadas, cada caja con una fruta
     float cw = 0.62, ci = floor(p.x/cw); vec2 q = vec2(fract(p.x/cw)*cw, p.y);
     float inx = shR(q, vec2(0.03, -1.0), vec2(cw - 0.03, 9.0), px);
     for (int k = 0; k < 3; k++) {
       float kk = 2.0 - float(k), y0 = 0.30 + 0.30*kk;
-      vec3 fc = shPal(6.0, hash21(vec2(ci + kk*13.0, sd)));
+      vec3 fc = shPar(8.0 + floor(hash21(vec2(ci + kk*13.0, sd))*8.0), 6.0).rgb;
       vec2 f = vec2((fract(p.x/0.15 + kk*0.5) - 0.5)*0.15, p.y - y0 - 0.27);
       o = shOv(o, fc*(0.72 + 0.4*(1.0 - smoothstep(0.0, 0.07, length(f - vec2(-0.02, 0.02))))), shC(f, 0.07, px)*inx);
       f = vec2((fract(p.x/0.15 + kk*0.5 + 0.5) - 0.5)*0.15, f.y + 0.07);
       o = shOv(o, fc*(0.72 + 0.4*(1.0 - smoothstep(0.0, 0.07, length(f - vec2(-0.02, 0.02))))), shC(f, 0.07, px)*inx);
       o = shOv(o, col*(0.78 + 0.22*step(0.5, fract(p.y/0.07))), shR(q, vec2(0.02, y0), vec2(cw - 0.02, y0 + 0.2), px));
     }
-    return shOv(o, col*0.5, shR(q, vec2(0.04, 0.0), vec2(cw - 0.04, 0.3), px));
-  }
-  if (id < 10.5) {
+    o = shOv(o, col*0.5, shR(q, vec2(0.04, 0.0), vec2(cw - 0.04, 0.3), px));
+  } else if (id < 10.5) {
     // 10 cubos de flores
     float cw = 0.5, ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
     float hq = hash21(vec2(ci, sd)), bh = 0.30 + 0.25*hq;
-    vec2 f = vec2(q.x, (q.y - bh - 0.34)*0.8);
     float fl = mix(step(0.55, vnoise(p*38.0 + sd)), 0.45, smoothstep(0.012, 0.04, px));
-    o = shOv(o, mix(vec3(0.16, 0.36, 0.14), shPal(8.0, hq), fl), shC(f, 0.22, px*1.5));
+    o = shOv(o, mix(vec3(0.16, 0.36, 0.14), shPar(8.0 + floor(hq*8.0), 8.0).rgb, fl), shC(vec2(q.x, (q.y - bh - 0.34)*0.8), 0.22, px*1.5));
     o = shOv(o, vec3(0.14, 0.30, 0.12), shR(q, vec2(-0.08, bh), vec2(0.08, bh + 0.2), px));
-    return shOv(o, col*(0.8 + 0.5*smoothstep(-0.15, 0.15, q.x)), shT(q, 0.0, bh, 0.12, 0.16, px));
-  }
-  if (id < 11.5 || id > 13.5) {
+    o = shOv(o, col*(0.8 + 0.5*smoothstep(-0.15, 0.15, q.x)), shT(q, 0.0, bh, 0.12, 0.16, px));
+  } else if (id < 11.5 || id > 13.5) {
     // 11 tarima de escaparate con género en dos alturas · 14 lo mismo con una cruz verde luminosa
+    float ci = floor(p.x/1.3), up = step(0.5, hash21(vec2(ci, sd + 8.0))); vec2 q = vec2(fract(p.x/1.3)*1.3, p.y);
     o = shOv(o, col, shR(p, vec2(0.0), vec2(W, 0.5), px));
-    float ci = floor(p.x/1.3); vec2 q = vec2(fract(p.x/1.3)*1.3, p.y);
-    float up = step(0.5, hash21(vec2(ci, sd + 8.0)));
     o = shOv(o, col*1.2, up*shR(q, vec2(0.1, 0.5), vec2(0.9, 0.75), px));
-    vec4 it = shItems(vec2(p.x, p.y - 0.5 - 0.25*up*step(0.1, q.x)*step(q.x, 0.9)), pit*1.6, 0.42, shape, pal, sd + 21.0, px);
-    o = it + o*(1.0 - it.a);
+    ip = vec2(p.x, p.y - 0.5 - 0.25*up*step(0.1, q.x)*step(q.x, 0.9)); ipit *= 1.6; ihm = 0.42; isd = sd + 21.0;
     if (id > 13.5) {
       vec2 m = vec2(p.x - (hash21(vec2(sd, 4.0)) < 0.5 ? 1.1 : W - 1.1), p.y - 2.35);
-      float cr = max(shR(m, vec2(-0.30, -0.10), vec2(0.30, 0.10), px), shR(m, vec2(-0.10, -0.30), vec2(0.10, 0.30), px));
-      o = shOv(o, vec3(0.15, 1.0, 0.35)*2.4, cr);
-      o.rgb += vec3(0.05, 0.6, 0.2)*0.5*exp(-dot(m, m)*7.0);
+      ov = shOv(ov, vec3(0.15, 1.0, 0.35)*2.4, max(shR(m, vec2(-0.30, -0.10), vec2(0.30, 0.10), px), shR(m, vec2(-0.10, -0.30), vec2(0.10, 0.30), px)));
+      ov.rgb += vec3(0.05, 0.6, 0.2)*0.5*exp(-dot(m, m)*7.0);
     }
-    return o;
-  }
-  if (id < 12.5) {
+  } else if (id < 12.5) {
     // 12 maniquíes sobre la tarima del escaparate
-    o = shOv(o, col*0.9, shR(p, vec2(0.0), vec2(W, 0.5), px));
     float cw = W/max(1.0, floor(W/1.5)), ci = floor(p.x/cw), hq = hash21(vec2(ci, sd));
     vec2 q = vec2((fract(p.x/cw) - 0.5)*cw + (hq - 0.5)*0.3, p.y - 0.5), aq = vec2(abs(q.x), q.y);
     vec3 c1 = shPal(9.0, hq), c2 = shPal(9.0, fract(hq*3.7 + 0.2));
+    o = shOv(o, col*0.9, shR(p, vec2(0.0), vec2(W, 0.5), px));
     o = shOv(o, col, max(shC(q - vec2(0.0, 1.62), 0.10, px), shR(q, vec2(-0.04, 1.44), vec2(0.04, 1.56), px)));
     o = shOv(o, col, shR(aq, vec2(0.19, 0.80), vec2(0.25, 1.40), px));
     if (hq < 0.5) o = shOv(o, c2, shR(aq, vec2(0.015, 0.0), vec2(0.14, 0.86), px));
     else { o = shOv(o, col, shR(aq, vec2(0.03, 0.0), vec2(0.11, 0.5), px)); o = shOv(o, c2, shT(q, 0.38, 0.92, 0.26, 0.15, px)); }
-    return shOv(o, c1, shT(q, 0.82, 1.45, 0.15, 0.22, px));
-  }
-  // 13 carteles de oferta pegados al vidrio, arriba
-  float ci = floor(p.x/1.7), hq = hash21(vec2(ci, sd));
-  vec2 q = vec2((fract(p.x/1.7) - 0.5)*1.7 + (hq - 0.5)*0.6, p.y - 2.1 - 0.4*fract(hq*5.3));
-  if (hq > 0.4) {
+    o = shOv(o, c1, shT(q, 0.82, 1.45, 0.15, 0.22, px));
+  } else {
+    // 13 carteles de oferta pegados al vidrio, arriba
+    float ci = floor(p.x/1.7), hq = hash21(vec2(ci, sd));
+    vec2 q = vec2((fract(p.x/1.7) - 0.5)*1.7 + (hq - 0.5)*0.6, p.y - 2.1 - 0.4*fract(hq*5.3));
     vec3 pc = hq > 0.75 ? vec3(0.96, 0.84, 0.14) : vec3(0.86, 0.14, 0.12), ink = hq > 0.75 ? vec3(0.80, 0.10, 0.08) : vec3(0.98);
     float mk = max(step(abs(q.y - 0.05), 0.08)*step(abs(q.x), 0.24)*step(0.25, fract(q.x/0.16 + hq)), step(abs(q.y + 0.13), 0.02)*step(abs(q.x), 0.27));
-    o = shOv(o, mix(pc, ink, mk*(1.0 - smoothstep(0.01, 0.05, px))), shR(q, vec2(-0.34, -0.24), vec2(0.34, 0.24), px));
+    o = shOv(o, mix(pc, ink, mk*(1.0 - smoothstep(0.01, 0.05, px))), step(0.4, hq)*shR(q, vec2(-0.34, -0.24), vec2(0.34, 0.24), px));
   }
-  return o;
+  vec4 it = shItems(ip, ipit, ihm, ish, ipal, isd, px)*im;
+  o = it + o*(1.0 - it.a);
+  return ov + o*(1.0 - ov.a);
 }
 // HABITACIÓN VIRTUAL vista desde su vidrio. o = punto del vidrio (x a lo largo desde el extremo de la habitación, y sobre el
 // suelo), d = rayo de vista en esos ejes (x, y, z hacia dentro), sz = (ancho, alto, fondo) en metros, tp = fila de parámetros,
@@ -400,7 +366,7 @@ vec4 shLayer(float id, vec2 p, float W, vec3 col, vec3 acc, float shape, float p
 vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, float door){
   vec4 p0 = shPar(0.0, tp), p1 = shPar(1.0, tp), p2 = shPar(2.0, tp), p3 = shPar(3.0, tp), p4 = shPar(4.0, tp), p5 = shPar(5.0, tp), p6 = shPar(6.0, tp), p7 = shPar(7.0, tp);
   float fpat = floor(p0.a*255.0 + 0.5), lamp = floor(p2.a*255.0 + 0.5), idB = floor(p3.a*255.0 + 0.5), idF = floor(p4.a*255.0 + 0.5), idN = floor(p5.a*255.0 + 0.5), idS = floor(p6.a*255.0 + 0.5);
-  float ps = floor(p7.a*255.0 + 0.5), shape = floor(ps/16.0), pal = ps - shape*16.0, pit = shPitch(shape);
+  float ps = floor(p7.a*255.0 + 0.5), shape = floor(ps/16.0), pal = ps - shape*16.0;
   vec3 tint = mix(vec3(0.90, 0.96, 1.04), vec3(1.08, 0.94, 0.76), p1.a);
   o = clamp(o, vec2(0.02), sz.xy - 0.02);
   d.z = max(d.z, 0.03);
@@ -408,15 +374,41 @@ vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, f
   vec3 ro = vec3(o, 0.0);
   // la caja: primera pared que toca el rayo
   float tx = (d.x > 0.0 ? sz.x - o.x : -o.x)/d.x, ty = (d.y > 0.0 ? sz.y - o.y : -o.y)/d.y, tz = sz.z/d.z;
-  float t = min(tx, min(ty, tz));
+  float t = min(tx, min(ty, tz)), kx = clamp(abs(d.z/d.x), 1.0, 40.0);
   vec3 h = ro + d*t;
-  float pf = px*(1.0 + t/dist);
-  vec3 e3 = vec3(min(h.x, sz.x - h.x), min(h.y, sz.y - h.y), sz.z - h.z);
-  float edge = e3.x + e3.y + e3.z - min(e3.x, min(e3.y, e3.z)) - max(e3.x, max(e3.y, e3.z));
+  // lineales de supermercado: góndolas de verdad (cajas perpendiculares al vidrio) que el rayo puede tocar antes que la caja
+  float tg = 1e9, gi = 0.0, sp = sz.x/max(1.0, floor(sz.x/2.5));
+  if (idF > 5.5 && idF < 6.5) for (int k = 0; k < 6; k++) {
+    float fk = float(k);
+    if ((fk + 0.5)*sp > sz.x) break;
+    vec3 ta = (vec3((fk + 0.5)*sp - 0.38, 0.0, 1.5) - ro)/d, tb = (vec3((fk + 0.5)*sp + 0.38, 1.8, sz.z - 0.7) - ro)/d;
+    vec3 t0 = min(ta, tb), t1 = max(ta, tb);
+    float tn = max(max(t0.x, t0.y), t0.z), tf = min(min(t1.x, t1.y), t1.z);
+    if (tn < tf && tn > 0.0 && tn < tg) { tg = tn; gi = fk; }
+  }
+  // qué superficie se ve: una pared (fondo, lateral o cara de góndola: todas las pinta shBack) o el suelo o el techo
+  float wid = -1.0, ww = sz.x, wx0 = 0.0, gon = 0.0, wsd = sd, pf = px*(1.0 + min(t, tg)/dist), wpx = pf, ao = 1.0;
+  vec2 wq = h.xy; vec3 wcol = p0.rgb, wfurn = p3.rgb;
+  if (tg < t) {
+    t = tg; h = ro + d*tg; gon = 1.0; wfurn = p4.rgb; wcol = p4.rgb*0.8;
+    float gc = (gi + 0.5)*sp;
+    if (abs(h.z - 1.5) < 0.004) { wid = 1.0; wq = vec2(h.x - gc + 0.38, h.y); ww = 0.76; wsd = sd + gi; }
+    else if (h.y > 1.795) wid = 0.0;
+    else { wid = 1.0; wq = vec2(h.z - 1.5, h.y); ww = sz.z - 2.2; wsd = sd + gi*2.0 + step(gc, h.x); wpx = pf*kx; }
+  } else {
+    vec3 e3 = vec3(min(h.x, sz.x - h.x), min(h.y, sz.y - h.y), sz.z - h.z);
+    ao = 0.70 + 0.30*smoothstep(0.0, 0.7, e3.x + e3.y + e3.z - min(e3.x, min(e3.y, e3.z)) - max(e3.x, max(e3.y, e3.z)));
+    if (t == tz) wid = idB;
+    else if (t != ty) {
+      // paredes laterales: las estanterías del fondo siguen por los lados (dejando libre el primer metro), y también los espejos, los percheros y los cuadros
+      bool shel = idB > 0.5 && idB < 1.5;
+      wid = (shel || (idB > 2.5 && idB < 3.5) || (idB > 5.5 && idB < 6.5) || idB > 7.5) ? idB : 0.0;
+      wq = h.zy; ww = sz.z; wx0 = shel ? 1.0 : 0.0; wsd = sd + (d.x > 0.0 ? 11.0 : 23.0); wpx = pf*kx;
+    }
+  }
   vec3 c, glow = vec3(0.0);
-  if (t == tz) {
-    c = shBack(idB, h.xy, sz, p0.rgb, p3.rgb, p7.rgb, shape, pal, sd, pf);
-  } else if (t == ty) {
+  if (wid > -0.5) c = shBack(wid, wq, ww, wx0, gon, wcol, wfurn, p7.rgb, shape, pal, wsd, wpx);
+  else {
     float pl = pf*clamp(abs(d.z/d.y), 1.0, 40.0);
     if (d.y < 0.0) {
       // suelo: damero, tarima, terrazo o baldosa grande
@@ -433,47 +425,22 @@ vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, f
       // techo con luminarias: focos empotrados, tubos fluorescentes o focos cálidos sobre techo oscuro
       float lum;
       c = lamp > 1.5 ? p0.rgb*0.55 : mix(p0.rgb, vec3(0.92), 0.6)*0.92;
-      if (lamp < 0.5 || lamp > 1.5) { float sp = lamp < 0.5 ? 1.3 : 1.7; vec2 g = (fract(h.xz/sp + 0.5) - 0.5)*sp; float r = length(g);
+      if (lamp < 0.5 || lamp > 1.5) { float ls = lamp < 0.5 ? 1.3 : 1.7; vec2 g = (fract(h.xz/ls + 0.5) - 0.5)*ls; float r = length(g);
         lum = clamp((0.10 - r)/pl + 0.5, 0.0, 1.0) + 0.22*exp(-r*r*10.0); }
       else { vec2 g = vec2((fract(h.x/1.9) - 0.5)*1.9, (fract(h.z/1.7 + 0.5) - 0.5)*1.7);
         lum = shR(g, vec2(-0.62, -0.07), vec2(0.62, 0.07), pl) + 0.18*exp(-g.y*g.y*8.0); }
       glow = tint*mix(lum, 0.22, smoothstep(0.08, 0.5, pl))*4.5;
     }
-  } else {
-    // paredes laterales: las estanterías del fondo siguen por los lados (dejando libre el primer metro), y también los espejos, los percheros y los cuadros
-    float pw = pf*clamp(abs(d.z/d.x), 1.0, 40.0);
-    float sdw = sd + (d.x > 0.0 ? 11.0 : 23.0);
-    c = p0.rgb*(h.y < 0.1 ? 0.6 : (h.y < 0.95 ? 0.86 : (h.y < 1.0 ? 1.08 : 1.0)));
-    if (idB > 0.5 && idB < 1.5) { vec4 s = shShelf(vec2(h.z - 1.0, h.y), vec2(sz.z - 1.0, 2.3), 0.4, pit, shape, pal, p3.rgb, sdw, pw); c = c*(1.0 - s.a) + s.rgb; }
-    else if ((idB > 2.5 && idB < 3.5) || (idB > 5.5 && idB < 6.5) || idB > 7.5) c = shBack(idB, vec2(h.z, h.y), vec3(sz.z, sz.y, sz.z), p0.rgb, p3.rgb, p7.rgb, shape, pal, sdw, pw);
   }
-  c = c*tint*mix(1.0, 0.66, clamp(h.z/sz.z, 0.0, 1.0))*(0.70 + 0.30*smoothstep(0.0, 0.7, edge)) + glow;
-  // lineales de supermercado: góndolas de verdad (cajas perpendiculares al vidrio), con sus baldas por los dos lados
-  if (idF > 5.5 && idF < 6.5) {
-    float ng = max(1.0, floor(sz.x/2.5)), sp = sz.x/ng, tg = 1e9, gi = 0.0;
-    for (int k = 0; k < 6; k++) {
-      float fk = float(k);
-      if (fk >= ng) break;
-      vec3 ta = (vec3((fk + 0.5)*sp - 0.38, 0.0, 1.5) - ro)/d, tb = (vec3((fk + 0.5)*sp + 0.38, 1.8, sz.z - 0.7) - ro)/d;
-      vec3 t0 = min(ta, tb), t1 = max(ta, tb);
-      float tn = max(max(t0.x, t0.y), t0.z), tf = min(min(t1.x, t1.y), t1.z);
-      if (tn < tf && tn > 0.0 && tn < tg) { tg = tn; gi = fk; }
-    }
-    if (tg < t) {
-      vec3 g = ro + d*tg; float gc = (gi + 0.5)*sp, pg = px*(1.0 + tg/dist); vec3 gcol;
-      if (abs(g.z - 1.5) < 0.004) gcol = shShelf(vec2(g.x - gc + 0.38, g.y), vec2(0.76, 1.8), 0.36, pit, shape, pal, p4.rgb, sd + gi, pg).rgb;
-      else if (g.y > 1.795) gcol = p4.rgb*0.8;
-      else gcol = shShelf(vec2(g.z - 1.5, g.y), vec2(sz.z - 2.2, 1.8), 0.36, pit, shape, pal, p4.rgb, sd + gi*2.0 + step(gc, g.x), pg*clamp(abs(d.z/d.x), 1.0, 40.0)).rgb;
-      c = gcol*tint*mix(1.0, 0.66, clamp(g.z/sz.z, 0.0, 1.0)); t = tg;
-    }
+  c = c*tint*mix(1.0, 0.66, clamp(h.z/sz.z, 0.0, 1.0))*ao + glow;
+  // tres capas de mobiliario en planos paralelos al vidrio, de atrás adelante (lejana, cercana y repisa del escaparate):
+  // solo se ven si el rayo las cruza antes de dar con la pared o la góndola
+  for (int k = 0; k < 3; k++) {
+    float lid = k == 0 ? idF : (k == 1 ? idN : idS), tl = (k == 0 ? min(3.1, sz.z - 1.2) : (k == 1 ? 1.7 : 0.42))/d.z;
+    if (lid < 0.5 || (lid > 5.5 && lid < 6.5) || tl >= t || (k == 2 && door > 0.5)) continue;
+    vec4 L = shLayer(lid, o + d.xy*tl, sz.x, k == 0 ? p4.rgb : (k == 1 ? p5.rgb : p6.rgb), p7.rgb, shape, pal, sd + 3.0 + 2.0*float(k), px*(1.0 + tl/dist));
+    c = L.rgb*tint*(k == 0 ? 0.80 : (k == 1 ? 0.92 : 1.0)) + c*(1.0 - L.a);
   }
-  // capas de mobiliario, de atrás adelante: solo se ven si el rayo las cruza antes de dar con la caja
-  float tl = min(3.1, sz.z - 1.2)/d.z;
-  if (idF > 0.5 && (idF < 5.5 || idF > 6.5) && tl < t) { vec4 L = shLayer(idF, o + d.xy*tl, sz.x, p4.rgb, p7.rgb, shape, pal, sd + 3.0, px*(1.0 + tl/dist)); c = L.rgb*tint*0.80 + c*(1.0 - L.a); }
-  tl = 1.7/d.z;
-  if (idN > 0.5 && tl < t) { vec4 L = shLayer(idN, o + d.xy*tl, sz.x, p5.rgb, p7.rgb, shape, pal, sd + 5.0, px*(1.0 + tl/dist)); c = L.rgb*tint*0.92 + c*(1.0 - L.a); }
-  tl = 0.42/d.z;
-  if (idS > 0.5 && door < 0.5 && tl < t) { vec4 L = shLayer(idS, o + d.xy*tl, sz.x, p6.rgb, p7.rgb, shape, pal, sd + 7.0, px*(1.0 + tl/dist)); c = L.rgb*tint + c*(1.0 - L.a); }
   return c;
 }
 // el vidrio delante de la habitación: el interior con su luz propia (más al anochecer) y el reflejo del entorno con Fresnel
@@ -490,7 +457,7 @@ regKind('SHOPWIN', 20, `
     vec3 c = shGlass(srm, V, N);
     FRAG(c); return;`, SHOP_DECL);
 
-const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, init(ctx) {
+const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, paramSize: [PARW, PARH], init(ctx) {
   const { scene } = ctx;
   // rótulos: un atlas de 2 × 16 celdas de 512 × 64 (proporción 8:1), una por tipo, con sus colores
   const sign = new BABYLON.DynamicTexture('signs', { width: 1024, height: 1024 }, scene, true);
@@ -501,7 +468,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       g.fillStyle = t.sign[1]; g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.n, x + 256, y + 34, 470); });
     sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
   }
-  const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), 8, 32, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
+  const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), PARW, PARH, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
   par.wrapU = par.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
   for (const m of ctx.detail.mats) { m.setTexture('tSign', sign); m.setTexture('tShop', par); }
   const ACERO = pbrAux(0.3, 1, 0, 0), NEON = pbrAux(0.5, 0, 0, 1), FRAME = [24, 24, 27];
