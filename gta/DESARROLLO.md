@@ -651,7 +651,7 @@ luz hecha a mano, tres sitios de `app.js`: el brillo del asfalto en `FS_ROAD`, l
 
 ## 7. Carril LUZ
 
-Etapa LZ1 (HDR lineal y postproceso). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
+Etapas LZ1 (HDR lineal y postproceso, §7.1–7.5), ciclo de 24 horas (§7.6) y LZ2 (sombras del sol, §7.7). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
 no hace nada» de §6.12; el contrato (nombres y firmas de `lit`, `shade`, `envRefl`, `emit`, `fog`, `FRAG*`) no cambia.
 Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `gqRow`, `gq0`…`gq3`, `gqV`).
 
@@ -773,6 +773,74 @@ Los demás carriles pueden usar `uGlow` y `kAura` en sus shaders (pendiente: las
 
 No se enciende nunca: parques, cubiertas, el mar y la montaña (solo reciben la luna, y el mar el reflejo del halo). Pendiente: comercios de
 horario distinto (bares hasta más tarde, cruz de farmacia de guardia) y monumentos iluminados.
+
+### 7.7 Sombras del sol (etapa LZ2)
+
+Sombras proyectadas reales del sol (de noche, de la luna: es la misma luz direccional, §7.6). Código en `lighting.js`
+(«SOMBRAS DEL SOL»: pintar y mantener los mapas) y en el `PRELUDE` de `app.js` (`sunVisN`: recibirlas).
+
+**Cascadas.** Dos mapas de profundidad vistos desde el sol, cuadrados y centrados en la cámara: la cercana de ±45 m (detalle
+a pie: balcones, mobiliario, árboles) y la lejana de ±400 m (masas de edificios). Crecen con la altura de la cámara sobre
+el suelo (×altura/50, en escalones del 25 %, hasta ×10), así que desde el dron y el avión siguen cubriendo lo que se ve.
+Espacio de luz: Z hacia el sol, X horizontal perpendicular, Y = Z × X. El centro se ajusta a un múltiplo del téxel (el
+mapa no «nada» al moverse). Cada mapa es una `RenderTargetTexture` RGBA8 con la profundidad empaquetada en RGB (WebGL1 y
+SwiftShader sin texturas de profundidad), muestreo NEAREST, rango ±4000 m a lo largo del sol (`SH.R`).
+
+**Qué proyecta** (`shList`): las mallas del registro `reg` con `cast` (y la capa `orn` de las fachadas, con `P.shOrn`)
+cuya caja toca el cuadrado de la cascada en el plano XY de luz. Una variante del material de profundidad por formato
+(`shMat`): normal; volúmenes simples (`coarse`: el muro de un edificio que ya tiene fachada de detalle se aleja 0,6 m del
+sol para no tapar sus huecos); recortada por alfa (hojas). Reparto:
+
+| | cercana | lejana |
+| --- | --- | --- |
+| relieve (`terrain`) | no | sí |
+| volúmenes simples (`coarse`) | sí | sí |
+| fachadas de detalle (`base`, `orn`) y mobiliario (`furn`) | solo a menos de `P.shNear`×45 m (63 m) en planta | no |
+| árboles | los cercanos (`tNB`/`tNL`, < ~70 m) | los lejanos (`tFB`/`tFL`, ~55–520 m) |
+
+Con el sol bajo el cuadrado se alarga cientos de metros sobre el suelo: sin el tope `shNear` entraban celdas enteras de
+fachada cuya sombra fina no se distingue. Coste medido en `eix_acera` a las 17:00 (Alta): cercana ≈ 1,38 M triángulos
+(fachadas 0,94 M, árboles 0,2 M, volúmenes 0,2 M), lejana ≈ 0,93 M (árboles 0,6 M, volúmenes 0,29 M); antes de recortar,
+1,99 M y 1,14 M. `BCN.light.shBreak()` da el reparto por capa de cada cascada.
+
+**Actualización perezosa** (`shUpdate`, cada fotograma). Una cascada se repinta si la cámara se ha alejado de su centro más
+del 18 % del semilado (8 m a pie en la cercana, 72 m en la lejana), si cambia su tamaño, si cambia la hora (la dirección
+del sol) o si cambia la lista de mallas que proyectan dentro (se comprueba cuando cambia `reg.ver` y cada 30 fotogramas).
+Como mucho UNA cascada por fotograma, también con el reloj en marcha («▶ Pasa»: cada segundo cambia la hora y se repintan
+en dos fotogramas seguidos). Por eso cada cascada guarda los ejes de luz con que se pintó (`uShX0/uShY0`, `uShX1/uShY1`;
+su Z es X × Y): la que aún no se ha repintado sigue siendo coherente consigo misma. Sin luz direccional (relevo sol → luna,
+≈ 21:15) no se pinta nada y `uShP.z = 0` (sunVis = 1, da igual: la luz es 0). Medido con la sonda de abajo: cámara quieta
+0 repintados; medio metro 0; caminando 40 m a 1 m por fotograma, 6–7 repintados y nunca dos en un fotograma; reloj en
+marcha `110110110` (fotogramas con repintado tras tres cambios de hora). En modo captura (`#shot`) cada cascada espera
+hasta 2 fotogramas al `flush` del arnés, que llega con todo el detalle construido: una pintura por cascada y vista (antes, dos).
+
+**Recepción** (`PRELUDE`). `sunVisN(n)` se calcula una vez por fragmento (`gSunVis`) y multiplica solo la luz directa del sol y
+sus brillos (§7.1). Por cascada (`shCasc`): el punto se separa de la superficie a lo largo de la normal
+`tx·(0,4 + 1,2·seno del ángulo con el sol)` (tx = téxel en metros: más separación cuanto más rasante es la luz) y se
+compara con un margen de `0,25·tx + 1 cm`. Superficies de espaldas al sol: 0 sin mirar el mapa. Filtro PCF con pesos
+bilineales (`shMap`: el borde se mueve de forma continua, sin escalones de téxel): 2×2 en Media, 3×3 en Alta. Mezcla
+entre cascadas: la cercana pesa 1 hasta el 80 % de su semilado y 0 al 95 %; la lejana se desvanece entre el 80 y el 97 %
+(más allá, sin sombra). `sunVis()` sin normal (reflejos del sol en vidrio, asfalto y mar) usa `uShZ·7`.
+
+**Uniformes globales** (en `BASEU`/`BASES` para todo material de `mkMat`): `uShadow0`, `uShadow1` (mapas), `uShX0`, `uShY0`,
+`uShX1`, `uShY1`, `uShZ` (ejes), `uShC0`, `uShC1` (centro de cada cascada y 1/semilado), `uShP` (resolución,
+1/(2·R), filtro: 0 = sin sombras, 1 = 2×2, 2 = 3×3). Los da `lighting.js` (`shPush`, también a los materiales creados
+después) como **referencias**: Babylon guarda el objeto, así que basta mutarlos. Sin `lighting.js`, `uShP` vale 0 y sunVis da 1.
+
+**Calidades**: Baja sin sombras; Media 1024² y 2×2; Alta 2048² y 3×3 (tabla de §7.3). Por el camino LDR (`?ldr=1`) las
+sombras funcionan igual (no dependen del postproceso). `BCN.light.set({ shadows: 0 })` las apaga para comparar.
+
+**Cómo se depura.** `BCN.light.stats().shadow` → `{ res, half, n (mallas por cascada), tris, renders (total de
+repintados), ok (todo al día), dark }`. `BCN.light.shadow` es el estado interno (cascadas, mapas, materiales):
+`BCN.light.shadow.all = false` en el `eval` de una vista hace que el arnés se comporte como el juego (una cascada por
+fotograma). Sonda de repintados y reparto: `<scratchpad>/lz2/probe.js` (pegarla como `eval` de una vista que repita la
+posición de la anterior; escribe una línea `PROBE` como aviso de consola). Vistas del carril: `s_*` de `tools/views_luz.json`
+(las aéreas llevan `BCN.st.maxDist=40000`).
+
+**Pendiente / flojo** (para LZ3 o QA): los árboles a 43–55 m de la cámara solo están en el juego cercano de instancias y la
+cascada lejana no los lleva (`P.shTreeNF = 1` los añade, +0,2 M triángulos): en ese anillo pueden faltar sombras de copa;
+las copas recortadas por alfa sí, pero sin semitransparencia; el coste de pintar una cascada en el arnés (SwiftShader) sigue
+siendo de segundos, en un equipo real es un repintado cada ~8 m caminados.
 
 ## 8. Carril INTERIORES
 

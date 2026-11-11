@@ -74,7 +74,8 @@ window.BCN_LIGHTING = { init(ctx) {
   // RGB la profundidad t = 0,5 − (distancia hacia el sol respecto al centro)/(2·R): lo más cercano al sol gana.
   // Actualización perezosa: una cascada se repinta si la cámara se ha alejado de su centro más de un 18 % del semilado, si
   // cambia su tamaño (altura de la cámara), la hora o la lista de mallas que proyectan dentro de ella. Como mucho una por
-  // fotograma, salvo al cambiar la hora y en modo captura (ahí todo queda al día en el mismo fotograma).
+  // fotograma, también al cambiar la hora (cada cascada guarda sus ejes de luz, así la que espera sigue siendo coherente); en
+  // modo captura, todas a la vez tras el flush del arnés. Sin luz direccional (relevo sol → luna) no se pinta nada.
   const SH = { res: 0, filt: 0, R: 4000, base: [45, 400], casc: [], X: new B.Vector3(), Y: new B.Vector3(), Z: new B.Vector3(0, 1, 0),
                sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true, dark: false, flushed: false };
   const SH_VS = `precision highp float;
@@ -224,7 +225,7 @@ void main(){
       SH.sun.copyFrom(S); SH.Z.copyFrom(S); SH.X.set(S.z, 0, -S.x).normalize(); B.Vector3.CrossToRef(SH.Z, SH.X, SH.Y);
       for (const c of SH.casc) c.dirty = true;
     }
-    if (dark) return;
+    if (dark) { SH.flushed = false; return; }
     // las cascadas crecen con la altura sobre el suelo, en escalones del 25 % (para no repintar a cada metro que se sube)
     const s = Math.min(10, Math.pow(1.25, Math.round(Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25))));
     const check = ctx.reg.ver !== SH.ver || ++SH.tick >= 30;
