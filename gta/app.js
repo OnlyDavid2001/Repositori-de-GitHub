@@ -97,7 +97,7 @@ cam.inputs.clear(); cam.fov = 0.86; cam.minZ = 2; cam.maxZ = 170000;
 const PRELUDE = `#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec3 uCam; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform vec3 uSkyCol; uniform vec3 uGndCol;
-uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk; uniform float uNight; uniform float uLate;
+uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk; uniform float uNight; uniform float uLate; uniform vec4 uGlow;
 // NOCHE: qué se enciende y cuándo (lo fija setHour; vale para todos los shaders).
 //   uDusk  0 de día → 1 cuando hay que encender luces: del anochecer al amanecer, TODA la noche (farolas, semáforos, portales).
 //   uNight 0 → 1 noche cerrada (cielo negro, estrellas, luna).
@@ -108,6 +108,10 @@ uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float u
 float shopOn(){ return uDusk*(1.0 - 0.94*uLate); }
 float homeFrac(){ return mix(0.05 + 0.33*uDusk, 0.06, uLate); }
 float homeOn(float h){ return uDusk*step(h, homeFrac()); }
+// AURA NOCTURNA de la ciudad: lo que se ve de lejos (desde Collserola o desde el aire) es la trama de calles encendida.
+// uGlow = (calzadas, bajos de fachada, halo del cielo, suelo urbano): ganancias que fija setHour, 0 de día.
+// kAura: color de las farolas, en espacio de pantalla
+const vec3 kAura = vec3(1.0, 0.62, 0.30);
 uniform vec3 uSunL; uniform vec3 uSkyL; uniform vec3 uGndL; uniform vec2 uTone;
 uniform sampler2D uShadow0; uniform sampler2D uShadow1;
 uniform vec3 uShX; uniform vec3 uShY; uniform vec3 uShZ; uniform vec4 uShC0; uniform vec4 uShC1; uniform vec4 uShP;
@@ -270,6 +274,8 @@ void main(){
     }
     base *= mix(0.74, 1.0, smoothstep(-2.0, 8.0, h));
     base *= 1.0 - 0.10*smoothstep(Ht-0.9, Ht-0.5, h);
+    // aura nocturna: las farolas bañan la parte baja de los muros (cae con la altura). Las cubiertas quedan oscuras
+    if (uGlow.y > 0.001) glow += kAura*base*(exp(-max(h, 0.0)/6.0)*uGlow.y*mix(0.45, 1.0, smoothstep(90.0, 380.0, dist))*(1.0 - 0.8*smoothstep(200.0, 380.0, vPos.y)));
   } else {
     vec3 roof;
     float r = hash21(vCol.rg*91.7 + seed);
@@ -309,6 +315,8 @@ void main(){
   alb *= mix(1.0, mix(0.80 + 0.36*canFar, 0.58 + 0.80*can*can, nearF), veg*dark);
   alb *= 0.94 + 0.12*d2;
   vec3 c = lit(alb, n);
+  // aura nocturna: el suelo urbano (aceras, plazas) coge algo de la luz de las calles. Ni el verde ni el monte
+  if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w);
   FRAG(c);
 }`;
 
@@ -365,6 +373,17 @@ void main(){
   alb = mix(alb, vec3(0.86,0.86,0.82), mk*fade*0.8);
   vec3 c = lit(alb, N);
   c += uSunCol*0.05*pow(max(dot(reflect(-uSunDir, N), normalize(uCam - vPos)), 0.0), 24.0)*near*sunVis();
+  // aura nocturna: la calzada bajo las farolas. Un charco cada 24 m alternando de acera, donde furniture.js planta los postes
+  // (along(24, 5)). De lejos, su valor medio (no parpadea) y muy cerca más suave: ahí ya están los charcos del mobiliario
+  if (uGlow.x > 0.001 && (car || abs(cls-6.0) < 0.5)) {
+    float nL = floor((v - 5.0)/24.0 + 0.5), dv = v - 5.0 - nL*24.0;
+    float dxl = x - (mod(nL, 2.0) < 0.5 ? -0.7 : 0.7)*hw;
+    float gI = mix(0.25 + 1.45*exp(-dv*dv/90.0 - dxl*dxl/(2.0*hw*hw + 32.0)), 1.0, smoothstep(220.0, 480.0, dist));
+    gI *= mix(0.22, 1.0, smoothstep(50.0, 240.0, dist));
+    // las avenidas anchas y las vías principales, más luz. Las carreteras del monte, casi a oscuras
+    gI *= mix(0.75, 1.5, smoothstep(3.5, 10.0, hw))*(cls < 3.5 ? 1.15 : 1.0)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    c += emit(kAura*(alb*2.2 + 0.10), gI*uGlow.x);
+  }
   FRAG(c);
 }`;
 
@@ -415,12 +434,20 @@ void main(){ vDir = position; vec4 wp = world*vec4(position,1.0); vPos = wp.xyz;
 const FS_SKY = `
 varying vec3 vDir;
 void main(){
-  vec3 d = normalize(vDir); vec3 c = skyColor(d);
+  vec3 d = normalize(vDir); vec3 c = skyColor(d); float aur = 0.0;
+  if (uGlow.z > 0.001) {
+    // aura nocturna: resplandor anaranjado sobre el horizonte que se apaga hacia el cenit. Desde fuera de la ciudad
+    // (el mar, la montaña) es más fuerte mirando hacia ella
+    vec2 tc = vec2(11900.0, 14500.0) - uCam.xz; float dc = length(tc);
+    float tw = 0.5 + 0.5*dot(normalize(d.xz + vec2(1e-5)), tc/max(dc, 1.0));
+    aur = exp(-max(d.y, 0.0)*7.0)*mix(0.30 + 0.90*tw*tw, 0.85, 1.0 - smoothstep(2500.0, 7000.0, dc))*min(uGlow.z, 1.5);
+    c += vec3(0.16, 0.092, 0.044)*(aur*(0.35 + 0.65*smoothstep(0.0, 0.04, d.y)));
+  }
   if (uNight > 0.01 && d.y > 0.0) {                       // estrellas: solo de noche cerrada
     vec2 g = d.xz/(d.y + 0.55)*64.0; vec2 id = floor(g); float hs = hash21(id);
     vec2 o = (vec2(hash21(id + 7.31), hash21(id + 3.17)) - 0.5)*0.7;
     float st = smoothstep(0.12, 0.02, length(fract(g) - 0.5 - o))*step(0.90, hs);
-    c += vec3(0.86, 0.92, 1.0)*st*(0.25 + 1.9*fract(hs*37.0)*fract(hs*37.0))*uNight*smoothstep(0.03, 0.25, d.y);
+    c += vec3(0.86, 0.92, 1.0)*st*(0.25 + 1.9*fract(hs*37.0)*fract(hs*37.0))*uNight*smoothstep(0.03, 0.25, d.y)*(1.0 - 0.8*min(aur, 1.0));
   }
   if (d.y > 0.012 && uCam.y < 2400.0) {
     float tp = (2600.0 - uCam.y)/d.y;
@@ -444,7 +471,7 @@ void main(){
 // apuntar su nombre en BASEU (o en BASES si es un sampler) y darle valor: en lightTo() si depende de la hora, en update()
 // junto a uCam si cambia cada fotograma, o desde un módulo con ctx.eachMat(m => m.setTexture(…)), que vale también para
 // los materiales que se creen después.
-const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk', 'uNight', 'uLate',
+const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk', 'uNight', 'uLate', 'uGlow',
                'uSunL', 'uSkyL', 'uGndL', 'uTone', 'uShX', 'uShY', 'uShZ', 'uShC0', 'uShC1', 'uShP'];
 const BASES = ['uShadow0', 'uShadow1'];
 // textura de relleno para los mapas de sombra (blanco = nada tapa) mientras lighting.js no ponga los suyos
@@ -518,7 +545,7 @@ reg.meshes = MESHES; reg.ver = 0;
 
 // ------------------------------------------------------------------ luz / hora
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
-            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0, night: 0, late: 0, hour: 17,
+            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0, night: 0, late: 0, hour: 17, glow: new BABYLON.Vector4(0, 0, 0, 0),
             // luz lineal (uSunL, uSkyL, uGndL) = color de pantalla ^2.2 por estas ganancias. A mediodía, sol : cielo ≈ 8 : 1
             sunL: new BABYLON.Color3(), skyL: new BABYLON.Color3(), gndL: new BABYLON.Color3(),
             // exp: exposición de día. Al anochecer el ojo se adapta: el ambiente (cielo y suelo) sube hasta ×(1 + dAmb) y la
@@ -528,12 +555,15 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // De día manda que lo soleado no se queme: con el ACES de Babylon, una acera clara al sol debe quedar cerca de su
             // color de autor (≈ +15 %) y una pared blanca por debajo de 0,85; la sombra, hacia la mitad de lo soleado.
             // moon: ganancia de la luna respecto al sol · nAmb / nExp: adaptación extra del ambiente y la exposición de noche
-            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.9, nAmb: 0.0, nExp: 0.25 },
+            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.9, nAmb: 0.0, nExp: 0.25,
+                 // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
+                 // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
+                 city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
             tone: new BABYLON.Vector2(1.6, 1.08) };            // exposición (la fija setHour) y contraste (postproceso, o FRAG en el camino LDR)
 // uniformes de luz de un material (los comunes del preludio que dependen de la hora)
 function lightTo(m) {
   m.setVector3('uSunDir', L.sunDir); m.setColor3('uSunCol', L.sunCol); m.setColor3('uSkyCol', L.skyCol); m.setColor3('uGndCol', L.gndCol);
-  m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD); m.setFloat('uDusk', L.dusk); m.setFloat('uNight', L.night); m.setFloat('uLate', L.late);
+  m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD); m.setFloat('uDusk', L.dusk); m.setFloat('uNight', L.night); m.setFloat('uLate', L.late); m.setVector4('uGlow', L.glow);
   m.setColor3('uSunL', L.sunL); m.setColor3('uSkyL', L.skyL); m.setColor3('uGndL', L.gndL); m.setVector2('uTone', L.tone);
 }
 const lin22 = v => Math.pow(Math.max(v, 0), 2.2);
@@ -556,7 +586,11 @@ function setHour(hh) {
   const k = 0.55 + 0.45 * e, sc = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
   const sk = mix3(mix3([0.272, 0.256, 0.336], [0.32, 0.384, 0.48], e), [0.12, 0.145, 0.23], nt);
   const gn = mix3([0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04], [0.10, 0.105, 0.13], nt);
-  const fg = mix3(mix3([0.96, 0.66, 0.46], [0.74, 0.83, 0.92], e), [0.085, 0.095, 0.15], nt);
+  // aura nocturna: «on» sube con las farolas (segunda mitad de uDusk) y dura toda la noche. De noche cerrada la bruma del
+  // horizonte pasa de azul a pardo cálido (la luz de la ciudad en la calima) y se espesa un poco. De día todo queda como estaba
+  const on = L.K.city * sstep(0.45, 1, 1 - Math.min(1, Math.max(0, (Math.sin(elS * D) - 0.02) / 0.22))), hl = Math.min(1, on * L.K.halo);
+  const fg = mix3(mix3([0.96, 0.66, 0.46], [0.74, 0.83, 0.92], e), mix3([0.085, 0.095, 0.15], [0.155, 0.118, 0.098], hl), nt);
+  L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 + 0.5 * hl * nt);
   const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.012, 0.018, 0.045], nt);
   if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
   L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);

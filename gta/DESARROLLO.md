@@ -754,7 +754,24 @@ reloj: 1 s real = 1 min de juego, un día cada 24 min, recalculando la luz una v
 | `shopOn()` | `uDusk·(1 − 0,94·uLate)` | comercios, rótulos y bajos comerciales: encendidos al anochecer, apagados de madrugada (queda una luz de vigilancia) |
 | `homeOn(h)` / `homeFrac()` | ¿encendida la ventana de azar `h`? Fracción: ~38 % al anochecer, 6 % de madrugada | ventanas de pisos (fachadas de detalle y volúmenes lejanos) |
 
-No se enciende nunca: árboles y parques, cubiertas, el mar y la montaña (solo reciben la luna). Pendiente: comercios de
+**Aura nocturna de la ciudad** (`uGlow`, uniforme global del preludio; color de farola `kAura`). De lejos —desde Collserola
+o desde el aire— lo que se ve de Barcelona es la trama de calles encendida, no las ventanas. `uGlow = (calzadas, bajos de
+fachada, halo, suelo urbano)` lo fija `setHour` a partir de `L.K.city` (ganancia general, 0 = sin aura) por `K.calle`,
+`K.bajos`, `K.halo` y `K.suelo`; sube con la segunda mitad de `uDusk`, dura toda la noche y vale 0 de día (a las 12:00 la
+imagen es idéntica píxel a píxel con `city` a 0 o a 1). Se ajusta en caliente: `BCN.light.set({ city: 0 })`.
+- `FS_ROAD` (`.x`): la calzada emite la luz de las farolas en charcos cada 24 m alternando de acera (el mismo `along(24, 5)`
+  con que `furniture.js` planta los postes); a partir de ~220–480 m pasa a su valor medio (no parpadea) y a menos de ~240 m
+  se atenúa hasta el 22 %, porque ahí están los charcos de verdad del mobiliario. Más luz cuanto más ancha la vía y en las
+  principales (`cls < 3.5`); por encima de 200–380 m de cota (carreteras de Collserola) casi nada.
+- `FS_BLD` (`.y`): luz de farola en la parte baja de los muros de los volúmenes lejanos, `exp(−h/6)`. Las cubiertas no.
+- Halo (`.z`): de noche cerrada el color de la niebla pasa de azul a pardo cálido y la niebla se espesa un 50 %; en
+  `FS_SKY`, una banda anaranjada tenue sobre el horizonte (`exp(−7·d.y)`), más fuerte mirando hacia la ciudad cuando la
+  cámara está fuera de ella, que además apaga las estrellas bajas.
+- `FS_TER` (`.w`): el suelo no vegetal por debajo de 200–380 m de cota coge un poco de esa luz.
+Los demás carriles pueden usar `uGlow` y `kAura` en sus shaders (pendiente: las copas de los árboles de calle, en
+`streets.js`, tapan la calzada encendida vista desde arriba y siguen oscuras; las aceras de detalle tampoco la reciben).
+
+No se enciende nunca: parques, cubiertas, el mar y la montaña (solo reciben la luna, y el mar el reflejo del halo). Pendiente: comercios de
 horario distinto (bares hasta más tarde, cruz de farmacia de guardia) y monumentos iluminados.
 
 ## 8. Carril INTERIORES
