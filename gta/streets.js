@@ -400,11 +400,21 @@ void main(){
     }
     yield;
     // mobiliario (furniture.js) y marcas viales (ground.js)
-    const cc = cellCtx(ci, W, ox, oz);
+    const cc = cellCtx(ci, W, ox, oz); cc.pools = [];
     FU.build(cc); GR.decals(cc);
     sortBySeg(W, cc.marks);
     yield;
     if (cells.get(ci) !== cell) { freeSlots.push(slot); return; }
+    // charcos de luz de las farolas (los deja furniture.js en cc.pools: x, y, z, u, v por vértice, de cuatro en cuatro): malla con mezcla alfa
+    let poolMesh = null;
+    if (cc.pools.length && FU.poolMat) { const Q = cc.pools, nq = Q.length / 20, pp = new Float32Array(nq * 12), pu = new Float32Array(nq * 8), pi = new Uint32Array(nq * 6);
+      for (let k = 0; k < nq * 4; k++) { pp[k * 3] = Q[k * 5]; pp[k * 3 + 1] = Q[k * 5 + 1]; pp[k * 3 + 2] = Q[k * 5 + 2]; pu[k * 2] = Q[k * 5 + 3]; pu[k * 2 + 1] = Q[k * 5 + 4]; }
+      for (let k = 0; k < nq; k++) pi.set([k * 4, k * 4 + 1, k * 4 + 2, k * 4, k * 4 + 2, k * 4 + 3], k * 6);
+      poolMesh = new BABYLON.Mesh('lp' + ci, scene);
+      poolMesh.setVerticesData('position', pp, false); poolMesh.setVerticesData('uv', pu, false); poolMesh.setIndices(pi);
+      poolMesh.material = FU.poolMat; poolMesh.isPickable = false; poolMesh.renderingGroupId = 1; poolMesh.position.set(ox, 0, oz); poolMesh.freezeWorldMatrix(); poolMesh.doNotSyncBoundingInfo = true;
+      reg(poolMesh, { cast: false, layer: 'fx' }); }
+    cell.pool = poolMesh;
     engine.updateTextureData(atlas.getInternalTexture(), F, sx, sy, NT, NT);
     let walkMesh = null;
     if (I.length) {
@@ -413,8 +423,25 @@ void main(){
       walkMesh.material = matW; walkMesh.isPickable = false; walkMesh.renderingGroupId = 1; walkMesh.position.set(ox, 0, oz); walkMesh.freezeWorldMatrix(); walkMesh.doNotSyncBoundingInfo = true;
       reg(walkMesh, { cast: false, layer: 'walk' });
     }
-    const furnMesh = reg(mkMeshFrom(W, matB, 'fu' + ci), { cast: true, layer: 'furn' });
+    // `cell` va en los metadatos: facades.js pone uCellHi = 1 al pintar esta malla cuando cell.hi existe, y el mobiliario
+    // sencillo cede entonces el sitio, de cerca, a la malla de detalle (hiJob)
+    const furnMesh = reg(mkMeshFrom(W, matB, 'fu' + ci), { cast: true, layer: 'furn', cell });
     cell.walk = walkMesh; cell.furn = furnMesh; cell.slot = slot; cell.tris = I.length / 3 + W.ni / 3; tris += cell.tris;
+    cell.fTris = W.ni / 3; furnTris[0] += cell.fTris; cell.built = true;
+  }
+  // mobiliario de detalle de una celda cercana (FU.buildHi): malla aparte, que se quita al alejarse (dropHi)
+  function* hiJob(ci) {
+    const cell = cells.get(ci), ox = (ci % NX) * CS, oz = ((ci / NX) | 0) * CS, W = new GB(ox, oz);
+    FU.buildHi(cellCtx(ci, W, ox, oz));
+    yield;
+    if (cells.get(ci) !== cell) return;
+    cell.hi = reg(mkMeshFrom(W, matB, 'fh' + ci), { cast: true, layer: 'furn' });
+    cell.hiDone = true; cell.hiTris = W.ni / 3; tris += cell.hiTris; furnTris[1] += cell.hiTris;
+  }
+  function dropHi(c) {
+    if (c.hi) c.hi.dispose(false, false);
+    if (c.hiDone) { tris -= c.hiTris; furnTris[1] -= c.hiTris; }
+    c.hi = null; c.hiDone = false;
   }
 
   // ---------------------------------------------------------------- contexto de celda para los hooks
@@ -471,12 +498,15 @@ void main(){
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();
   const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [430, 520], tI: 2100 };
+  // mobiliario de detalle: se construye en las celdas a menos de HB (algo más que el relevo por píxel, FU.hiRange) y se quita a partir de HD
+  const HB = FU.buildHi && FU.hiRange ? FU.hiRange[1] + 8 : -1, HD = HB + 25, furnTris = [0, 0];
   let job = null, queue = [], tris = 0, planT = 0, instT = 0, lastIP = null, added = 0;
   function drop(ci) {
     const c = cells.get(ci); if (!c) return;
-    if (c.walk) c.walk.dispose(false, false); if (c.furn) c.furn.dispose(false, false);
+    dropHi(c);
+    if (c.walk) c.walk.dispose(false, false); if (c.furn) c.furn.dispose(false, false); if (c.pool) c.pool.dispose(false, false);
     if (c.slot !== undefined) freeSlots.push(c.slot);
-    tris -= c.tris || 0; cells.delete(ci);
+    tris -= c.tris || 0; furnTris[0] -= c.fTris || 0; cells.delete(ci);
   }
   function plan(P, alt) {
     const want = [], keep = new Set();
@@ -486,11 +516,14 @@ void main(){
         if (i < 0 || j < 0 || i >= NX || j >= NZ) continue;
         const ci = j * NX + i, dx = Math.max(i * CS - P.x, 0, P.x - (i + 1) * CS), dz = Math.max(j * CS - P.z, 0, P.z - (j + 1) * CS), d = Math.hypot(dx, dz, alt);
         if (d < S.RD) keep.add(ci);
-        if (d < S.RB && !cells.has(ci)) want.push([d, ci]);
+        const c = cells.get(ci);
+        if (d < S.RB && !c) want.push([d, ci]);
+        if (c && c.built && !c.hiDone && d < HB) want.push([d + 40, ci, true]);
+        if (c && c.hiDone && d > HD) dropHi(c);
       }
     }
     for (const ci of [...cells.keys()]) if (!keep.has(ci) && !(job && job.ci === ci)) drop(ci);
-    if (job && !keep.has(job.ci)) { cells.delete(job.ci); job = null; }
+    if (job && !keep.has(job.ci)) { if (job.hi) drop(job.ci); else cells.delete(job.ci); job = null; }
     want.sort((a, b) => a[0] - b[0]); queue = want;
   }
   // instancias de árboles: se recalculan al moverse; las listas por celda se calculan poco a poco
@@ -532,7 +565,9 @@ void main(){
     if ((planT -= dt) <= 0) { planT = 0.25; plan(P, alt); }
     const t0 = performance.now();
     while (S.on) {
-      if (!job) { const w = queue.shift(); if (!w) break; if (cells.has(w[1])) continue; cells.set(w[1], {}); job = { ci: w[1], it: cellJob(w[1]) }; }
+      if (!job) { const w = queue.shift(); if (!w) break;
+        if (w[2]) { const c = cells.get(w[1]); if (!c || !c.built || c.hiDone) continue; job = { ci: w[1], hi: true, it: hiJob(w[1]) }; }
+        else { if (cells.has(w[1])) continue; cells.set(w[1], {}); job = { ci: w[1], it: cellJob(w[1]) }; } }
       const r = job.it.next(); if (r.done) job = null;
       if (performance.now() - t0 > S.budget) break;
     }
@@ -553,8 +588,8 @@ void main(){
   setRange(1);
   const busy = () => !!job || queue.length > 0 || pendingTrees.length > 0;
   // vaciado de golpe (arnés de capturas): hasta que no quede nada pendiente, y una pasada más para asentar las instancias
-  function flush(P, groundY) { let n = 0; do { update(P, groundY, 0.5, 0); } while (busy() && ++n < 100000); update(P, groundY, 0.5, 0); }
+  function flush(P, groundY) { let n = 0; for (let pass = 0; pass < 2; pass++) do { update(P, groundY, 0.5, 0); } while (busy() && ++n < 100000); update(P, groundY, 0.5, 0); }   // dos pasadas: la segunda planifica el mobiliario de detalle de las celdas recién hechas
   return { update, setRange, flush, busy,
-    stats: () => ({ cells: cells.size, tris, trees: nTrees, treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
+    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, trees: nTrees, treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
 } };
 })();
