@@ -374,17 +374,19 @@ add({ id: 'torre_aigues_besos', nombre: 'Torre de les Aigües del Besòs', nivel
     L.cupula(B, 0, 0, 59, 3.4, 3.5, { lados: 12, anillos: 4, col: [120, 110, 100], k: K.METAL, linterna: { r: 0.6, alto: 1.8 } });
   } });
 
-// Tres Xemeneies del Besòs (Sant Adrià). Tres fustes de hormigón de 200 m en fila, paralela a la costa, y la nave de
-// turbinas al pie, del lado del mar. (El catálogo daba rumbo 140, perpendicular a la costa; de memoria, la fila corre
-// a lo largo de la playa: rot 45.)
-add({ id: 'xemeneies_besos', nombre: 'Tres Xemeneies', nivel: 'B', x: 17419, z: 18402.5, rot: 45, alto: 200, ancho: 60, largo: 140,
-  noche: 'nada', edificios: [],
+// Tres Xemeneies del Besòs (Sant Adrià). Tres fustes de hormigón de 200 m en fila a lo largo de la playa (rumbo 48), con
+// la nave de turbinas al pie (esa queda del volumen de los datos, #207013). Los datos ya tienen las chimeneas, pero cada una
+// sale de un bloque de 95 m de 27 × 27 m que no existe: se sustituyen por los fustes exentos, en sus posiciones.
+// (La posición del catálogo, tomada del poi, se iba 265 m al oeste.)
+add({ id: 'xemeneies_besos', nombre: 'Tres Xemeneies', nivel: 'B', x: 17683, z: 18430.5, rot: 48, alto: 200, ancho: 20, largo: 140,
+  noche: 'nada', edificios: [189712, 189713, 189715, 189716, 189717, 189718, 189719, 206704, 206705, 206706, 206713,
+    207003, 207004, 207005, 207006, 207007, 207008, 207009, 207010, 207011, 207012],
   build(B, h, L) {
     const HO = [206, 202, 194];
-    for (const z of [-48, 0, 48]) L.chimenea(B, 0, z, -2, 202, 8.2, 4.6, { lados: 20, col: HO, bandas: [[184, 196, [176, 172, 166]]] });
-    L.caja(B, 30, 0, -2, 36, 132, 36, 0, [198, 192, 182], K.VENTANAS, { aux: L.aux.ventanas(6, 5, 0.3, 0.35), techo: [150, 146, 140] });
-    L.caja(B, 30, 0, 34, 30, 126, 4, 0, [176, 170, 162], K.LISO);
-    L.caja(B, 8, 0, -2, 12, 140, 20, 0, [186, 180, 170], K.LISO);
+    for (const [x, z] of [[0.6, -63.7], [0, 0], [0.8, 53.1]]) {
+      L.chimenea(B, x, z, -2, 202, 8.6, 4.8, { lados: 20, col: HO, bandas: [[186, 197, [172, 168, 162]]] });
+      L.tambor(B, x, z, -2, 6, 11, { lados: 16, col: [184, 178, 168], k: K.LISO });
+    }
   } });
 
 // ================================================================== nivel C: retoque del volumen existente
