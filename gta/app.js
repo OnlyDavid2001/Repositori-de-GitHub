@@ -303,7 +303,7 @@ const mats = [];
 function mkMat(name, vs, fs, attributes, uniforms, samplers, opts) {
   opts = opts || {};
   const m = new BABYLON.ShaderMaterial(name, scene, { vertexSource: vs, fragmentSource: PRELUDE + fs },
-    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: samplers || [], defines: opts.defines || [] });
+    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: (samplers || []).slice(), defines: (opts.defines || []).slice() });
   m.backFaceCulling = !!opts.cull;
   mats.push(m);
   return m;
@@ -624,10 +624,11 @@ async function addMod(id, glob, what) {
   try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); const m = await M.init(CTX); MODS.push({ id, m }); return (CTX.mods[id] = m); }
   catch (e) { console.warn('Sin ' + what, e); return null; }
 }
-// Módulos de hooks (interiors, details, furniture, ground): los inicia el núcleo que los usa con ctx.hooks(qué, global, respaldo).
-// Devuelve el respaldo completado con lo que dé init(ctx); si el módulo falta o falla, se queda el respaldo y se avisa.
-CTX.hooks = (what, glob, fb) => {
-  try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); return Object.assign(fb, M.init(CTX)); }
+// Módulos de hooks (interiors, details, furniture, ground): los inicia el núcleo que los usa con
+// «await ctx.hooks(qué, global, respaldo)». Devuelve el respaldo completado con lo que dé init(ctx) (que puede ser async:
+// cargar texturas, etc.); si el módulo falta o falla al iniciarse, se queda el respaldo y se avisa.
+CTX.hooks = async (what, glob, fb) => {
+  try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); return Object.assign(fb, await M.init(CTX)); }
   catch (e) { console.warn('Sin ' + what, e); return fb; }
 };
 // fachadas de detalle (calidad Transeúnte al acercarse)
@@ -739,7 +740,8 @@ function update(dt) {
   sky.position.copyFrom(P);
   for (const m of mats) m.setVector3('uCam', P);
   { const ox = Math.floor(P.x / 1200) * 1200, oz = Math.floor(P.z / 1200) * 1200; if (ox !== st._ox || oz !== st._oz) { st._ox = ox; st._oz = oz; matRoad.setVector2('uOrg', new BABYLON.Vector2(ox, oz)); } }
-  for (const o of MODS) o.m.update(P, g, dt, frame);
+  // un fallo en un módulo no puede parar el fotograma (ni a los demás módulos): se avisa como error y se sigue
+  for (const o of MODS) { try { o.m.update(P, g, dt, frame); } catch (e) { if ((o.nerr = (o.nerr || 0) + 1) <= 3) console.error('Error en el módulo «' + o.id + '»: ' + (e && e.stack || e)); } }
   if (SHOT || (frame & 7) === 0) { const md = st.maxDist + P.y * 1.2, m2 = md * md; for (const c of bldChunks) { const dx = c.x - P.x, dz = c.z - P.z; c.mesh.setEnabled(st.maxDist >= 40000 || dx * dx + dz * dz < m2); } }
   hudT -= dt;
   if (hudT <= 0) {

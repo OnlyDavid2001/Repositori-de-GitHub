@@ -464,8 +464,8 @@ void main(){
     }
   }
   // hooks: si un módulo falta o falla al iniciarse, las calles salen sin esa parte
-  const FU = ctx.hooks('mobiliario urbano (furniture.js)', 'BCN_FURNITURE', { build() {} });
-  const GR = ctx.hooks('marcas viales (ground.js)', 'BCN_GROUND', { decals() {} });
+  const FU = await ctx.hooks('mobiliario urbano (furniture.js)', 'BCN_FURNITURE', { build() {} });
+  const GR = await ctx.hooks('marcas viales (ground.js)', 'BCN_GROUND', { decals() {} });
 
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();

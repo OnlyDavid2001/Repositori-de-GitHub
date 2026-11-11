@@ -1,6 +1,6 @@
 /* GTA Barcelona — Geometría, azar y tipos de material compartidos por todos los módulos. Sin dependencias.
    window.BCN_GEO:
-     · K, regKind(), kindsGLSL(), kindsDecl(): tipos de material del shader de detalle y registro de tipos nuevos;
+     · K, regKind(), kindsGLSL(), kindsDecl(), kindsUniforms(): tipos de material del shader de detalle y registro de tipos nuevos;
      · GB (geometría acumulada) y las primitivas que escriben en él: quad, rect, jamb, hpl, box, lattice…, cyl, obox, bar;
      · seed(), R(), pick(), hash2(): azar reproducible, con UN solo estado compartido por todos los módulos.
    Contratos y ejemplos de uso: DESARROLLO.md §6. */
@@ -14,6 +14,8 @@ const K = { STUCCO: 0, STONE: 1, GLASS: 2, SHUT: 3, WOOD: 4, METAL: 5, IRON: 6, 
 // regKind(nombre, id, glsl[, decl]) da de alta K[nombre] = id y su rama del shader de detalle (cuerpo GLSL, sin el «else if»).
 // Hay que llamarlo AL CARGAR el script (nivel superior del módulo): facades.js monta el shader una sola vez, al iniciarse.
 // `decl` (opcional) son declaraciones globales GLSL que la rama necesite: funciones auxiliares, uniformes o samplers propios.
+// Los «uniform …;» de `decl` se dan de alta solos en los materiales de detalle (kindsUniforms): basta con fijarlos después
+// con setTexture/setFloat… en ctx.detail.mats. Qué puede leer y escribir una rama: DESARROLLO.md §6.
 const KINDS = [];
 let sealed = false;
 function regKind(name, id, glsl, decl) {
@@ -27,6 +29,11 @@ function regKind(name, id, glsl, decl) {
 const kindsGLSL = () => { sealed = true;
   return KINDS.map(k => ' else if (kind > ' + (k.id - 0.5).toFixed(1) + ' && kind < ' + (k.id + 0.5).toFixed(1) + ') {   // ' + k.name + '\n' + k.glsl + '\n  }').join(''); };
 const kindsDecl = () => { sealed = true; return KINDS.map(k => k.decl).filter(d => d).join('\n'); };
+// nombres de los uniformes y samplers declarados en los `decl`: facades.js los pasa a mkMat al crear los materiales de detalle
+const kindsUniforms = () => { const uniforms = [], samplers = [];
+  for (const k of KINDS) for (const m of k.decl.matchAll(/\buniform\s+(?:(?:lowp|mediump|highp)\s+)?(\w+)\s+([^;]+);/g))
+    for (const nm of m[2].split(',')) (m[1].indexOf('sampler') === 0 ? samplers : uniforms).push(nm.replace(/\[.*/, '').trim());
+  return { uniforms, samplers }; };
 
 // ------------------------------------------------------------------ geometría acumulada (posición + color/tipo + auxiliar)
 class GB {
@@ -121,6 +128,6 @@ const R = (a, b) => { _s |= 0; _s = _s + 0x6D2B79F5 | 0; let t = Math.imul(_s ^ 
 const pick = arr => arr[Math.floor(R() * arr.length)];
 const hash2 = (x, z) => { let h = Math.imul((x * 73856093) ^ (z * 19349663), 0x9E3779B1); h ^= h >>> 15; return ((h >>> 0) % 100000) / 100000; };
 
-window.BCN_GEO = { K, regKind, kindsGLSL, kindsDecl, GB, quad, rect, jamb, hpl, box, lattice, latticeSide, latAux, signAux, shade, mixc,
+window.BCN_GEO = { K, regKind, kindsGLSL, kindsDecl, kindsUniforms, GB, quad, rect, jamb, hpl, box, lattice, latticeSide, latAux, signAux, shade, mixc,
   F0, cyl, obox, bar, seed, R, pick, hash2 };
 })();
