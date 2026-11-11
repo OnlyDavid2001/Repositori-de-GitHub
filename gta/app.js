@@ -444,8 +444,11 @@ reg.meshes = MESHES;
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
             fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0, hour: 17,
             // luz lineal (uSunL, uSkyL, uGndL) = color de pantalla ^2.2 por estas ganancias. A mediodía, sol : cielo ≈ 8 : 1
-            sunL: new BABYLON.Color3(), skyL: new BABYLON.Color3(), gndL: new BABYLON.Color3(), K: { sun: 2.3, sky: 1.6, gnd: 1.5 },
-            tone: new BABYLON.Vector2(1.6, 1.08) };            // exposición y contraste (postproceso, o FRAG en el camino LDR)
+            sunL: new BABYLON.Color3(), skyL: new BABYLON.Color3(), gndL: new BABYLON.Color3(),
+            // exp: exposición de día. Al anochecer el ojo se adapta: el ambiente (cielo y suelo) sube hasta ×(1 + dAmb) y la
+            // exposición hasta ×(1 + dExp), con el sol ya bajo (L.dusk de 0 a 0,6). Poco de exposición para no lavar el cielo
+            K: { sun: 2.3, sky: 1.6, gnd: 1.5, exp: 1.6, dAmb: 3.0, dExp: 0.3 },
+            tone: new BABYLON.Vector2(1.6, 1.08) };            // exposición (la fija setHour) y contraste (postproceso, o FRAG en el camino LDR)
 // uniformes de luz de un material (los comunes del preludio que dependen de la hora)
 function lightTo(m) {
   m.setVector3('uSunDir', L.sunDir); m.setColor3('uSunCol', L.sunCol); m.setColor3('uSkyCol', L.skyCol); m.setColor3('uGndCol', L.gndCol);
@@ -467,7 +470,9 @@ function setHour(hh) {
   L.gndCol.set(0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04);
   L.fogCol.set(fg[0], fg[1], fg[2]); L.zenCol.set(zn[0], zn[1], zn[2]);
   L.dusk = 1 - Math.min(1, Math.max(0, (L.sunDir.y - 0.02) / 0.22));        // 0 de día … 1 al anochecer (uDusk, en todos los materiales)
-  linTo(L.sunL, L.sunCol, L.K.sun); linTo(L.skyL, L.skyCol, L.K.sky); linTo(L.gndL, L.gndCol, L.K.gnd);
+  const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), amb = 1 + L.K.dAmb * dk;   // adaptación al anochecer
+  linTo(L.sunL, L.sunCol, L.K.sun); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
+  L.tone.x = L.K.exp * (1 + L.K.dExp * dk);
   L.hour = hh; lightOn = true;
   for (const m of mats) lightTo(m);
   scene.clearColor.set(fg[0], fg[1], fg[2], 1);

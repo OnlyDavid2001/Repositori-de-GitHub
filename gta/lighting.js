@@ -72,10 +72,10 @@ window.BCN_LIGHTING = { init(ctx) {
     win.t = 0; win.n = 0; win.bad = 0;
     apply();
   }
-  // ajustes en caliente: { exposure, contrast, sun, sky, gnd } (luz y tono, viven en ctx.L) y los de P
+  // ajustes en caliente: { exposure, contrast, sun, sky, gnd, dAmb, dExp } (luz y tono, viven en ctx.L) y los de P
   function set(o) {
     for (const k in o) {
-      if (k === 'exposure') L.tone.x = o[k]; else if (k === 'contrast') L.tone.y = o[k];
+      if (k === 'exposure') L.K.exp = o[k]; else if (k === 'contrast') L.tone.y = o[k];
       else if (k in L.K) L.K[k] = o[k]; else if (k in P) P[k] = o[k];
     }
     ctx.relight(); apply();
@@ -83,6 +83,7 @@ window.BCN_LIGHTING = { init(ctx) {
   // modo Auto: tiempo medio de fotograma REAL en ventanas de 2 s. Dos ventanas seguidas por encima de 34 ms → un escalón menos
   const win = { t: 0, n: 0, bad: 0, last: 0, ms: 0 };
   function update(P_, groundY, dt, frame) {
+    if (pipe) put(scene.imageProcessingConfiguration, 'exposure', L.tone.x);   // la exposición cambia con la hora (setHour)
     const now = performance.now(), d = now - win.last; win.last = now;
     if (SHOT || d > 400 || document.hidden) return;             // capturas, pestaña oculta o parón: no cuenta
     win.t += d; win.n++;
