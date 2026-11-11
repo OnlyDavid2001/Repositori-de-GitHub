@@ -24,7 +24,7 @@ const C_NONE = 0, C_FOREST = 1, C_PARK = 2, C_GRASS = 3, C_FARM = 4, C_SCRUB = 5
 // ------------------------------------------------------------------ geometría (local, y arriba, base en 0)
 // color por vértice: r = oclusión (0–1), g = altura relativa en la planta (0 pie … 1 punta), b = libre, a = parte
 // partes: 0 copa/follaje · 1 tronco · 2 roca · 3 hierba · 4 caña · 5 madera
-function G() { return { P: [], N: [], C: [], I: [] }; }
+function G() { return { P: [], N: [], C: [], I: [], UV: [] }; }   // UV: [vértice, u, v] solo de las tarjetas (el resto, centro opaco)
 let _s = 1;
 const rnd = (a, b) => { _s |= 0; _s = _s + 0x6D2B79F5 | 0; let t = Math.imul(_s ^ _s >>> 15, 1 | _s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
   const r = ((t ^ t >>> 14) >>> 0) / 4294967296; return b === undefined ? (a === undefined ? r : r * a) : a + r * (b - a); };
@@ -84,56 +84,117 @@ function rock(g, sx, sy, sz) {
     g.I.push(base, base + 1, base + 2);
   }
 }
-function pack(g) { return { P: new Float32Array(g.P), N: new Float32Array(g.N), C: new Float32Array(g.C), I: new Uint32Array(g.I) }; }
+// tarjeta de hojas: dos cuadriláteros cruzados (uno de cara a n, otro de canto) con la textura de hojas recortada por alfa.
+// tile 0: ramillete de agujas de pino · tile 1: hojas de encina / lentisco. n: normal hacia fuera de la copa (la luz)
+function card(g, cx, cy, cz, sz, nx, ny, nz, tile, ao, Htop) {
+  const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+  let ax = Math.abs(ny) < 0.9 ? 0 : 1, ay = Math.abs(ny) < 0.9 ? 1 : 0, az = 0;
+  let t1x = ay * nz - az * ny, t1y = az * nx - ax * nz, t1z = ax * ny - ay * nx; let q = Math.hypot(t1x, t1y, t1z); t1x /= q; t1y /= q; t1z /= q;
+  let t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
+  const ph = rnd(6.2832), c = Math.cos(ph), s = Math.sin(ph);
+  const ux = t1x * c + t2x * s, uy = t1y * c + t2y * s, uz = t1z * c + t2z * s, vx = t2x * c - t1x * s, vy = t2y * c - t1y * s, vz = t2z * c - t1z * s;
+  const u0 = tile * 0.5;
+  for (const [ax2, ay2, az2, bx, by, bz] of [[ux, uy, uz, vx, vy, vz], [ux, uy, uz, nx * 0.8 + vx * 0.2, ny * 0.8 + vy * 0.2, nz * 0.8 + vz * 0.2]]) {
+    const base = g.P.length / 3;
+    for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const x = cx + (ax2 * a + bx * b) * sz, y = cy + (ay2 * a + by * b) * sz, z = cz + (az2 * a + bz * b) * sz;
+      g.P.push(x, y, z); g.N.push(nx, ny, nz); g.C.push(ao, Math.min(1, Math.max(0, y / Htop)), 0, 6);
+      g.UV.push(g.P.length / 3 - 1, u0 + (a * 0.5 + 0.5) * 0.5, b * 0.5 + 0.5);
+    }
+    g.I.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+}
+// cartel lejano (parte 7): un cuadrilátero que el VS orienta a la cámara alrededor del centro de la copa. position = (u, v, 0)
+// (v = -2: se alarga hacia abajo para el tronco); normal = (radio horizontal, radio vertical, altura del centro)
+function board(rx, ry, cy, trunk) {
+  const g = G(), vb = trunk ? -2 : -1;
+  for (const [u, v] of [[-1, vb], [1, vb], [1, 1], [-1, 1]]) { g.P.push(u, v, 0); g.N.push(rx, ry, cy); g.C.push(1, 0.5, trunk ? 1 : 0, 7); }
+  g.I.push(0, 1, 2, 0, 2, 3); return pack(g);
+}
+function pack(g) {
+  const nv = g.P.length / 3, U = new Float32Array(nv * 2);
+  for (let v = 0; v < nv; v++) { U[v * 2] = 0.25; U[v * 2 + 1] = 0.5; }
+  for (let k = 0; k < g.UV.length; k += 3) { U[g.UV[k] * 2] = g.UV[k + 1]; U[g.UV[k] * 2 + 1] = g.UV[k + 2]; }
+  return { P: new Float32Array(g.P), N: new Float32Array(g.N), C: new Float32Array(g.C), I: new Uint32Array(g.I), U };
+}
 
 // especies: tres niveles de geometría (lv 0 cerca, 1 media, 2 lejos)
-function pinea(lv) {   // pino piñonero: tronco alto que se abre en una copa plana en forma de sombrilla
+// nivel 0: copas de tarjetas de hojas sobre un núcleo bajo y oscuro (de cerca: ramilletes, huecos, silueta irregular);
+// nivel 1: copas de bultos de pocos polígonos; nivel 2: cartel orientado a la cámara (2 triángulos)
+function shellCards(g, cx, cy, cz, rx, ry, rz, n, sz0, sz1, tile, Htop, upOnly) {
+  for (let k = 0; k < n; k++) {
+    const a = rnd(6.2832), e = upOnly ? Math.acos(rnd(0.15, 1)) : Math.acos(rnd(-0.55, 1)), sx = Math.sin(e) * Math.cos(a), sy = Math.cos(e), sz = Math.sin(e) * Math.sin(a);
+    const k2 = rnd(0.78, 1.0);
+    card(g, cx + sx * rx * k2, cy + sy * ry * k2, cz + sz * rz * k2, rnd(sz0, sz1), sx / rx, sy / ry, sz / rz, tile, 0.62 + 0.38 * (sy * 0.5 + 0.5), Htop);
+  }
+}
+function pinea(lv) {   // pino piñonero: tronco alto que se abre en ramas y una copa plana de ramilletes (sombrilla)
   _s = 11; const g = G(), H = 8.2;
-  cyl(g, 0, -0.3, 0, 0.35, 5.6, 0.15, 0.3, 0.16, [7, 4, 3][lv], 1, H);
-  if (lv === 0) { cyl(g, 0.3, 4.8, 0.13, -1.2, 6.3, 0.6, 0.12, 0.07, 4, 1, H); cyl(g, 0.3, 4.9, 0.13, 1.7, 6.2, -0.7, 0.12, 0.07, 4, 1, H); }
-  blob(g, 0.3, 6.7, 0.1, 3.7, 1.15, 3.5, [3, 3, 2][lv], [9, 7, 5][lv], 0, [0.07, 0.04, 0.03][lv], H);
-  if (lv === 0) for (let k = 0; k < 3; k++) { const a = k * 2.09 + rnd(0.6); blob(g, 0.3 + Math.cos(a) * 2.4, 6.9 + rnd(-0.2, 0.3), 0.1 + Math.sin(a) * 2.3, 1.5, 0.75, 1.5, 3, 6, 0, 0.12, H); }
+  if (lv === 2) return board(3.9, 1.5, 6.7, true);
+  cyl(g, 0, -0.3, 0, 0.35, 5.6, 0.15, 0.3, 0.16, [7, 4][lv], 1, H);
+  if (lv === 0) {
+    for (const [bx, by, bz] of [[-1.6, 6.4, 0.9], [1.9, 6.3, -0.8], [0.4, 6.5, 1.9], [0.6, 6.4, -1.9]]) cyl(g, 0.3, 4.9, 0.13, bx, by, bz, 0.12, 0.06, 3, 1, H);
+    blob(g, 0.3, 6.45, 0.1, 3.1, 0.5, 2.9, 2, 7, 0, 0.06, H);
+    for (let k = 0; k < 19; k++) { const a = rnd(6.2832), r = Math.sqrt(rnd(0.02, 1)) * 3.4, t = r / 3.6;
+      card(g, 0.3 + Math.cos(a) * r, 6.8 + 0.4 * (1 - t * t) + rnd(-0.18, 0.18), 0.1 + Math.sin(a) * r, rnd(1.05, 1.5), Math.cos(a) * t * 0.7, 1, Math.sin(a) * t * 0.7, 0, 0.75 + 0.25 * (1 - t), H); }
+  } else blob(g, 0.3, 6.7, 0.1, 3.7, 1.15, 3.5, 3, 7, 0, 0.04, H);
   return pack(g);
 }
-function halep(lv) {   // pino carrasco: tronco algo torcido y copa irregular y abierta
+function halep(lv) {   // pino carrasco: tronco algo torcido y copa irregular y abierta, de ramilletes sueltos
   _s = 23; const g = G(), H = 9.5;
-  cyl(g, 0, -0.3, 0, 0.5, 3.6, 0.2, 0.24, 0.17, [6, 3, 3][lv], 1, H);
-  if (lv === 0) cyl(g, 0.5, 3.6, 0.2, 0.2, 7.2, -0.3, 0.17, 0.08, 5, 1, H);
+  if (lv === 2) return board(2.7, 2.5, 6.4, true);
+  cyl(g, 0, -0.3, 0, 0.5, 3.6, 0.2, 0.24, 0.17, [6, 3][lv], 1, H);
   const B = [[0.6, 5.6, 0.6, 1.9], [-0.4, 6.4, -0.6, 1.7], [0.3, 7.6, 0.1, 1.5], [1.3, 6.6, -0.8, 1.3]];
-  const nb = [4, 2, 1][lv], sc = [1, 1.25, 1.55][lv];
-  for (let k = 0; k < nb; k++) { const b = B[k]; blob(g, b[0], b[1] + (lv === 2 ? 0.6 : 0), b[2], b[3] * sc, b[3] * 0.72 * sc, b[3] * 0.95 * sc, lv === 2 ? 2 : 3, [6, 5, 5][lv], 0, [0.16, 0.08, 0.04][lv], H); }
+  if (lv === 0) {
+    cyl(g, 0.5, 3.6, 0.2, 0.2, 7.2, -0.3, 0.17, 0.08, 5, 1, H);
+    for (const b of B) { blob(g, b[0], b[1], b[2], b[3] * 0.7, b[3] * 0.5, b[3] * 0.66, 2, 5, 0, 0.1, H); shellCards(g, b[0], b[1], b[2], b[3] * 0.85, b[3] * 0.62, b[3] * 0.8, 4, 0.85, 1.2, 0, H, false); }
+  } else for (let k = 0; k < 2; k++) { const b = B[k]; blob(g, b[0], b[1] + 0.2, b[2], b[3] * 1.25, b[3] * 0.9, b[3] * 1.2, 3, 5, 0, 0.08, H); }
   return pack(g);
 }
-function ilex(lv) {    // encina: tronco corto y copa redonda y densa
+function ilex(lv) {    // encina: tronco corto y copa redonda, densa y rugosa
   _s = 37; const g = G(), H = 6.6;
-  cyl(g, 0, -0.3, 0, 0.1, 2.3, 0.05, 0.27, 0.2, [6, 3, 3][lv], 1, H);
-  blob(g, 0.1, 4.0, 0, 3.0, 2.3, 2.8, [4, 3, 2][lv], [9, 7, 5][lv], 0, [0.08, 0.04, 0.03][lv], H);
-  if (lv === 0) for (let k = 0; k < 2; k++) { const a = k * 3.1 + 0.4; blob(g, Math.cos(a) * 1.9, 4.6 + rnd(-0.5, 0.6), Math.sin(a) * 1.8, 1.5, 1.2, 1.5, 3, 6, 0, 0.12, H); }
+  if (lv === 2) return board(3.0, 2.4, 4.1, true);
+  cyl(g, 0, -0.3, 0, 0.1, 2.3, 0.05, 0.27, 0.2, [6, 3][lv], 1, H);
+  if (lv === 0) { blob(g, 0.1, 4.0, 0, 2.55, 1.95, 2.4, 3, 7, 0, 0.1, H); shellCards(g, 0.1, 4.0, 0, 2.95, 2.3, 2.8, 20, 0.95, 1.35, 1, H, false); }
+  else blob(g, 0.1, 4.0, 0, 3.0, 2.3, 2.8, 3, 7, 0, 0.04, H);
   return pack(g);
 }
-function bush(lv) {    // arbusto (lentisco, coscoja): dos o tres bolas bajas
+function bush(lv) {    // arbusto (lentisco, coscoja): mata baja y rugosa
   _s = 51; const g = G(), H = 1.6;
-  if (lv === 0) { blob(g, 0, 0.55, 0, 1.15, 0.85, 1.05, 3, 7, 0, 0.18, H); blob(g, 0.8, 0.4, 0.3, 0.8, 0.6, 0.75, 3, 6, 0, 0.18, H); blob(g, -0.5, 0.35, 0.7, 0.7, 0.5, 0.7, 2, 6, 0, 0.18, H); }
-  else blob(g, 0.15, 0.5, 0.25, 1.4, 0.8, 1.3, lv === 1 ? 3 : 2, lv === 1 ? 6 : 4, 0, 0.05, H);
+  if (lv === 2) return board(1.35, 0.8, 0.55, false);
+  if (lv === 0) { blob(g, 0.1, 0.5, 0.2, 1.0, 0.65, 0.95, 2, 6, 0, 0.15, H); shellCards(g, 0.1, 0.5, 0.2, 1.2, 0.8, 1.1, 7, 0.5, 0.7, 1, H, true); }
+  else blob(g, 0.15, 0.5, 0.25, 1.4, 0.8, 1.3, 2, 5, 0, 0.05, H);
   return pack(g);
 }
 function grass() { _s = 61; const g = G(); blades(g, 11, 0.45, 0.95, 0.05, 0.35, 3); return pack(g); }
-function reed() { _s = 71; const g = G(); blades(g, 9, 1.8, 2.9, 0.035, 0.12, 4); return pack(g); }
+function reed(lv) { if (lv) return board(0.9, 1.25, 1.25, false); _s = 71; const g = G(); blades(g, 9, 1.8, 2.9, 0.035, 0.12, 4); return pack(g); }
 function stone() { _s = 81; const g = G(); rock(g, 0.9, 0.55, 0.75); return pack(g); }
 
 // ------------------------------------------------------------------ shaders
 const VS = `precision highp float;
-attribute vec3 position; attribute vec3 normal; attribute vec4 color; attribute vec4 icol;
+attribute vec3 position; attribute vec3 normal; attribute vec4 color; attribute vec4 icol; attribute vec2 uv;
 #include<instancesDeclaration>
-uniform mat4 viewProjection;
-varying vec3 vPos; varying vec3 vN; varying vec4 vC; varying vec4 vI;
+uniform mat4 viewProjection; uniform vec3 uCam;
+varying vec3 vPos; varying vec3 vN; varying vec4 vC; varying vec4 vI; varying vec2 vUV;
 void main(){
 #include<instancesVertex>
-  vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vC = color; vI = icol;
+  vec4 wp;
+  vC = color; vI = icol; vUV = uv;
+  if (color.a > 6.5) {
+    // cartel: copa orientada a la cámara. Desde arriba (|V.y| → 1) se ve redonda y el tronco se recoge
+    float sx = length(finalWorld[0].xyz), sy = length(finalWorld[1].xyz);
+    vec3 ctr = (finalWorld*vec4(0.0, normal.z, 0.0, 1.0)).xyz, V = normalize(uCam - ctr);
+    vec3 R = normalize(cross(vec3(0.0, 1.0, 0.0), V) + vec3(1e-4, 0.0, 0.0)), U = cross(V, R);
+    float ay = abs(V.y), ry = mix(normal.y*sy, normal.x*sx, ay*ay);
+    float vy = position.y < -1.5 ? -1.0 - (normal.z*sy/ry)*(1.0 - ay) : position.y;
+    wp = vec4(ctr + R*position.x*normal.x*sx + U*vy*ry, 1.0);
+    vN = V; vUV = vec2(position.x, vy);
+  } else { wp = finalWorld*vec4(position, 1.0); vN = normalize(mat3(finalWorld)*normal); }
+  vPos = wp.xyz;
   gl_Position = viewProjection*wp; }`;
 // vI.rgb: color de la ortofoto bajo la planta (crudo, como lo lee FS_TER) · vI.a: azar por instancia (0–1)
 const FS = `
-varying vec3 vN; varying vec4 vC; varying vec4 vI; uniform vec4 uBand;
+varying vec3 vN; varying vec4 vC; varying vec4 vI; varying vec2 vUV; uniform vec4 uBand; uniform sampler2D tLeaf;
 // la misma conversión a verde oliva que FS_TER (app.js), para que la planta y el suelo que la rodea casen
 vec3 olive(vec3 a){
   float mt = smoothstep(60.0, 200.0, vPos.y), vg = clamp((a.g - max(a.r, a.b))*9.0, 0.0, 1.0)*(1.0 - uNight);
@@ -150,7 +211,37 @@ void main(){
   float px = length(fwidth(vPos));
   float nf = 1.0 - smoothstep(0.08, 0.35, px);            // detalle fino solo si el píxel es pequeño (sin centelleo)
   vec3 alb; vec3 c;
-  if (part < 0.5) {
+  if (part > 5.5) {
+    // tarjetas de hojas (6) y carteles lejanos (7): mismo color de copa que el resto
+    vec3 g = olive(vI.rgb);
+    float lg = dot(g, vec3(0.3, 0.6, 0.1));
+    vec3 pine = mix(vec3(0.20, 0.25, 0.13), vec3(0.27, 0.31, 0.17), rn);
+    alb = mix(g*0.97, pine*mix(0.95, 1.15, lg*2.0), smoothstep(0.36, 0.55, lg)*0.7);
+    alb *= mix(vec3(0.94, 1.0, 0.92), vec3(1.06, 1.0, 1.08), rn);
+    if (part < 6.5) {
+      vec4 t = texture2D(tLeaf, vUV);
+      if (t.a < 0.45) discard;
+      alb *= (0.55 + 0.6*t.r)*mix(0.62, 1.0, ao);
+      // la cara de la tarjeta que mira a la cámara: la normal de la copa, algo vuelta hacia el que mira (luz envolvente)
+      vec3 nn = normalize(n*(dot(n, V) < 0.0 ? 0.6 : 1.0) + V*0.25 + vec3(0.0, 0.35, 0.0));
+      c = lit(alb, nn);
+      c += alb*vec3(1.0, 1.15, 0.6)*uSunCol*max(dot(-V, uSunDir), 0.0)*0.18*sunVis();
+    } else {
+      vec2 uv = vUV;
+      vec3 R = normalize(cross(vec3(0.0, 1.0, 0.0), V) + vec3(1e-4, 0.0, 0.0)), U = cross(V, R);
+      if (uv.y < -1.0) {                                // tronco bajo la copa (solo visto de lado)
+        if (vC.b < 0.5 || abs(uv.x) > 0.075 || uv.y < -1.0 - 6.0*(1.0 - abs(V.y))) discard;
+        alb = vec3(0.22, 0.17, 0.13); c = lit(alb, normalize(R*uv.x*8.0 + V));
+      } else {
+        float r = length(uv), cl = vnoise(uv*3.2 + rn*31.0)*0.65 + vnoise(uv*7.0 + rn*7.0)*0.35;
+        if (r > 0.72 + 0.32*cl) discard;
+        float z = sqrt(max(1.0 - r*r, 0.0));
+        vec3 nn = normalize(R*uv.x + U*uv.y*0.9 + V*z*0.8 + vec3(0.0, 0.25, 0.0));
+        alb *= (0.72 + 0.45*cl)*mix(0.7, 1.0, uv.y*0.5 + 0.5);
+        c = lit(alb, nn);
+      }
+    }
+  } else if (part < 0.5) {
     // copa: color del suelo de la ortofoto llevado a oliva; las manchas verde claro (parques) se oscurecen hacia el de pino
     vec3 g = olive(vI.rgb);
     float lg = dot(g, vec3(0.3, 0.6, 0.1));
@@ -244,25 +335,49 @@ window.BCN_NATURE = { async init(ctx) {
   // tramo); keep = fracción de plantas que se quedan en ese nivel (las lejanas se aclaran y engordan: grow); close = radio de
   // las que proyectan sombra (subconjunto del nivel 0)
   const S = { on: QS.get('nat') !== '0', q: 1 };
-  const TREE = { ends: [[100, 130], [260, 310], [580, 700]], keep: [1, 1, 0.4], grow: [1, 1, 1.2], close: 60 };
+  // NAT2: el nivel 0 (tarjetas de hojas) llega a ~90 m, el 1 (bultos) a ~210 m y el 2 (carteles de 2 triángulos) a 1,3 km:
+  // desde el aire y a media distancia se ve el bosque en relieve por muy poco (medido en stats().tris)
+  const TREE = { ends: [[70, 90], [170, 210], [1050, 1300]], keep: [1, 1, 0.45], grow: [1, 1, 1.25], close: 55 };
   const TYPES = [
     Object.assign({ id: 'pinea', geo: [0, 1, 2].map(pinea), sc: [0.8, 1.25] }, TREE),
     Object.assign({ id: 'halep', geo: [0, 1, 2].map(halep), sc: [0.75, 1.2] }, TREE),
     Object.assign({ id: 'ilex', geo: [0, 1, 2].map(ilex), sc: [0.7, 1.2] }, TREE),
-    { id: 'bush', geo: [0, 1, 2].map(bush), ends: [[60, 80], [170, 210], [360, 420]], keep: [1, 1, 0.5], grow: [1, 1, 1.15], close: 0, sc: [0.6, 1.4] },
+    { id: 'bush', geo: [0, 1, 2].map(bush), ends: [[50, 65], [130, 160], [480, 620]], keep: [1, 1, 0.5], grow: [1, 1, 1.2], close: 0, sc: [0.6, 1.4] },
     { id: 'grass', geo: [grass()], ends: [[85, 115]], keep: [1], grow: [1], close: 0, sc: [0.8, 1.5] },
-    { id: 'reed', geo: [reed()], ends: [[110, 150]], keep: [1], grow: [1], close: 0, sc: [0.8, 1.2] },
+    { id: 'reed', geo: [reed(0), reed(1)], ends: [[90, 120], [560, 720]], keep: [1, 0.6], grow: [1, 1.2], close: 0, sc: [0.8, 1.2] },
     { id: 'rock', geo: [stone()], ends: [[200, 250]], keep: [1], grow: [1], close: 0, sc: [0.5, 2.2] },
   ];
+  // textura de hojas (una vez, en un lienzo): mitad izquierda, ramillete de agujas de pino; derecha, hojas de encina. El
+  // color es un claroscuro gris (el verde lo pone el shader) y el alfa recorta. El centro de cada mitad es opaco (lo usan
+  // los vértices que no son tarjetas, también en la sombra)
+  const leafTex = (() => {
+    const W = 256, Hh = 128, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+    const g2 = cv.getContext('2d'); _s = 97;
+    const gray = v => { const k = Math.round(v * 255); return 'rgb(' + k + ',' + k + ',' + k + ')'; };
+    g2.lineCap = 'round';
+    for (let k = 0; k < 150; k++) {            // agujas: trazos finos que salen de varios brotes
+      const bx = 64 + rnd(-14, 14), by = 64 + rnd(-14, 14), a = rnd(6.2832), L = rnd(26, 56);
+      g2.strokeStyle = gray(rnd(0.45, 1)); g2.lineWidth = rnd(1.6, 2.8);
+      g2.beginPath(); g2.moveTo(bx, by); g2.lineTo(bx + Math.cos(a) * L, by + Math.sin(a) * L); g2.stroke();
+    }
+    g2.fillStyle = gray(0.5); g2.beginPath(); g2.arc(64, 64, 15, 0, 6.2832); g2.fill();
+    for (let k = 0; k < 170; k++) {            // hojas pequeñas y duras, más densas en el centro
+      const r = Math.sqrt(rnd()) * 54, a = rnd(6.2832), x = 192 + Math.cos(a) * r, y = 64 + Math.sin(a) * r;
+      g2.fillStyle = gray(rnd(0.4, 1)); g2.beginPath(); g2.ellipse(x, y, rnd(5, 8), rnd(2.6, 4), rnd(3.1416), 0, 6.2832); g2.fill();
+    }
+    g2.fillStyle = gray(0.5); g2.beginPath(); g2.arc(192, 64, 15, 0, 6.2832); g2.fill();
+    const t = new BABYLON.DynamicTexture('natLeaf', cv, scene, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    t.wrapU = t.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; t.hasAlpha = true; t.update(false); return t;
+  })();
   const mats = [];
-  function mat(name, band) { const m = mkMat('nat_' + name, VS, FS, ['position', 'normal', 'color', 'icol'], ['uBand'], []);
-    m.setVector4('uBand', new BABYLON.Vector4(band[0], band[1], band[2], band[3])); mats.push(m); return m; }
+  function mat(name, band) { const m = mkMat('nat_' + name, VS, FS, ['position', 'normal', 'color', 'icol', 'uv'], ['uBand'], ['tLeaf']);
+    m.setVector4('uBand', new BABYLON.Vector4(band[0], band[1], band[2], band[3])); m.setTexture('tLeaf', leafTex); mats.push(m); return m; }
   function mesh(name, g, m, cast) {
     const me = new BABYLON.Mesh(name, scene);
-    me.setVerticesData('position', g.P, false); me.setVerticesData('normal', g.N, false); me.setVerticesData('color', g.C, false, 4); me.setIndices(g.I);
+    me.setVerticesData('position', g.P, false); me.setVerticesData('normal', g.N, false); me.setVerticesData('color', g.C, false, 4); me.setVerticesData('uv', g.U, false, 2); me.setIndices(g.I);
     me.material = m; me.isPickable = false; me.renderingGroupId = 1; me.alwaysSelectAsActiveMesh = true; me.doNotSyncBoundingInfo = true;
     me.thinInstanceSetBuffer('matrix', new Float32Array(16), 16, false); me.thinInstanceSetBuffer('icol', new Float32Array(4), 4, false); me.thinInstanceCount = 0;
-    reg(me, { cast: !!cast, layer: 'nature' });
+    reg(me, cast ? { cast: true, alphaTex: leafTex, layer: 'nature' } : { cast: false, layer: 'nature' });
     return me;
   }
   // mallas por tipo: [sombra (nivel 0 cercano), nivel 0, nivel 1, nivel 2]
@@ -292,21 +407,59 @@ window.BCN_NATURE = { async init(ctx) {
     [C_SCRUB]: [0.012, 0.03, 0.012, 0.14, 0.16, 0, 0.03],
   };
   const CLEAR = [2.6, 2.6, 2.8, 1.3, 0.7, 0.9, 1.0];   // distancia mínima al borde de la calle
+  // NAT2 · miradores y explanadas despejados: nada de plantas en la huella de los hitos (rectángulo ancho × largo girado
+  // «rot», o su radio) más un margen, en unos miradores que no son hitos y alrededor de las vistas a pie o a poca altura
+  // de BCN.views (que aún no existen al iniciar: se añaden en cuanto aparecen y se rehacen las celdas)
+  const EXC = [];                      // { x, z, c, s, hx, hz } (rectángulo) o { x, z, r } (círculo)
+  const MIRADORS = [
+    [12230, 11930, 55],                // mirador de l'Alcalde (Montjuïc)
+    [10806, 12120, 75],                // terrazas y escalinatas del MNAC
+    [11548, 17657, 70],                // búnkers del Carmel (explanada y cimas del Turó de la Rovira)
+    [7972, 17973, 95],                 // explanada del Tibidabo
+    [11842, 11426, 125],               // Castell de Montjuïc con su foso y su glacis
+  ];
+  for (const m of MIRADORS) EXC.push({ x: m[0], z: m[1], r: m[2] });
+  try {
+    const LM = window.BCN && window.BCN.lm;
+    if (LM) for (const it of LM.list()) { const r = LM.get(it.id); if (!r) continue;
+      const a = (r.rot || 0) * Math.PI / 180, M = 18;
+      if (r.ancho > 0 && r.largo > 0) EXC.push({ x: r.x, z: r.z, c: Math.cos(a), s: Math.sin(a), hx: r.ancho / 2 + M, hz: r.largo / 2 + M });
+      else EXC.push({ x: r.x, z: r.z, r: Math.min(Math.max(r.r || 0, r.ext ? r.ext / 2 : 0, 10) + M, 110) }); }
+  } catch (e) { console.warn('Naturaleza: sin huellas de hitos', e); }
+  let excViews = false;
+  function addViewExc() {
+    const V = window.BCN && window.BCN.views; if (excViews || !V) return false;
+    excViews = true;
+    for (const [, v] of V) { if (!v || !isFinite(v.x)) continue;
+      if (v.walk) EXC.push({ x: v.x, z: v.z, r: 22 }); else if (v.y - heightAt(v.x, v.z) < 60) EXC.push({ x: v.x, z: v.z, r: 30 }); }
+    return true;
+  }
+  const exIn = (E, x, z, pad) => { for (const e of E) { const dx = x - e.x, dz = z - e.z;
+    if (e.r !== undefined) { if (dx * dx + dz * dz < (e.r + pad) * (e.r + pad)) return true; }
+    else if (Math.abs(dx * e.c - dz * e.s) < e.hx + pad && Math.abs(dx * e.s + dz * e.c) < e.hz + pad) return true; } return false; };
+  // NAT2 · campos del delta: la misma parcelación que pinta FS_TER (app.js, «campos del delta»): franjas de 70 m giradas
+  // FA rad y parcelas de 95 m desplazadas por franja; en las lindes (acequias) cañas, matas y algún árbol de ribera
+  const FA = 0.62, FCa = Math.cos(FA), FSa = Math.sin(FA);
+  const fieldEdge = (x, z) => { const u = x * FCa + z * FSa, v = -x * FSa + z * FCa, row = Math.floor(v / 70), fv = v - row * 70;
+    let su = u + ((row * 0.618034) % 1 + 1) % 1 * 95; const fu = su - Math.floor(su / 95) * 95; return Math.min(fu, 95 - fu, fv, 70 - fv); };
+  const PFARM = [0.004, 0.012, 0.01, 0.12, 0.10, 0.30, 0];
   function genCell(ci) {
     const i = ci % NX, j = (ci / NX) | 0, x0 = i * CS, z0 = j * CS;
+    const EX = EXC.filter(e => { const R = e.r !== undefined ? e.r : Math.hypot(e.hx, e.hz); return e.x + R + 4 > x0 && e.x - R - 4 < x0 + CS && e.z + R + 4 > z0 && e.z - R - 4 < z0 + CS; });
     _s = (ci * 2654435761) | 0; rnd();
     const out = TYPES.map(() => []), tmp = [0, 0, 0];
     const n = Math.floor(CS / STEP);
     for (let b = 0; b < n; b++) for (let a = 0; a < n; a++) {
       const x = x0 + (a + rnd()) * STEP, z = z0 + (b + rnd()) * STEP, u = rnd();
-      const k = clsAt(x, z); const P = PROB[k]; if (!P) continue;
+      const k = clsAt(x, z); let P = PROB[k]; if (!P) continue;
+      if (k === C_FARM && fieldEdge(x, z) < 2.2) P = PFARM;
       let t = -1, acc = 0; for (let q = 0; q < 7; q++) { acc += P[q]; if (u < acc) { t = q; break; } }
       if (t < 0) continue;
       // las especies de árbol van por rodales (ruido de ~60 m) y el pino piñonero, abajo
       if (t <= 2) { const h = heightAt(x, z), s = Math.sin(x * 0.051 + Math.sin(z * 0.043) * 2.0) + Math.sin(z * 0.047 + x * 0.013) + rnd(-0.8, 0.8);
         t = s > 0.7 ? 2 : s < -0.6 && h < 250 ? 0 : (h > 330 && s > 0.1 ? 2 : 1); }
       if (k === C_SCRUB) { const h = heightAt(x, z); if (h < 70) continue; }
-      if (hasRoad(x, z, CLEAR[t]) || inBld(x, z)) continue;
+      if (hasRoad(x, z, CLEAR[t]) || inBld(x, z) || (EX.length && exIn(EX, x, z, t <= 2 ? 4 : 1))) continue;
       if (t <= 2 && (inBld(x + 2.5, z) || inBld(x - 2.5, z) || inBld(x, z + 2.5) || inBld(x, z - 2.5))) continue;
       const y = heightAt(x, z);
       // pendiente: los árboles no se plantan en cortados (> ~40°), las rocas los prefieren
@@ -371,6 +524,7 @@ window.BCN_NATURE = { async init(ctx) {
   const cellD = (ci, P) => { const i = ci % NX, j = (ci / NX) | 0;
     const dx = Math.max(i * CS - P.x, 0, P.x - (i + 1) * CS), dz = Math.max(j * CS - P.z, 0, P.z - (j + 1) * CS); return Math.hypot(dx, dz); };
   function plan(P, alt) {
+    if (addViewExc()) cells.clear();
     const want = [], keep = new Set();
     if (S.on && alt < RMAX) {
       const r = Math.sqrt(RMAX * RMAX - alt * alt) + 20, i0 = Math.max(0, Math.floor((P.x - r) / CS)), i1 = Math.min(NX - 1, Math.floor((P.x + r) / CS));
