@@ -14,8 +14,10 @@ Rama `wt-hitos-d`; fusionada `wt-hitos` al empezar. Solo se tocan `landmarks_d.j
 - **sant_jaume**: losa clara de piedra que llena la plaza entre las dos fachadas; fachadas más claras, más altas
   (23 y 22 m) y con fondo de 7 m; pórtico de la Generalitat con columnas más gruesas, dos entablamentos y frontón con
   tímpano; pórtico de la Casa de la Ciutat; tres mástiles con bandera (amarilla con barras rojas) en cada fachada.
-- **cap_barcelona**: los plátanos del Passeig de Colom (streets.js, no se pueden despejar desde los lotes) lo tapaban:
-  movido otros ~40 m hacia el mar, al Moll de la Fusta.
+- **cap_barcelona**: los plátanos del Passeig de Colom (streets.js; no se pueden despejar desde los lotes) lo tapaban.
+  Probado 40 m hacia el mar: caía dentro de un edificio de los datos (82731). Queda 7 m hacia el mar desde la posición
+  anterior, entre la fila de árboles y la calzada de la Ronda: ya se ve desde el mar (135°) y entre los árboles (300°),
+  pero sigue pegado a las copas. Arreglo de fondo pendiente: que streets.js no plante árboles a < 10 m de un hito.
 - **torre_collserola**: balizas rojas emisivas mucho mayores (2–2,6 m) en la antena y cuatro en la corona, y tres anillos
   de luz cálida en el borde de las plataformas (1.ª, mirador y última).
 - **columnas blancas junto al Sagrat Cor**: eran antenas de la cumbre (edificios 176533–176544 de los datos, plantas de
@@ -26,3 +28,18 @@ Rama `wt-hitos-d`; fusionada `wt-hitos` al empezar. Solo se tocan `landmarks_d.j
 - **monestir_pedralbes**: nave de la iglesia más alta y clara, campanario de 41 m con cuerpo de campanas, y claustro
   (patio verde con galería de tres pisos) — la posición del claustro es aproximada.
 - **estacio_sants**: marquesina de la plaza mayor y más clara (poco cambio).
+
+## Comprobado
+- Hojas (480x300): rumbos 210, 100, 40, 59, 135/300 de día y 120 de noche; sin errores de consola; `node --check` y
+  `node tools/hitos/tris.js d e` bien (44 hitos, ~31 k triángulos los dos lotes).
+
+## Flojo / pendiente
+- Arc de Triomf desde 210°–230° (de canto) sigue leyéndose como un bloque: la vista de la revisión mira casi a lo largo
+  de su anchura; desde 100° o 313° se lee el arco.
+- Boqueria: la portada se ve bien desde la Rambla, pero desde arriba y lejos domina la nave verde; las vidrieras de día
+  quedan algo apagadas (el tipo emisivo oscurece el albedo).
+- Sant Jaume: la plaza ya se lee como hueco claro; las fachadas siguen siendo cajas con pórtico (sin el detalle gótico de
+  la Casa de la Ciutat al carrer de la Ciutat).
+- Collserola de noche: se ve la torre y sus anillos a k 2,4; desde la otra punta de la ciudad, las balizas son puntos
+  pequeños (no comprobado a más de ~1 km).
+- Sants y Pedralbes: retoques pequeños; el claustro de Pedralbes va en posición aproximada y casi no se distingue.

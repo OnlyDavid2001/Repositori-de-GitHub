@@ -513,9 +513,10 @@ add({ id: 'torre_sant_sebastia', nombre: 'Torre Sant Sebastià', nivel: 'B', x: 
 
 // El Cap de Barcelona (Lichtenstein): cabeza de 14 m de perfil, plana como una viñeta, de cerámica de colores. Movido
 // unos 90 m hacia el mar respecto al catálogo (la coordenada de memoria caía dentro de una manzana): en el paseo del
-// Moll de la Fusta, al otro lado de la calzada del Passeig de Colom; en FIX, otros 40 m hacia el mar, porque los
-// plátanos del paseo (que no se pueden quitar desde aquí) lo tapaban del todo.
-add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13210, z: 13275, rot: 135, alto: 14, ancho: 8, largo: 4,
+// Moll de la Fusta, al otro lado de la calzada del Passeig de Colom. En FIX, 7 m más hacia el mar, entre la fila de
+// plátanos del paseo (streets.js; no se pueden quitar desde los lotes) y la calzada de la Ronda (sin árboles); más allá
+// hay un edificio de los datos.
+add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13186, z: 13299, rot: 135, alto: 14, ancho: 8, largo: 4,
   noche: 'focos', edificios: [],
   build(B, h, L) {
     L.caja(B, 0, 0, -1.5, 5, 3.2, 2, 0, [190, 186, 178], K.LISO);
