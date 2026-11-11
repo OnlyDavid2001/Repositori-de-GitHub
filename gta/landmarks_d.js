@@ -421,6 +421,36 @@ add({ id: 'correus', nombre: 'Edifici de Correus', nivel: 'B', x: 13138.9, z: 13
       L.cupula(B, x, z, 31, 4.4, 4.6, { lados: 12, anillos: 4, col: CP, k: K.METAL, linterna: { r: 0.7, alto: 2 } }); }
   } });
 
+// Plaça de Sant Jaume: Palau de la Generalitat (al noroeste, −Z) y Casa de la Ciutat (al sureste, +Z) enfrentados. Los
+// volúmenes de los datos recogen también partes de las manzanas vecinas, así que NO se ocultan: se retocan (piedra, sin
+// fachada de vivienda, 19 m) y se añaden las dos fachadas a la plaza. Generalitat: renacentista, con columnas pareadas y
+// frontón sobre la portada. Ajuntament: neoclásica, con pórtico de cuatro columnas y balaustrada.
+add({ id: 'sant_jaume', nombre: 'Palau de la Generalitat i Casa de la Ciutat', nivel: 'B', x: 12786.3, z: 13550.5, rot: 135, alto: 24,
+  ancho: 60, largo: 90, noche: 'focos', edificios: [79132, 79133, 79139, 82748, 82750, 82751, 82752, 82753, 82754],
+  ocultar: false, fachada: false, retoque: { color: '#c6b28c', alto: 19 },
+  build(B, h, L) {
+    const C = [204, 186, 146], C2 = [180, 164, 130];
+    const fachada = (cx, cz, dir, w, alto) => {                     // dir: +1 mira a +Z, −1 a −Z
+      const y0 = Math.min(h.y(cx - w / 2, cz), h.y(cx + w / 2, cz), h.y(cx, cz)) - 1.5, f = cz + dir * 0.6;
+      L.caja(B, cx, cz, y0, w, 1.2, alto - y0, 0, C, K.VENTANAS, { aux: L.aux.ventanas(5.2, 3.6, 0.4, 0.55) });
+      L.caja(B, cx, f + dir * 0.1, alto - 0.2, w + 0.8, 1.2, 0.8, 0, C2, K.PIEDRA);
+      L.extruir(B, [[cx - 2.2, y0], [cx + 2.2, y0], [cx + 2.2, h.y(cx, cz) + 5.5], [cx, h.y(cx, cz) + 7.6], [cx - 2.2, h.y(cx, cz) + 5.5]], f, f + dir * 0.25, OSCURO, K.LISO);
+      return { y: h.y(cx, cz), f };
+    };
+    // Generalitat (mira a la plaza, +Z)
+    const g = fachada(-9, -31.4, 1, 30, 20);
+    for (const dx of [-5, -3.6, 3.6, 5]) { L.tambor(B, -9 + dx, g.f + 0.6, g.y - 1.5, g.y + 9, 0.5, { lados: 8, col: C, k: K.PIEDRA });
+      L.tambor(B, -9 + dx, g.f + 0.6, g.y + 10, g.y + 16.5, 0.42, { lados: 8, col: C, k: K.PIEDRA }); }
+    L.caja(B, -9, g.f + 0.7, g.y + 9, 12, 1.6, 1, 0, C2, K.PIEDRA);
+    L.extruir(B, [[-15.5, g.y + 16.5], [-2.5, g.y + 16.5], [-9, g.y + 20.5]], g.f, g.f + 1.2, C, K.PIEDRA);
+    // Casa de la Ciutat (mira a la plaza, −Z)
+    const a = fachada(-15, 10.8, -1, 30, 19);
+    for (const dx of [-5.4, -1.8, 1.8, 5.4]) L.tambor(B, -15 + dx, a.f - 0.7, a.y + 5.5, a.y + 15.5, 0.55, { lados: 8, col: C, k: K.PIEDRA });
+    L.caja(B, -15, a.f - 0.7, a.y - 1.5, 13, 2, 7, 0, C2, K.PIEDRA);
+    L.caja(B, -15, a.f - 0.7, a.y + 15.5, 13, 2, 1.4, 0, C2, K.PIEDRA);
+    for (let i = 0; i <= 10; i++) L.caja(B, -21 + i * 1.2, a.f - 0.2, 19.6, 0.35, 0.35, 1.1, 0, C, K.PIEDRA);
+  } });
+
 // Torres del telefèric del port: celosías de acero con la sala de máquinas arriba.
 // Torre Jaume I (107 m, en el Moll de Barcelona): estación a 70 m y celosía más fina hasta la sala alta.
 add({ id: 'torre_jaume_i', nombre: 'Torre Jaume I', nivel: 'B', x: 13034.9, z: 12386.5, rot: 123, alto: 107, ancho: 12, largo: 12,
@@ -429,10 +459,10 @@ add({ id: 'torre_jaume_i', nombre: 'Torre Jaume I', nivel: 'B', x: 13034.9, z: 1
     const AC = [122, 104, 88], GR = [200, 196, 188];
     L.caja(B, 0, 0, -1.5, 11, 11, 7.5, 0, [170, 166, 158], K.LISO);
     celosia(B, 6, 70, 5.2, 3, 10, AC, 0.22);
-    L.caja(B, 0, 0, 70, 12, 12, 7, 0, GR, K.METAL, { aux: L.aux.panel(1.5, 0.2, 0.55) });
+    L.caja(B, 0, 0, 70, 12, 12, 7, 0, [150, 164, 176], K.CORTINA, { aux: L.aux.cortina(3.5, 1.5, 0.15), techo: GR });
     L.caja(B, 0, 0, 77, 13, 13, 0.8, 0, AC, K.METAL);
     celosia(B, 77.8, 98, 2.6, 1.8, 3, AC, 0.18);
-    L.caja(B, 0, 0, 98, 6.5, 6.5, 5, 0, GR, K.METAL, { aux: L.aux.panel(1.2, 0.2, 0.5) });
+    L.caja(B, 0, 0, 98, 6.5, 6.5, 5, 0, [150, 164, 176], K.CORTINA, { aux: L.aux.cortina(2.5, 1.3, 0.15), techo: GR });
     L.mastil(B, 0, 0, 103, 4.5, 0.3, { col: AC });
   } });
 
@@ -452,7 +482,7 @@ add({ id: 'torre_sant_sebastia', nombre: 'Torre Sant Sebastià', nivel: 'B', x: 
 // El Cap de Barcelona (Lichtenstein): cabeza de 14 m de perfil, plana como una viñeta, de cerámica de colores. Movido
 // unos 90 m hacia el mar respecto al catálogo (la coordenada de memoria caía dentro de una manzana): en el paseo del
 // Moll de la Fusta, al otro lado de la calzada del Passeig de Colom, fuera de la arboleda.
-add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13181, z: 13304, rot: 45, alto: 14, ancho: 8, largo: 4,
+add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13181, z: 13304, rot: 135, alto: 14, ancho: 8, largo: 4,
   noche: 'focos', edificios: [],
   build(B, h, L) {
     L.caja(B, 0, 0, -1.5, 5, 3.2, 2, 0, [190, 186, 178], K.LISO);
