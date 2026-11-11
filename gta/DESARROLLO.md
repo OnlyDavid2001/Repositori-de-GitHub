@@ -651,7 +651,8 @@ luz hecha a mano, tres sitios de `app.js`: el brillo del asfalto en `FS_ROAD`, l
 
 ## 7. Carril LUZ
 
-Etapas LZ1 (HDR lineal y postproceso, §7.1–7.5), ciclo de 24 horas (§7.6) y LZ2 (sombras del sol, §7.7). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
+Etapas LZ1 (HDR lineal y postproceso, §7.1–7.5), ciclo de 24 horas (§7.6, pulido en LZ3), LZ2 (sombras del sol, §7.7) y LZ3
+(oclusión ambiental, §7.8; calibración por horas, §7.9). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
 no hace nada» de §6.12; el contrato (nombres y firmas de `lit`, `shade`, `envRefl`, `emit`, `fog`, `FRAG*`) no cambia.
 Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `gqRow`, `gq0`…`gq3`, `gqV`).
 
@@ -684,11 +685,13 @@ Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `
 ### 7.2 Cadena de postproceso (`lighting.js`)
 
 `BABYLON.DefaultRenderingPipeline('bcnPost', hdr = true)` sobre la cámara, todo dentro de `scene.render()`:
-búfer HalfFloat con MSAA → nitidez leve → bloom (umbral alto) → exposición + ACES + gamma + contraste + viñeta + tramado
-→ FXAA (solo si no hay MSAA). El lienzo es opaco (`alpha: false`) y sin antialiasing propio en el camino HDR.
+[oclusión ambiental, tres pases propios (§7.8): la escena entra ahí, en coma flotante con MSAA] → búfer HalfFloat →
+bloom (umbral alto) → exposición + ACES + gamma + contraste + viñeta + tramado → nitidez leve → FXAA (solo si no hay MSAA).
+(Ese es el orden real en que Babylon monta `DefaultRenderingPipeline`.) El lienzo es opaco (`alpha: false`) y sin
+antialiasing propio en el camino HDR.
 
 - Ajustes (`P` en `lighting.js` y `ctx.L.tone`): exposición 1,6 · contraste 1,08 · `bloomT` 2,6 (umbral de luminancia
-  lineal ya expuesta) · `bloomW` 0,16 · `bloomK` 64 · `sharpen` 0,10 · `vignette` 0,3.
+  lineal ya expuesta; de noche baja hasta ×0,7 con `L.night`) · `bloomW` 0,16 · `bloomK` 64 · `sharpen` 0,10 · `vignette` 0,3.
 - **Calibrar en caliente**: `BCN.light.set({ exposure, contrast, sun, sky, gnd, bloomT, bloomW, bloomK, sharpen, vignette })`
   (en la consola o en el `eval` de una vista del arnés). `BCN.light.pipe` es la cadena de Babylon.
 - Trampas: el ACES de Babylon no lleva la ganancia 1/0,6 (por eso la exposición no es 1); la viñeta con peso 1 deja las
@@ -699,15 +702,15 @@ búfer HalfFloat con MSAA → nitidez leve → bloom (umbral alto) → exposici�
 Fila «Gráficos: Auto / Baja / Media / Alta» del panel → `BCN.light.setQuality('auto' | 'baja' | 'media' | 'alta')`
 (también 1, 2, 3). Tabla `QUAL` de `lighting.js` (las etapas de sombras y oclusión añaden ahí sus columnas):
 
-| | escala de render | MSAA | bloom | nitidez | sombras (lado del mapa · filtro) |
-| --- | --- | --- | --- | --- | --- |
-| baja | 0,67 | no (FXAA) | no | no | no |
-| media | 0,85 | 2 | sí (búfer a 0,35) | sí | 1024 · 2×2 |
-| alta | 1 | 4 | sí (búfer a 0,5) | sí | 2048 · 3×3 |
+| | escala de render | MSAA | bloom | nitidez | sombras (lado del mapa · filtro) | oclusión ambiental (muestras) |
+| --- | --- | --- | --- | --- | --- | --- |
+| baja | 0,67 | no (FXAA) | no | no | no | no |
+| media | 0,85 | 2 | sí (búfer a 0,35) | sí | 1024 · 2×2 | 8, a media resolución |
+| alta | 1 | 4 | sí (búfer a 0,5) | sí | 2048 · 3×3 | 12, a media resolución |
 
 Auto empieza en alta y baja un escalón cuando el tiempo medio de fotograma real supera 34 ms en dos ventanas seguidas
 de 2 s (nunca en modo captura, con la pestaña oculta o tras un parón; nunca sube solo). `BCN.light.stats()` →
-`{ hdr, quality, auto, scale, msaa, bloom, ms, w, h, shadow }` (`shadow`: §7.7).
+`{ hdr, quality, auto, scale, msaa, bloom, ms, w, h, shadow, ao }` (`shadow`: §7.7; `ao`: §7.8).
 
 ### 7.4 Camino LDR
 
@@ -738,8 +741,23 @@ reloj: 1 s real = 1 min de juego, un día cada 24 min, recalculando la luz una v
   y −10°, `mf`). Usa los MISMOS uniformes (`uSunDir`, `uSunCol`, `uSunL`): las sombras en cascada, los brillos y el disco
   del cielo valen sin tocar nada (de noche el «disco del sol» es la luna). El cambio de dirección ocurre con la luz a cero.
 - **Paletas** (espacio de pantalla): atardecer ↔ día según la altura del sol (`e`) y todo ello hacia la paleta de noche
-  según `nt` (0 con el sol a −2°, 1 a −10°). Estrellas y nubes oscuras en el shader del cielo.
-- **Adaptación del ojo**: `K.dAmb`/`K.dExp` al anochecer y `K.nAmb`/`K.nExp` de noche; `K.moon` es la ganancia de la luna.
+  según `nt` (0 con el sol a −1°, 1 a −9°). Estrellas y nubes oscuras en el shader del cielo.
+- **Horizonte del lado del sol** (LZ3). Con el sol bajo, `uFogCol` es un gris malva (también en el lado contrario) y el
+  naranja va solo hacia el sol: `uSunH = (x, z hacia el sol de verdad —también bajo el horizonte—, fuerza, luna)` y
+  `uHorzC` (lo que el horizonte del lado del sol tiene de más). `horzCol(d)` da el color del horizonte en la dirección `d`;
+  lo usan `skyGrad` (cielo y reflejos: `envRefl`, el mar) y la niebla (`fog`/`fogL`), así lo lejano se funde con el cielo
+  que tiene detrás. La fuerza (`sg` en `setHour`) va de 0 con el sol a 18° a 1 hacia los 3°, y se apaga entre −1,5° y −9°
+  (el resplandor dura un rato después de ponerse el sol, cada vez más rojo). De día, `horzCol = uFogCol`: nada cambia.
+- **Luna** (LZ3). Con la luz direccional en la luna (`uSunH.w`), el disco del sol de `skyColor` se cambia por `moonCol`:
+  disco blanco de 1,2° de radio (la de verdad mide 0,26°: se exagera para que se lea), mares con ruido, oscurecimiento del
+  borde y un halo corto azulado. Brilla lo justo para un poco de bloom sin quemar los mares.
+- **Hora azul** (LZ3). Recién puesto el sol (de 0,5° a −5°, antes de la noche cerrada) se quita parte de la adaptación del
+  ambiente (`K.blue` = 0,5): el suelo queda en penumbra en vez de parecer una tarde nublada.
+- **Suelo claro bajo la luna** (LZ3). La ortofoto del relieve (`FS_TER`) es de día y lo muy claro (hormigón del puerto,
+  explanadas) lleva el sol pintado: de noche (`uNight`) lo más claro se apaga hasta un 45 %. Igual con los muelles (`FS_QUAY`).
+- **Adaptación del ojo**: `K.dAmb`/`K.dExp` al anochecer y `K.nAmb`/`K.nExp` de noche; `K.moon` (0,8) es la ganancia de
+  la luna; `K.blue`, la hora azul (arriba). El umbral del bloom baja de noche hasta ×0,7 (`L.night`), para que lo más
+  brillante de la ciudad florezca.
   De día, `K = sol 1,7 · cielo 4,4 · suelo 4,8 · exposición 1,2`: lo soleado NO debe quemarse (con el ACES de Babylon una
   acera clara al sol queda ≈ +15 % sobre su color de autor y una pared blanca por debajo de 0,85) y la sombra queda hacia
   la mitad de lo soleado. Se calibra en caliente con `BCN.light.set({...})`.
@@ -764,10 +782,15 @@ imagen es idéntica píxel a píxel con `city` a 0 o a 1). Se ajusta en caliente
   se atenúa hasta el 22 %, porque ahí están los charcos de verdad del mobiliario. Más luz cuanto más ancha la vía y en las
   principales (`cls < 3.5`); por encima de 200–380 m de cota (carreteras de Collserola) casi nada.
 - `FS_BLD` (`.y`): luz de farola en la parte baja de los muros de los volúmenes lejanos, `exp(−h/6)`. Las cubiertas no.
+  Solo en los muros que dan a una calle: **máscara de calles** (`uStreet`, `uStreetR`, LZ3), una textura de una capa
+  hecha en `app.js` justo después de `SEG`, con celdas de 8 m (o más, hasta 2048 de lado) que valen 1 a menos de
+  «semiancho + 3 m» del eje de alguna calle; el muro mira 3 m por delante de sí. Los muros de los patios de manzana quedan al 8 %.
 - Halo (`.z`): de noche cerrada el color de la niebla pasa de azul a pardo cálido y la niebla se espesa un 50 %; en
   `FS_SKY`, una banda anaranjada tenue sobre el horizonte (`exp(−7·d.y)`), más fuerte mirando hacia la ciudad cuando la
   cámara está fuera de ella, que además apaga las estrellas bajas.
-- `FS_TER` (`.w`): el suelo no vegetal por debajo de 200–380 m de cota coge un poco de esa luz.
+- `FS_TER` (`.w`): el suelo no vegetal por debajo de 200–380 m de cota coge un poco de esa luz (al 15 % lejos de las calles,
+  con la misma máscara).
+- Las avenidas anchas (semiancho 12 m o más) llevan hasta ×1,75 de luz en la calzada, y las vías principales ×1,2.
 Los demás carriles pueden usar `uGlow` y `kAura` en sus shaders (pendiente: las copas de los árboles de calle, en
 `streets.js`, tapan la calzada encendida vista desde arriba y siguen oscuras; las aceras de detalle tampoco la reciben).
 
@@ -841,6 +864,49 @@ posición de la anterior; escribe una línea `PROBE` como aviso de consola). Vis
 cascada lejana no los lleva (`P.shTreeNF = 1` los añade, +0,2 M triángulos): en ese anillo pueden faltar sombras de copa;
 las copas recortadas por alfa sí, pero sin semitransparencia; el coste de pintar una cascada en el arnés (SwiftShader) sigue
 siendo de segundos, en un equipo real es un repintado cada ~8 m caminados.
+
+### 7.8 Oclusión ambiental (etapa LZ3)
+
+Oclusión ambiental en pantalla, en `lighting.js` («OCLUSIÓN AMBIENTAL»). Tres `PostProcess` propios **delante** de la
+cadena de Babylon (antes del bloom y del tono), sobre el búfer HDR cuyo alfa guarda la distancia a la cámara (`FRAG`):
+
+| pase | tamaño | qué hace |
+| --- | --- | --- |
+| `bcnAo` | recibe la escena a resolución completa (FLOAT 32 si se puede, si no HALF; con el MSAA); dibuja a media | posición = rayo de la cámara × distancia (relativa a la cámara: nada de matrices con coordenadas de mundo de 10⁴ m, que pierden precisión; equivale a la inversa de vista-proyección); normal = producto de las diferencias con los vecinos (la más corta de cada lado, para no cruzar bordes); 8 o 12 muestras en espiral de ángulo áureo girada por píxel, radio 0,7 m en mundo (como mucho 1/10 de la pantalla); término de McGuire/Alchemy con corte por distancia (sin halos en objetos finos). Escribe (oclusión, distancia) |
+| `bcnAoH` | media | desenfoque horizontal bilateral de 7 tomas (no mezcla píxeles de distancia distinta: tolerancia 4 % + 5 cm) |
+| `bcnAoMix` | de media a completa | desenfoque vertical + subida con pesos de distancia (12 tomas) y mezcla: color × (1 − 2,6·intensidad·oclusión), como mucho −85 %. Lo muy brillante (luminancia expuesta de 1,2 a 3,5: luminarias, rótulos, el sol en un vidrio) no se oscurece. Deja en el alfa la distancia, como estaba |
+
+Se desvanece de 80 a 110 m (`P.aoFar` = 110) y no toca el cielo (distancia mayor que eso). Como es un pase en pantalla,
+oscurece el color entero (también la luz directa del sol en un rincón soleado, aunque lo muy brillante se salva); el
+contrato de sombreado no cambia (`shade(…, ao)` sigue siendo la oclusión «de autor» de cada material).
+
+**Con qué convive.** Los materiales con mezcla (`FRAGA`, vidrios) y el charco de luz de las farolas (`furniture.js`, mezcla
+multiplicativa `(DST_COLOR, ZERO)`) no tocan el alfa del búfer: la oclusión se calcula con la distancia de lo opaco que hay
+detrás y se aplica al color ya mezclado (el charco queda oscurecido como el suelo que ilumina, que es lo correcto).
+
+**Orden de los pases.** Babylon añade los pases de su cadena al final de la lista de la cámara; los de la oclusión van en
+0..2 y siguen delante tras cada reconstrucción. El MSAA va en el primer pase de la cámara (`aoSync`, también tras cada
+reconstrucción, `onBuildObservable`): con la oclusión puesta es `bcnAo`. Al ponerla o quitarla (cambio de calidad) se llama
+a `pipe.prepare()`, que rehace los pases de la cadena (el primero necesita búfer de profundidad, y Babylon lo decide al crear
+sus texturas). Sin postproceso (camino LDR) no hay oclusión.
+
+**Ajustes** (`BCN.light.set`): `ao` intensidad (1; 0 deja el pase puesto con efecto nulo: sirve para comparar), `aoR`
+radio (0,7 m), `aoFar` (110 m), `aoDbg: 1` muestra solo la oclusión. `BCN.light.stats().ao` → `{ n, k, first }` (`first`
+debe ser `bcnAo`). Vistas: `z_*_noao` y `z_*_dbg` de `tools/views_luz.json`.
+
+### 7.9 Calibración por horas (LZ3)
+
+Vistas `z_*` de `tools/views_luz.json` (las aéreas llevan `BCN.st.maxDist=40000`). Qué se ve a cada hora con los ajustes
+actuales (`K` de §7.6):
+
+| hora | a pie | desde el aire |
+| --- | --- | --- |
+| 3:00 | calle oscura, azulada, farolas y charcos; comercios apagados (luz de vigilancia) | ciudad gris azulada bajo la luna, pocas ventanas, calles encendidas |
+| 7:00 | sol de 13° por el este: calle en sombra, ambiente frío; algo apagada | resplandor claro hacia el sol, ciudad nítida |
+| 8:00, 12:00, 13:00, 17:00 | sin cambios respecto a LZ2 (el día no se ha tocado) | ídem |
+| 20:15–20:30 | sol de 7–9°, luz anaranjada y rasante, sombras largas | horizonte naranja hacia el oeste, malva hacia el este |
+| 21:15 | hora azul: farolas y escaparates encendidos, suelo en penumbra | resplandor rojo hacia el oeste, ventanas encendidas |
+| 23:00 | luna (disco con mares), estrellas; calle de farolas | aura de calles, bruma cálida en el horizonte |
 
 ## 8. Carril INTERIORES
 

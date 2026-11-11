@@ -590,7 +590,7 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // color de autor (≈ +15 %) y una pared blanca por debajo de 0,85; la sombra, hacia la mitad de lo soleado.
             // moon: ganancia de la luna respecto al sol · nAmb / nExp: adaptación extra del ambiente y la exposición de noche
             // blue: cuánto ambiente se quita en la hora azul (sol de 0,5° a −5° bajo el horizonte, antes de la noche cerrada)
-            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.9, nAmb: 0.0, nExp: 0.25, blue: 0.35,
+            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
                  city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
