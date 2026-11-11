@@ -14,7 +14,7 @@ Solo `facades.js` y `streets.js`. Nada de día cambia: a las 12:00 la imagen es 
    - **streets.js la llena** a partir de los charcos de luz que ya deja `furniture.js` en `cc.pools` (`poolLamps`: el punto
      uv (0, 0) de cada quad es el pie de la luminaria; se juntan los quads de una misma farola y se queda la cota de la acera).
      Se vacía al soltar la celda (`drop`). No se toca `furniture.js`.
-   - En el shader, al final (después de `shade`): `c += emit(kAura·min(alb, 0,55), lampBath(vPos, n, 1/92)·smoothstep(0,05, 0,3, uDusk)·2,8)` (σ ≈ 6,8 m)`.
+   - En el shader, al final (después de `shade`): `c += emit(kAura·min(alb, 0,55), lampBath(vPos, n, 1/92)·smoothstep(0,05, 0,3, uDusk)·2,8)` (σ ≈ 6,8 m).
      Los vidrios (pisos y escaparates) salen antes del final: no se tocan. Solo de noche (`uDusk > 0`).
 2. **Copas de los árboles de calle desde arriba** (`streets.js`, `FS_TREE`, hoja e impostor). Con la cámara por encima de la
    hoja (`ab = smoothstep(0, 0,12, V.y)`): la luz recibida ×(1 − 0,6·uNight·ab) (masa oscura, como cubiertas y terreno) y el aura
