@@ -401,7 +401,7 @@ function scooter(B, A, F, y, col) {
   for (const sd of [-1, 1]) { T([[0.3, 1.09, sd * 0.24], [0.3, 1.09, sd * 0.35]], 0.02, blk, A.RUBBER);
     T([[0.3, 1.09, sd * 0.2], [0.26, 1.3, sd * 0.29]], 0.008, blk, A.MATTE, 3);
     quad(B, F, 0.255, y + 1.27, sd * 0.29 - 0.06, 0.255, y + 1.27, sd * 0.29 + 0.06, 0.255, y + 1.35, sd * 0.29 + 0.06, 0.255, y + 1.35, sd * 0.29 - 0.06, [60, 66, 74], K.FURN, A.STEEL); }
-  T([[0.0, 0.44], [-0.3, 0.5], [-0.6, 0.55], [-0.85, 0.6]], t => 0.19 - 0.08 * t * t, col, A.GLOSS, 6, { caps: true });      // cuerpo trasero, abombado y más fino hacia la cola
+  T([[0.0, 0.44], [-0.3, 0.5], [-0.6, 0.55], [-0.85, 0.6]], t => 0.19 - 0.08 * t * t, col, A.GLOSS, 8, { caps: true });      // cuerpo trasero, abombado y más fino hacia la cola
   T([[-0.06, 0.665], [-0.4, 0.695], [-0.74, 0.735]], t => 0.115 - 0.03 * t, seat, A.RUBBER, 5, { caps: true });             // asiento
   quad(B, F, -0.854, y + 0.58, -0.06, -0.854, y + 0.58, 0.06, -0.854, y + 0.65, 0.06, -0.854, y + 0.65, -0.06, [170, 18, 20], K.FURN, A.GLOSS);     // piloto trasero
   slab(B, F, [-0.76, y + 0.5], [-0.93, y + 0.33], 0.07, 0.07, 0.02, blk, A.MATTE);         // guardabarros trasero y matrícula (en blanco)

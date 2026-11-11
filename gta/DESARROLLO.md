@@ -826,7 +826,7 @@ detalle), `F` un marco como los de fachada (`u`, `y`, `d`) centrado en el objeto
 
 | Objeto (función) | Dónde cae (`place`) | Nivel de detalle | Sencillo | Detalle |
 | --- | --- | --- | --- | --- |
-| Farola (`lamp`) | cada 24 m, alternando acera | columna torneada con zócalo y molduras, brazo en arco que se afina, luminaria aplanada con lente (`emit` 0,25 + 6·`uDusk`) y charco de luz (§9.4) | 77 | 310 |
+| Farola (`lamp`) | cada 24 m, alternando acera | columna torneada con zócalo y molduras, brazo en arco que se afina, luminaria aplanada con lente de matriz de ledes (`emit` 0,2 de día → 5,5 encendida) y charco de luz (§9.4) | 77 | 255 |
 | Papelera (`bin`) | cada 37 m | poste con pletina, cesto de chapa perforada (dibujo 9), aro de acero, bolsa vuelta sobre el borde y fondo | 40 | 184 |
 | Banco (`bench`) | cada 53 m, solo aceras anchas | 5 listones de asiento y 4 de respaldo, costados de tubo de fundición con reposabrazos | 108 | 252 |
 | Contenedor (`container`) | batería de 3–5 cada 95 m, en la banda de aparcamiento | ruedas, cuerpo de aristas redondeadas más estrecho abajo, reborde, tapa abombada de color vivo, adhesivo con pictograma delante y detrás, bandas reflectantes hacia la calzada, bulones de izado; boca propia: ranura (paper), dos bocas de goma (envasos), asa y pedal (resta, orgànica) | 36 | 286–332 |
@@ -835,6 +835,10 @@ detalle), `F` un marco como los de fachada (`u`, `y`, `d`) centrado en el objeto
 | Bici de Bicing (`bike`) | 40–70 % de los anclajes | cubiertas y llantas de tubo, radios (dibujo 8, un quad por rueda), guardabarros, cuadro de paso abierto, sillín, manillar con puños, soporte delantero, bulón de anclaje, cubrecadena, bielas y pata | 256 | 726 |
 | Anclaje y tótem (`dock`, `totem`) | estación de 9–14 anclajes cada 310 m | poste redondeado con ranura, piloto (verde con bici, ámbar sin ella) y banda roja; tótem con pantalla encendida, lector y panel | 12 · 24 | 76 · 90 |
 | Semáforo (`signal`) | extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra | poste con base, cabeza redondeada, tres focos (uno encendido, que se nota más al anochecer) con visera | 28 | 121 |
+| Bolardo (`bollard`) | en el bordillo, flanqueando cada paso de cebra (tres por extremo de tramo) | pilona de fundición torneada, con zócalo, collarín y cabeza redondeada | 10 | 66 |
+| Buzón (`mailbox`) | cada 190 m, con la boca hacia la acera | cilindro amarillo con pie oscuro, cornisa y casquete, boca con visera y placa de horarios | 52 | 196 |
+| Parquímetro (`meter`) | cada 64 m alternando acera, solo en calles con banda de aparcamiento | pie, cuerpo azul de aristas redondeadas, pantalla encendida, ranura, botón, instrucciones y placa solar | 12 | 102 |
+| Moto (`scooter`) | grupos de 2–5 cada 95 m (el 70 % de las veces) en la banda de aparcamiento, de culo al bordillo; a 47 m de los contenedores y nunca sobre una estación de Bicing | escúter: neumáticos y llantas, plataforma, escudo, guardabarros, careta con faro, manillar con puños y retrovisores, cuerpo trasero abombado, asiento, piloto, matrícula en blanco, escape y pata; 7 colores (`MOTO`) | 72 | 434 |
 
 Los colores de la batería están en `CONT` (resta gris, paper blau, envasos groc, vidre verd, orgànica marró). Nada lleva
 marcas ni texto real: los adhesivos son un pictograma genérico y dos renglones insinuados.
@@ -852,16 +856,17 @@ marcas ni texto real: los adhesivos son un pictograma genérico y dos renglones 
   por malla a partir de `metadata.bcn.cell.hi` (la malla `fu` se registra con `cell`, y `hiJob` pone `cell.hi`). Si la malla
   de detalle aún no existe, se sigue viendo la sencilla: no hay huecos.
 - Medida: `BCN.detailStats().st` da `furn` (triángulos del nivel sencillo y las marcas, todas las celdas), `furnHi` (los
-  de detalle) e `hi` (celdas con detalle). En `eix_mobiliario`: 36 082 en 23 celdas (≈ 1 570 por celda, lo mismo que antes
-  más los semáforos) y 46 178 de detalle en 7 celdas (≈ 6 600 por celda). **En una celda cercana el mobiliario es ≈ 5× el
-  de antes; sumando todas las celdas cargadas, ≈ 2,3×** (el objetivo del encargo era ~2×); es el 14 % de los triángulos de
-  la capa de calles. Si hay que recortar, lo que más pesa son las farolas (10 por celda) y las bicis.
+  de detalle) e `hi` (celdas con detalle). En `eix_mobiliario`: 40 348 en 23 celdas (≈ 1 750 por
+  celda; antes de la etapa eran ≈ 1 570) y 54 812 de detalle en 7 celdas (≈ 7 800 por celda). **En una celda cercana el
+  mobiliario es ≈ 6× el de antes de la etapa; sumando todas las celdas cargadas, ≈ 2,6×** (el objetivo del encargo era
+  ~2×: no se cumple). Si hay que recortar,
+  lo que más pesa son las farolas (10 por celda), las bicis y las motos.
 
 ### 9.3 Tipos de material propios (ids 60–79)
 
 - **`K.FURN` (60)**: como `K.PBR` (color de vértice = albedo), con auxiliar `(rugosidad, metal, patrón, nivel)`. Patrones:
   0 liso · 1 lamas · 2 nervios · 3 pintura gastada · 4 plástico con churretes y suciedad · 5 madera barnizada · 6 lente de
-  luminaria (encendida con `uDusk`) · 7 piloto (emisivo con su color). Los acabados ya hechos están en `finishes(lod)`:
+  luminaria (matriz de ledes, encendida al anochecer) · 7 piloto (emisivo con su color). Los acabados ya hechos están en `finishes(lod)`:
   `A.PAINT`, `A.STEEL`, `A.PLASTIC`, `A.WOOD`, `A.RUBBER`, `A.MATTE`, `A.GLOSS`, `A.CAST`, `A.LENS`, `A.LED`…
 - **`K.FDEC` (61)**, «calcomanía»: un quad con uv propias (auxiliar `A.dec(id)` = uv de 0 a 1 por vértice + dibujo + nivel)
   y un dibujo procedural: 1–5 adhesivo con pictograma (bolsa, fruta, botella y lata, hoja, copa) sobre el color de vértice ·
@@ -869,16 +874,32 @@ marcas ni texto real: los adhesivos son un pictograma genérico y dos renglones 
   estable) · 9 chapa perforada con la bolsa detrás · 10 pantalla encendida · 11 banda reflectante roja y blanca · 12/13 foco
   de semáforo encendido/apagado. Ayudas: `dq` (quad vertical; el primer `u` es el borde que queda a la **izquierda de quien
   mira**: en una cara que mira a +d, el `u` mayor) y `cdec` (franja curva sobre un cilindro o cono).
-- Piezas nuevas, además de las de `geo.js`: `fbox` (caja exenta) y `loft` (cuerpo de sección rectangular con las esquinas
-  redondeadas, por anillos `[semilargo, semiancho, radio, y]`; un anillo repetido = arista viva).
+- Piezas nuevas, además de las de `geo.js`: `fbox` (caja exenta), `loft` (cuerpo de sección rectangular con las esquinas
+  redondeadas, por anillos `[semilargo, semiancho, radio, y]`; un anillo repetido = arista viva) y `slab` (losa inclinada
+  en el plano `u`–`y`, para carrocerías).
+- **Lo emisivo, con la cadena HDR** (§7.1: `emit` con ganancia g son g^2,2 en lineal y florece desde ≈ 1,6 sobre un color
+  claro). Todo cuelga de `fNite = smoothstep(0.05, 0.3, uDusk)` (el alumbrado ya está encendido del todo a las 20:25, cuando
+  `uDusk` es solo 0,30): lente de farola 0,2 → 5,5 · pantalla (tótem, parquímetro) 0,9 → 2,3 · foco de semáforo encendido
+  1,6 → 3,0 · piloto 1,3 → 2,2. De día nada de esto florece; al anochecer la luminaria deslumbra con halo y lo demás brilla
+  sin quemarse.
 
 ### 9.4 Charcos de luz de las farolas
 
 Al anochecer, bajo cada luminaria hay un charco cálido: quads a ras de suelo (calzada, acera propia y, si llega, la de
-enfrente, cada banda a su cota) con el material `poolMat` (`mkMat` con `blend`; opacidad `smoothstep(0, 0.45, uDusk)` por
-una caída radial). `furniture.js` deja los vértices en `cell.pools` (`x, y, z, u, v`, de cuatro en cuatro) y `streets.js`
-monta con ellos la malla `lp<celda>` (capa `fx`, no proyecta sombra). De día se descarta entero. Es un sustituto barato:
-cuando el carril LUZ tenga luces de verdad, basta con no devolver `poolMat`.
+enfrente, cada banda a su cota) con el material `poolMat` (`mkMat` con `blend`). `furniture.js` deja los vértices en
+`cell.pools` (`x, y, z, u, v`, de cuatro en cuatro) y `streets.js` monta con ellos la malla `lp<celda>` (capa `fx`, no
+proyecta sombra). De día se descarta entero.
+
+- **En HDR el charco multiplica** lo que ya hay pintado: `furniture.js` añade un segundo observador de enlace que cambia
+  la mezcla a `(DST_COLOR, ZERO)` para el color (el alfa del búfer sigue sin tocarse) y el shader escribe a mano el factor
+  `1 + cálido × 7 × caída` (es la única salida que no pasa por `FRAG*`, a propósito: no es un color sino un factor
+  lineal). Así se comporta como una luz: el dibujo del suelo (panots, grietas, parches) se conserva y lo claro se ilumina
+  más que lo oscuro. El factor es relativo a la luz ambiente, así que crece hasta ×1,8 con la noche cerrada.
+- **En LDR** (`#ifdef LDR`: sin búfer flotante no se puede pasar de 1) queda la mezcla alfa de antes, que aclara hacia un
+  tono cálido y aplana algo el suelo. El observador mira `ctx.out.hdr` en cada enlace, así que el cambio en caliente
+  (`ctx.setLDR()`) también vale.
+- Solo ilumina el suelo: los objetos y los coches que pisan el charco no reciben esa luz. Cuando el carril LUZ tenga
+  luces de verdad, basta con no devolver `poolMat`.
 
 ### 9.5 Cómo añadir un objeto
 
@@ -895,16 +916,18 @@ cuando el carril LUZ tenga luces de verdad, basta con no devolver `poolMat`.
 
 ```bash
 node tools/furn_test.js                                        # triángulos por objeto y nivel (1 s)
-node tools/shot.js tools/out/fz/s @tools/views_detalle.json    # de cerca: cont, papelera, banco, farola_base, bicing, bici, semaforo… y dos al anochecer
+node tools/shot.js tools/out/fz/s @tools/views_detalle.json    # de cerca: cont, papelera, banco, farola_base, bicing, bici, semaforo, motos, buzon, parquimetro, bolardo… y tres al anochecer
 ```
 
 Ojo: la hora de una vista (`hour`) se queda puesta para las siguientes de la misma ejecución; por eso las de anochecer
-(`farola_noche`, `charco`) van al final del fichero.
+(`farola_noche`, `charco`, `bicing_noche`) van al final del fichero.
 
 ### 9.7 Límites conocidos
 
-- La lente de la farola es un rectángulo plano que satura a blanco: sin el bloom del carril LUZ no «deslumbra».
-- El charco de luz es una mezcla alfa (aclara hacia un tono cálido), no luz: aplana algo la textura del suelo debajo.
+- El charco de luz solo ilumina el suelo (§9.4), y la lente de la farola es un rectángulo plano: el halo lo pone el bloom.
+- Las motos son de baja poligonización (se nota a 2 m: neumáticos de 9 lados, carrocería de tubo de 6) y están todas
+  derechas, sin apoyarse en la pata. La matrícula va en blanco.
+- Los bolardos, el buzón y el parquímetro no saben de los árboles ni de los vados: alguno puede caer pegado a un alcorque.
 - La viga y el tótem de una estación de Bicing usan una sola cota (la del tótem): en una calle en cuesta la viga no sigue la pendiente.
 - Las bolsas de basura pueden rozar el pedal del contenedor vecino.
-- Pendiente del encargo (punto 6): bolardos, buzón, parquímetro y motos aparcadas.
+- Triángulos por encima del objetivo del encargo (§9.2).
