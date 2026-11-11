@@ -1,43 +1,527 @@
 /* GTA Barcelona — Interiores y planta baja (hook de facades.js).
-   Todo lo que se construye entre la acera y la cota F1 de cada tramo de fachada: portal, escaparates de comercio y
-   ventanas de planta baja con reja; más el atlas de rótulos y la lista de comercios.
-   window.BCN_INTERIORS = { SHOPS, init(ctx) → { groundFloor(env, run), signTex } }. Contrato de env/run: DESARROLLO.md §6.
+   Todo lo que se construye entre la acera y la cota F1 de cada tramo de fachada: portal, comercios y ventanas de planta
+   baja con reja; más el atlas de rótulos y la tabla de comercios.
+   Los comercios se ven por dentro SIN geometría («interior mapping»): el quad del vidrio lleva el tipo K.SHOPWIN y su
+   shader traza, por píxel, un rayo dentro de una habitación virtual (caja + capas de mobiliario en paralaje). Qué hay en
+   cada comercio lo dice una fila de TYPES, que viaja al shader en una textura de parámetros (tShop).
+   window.BCN_INTERIORS = { SHOPS, TYPES, force, paramData(), init(ctx) → { groundFloor(env, run), signTex } }.
+   Contrato de env/run: DESARROLLO.md §6; comercios, empaquetado y capas del shader: §8.
    Tipos de material propios: ids 20–39, con BCN_GEO.regKind() al cargar el script. */
 (function () {
 'use strict';
-const { K, quad, rect, jamb, hpl, box, lattice, shade, signAux, R } = window.BCN_GEO;
+const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, signAux, pbrAux, R } = window.BCN_GEO;
 
-const AWNINGS = [[166, 36, 33], [31, 77, 56], [219, 204, 168], [38, 56, 107]];
-const SHOPS = ['FORN DE PA', 'FARMÀCIA', 'FERRETERIA', 'BAR TAPES', 'FRUITERIA', 'LLIBRERIA', 'FLORISTERIA', 'RESTAURANT', 'PERRUQUERIA', 'MODA', 'GELATERIA', 'CAFÈ', 'QUEVIURES', 'ÒPTICA', 'PAPERERIA', 'FORMATGERIA'];
+// ------------------------------------------------------------------ tabla de comercios: una fila por tipo
+// Vocabulario de las filas (los números son los que lee el shader):
+const FL = { DAMERO: 0, TARIMA: 1, TERRAZO: 2, BALDOSA: 3 };                    // suelo
+const LAMP = { FOCOS: 0, TUBOS: 1, CALIDA: 2 };                                  // luminarias del techo
+const BACK = { LISO: 0, ESTANTES: 1, BOTELLERO: 2, ESPEJOS: 3, HERRAMIENTAS: 4, PIZARRAS: 5, PERCHERO: 6, GAFAS: 7, CUADROS: 8 };   // pared del fondo
+const LY = { NADA: 0, MOSTRADOR: 1, BARRA: 2, MESAS: 3, MANTELES: 4, SILLONES: 5, LINEALES: 6, BURRAS: 7, ISLA: 8, CAJAS: 9, CUBOS: 10,
+  TARIMA: 11, MANIQUIES: 12, CARTELES: 13, CRUZ: 14 };                           // capas de mobiliario (planos paralelos al vidrio)
+const PAL = { VARIADO: 0, FARMACIA: 1, LIBROS: 2, BOTELLAS: 3, PAN: 4, FERRETERIA: 5, FRUTA: 6, QUESO: 7, FLORES: 8, ROPA: 9, HELADO: 10, GAFAS: 11 };   // colores del género
+const SH = { CAJA: 0, REDONDO: 1, BOTELLA: 2, LOMO: 3, HERRAMIENTA: 4, GAFAS: 5, MIXTO: 6 };   // forma del género
+// Cada fila: n rótulo (catalán) · w frecuencia relativa · sign [fondo, letra] del rótulo · awn color del toldo · wall pared ·
+// floor [patrón, color A, color B] · warm calidez de la luz (0 fría … 1 cálida) · lamp luminarias · back [qué hay en la pared
+// del fondo, color del mueble] · far / near / shelf [capa a ~3,1 m / a 1,7 m / repisa del escaparate a 0,4 m, color] ·
+// acc color de acento · pal y shape: colores y forma del género. AÑADIR UN TIPO = AÑADIR UNA FILA (máx. 32; su índice es el tipo).
+const TYPES = [
+  { n: 'FORN DE PA', w: 10, sign: ['#6b3d14', '#f6e8c9'], awn: [150, 90, 40], wall: [226, 205, 170], floor: [FL.DAMERO, [176, 104, 72], [206, 160, 120]], warm: 0.85, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [150, 105, 60]], far: [LY.MOSTRADOR, [140, 96, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 160, 90], pal: PAL.PAN, shape: SH.REDONDO },
+  { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [236, 240, 238], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [230, 232, 230]], far: [LY.MOSTRADOR, [232, 236, 234]], near: [LY.ISLA, [225, 228, 226]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
+  { n: 'FERRETERIA', w: 4, sign: ['#2b2b2f', '#f2c230'], awn: [60, 60, 66], wall: [168, 164, 156], floor: [FL.TERRAZO, [120, 116, 110], [156, 150, 140]], warm: 0.4, lamp: LAMP.TUBOS,
+    back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
+  { n: 'BAR', w: 13, sign: ['#7c1d22', '#f6e8c9'], awn: [166, 36, 33], wall: [98, 62, 44], floor: [FL.DAMERO, [44, 40, 38], [190, 180, 160]], warm: 1.0, lamp: LAMP.CALIDA,
+    back: [BACK.BOTELLERO, [70, 42, 26]], far: [LY.BARRA, [84, 50, 30]], near: [LY.MESAS, [60, 40, 28]], shelf: [LY.NADA, [0, 0, 0]], acc: [220, 170, 70], pal: PAL.BOTELLAS, shape: SH.BOTELLA },
+  { n: 'FRUITERIA', w: 7, sign: ['#2f6b1e', '#fff4c9'], awn: [46, 110, 50], wall: [214, 226, 200], floor: [FL.BALDOSA, [190, 186, 170], [140, 138, 128]], warm: 0.5, lamp: LAMP.TUBOS,
+    back: [BACK.ESTANTES, [150, 120, 80]], far: [LY.CAJAS, [176, 140, 90]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CAJAS, [176, 140, 90]], acc: [80, 150, 60], pal: PAL.FRUTA, shape: SH.REDONDO },
+  { n: 'LLIBRERIA', w: 4, sign: ['#1c2c52', '#f6e8c9'], awn: [38, 56, 107], wall: [200, 178, 140], floor: [FL.TARIMA, [130, 90, 54], [130, 90, 54]], warm: 0.8, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [110, 70, 40]], far: [LY.ISLA, [100, 66, 40]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [96, 64, 40]], acc: [150, 40, 40], pal: PAL.LIBROS, shape: SH.LOMO },
+  { n: 'FLORISTERIA', w: 4, sign: ['#3d1c4c', '#f9e3ee'], awn: [120, 60, 110], wall: [222, 228, 214], floor: [FL.TERRAZO, [90, 96, 92], [130, 136, 130]], warm: 0.5, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [120, 130, 110]], far: [LY.CUBOS, [70, 80, 76]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CUBOS, [60, 70, 66]], acc: [200, 80, 120], pal: PAL.FLORES, shape: SH.REDONDO },
+  { n: 'RESTAURANT', w: 9, sign: ['#3a1512', '#e9cf8a'], awn: [110, 30, 34], wall: [186, 150, 118], floor: [FL.TARIMA, [96, 64, 40], [96, 64, 40]], warm: 0.95, lamp: LAMP.CALIDA,
+    back: [BACK.CUADROS, [90, 56, 36]], far: [LY.MANTELES, [70, 44, 30]], near: [LY.MANTELES, [70, 44, 30]], shelf: [LY.NADA, [0, 0, 0]], acc: [236, 232, 220], pal: PAL.BOTELLAS, shape: SH.BOTELLA },
+  { n: 'PERRUQUERIA', w: 7, sign: ['#2b2b2f', '#f3d7e0'], awn: [60, 60, 66], wall: [232, 224, 226], floor: [FL.BALDOSA, [200, 196, 196], [150, 146, 148]], warm: 0.45, lamp: LAMP.FOCOS,
+    back: [BACK.ESPEJOS, [40, 40, 44]], far: [LY.SILLONES, [30, 30, 34]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.NADA, [0, 0, 0]], acc: [210, 120, 150], pal: PAL.VARIADO, shape: SH.BOTELLA },
+  { n: 'MODA', w: 7, sign: ['#151517', '#f2f0ea'], awn: [219, 204, 168], wall: [236, 230, 220], floor: [FL.TARIMA, [190, 160, 120], [190, 160, 120]], warm: 0.6, lamp: LAMP.FOCOS,
+    back: [BACK.PERCHERO, [200, 190, 170]], far: [LY.BURRAS, [160, 160, 165]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.MANIQUIES, [226, 220, 210]], acc: [20, 20, 24], pal: PAL.ROPA, shape: SH.CAJA },
+  { n: 'GELATERIA', w: 3, sign: ['#d9668a', '#ffffff'], awn: [230, 150, 170], wall: [190, 228, 214], floor: [FL.DAMERO, [240, 240, 236], [240, 170, 190]], warm: 0.5, lamp: LAMP.FOCOS,
+    back: [BACK.PIZARRAS, [240, 236, 228]], far: [LY.MOSTRADOR, [244, 240, 232]], near: [LY.MESAS, [226, 150, 170]], shelf: [LY.NADA, [0, 0, 0]], acc: [240, 120, 150], pal: PAL.HELADO, shape: SH.REDONDO },
+  { n: 'CAFÈ', w: 10, sign: ['#17594c', '#f6e8c9'], awn: [31, 77, 56], wall: [70, 92, 78], floor: [FL.TARIMA, [120, 84, 54], [120, 84, 54]], warm: 0.9, lamp: LAMP.CALIDA,
+    back: [BACK.PIZARRAS, [84, 56, 36]], far: [LY.MOSTRADOR, [96, 64, 40]], near: [LY.MESAS, [70, 48, 32]], shelf: [LY.NADA, [0, 0, 0]], acc: [230, 200, 140], pal: PAL.PAN, shape: SH.REDONDO },
+  { n: 'QUEVIURES', w: 10, sign: ['#5c3b16', '#f6e8c9'], awn: [166, 36, 33], wall: [226, 214, 180], floor: [FL.DAMERO, [206, 196, 174], [150, 70, 56]], warm: 0.7, lamp: LAMP.TUBOS,
+    back: [BACK.ESTANTES, [140, 100, 60]], far: [LY.MOSTRADOR, [130, 92, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 86, 54]], acc: [190, 60, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
+  { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [240, 240, 238], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
+    back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
+  { n: 'PAPERERIA', w: 4, sign: ['#b8401c', '#fff4c9'], awn: [219, 204, 168], wall: [200, 216, 232], floor: [FL.BALDOSA, [196, 190, 176], [150, 146, 136]], warm: 0.5, lamp: LAMP.TUBOS,
+    back: [BACK.ESTANTES, [220, 220, 214]], far: [LY.MOSTRADOR, [70, 110, 160]], near: [LY.ISLA, [210, 206, 196]], shelf: [LY.TARIMA, [60, 100, 150]], acc: [230, 180, 40], pal: PAL.VARIADO, shape: SH.CAJA },
+  { n: 'FORMATGERIA', w: 3, sign: ['#6b5a1e', '#fff4c9'], awn: [150, 120, 40], wall: [232, 220, 188], floor: [FL.DAMERO, [220, 210, 190], [80, 68, 56]], warm: 0.8, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [130, 92, 54]], far: [LY.MOSTRADOR, [228, 224, 212]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 150, 40], pal: PAL.QUESO, shape: SH.REDONDO },
+  // solo en comercios anchos (lo decide shopPlan): w = 0 lo deja fuera del sorteo general
+  { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [238, 240, 240], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
+    back: [BACK.ESTANTES, [225, 228, 230]], far: [LY.LINEALES, [228, 230, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
+];
+const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
+const WSUM = TYPES.reduce((s, t) => s + t.w, 0);
+const pickType = r => { let x = r * WSUM; for (let i = 0; i < TYPES.length; i++) { x -= TYPES[i].w; if (x < 0) return i; } return 0; };
+// textura de parámetros: 8 columnas × 32 filas RGBA8 (fila = tipo). Columnas: 0 pared + patrón de suelo · 1 suelo A + calidez ·
+// 2 suelo B + luminarias · 3 mueble del fondo + qué hay al fondo · 4, 5, 6 color + id de las capas lejana, cercana y repisa ·
+// 7 acento + (paleta + 16·forma)
+function paramData() {
+  const d = new Uint8Array(8 * 32 * 4);
+  TYPES.forEach((t, r) => { const put = (c, rgb, a) => d.set([rgb[0], rgb[1], rgb[2], a], (r * 8 + c) * 4);
+    put(0, t.wall, t.floor[0]); put(1, t.floor[1], Math.round(t.warm * 255)); put(2, t.floor[2], t.lamp); put(3, t.back[1], t.back[0]);
+    put(4, t.far[1], t.far[0]); put(5, t.near[1], t.near[0]); put(6, t.shelf[1], t.shelf[0]); put(7, t.acc, t.pal + 16 * t.shape); });
+  return d;
+}
+// depuración: ?shop=<índice o nombre> fuerza el tipo de todos los comercios (también BCN_INTERIORS.force = n y reconstruir)
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+function parseForce() {
+  let q = null; try { q = new URLSearchParams(location.search).get('shop'); } catch (e) { /* sin URL */ }
+  if (q === null || q === '') return -1;
+  if (/^\d+$/.test(q)) return Math.min(TYPES.length - 1, +q);
+  const k = norm(q), i = SHOPS.findIndex(s => norm(s).startsWith(k));
+  return i;
+}
 
-window.BCN_INTERIORS = { SHOPS, init(ctx) {
+// ------------------------------------------------------------------ shader del escaparate (tipo K.SHOPWIN)
+// Empaquetado por vértice (lo escribe glassQuad): color.r = ancho del local/16 m · color.g = tipo (5 bits) + 32·sentido del
+// marco + 64·es la puerta · color.b = semilla · aux.x = u/ancho · aux.y = (y sobre el suelo + 1)/6 m · aux.z = alto/8 m ·
+// aux.w = fondo/16,32 m (nunca 255: es la marca de sustituto).
+// Funciones reutilizables (prefijo «sh»): shRoom() devuelve lo que se ve dentro de la habitación y shGlass() le pone el vidrio.
+const SHOP_DECL = `
+uniform sampler2D tShop;
+vec4 shPar(float c, float t){ return texture2D(tShop, vec2((c + 0.5)/8.0, (t + 0.5)/32.0)); }
+// cobertura suavizada (px = metros por píxel): rectángulo [a, b], círculo de radio r y trapecio simétrico de y0 a y1
+float shR(vec2 p, vec2 a, vec2 b, float px){ vec2 d = min(p - a, b - p); return clamp(min(d.x, d.y)/px + 0.5, 0.0, 1.0); }
+float shC(vec2 p, float r, float px){ return clamp((r - length(p))/px + 0.5, 0.0, 1.0); }
+float shT(vec2 q, float y0, float y1, float w0, float w1, float px){ float w = mix(w0, w1, clamp((q.y - y0)/(y1 - y0), 0.0, 1.0));
+  return clamp(min(min(q.y - y0, y1 - q.y), w - abs(q.x))/px + 0.5, 0.0, 1.0); }
+// las capas se componen con alfa premultiplicado
+vec4 shOv(vec4 d, vec3 c, float a){ return vec4(c*a, a) + d*(1.0 - a); }
+float shPitch(float s){ return s < 0.5 ? 0.15 : (s < 1.5 ? 0.24 : (s < 2.5 ? 0.10 : (s < 3.5 ? 0.045 : (s < 5.5 ? 0.24 : 0.13)))); }
+// colores del género, por paleta
+vec3 shPal(float pal, float h){
+  vec3 vv = 0.52 + 0.35*cos(6.2832*(h + vec3(0.0, 0.33, 0.67)));
+  float k = fract(h*5.71 + 0.13);
+  if (pal < 0.5) return vv;
+  if (pal < 1.5) return mix(vec3(0.94, 0.96, 0.95), vv*0.5 + 0.45, step(0.62, k));
+  if (pal < 2.5) return mix(vec3(0.40, 0.20, 0.14), vv, 0.5)*(0.55 + 0.6*k);
+  if (pal < 3.5) return k < 0.4 ? vec3(0.10, 0.24, 0.12) : (k < 0.75 ? vec3(0.42, 0.20, 0.06) : vec3(0.62, 0.66, 0.60));
+  if (pal < 4.5) return mix(vec3(0.66, 0.40, 0.16), vec3(0.93, 0.74, 0.42), k);
+  if (pal < 5.5) return k < 0.45 ? vec3(0.45, 0.47, 0.50) : (k < 0.7 ? vec3(0.75, 0.16, 0.10) : (k < 0.88 ? vec3(0.90, 0.68, 0.10) : vec3(0.12, 0.30, 0.55)));
+  if (pal < 6.5) return k < 0.25 ? vec3(0.80, 0.12, 0.08) : (k < 0.5 ? vec3(0.95, 0.52, 0.06) : (k < 0.7 ? vec3(0.93, 0.80, 0.14) : (k < 0.9 ? vec3(0.36, 0.60, 0.14) : vec3(0.40, 0.12, 0.34))));
+  if (pal < 7.5) return mix(vec3(0.95, 0.84, 0.48), vec3(0.86, 0.50, 0.14), step(0.7, k))*(0.85 + 0.2*h);
+  if (pal < 8.5) return k < 0.3 ? vec3(0.90, 0.25, 0.40) : (k < 0.5 ? vec3(0.96, 0.82, 0.20) : (k < 0.7 ? vec3(0.96, 0.95, 0.92) : (k < 0.85 ? vec3(0.58, 0.30, 0.75) : vec3(0.90, 0.20, 0.12))));
+  if (pal < 9.5) return k < 0.25 ? vec3(0.09, 0.09, 0.11) : (k < 0.45 ? vec3(0.80, 0.74, 0.62) : (k < 0.62 ? vec3(0.12, 0.18, 0.34) : (k < 0.8 ? vec3(0.50, 0.12, 0.16) : vec3(0.78, 0.60, 0.16))));
+  if (pal < 10.5) return k < 0.2 ? vec3(0.96, 0.66, 0.74) : (k < 0.4 ? vec3(0.66, 0.82, 0.52) : (k < 0.6 ? vec3(0.97, 0.92, 0.72) : (k < 0.8 ? vec3(0.36, 0.22, 0.14) : vec3(0.98, 0.72, 0.26))));
+  return mix(vec3(0.07, 0.06, 0.06), vec3(0.42, 0.24, 0.10), step(0.7, k));
+}
+// fila de artículos de pie sobre y = 0 (p en metros), uno cada pitch metros y de hasta hm de alto.
+// Formas: 0 caja con etiqueta · 1 redondo (pan, fruta, queso) · 2 botella · 3 lomo de libro · 4 herramienta colgada (y hacia abajo) · 5 gafas · 6 cajas y botellas
+vec4 shItems(vec2 p, float pitch, float hm, float shape, float pal, float sd, float px){
+  if (p.y < -px || p.y > hm + px) return vec4(0.0);
+  float xi = p.x/pitch, i = floor(xi), fx = fract(xi) - 0.5, ax = abs(fx), e = px/pitch;
+  float h1 = hash21(vec2(i, sd)), h2 = hash21(vec2(i + 7.0, sd + 2.3)), h3 = fract(h1*37.7 + h2*3.1);
+  if (shape > 5.5) shape = h3 < 0.55 ? 0.0 : 2.0;
+  vec3 col = shPal(pal, h1);
+  float hh = hm*(0.62 + 0.38*h2), wy = p.y/hh, m;
+  if (shape < 0.5) {
+    m = clamp((0.30 + 0.14*h3 - ax)/e + 0.5, 0.0, 1.0);
+    if (pal < 8.5 || pal > 9.5) col = mix(col, vec3(0.93, 0.92, 0.88), 0.6*step(0.35, wy)*step(wy, 0.7)*step(0.45, h3));
+    col *= 0.86 + 0.28*fx;
+  } else if (shape < 1.5) {
+    hh = min(hm, pitch*(0.55 + 0.3*h2)); wy = p.y/hh;
+    vec2 q = vec2(fx/0.46, wy*2.0 - 1.0); float dq = length(q);
+    m = clamp((1.0 - dq)/(e/0.46) + 0.5, 0.0, 1.0);
+    col *= 0.70 + 0.45*(1.0 - dq*dq) + 0.25*(1.0 - smoothstep(0.0, 0.5, length(q - vec2(-0.3, 0.35))));
+  } else if (shape < 2.5) {
+    float w = mix(0.30, 0.10, smoothstep(0.55, 0.72, wy));
+    m = clamp((w - ax)/e + 0.5, 0.0, 1.0);
+    col = mix(col, vec3(0.90, 0.86, 0.72), step(0.2, wy)*step(wy, 0.46)*step(0.3, h3));
+    col += 0.25*(1.0 - smoothstep(0.0, 0.06, abs(fx + 0.12)));
+  } else if (shape < 3.5) {
+    hh = hm*(0.74 + 0.26*h2); wy = p.y/hh;
+    m = clamp((0.47 - ax)/e + 0.5, 0.0, 1.0);
+    col = mix(col, vec3(0.85, 0.75, 0.45), step(0.72, wy)*step(wy, 0.82)*step(0.5, h3))*(0.8 + 0.2*cos(fx*6.2832));
+  } else if (shape < 4.5) {
+    float w = h3 < 0.5 ? (wy < 0.28 ? 0.36 : 0.08) : ((wy < 0.14 || wy > 0.86) ? 0.17 : 0.07);
+    m = clamp((w - ax)/e + 0.5, 0.0, 1.0);
+    if (h3 >= 0.5 || wy < 0.28) col = vec3(0.62, 0.64, 0.67);
+  } else {
+    hh = hm; wy = p.y/hh;
+    vec2 q = vec2(ax - 0.22, (p.y - hm*0.5)/pitch); float rq = length(q);
+    m = clamp((0.035 - abs(rq - 0.15))/e + 0.5, 0.0, 1.0);
+    m = max(m, clamp((0.02 - abs(q.y - 0.03))/e + 0.5, 0.0, 1.0)*step(ax, 0.08));
+    m = max(m, 0.35*step(rq, 0.15));
+  }
+  m *= clamp(p.y/px + 0.5, 0.0, 1.0)*clamp((hh - p.y)/px + 0.5, 0.0, 1.0);
+  // de lejos, la fila pasa a ser una banda con el color medio del género
+  float lod = smoothstep(0.3, 1.0, e);
+  if (lod > 0.0) { col = mix(col, (shPal(pal, 0.15) + shPal(pal, 0.5) + shPal(pal, 0.85))/3.0, lod); m = mix(m, 0.6*step(0.0, p.y)*step(p.y, hm*0.8), lod); }
+  return vec4(col*m, m);
+}
+// mueble de baldas lleno de artículos: p con origen abajo a la izquierda, tamaño sz, una balda cada rh metros
+vec4 shShelf(vec2 p, vec2 sz, float rh, float pitch, float shape, float pal, vec3 wood, float sd, float px){
+  float a = shR(p, vec2(0.0), sz, px);
+  if (a <= 0.0) return vec4(0.0);
+  float r = floor(p.y/rh), y = p.y - r*rh;
+  vec3 c = wood*0.40*mix(1.0, 0.6, smoothstep(rh*0.45, rh, y));
+  vec4 it = shItems(vec2(p.x + r*0.37, y - 0.04), pitch*(0.85 + 0.3*hash21(vec2(r, sd))), rh - 0.10, shape, pal, sd + r*3.1, px);
+  c = c*(1.0 - it.a) + it.rgb*mix(1.0, 0.8, smoothstep(rh*0.4, rh, y));
+  float lv = smoothstep(0.03, 0.12, px);
+  c = mix(c, wood, (1.0 - smoothstep(0.04 - px, 0.04 + px, y))*(1.0 - 0.5*lv));
+  float mw = sz.x/max(1.0, floor(sz.x/1.05 + 0.5)), mx = abs(fract(p.x/mw + 0.5) - 0.5)*mw;
+  c = mix(c, wood*0.9, (1.0 - smoothstep(0.025 - px, 0.025 + px, mx))*(1.0 - lv));
+  return vec4(c*a, a);
+}
+// pared del fondo: q = (x, y) sobre la pared, sz = (ancho, alto, fondo) de la habitación
+vec3 shBack(float id, vec2 q, vec3 sz, vec3 wall, vec3 furn, vec3 acc, float shape, float pal, float sd, float px){
+  vec3 c = wall*(q.y < 0.1 ? 0.6 : 1.0);
+  if (id < 0.5) return c;
+  if (id < 1.5) {
+    // 1 estanterías de pared a pared y un friso de color encima
+    vec4 s = shShelf(q - vec2(0.12, 0.0), vec2(sz.x - 0.24, 2.3), 0.4, shPitch(shape), shape, pal, furn, sd, px);
+    c = c*(1.0 - s.a) + s.rgb;
+    return mix(c, acc, 0.85*shR(q, vec2(0.12, 2.45), vec2(sz.x - 0.12, 2.68), px));
+  }
+  if (id < 2.5) {
+    // 2 botellero retroiluminado sobre un mueble bajo
+    c = wall*0.8;
+    float r = floor((q.y - 1.02)/0.46), y = q.y - 1.02 - r*0.46;
+    vec3 bl = mix(vec3(1.05, 0.74, 0.36), vec3(1.35, 1.10, 0.70), smoothstep(0.0, 0.46, y));
+    vec4 it = shItems(vec2(q.x + r*0.031, y - 0.03), 0.105, 0.37, 2.0, 3.0, sd + r, px);
+    bl = bl*(1.0 - it.a) + it.rgb;
+    bl = mix(bl, vec3(1.5, 1.4, 1.2), 1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.015)));
+    c = mix(c, bl, shR(q, vec2(0.5, 1.02), vec2(sz.x - 0.5, 2.40), px));
+    return mix(c, furn*(0.7 + 0.3*step(0.05, fract(q.x/0.7))), shR(q, vec2(0.3, 0.0), vec2(sz.x - 0.3, 0.95), px));
+  }
+  if (id < 3.5) {
+    // 3 espejos con marco de bombillas y repisa
+    float cw = sz.x/max(1.0, floor(sz.x/1.6)), cx = (fract(q.x/cw) - 0.5)*cw;
+    vec2 m = vec2(cx, q.y - 1.6);
+    float mr = shR(m, vec2(-0.44, -0.64), vec2(0.44, 0.64), px), mi = shR(m, vec2(-0.36, -0.56), vec2(0.36, 0.56), px);
+    c = mix(c, furn, mr);
+    c = mix(c, mix(vec3(0.50, 0.58, 0.62), vec3(0.86, 0.90, 0.92), smoothstep(-0.6, 0.6, m.y + m.x*0.6)), mi);
+    float ds = length(vec2(abs(m.x) - 0.40, (fract(m.y/0.16) - 0.5)*0.16)), dtp = length(vec2((fract(m.x/0.16) - 0.5)*0.16, m.y - 0.60));
+    float db = min(ds + step(0.62, abs(m.y)), dtp + step(0.42, abs(m.x)));
+    c += vec3(1.0, 0.92, 0.72)*(3.0*clamp((0.03 - db)/px + 0.5, 0.0, 1.0) + 0.5*exp(-db*db*500.0));
+    return mix(c, furn*1.4, shR(q, vec2(0.2, 0.80), vec2(sz.x - 0.2, 0.86), px));
+  }
+  if (id < 4.5) {
+    // 4 panel perforado con herramientas colgadas, sobre cajoneras
+    float r = floor((q.y - 1.0)/0.5), yy = 0.46 - (q.y - 1.0 - r*0.5);
+    vec3 pc = furn*(1.0 - 0.22*(1.0 - smoothstep(0.008, 0.012 + px, length(fract(q/0.05) - 0.5)*0.05))*(1.0 - smoothstep(0.008, 0.03, px)));
+    vec4 it = shItems(vec2(q.x + r*0.11, yy), 0.21, 0.42, 4.0, 5.0, sd + r*2.0, px);
+    pc = pc*(1.0 - it.a) + it.rgb;
+    c = mix(c, pc, shR(q, vec2(0.3, 1.0), vec2(sz.x - 0.3, 2.5), px));
+    vec2 g = fract(q/vec2(0.3, 0.18));
+    return mix(c, vec3(0.42, 0.45, 0.48)*(0.72 + 0.28*step(0.08, g.x)*step(0.12, g.y)), shR(q, vec2(0.3, 0.0), vec2(sz.x - 0.3, 0.92), px));
+  }
+  if (id < 5.5) {
+    // 5 pizarras con la carta, balda de tarros, mueble bajo y cafetera
+    float cw = sz.x/max(1.0, floor(sz.x/1.5)), cx = (fract(q.x/cw) - 0.5)*cw;
+    vec2 m = vec2(cx, q.y - 2.3);
+    vec3 bc = vec3(0.07, 0.09, 0.08);
+    float ln = step(0.55, fract(m.y/0.11))*step(0.35, vnoise(vec2(q.x*30.0, floor(m.y/0.11)*7.0 + sd)))*step(abs(cx), cw*0.5 - 0.25);
+    bc = mix(bc, vec3(0.85), ln*0.7*(1.0 - smoothstep(0.008, 0.035, px)));
+    c = mix(c, bc, shR(m, vec2(-cw*0.5 + 0.12, -0.38), vec2(cw*0.5 - 0.12, 0.38), px));
+    vec4 it = shItems(vec2(q.x, q.y - 1.42), 0.14, 0.26, 0.0, 0.0, sd + 4.0, px);
+    c = c*(1.0 - it.a) + it.rgb;
+    c = mix(c, furn*1.25, shR(q, vec2(0.2, 1.37), vec2(sz.x - 0.2, 1.42), px));
+    c = mix(c, furn, shR(q, vec2(0.2, 0.0), vec2(sz.x - 0.2, 0.92), px));
+    float mx = sz.x*0.3;
+    return mix(c, vec3(0.72, 0.73, 0.75)*(0.8 + 0.3*step(1.12, q.y)), shR(q, vec2(mx, 0.92), vec2(mx + 0.7, 1.32), px));
+  }
+  if (id < 6.5) {
+    // 6 barra con ropa colgada y balda de prendas dobladas
+    float inx = shR(q, vec2(0.3, -1.0), vec2(sz.x - 0.3, 9.0), px);
+    vec4 it = shItems(vec2(q.x, 1.72 - q.y), 0.16, 0.95, 0.0, 9.0, sd, px)*inx;
+    c = c*(1.0 - it.a) + it.rgb;
+    c = mix(c, vec3(0.75), shR(q, vec2(0.3, 1.72), vec2(sz.x - 0.3, 1.75), px));
+    it = shItems(vec2(q.x, q.y - 2.05), 0.34, 0.2, 0.0, 9.0, sd + 3.0, px)*inx;
+    c = c*(1.0 - it.a) + it.rgb;
+    return mix(c, furn, shR(q, vec2(0.3, 2.0), vec2(sz.x - 0.3, 2.05), px));
+  }
+  if (id < 7.5) {
+    // 7 paneles retroiluminados con filas de gafas
+    float cw = sz.x/max(1.0, floor(sz.x/1.3)), ci = floor(q.x/cw);
+    vec2 m = vec2(q.x - ci*cw - 0.15, q.y - 0.85);
+    float r = floor(m.y/0.25), y = m.y - r*0.25;
+    vec3 pc = vec3(1.22, 1.24, 1.20);
+    vec4 it = shItems(vec2(m.x + 0.03, y - 0.06), 0.26, 0.15, 5.0, 11.0, sd + r + ci*5.0, px);
+    pc = pc*(1.0 - it.a) + it.rgb;
+    pc = mix(pc, vec3(0.78), 0.7*(1.0 - smoothstep(0.012, 0.012 + px, abs(y - 0.045))));
+    return mix(c, pc, shR(m, vec2(0.0), vec2(cw - 0.3, 1.5), px));
+  }
+  // 8 cuadros y arrimadero de madera
+  float ci = floor(q.x/1.5), cx = (fract(q.x/1.5) - 0.5)*1.5, hq = hash21(vec2(ci, sd));
+  vec2 hs = vec2(0.32 + 0.2*hq, 0.26 + 0.22*fract(hq*7.7)), m = vec2(cx, q.y - 1.8);
+  c = mix(c, furn*0.7, shR(m, -hs, hs, px));
+  c = mix(c, mix(shPal(0.0, hq)*0.6 + 0.2, shPal(0.0, hq + 0.3)*0.7, smoothstep(-hs.y, hs.y, m.y + 0.3*sin(m.x*9.0))), shR(m, -hs + 0.04, hs - 0.04, px));
+  c = mix(c, furn*(0.8 + 0.2*step(0.04, fract(q.x/0.5))), shR(q, vec2(0.0), vec2(sz.x, 1.0), px));
+  return mix(c, furn*1.3, shR(q, vec2(0.0, 1.0), vec2(sz.x, 1.05), px));
+}
+// capa de mobiliario en un plano paralelo al vidrio: p = (x, y) en metros, W = ancho del local. Color premultiplicado + alfa
+vec4 shLayer(float id, vec2 p, float W, vec3 col, vec3 acc, float shape, float pal, float sd, float px){
+  vec4 o = vec4(0.0);
+  if (id < 0.5 || p.y > 2.9) return o;
+  float pit = shPitch(shape);
+  if (id < 1.5) {
+    // 1 mostrador con vitrina de vidrio y caja registradora
+    float L = clamp(W - 1.4, 1.2, 3.6), x0 = hash21(vec2(sd, 1.7)) < 0.5 ? 0.6 : W - 0.6 - L;
+    vec2 q = vec2(p.x - x0, p.y);
+    vec3 c = col*(0.78 + 0.22*step(0.05, fract(q.x/0.6)));
+    c = mix(c, col*0.45, step(q.y, 0.1));
+    c = mix(c, min(col*1.35 + 0.08, vec3(1.0)), step(0.87, q.y));
+    o = shOv(o, c, shR(q, vec2(0.0), vec2(L, 0.92), px));
+    float vx = L*0.66;
+    vec3 g = vec3(0.86, 0.92, 0.92);
+    vec4 it = shItems(vec2(q.x, q.y - 0.95), pit, 0.17, shape, pal, sd + 5.0, px);
+    g = g*(1.0 - it.a) + it.rgb;
+    it = shItems(vec2(q.x + 0.07, q.y - 1.17), pit, 0.15, shape, pal, sd + 9.0, px);
+    g = g*(1.0 - it.a) + it.rgb;
+    g = mix(g, vec3(0.97), 1.0 - smoothstep(0.012, 0.012 + px, min(abs(q.y - 1.15), abs(q.y - 1.37))));
+    o = shOv(o, g, shR(q, vec2(0.12, 0.92), vec2(vx, 1.38), px));
+    return shOv(o, vec3(0.13, 0.13, 0.15), shR(q, vec2(vx + 0.3, 0.92), vec2(vx + 0.72, 1.2), px));
+  }
+  if (id < 2.5) {
+    // 2 barra de bar con reposapiés de latón y taburetes delante
+    vec2 q = vec2(p.x - 0.7, p.y); float L = W - 1.4;
+    vec3 c = col*(0.75 + 0.25*step(0.04, fract(q.x/0.45)));
+    c = mix(c, acc*0.9, 1.0 - smoothstep(0.012, 0.012 + px, abs(q.y - 0.22)));
+    c = mix(c, col*1.5 + 0.05, step(1.06, q.y));
+    o = shOv(o, c, shR(q, vec2(0.0), vec2(L, 1.12), px));
+    vec2 s = vec2((fract(q.x/0.72) - 0.5)*0.72, q.y);
+    float st = max(shR(s, vec2(-0.17, 0.72), vec2(0.17, 0.80), px), shR(s, vec2(-0.02, 0.0), vec2(0.02, 0.72), px));
+    st = max(st, shR(s, vec2(-0.14, 0.26), vec2(0.14, 0.29), px))*step(0.0, q.x)*step(q.x, L);
+    return shOv(o, vec3(0.10, 0.09, 0.09), st);
+  }
+  if (id < 4.5) {
+    // 3 mesas y sillas · 4 lo mismo con mantel
+    float cw = W/max(1.0, floor(W/1.9)), ci = floor(p.x/cw);
+    vec2 q = vec2((fract(p.x/cw) - 0.5)*cw + (hash21(vec2(ci, sd)) - 0.5)*0.3, p.y), aq = vec2(abs(q.x), q.y);
+    float ch = max(shR(aq, vec2(0.50, 0.42), vec2(0.90, 0.47), px), shR(aq, vec2(0.86, 0.42), vec2(0.90, 0.92), px));
+    ch = max(ch, max(shR(aq, vec2(0.51, 0.0), vec2(0.54, 0.42), px), shR(aq, vec2(0.86, 0.0), vec2(0.89, 0.42), px)));
+    o = shOv(o, col, ch);
+    o = shOv(o, col*1.3, max(shR(q, vec2(-0.42, 0.72), vec2(0.42, 0.76), px), shR(q, vec2(-0.03, 0.0), vec2(0.03, 0.72), px)));
+    if (id > 3.5) o = shOv(o, acc*(0.9 + 0.1*step(0.74, q.y)), shT(vec2(q.x, q.y), 0.42, 0.77, 0.47, 0.43, px));
+    o = shOv(o, vec3(0.12, 0.22, 0.12), shR(q, vec2(-0.20, 0.77), vec2(-0.14, 1.03), px));
+    return shOv(o, vec3(0.90, 0.92, 0.92), 0.8*max(shR(q, vec2(0.02, 0.77), vec2(0.08, 0.90), px), shR(q, vec2(0.20, 0.77), vec2(0.26, 0.90), px)));
+  }
+  if (id < 5.5) {
+    // 5 sillones de peluquería, de espaldas, con pie cromado
+    float cw = W/max(1.0, floor(W/1.6)); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
+    float m = max(shR(q, vec2(-0.30, 0.42), vec2(0.30, 0.60), px), shR(q, vec2(-0.26, 0.55), vec2(0.26, 1.18), px));
+    m = max(m, shR(vec2(abs(q.x), q.y), vec2(0.28, 0.58), vec2(0.36, 0.78), px));
+    o = shOv(o, col*(1.0 + 1.5*(1.0 - smoothstep(0.0, 0.2, abs(q.x + 0.1)))*step(0.6, q.y)), m);
+    return shOv(o, vec3(0.72, 0.74, 0.76), max(shR(q, vec2(-0.04, 0.08), vec2(0.04, 0.42), px), shR(q, vec2(-0.28, 0.0), vec2(0.28, 0.06), px)));
+  }
+  if (id < 7.5) {
+    // 7 burras con ropa colgada
+    float cw = W/max(1.0, floor(W/2.3)), ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
+    o = shItems(vec2(q.x + ci*0.31, 1.5 - q.y), 0.13, 0.85, 0.0, 9.0, sd + ci, px)*step(abs(q.x), 0.72);
+    return shOv(o, vec3(0.70, 0.71, 0.73), max(shR(q, vec2(-0.78, 1.5), vec2(0.78, 1.53), px), shR(vec2(abs(q.x), q.y), vec2(0.75, 0.0), vec2(0.78, 1.53), px)));
+  }
+  if (id < 8.5) {
+    // 8 isla: mesa baja con género encima
+    float cw = W/max(1.0, floor(W/2.6)), ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
+    o = shOv(o, col*(0.8 + 0.2*step(0.7, q.y)), shR(q, vec2(-0.72, 0.0), vec2(0.72, 0.78), px));
+    vec4 it = shItems(vec2(q.x + ci*0.4, q.y - 0.78), pit, 0.3, shape, pal, sd + ci*3.0, px)*step(abs(q.x), 0.68);
+    return it + o*(1.0 - it.a);
+  }
+  if (id < 9.5) {
+    // 9 caballete de cajas inclinadas: tres filas escalonadas, cada caja con una fruta
+    float cw = 0.62, ci = floor(p.x/cw); vec2 q = vec2(fract(p.x/cw)*cw, p.y);
+    float inx = shR(q, vec2(0.03, -1.0), vec2(cw - 0.03, 9.0), px);
+    for (int k = 0; k < 3; k++) {
+      float kk = 2.0 - float(k), y0 = 0.30 + 0.30*kk;
+      vec3 fc = shPal(6.0, hash21(vec2(ci + kk*13.0, sd)));
+      vec2 f = vec2((fract(p.x/0.15 + kk*0.5) - 0.5)*0.15, p.y - y0 - 0.27);
+      o = shOv(o, fc*(0.72 + 0.4*(1.0 - smoothstep(0.0, 0.07, length(f - vec2(-0.02, 0.02))))), shC(f, 0.07, px)*inx);
+      f = vec2((fract(p.x/0.15 + kk*0.5 + 0.5) - 0.5)*0.15, f.y + 0.07);
+      o = shOv(o, fc*(0.72 + 0.4*(1.0 - smoothstep(0.0, 0.07, length(f - vec2(-0.02, 0.02))))), shC(f, 0.07, px)*inx);
+      o = shOv(o, col*(0.78 + 0.22*step(0.5, fract(p.y/0.07))), shR(q, vec2(0.02, y0), vec2(cw - 0.02, y0 + 0.2), px));
+    }
+    return shOv(o, col*0.5, shR(q, vec2(0.04, 0.0), vec2(cw - 0.04, 0.3), px));
+  }
+  if (id < 10.5) {
+    // 10 cubos de flores
+    float cw = 0.5, ci = floor(p.x/cw); vec2 q = vec2((fract(p.x/cw) - 0.5)*cw, p.y);
+    float hq = hash21(vec2(ci, sd)), bh = 0.30 + 0.25*hq;
+    vec2 f = vec2(q.x, (q.y - bh - 0.34)*0.8);
+    float fl = mix(step(0.55, vnoise(p*38.0 + sd)), 0.45, smoothstep(0.012, 0.04, px));
+    o = shOv(o, mix(vec3(0.16, 0.36, 0.14), shPal(8.0, hq), fl), shC(f, 0.22, px*1.5));
+    o = shOv(o, vec3(0.14, 0.30, 0.12), shR(q, vec2(-0.08, bh), vec2(0.08, bh + 0.2), px));
+    return shOv(o, col*(0.8 + 0.5*smoothstep(-0.15, 0.15, q.x)), shT(q, 0.0, bh, 0.12, 0.16, px));
+  }
+  if (id < 11.5 || id > 13.5) {
+    // 11 tarima de escaparate con género en dos alturas · 14 lo mismo con una cruz verde luminosa
+    o = shOv(o, col, shR(p, vec2(0.0), vec2(W, 0.5), px));
+    float ci = floor(p.x/1.3); vec2 q = vec2(fract(p.x/1.3)*1.3, p.y);
+    float up = step(0.5, hash21(vec2(ci, sd + 8.0)));
+    o = shOv(o, col*1.2, up*shR(q, vec2(0.1, 0.5), vec2(0.9, 0.75), px));
+    vec4 it = shItems(vec2(p.x, p.y - 0.5 - 0.25*up*step(0.1, q.x)*step(q.x, 0.9)), pit*1.6, 0.42, shape, pal, sd + 21.0, px);
+    o = it + o*(1.0 - it.a);
+    if (id > 13.5) {
+      vec2 m = vec2(p.x - (hash21(vec2(sd, 4.0)) < 0.5 ? 1.1 : W - 1.1), p.y - 2.35);
+      float cr = max(shR(m, vec2(-0.30, -0.10), vec2(0.30, 0.10), px), shR(m, vec2(-0.10, -0.30), vec2(0.10, 0.30), px));
+      o = shOv(o, vec3(0.15, 1.0, 0.35)*2.4, cr);
+      o.rgb += vec3(0.05, 0.6, 0.2)*0.5*exp(-dot(m, m)*7.0);
+    }
+    return o;
+  }
+  if (id < 12.5) {
+    // 12 maniquíes sobre la tarima del escaparate
+    o = shOv(o, col*0.9, shR(p, vec2(0.0), vec2(W, 0.5), px));
+    float cw = W/max(1.0, floor(W/1.5)), ci = floor(p.x/cw), hq = hash21(vec2(ci, sd));
+    vec2 q = vec2((fract(p.x/cw) - 0.5)*cw + (hq - 0.5)*0.3, p.y - 0.5), aq = vec2(abs(q.x), q.y);
+    vec3 c1 = shPal(9.0, hq), c2 = shPal(9.0, fract(hq*3.7 + 0.2));
+    o = shOv(o, col, max(shC(q - vec2(0.0, 1.62), 0.10, px), shR(q, vec2(-0.04, 1.44), vec2(0.04, 1.56), px)));
+    o = shOv(o, col, shR(aq, vec2(0.19, 0.80), vec2(0.25, 1.40), px));
+    if (hq < 0.5) o = shOv(o, c2, shR(aq, vec2(0.015, 0.0), vec2(0.14, 0.86), px));
+    else { o = shOv(o, col, shR(aq, vec2(0.03, 0.0), vec2(0.11, 0.5), px)); o = shOv(o, c2, shT(q, 0.38, 0.92, 0.26, 0.15, px)); }
+    return shOv(o, c1, shT(q, 0.82, 1.45, 0.15, 0.22, px));
+  }
+  // 13 carteles de oferta pegados al vidrio, arriba
+  float ci = floor(p.x/1.7), hq = hash21(vec2(ci, sd));
+  vec2 q = vec2((fract(p.x/1.7) - 0.5)*1.7 + (hq - 0.5)*0.6, p.y - 2.1 - 0.4*fract(hq*5.3));
+  if (hq > 0.4) {
+    vec3 pc = hq > 0.75 ? vec3(0.96, 0.84, 0.14) : vec3(0.86, 0.14, 0.12), ink = hq > 0.75 ? vec3(0.80, 0.10, 0.08) : vec3(0.98);
+    float mk = max(step(abs(q.y - 0.05), 0.08)*step(abs(q.x), 0.24)*step(0.25, fract(q.x/0.16 + hq)), step(abs(q.y + 0.13), 0.02)*step(abs(q.x), 0.27));
+    o = shOv(o, mix(pc, ink, mk*(1.0 - smoothstep(0.01, 0.05, px))), shR(q, vec2(-0.34, -0.24), vec2(0.34, 0.24), px));
+  }
+  return o;
+}
+// HABITACIÓN VIRTUAL vista desde su vidrio. o = punto del vidrio (x a lo largo desde el extremo de la habitación, y sobre el
+// suelo), d = rayo de vista en esos ejes (x, y, z hacia dentro), sz = (ancho, alto, fondo) en metros, tp = fila de parámetros,
+// sd = semilla, px = metros por píxel sobre el vidrio, dist = distancia de la cámara al vidrio, door = 1 si se mira por la
+// puerta (sin repisa de escaparate). Devuelve la luz propia del interior (las luminarias pasan de 1): va a emit(), sin sol
+vec3 shRoom(vec2 o, vec3 d, vec3 sz, float tp, float sd, float px, float dist, float door){
+  vec4 p0 = shPar(0.0, tp), p1 = shPar(1.0, tp), p2 = shPar(2.0, tp), p3 = shPar(3.0, tp), p4 = shPar(4.0, tp), p5 = shPar(5.0, tp), p6 = shPar(6.0, tp), p7 = shPar(7.0, tp);
+  float fpat = floor(p0.a*255.0 + 0.5), lamp = floor(p2.a*255.0 + 0.5), idB = floor(p3.a*255.0 + 0.5), idF = floor(p4.a*255.0 + 0.5), idN = floor(p5.a*255.0 + 0.5), idS = floor(p6.a*255.0 + 0.5);
+  float ps = floor(p7.a*255.0 + 0.5), shape = floor(ps/16.0), pal = ps - shape*16.0, pit = shPitch(shape);
+  vec3 tint = mix(vec3(0.90, 0.96, 1.04), vec3(1.08, 0.94, 0.76), p1.a);
+  o = clamp(o, vec2(0.02), sz.xy - 0.02);
+  d.z = max(d.z, 0.03);
+  d += step(abs(d), vec3(1e-4))*2e-4;
+  vec3 ro = vec3(o, 0.0);
+  // la caja: primera pared que toca el rayo
+  float tx = (d.x > 0.0 ? sz.x - o.x : -o.x)/d.x, ty = (d.y > 0.0 ? sz.y - o.y : -o.y)/d.y, tz = sz.z/d.z;
+  float t = min(tx, min(ty, tz));
+  vec3 h = ro + d*t;
+  float pf = px*(1.0 + t/dist);
+  vec3 e3 = vec3(min(h.x, sz.x - h.x), min(h.y, sz.y - h.y), sz.z - h.z);
+  float edge = e3.x + e3.y + e3.z - min(e3.x, min(e3.y, e3.z)) - max(e3.x, max(e3.y, e3.z));
+  vec3 c, glow = vec3(0.0);
+  if (t == tz) {
+    c = shBack(idB, h.xy, sz, p0.rgb, p3.rgb, p7.rgb, shape, pal, sd, pf);
+  } else if (t == ty) {
+    float pl = pf*clamp(abs(d.z/d.y), 1.0, 40.0);
+    if (d.y < 0.0) {
+      // suelo: damero, tarima, terrazo o baldosa grande
+      vec2 q = h.xz; vec3 fa = p1.rgb, fb = p2.rgb;
+      if (fpat < 0.5) { vec2 g = q/0.4, jf = abs(fract(g) - 0.5);
+        c = mix(mix(fa, fb, mod(floor(g.x) + floor(g.y), 2.0)), (fa + fb)*0.5, smoothstep(0.12, 0.4, pl));
+        c *= 1.0 - 0.22*smoothstep(0.47, 0.49, max(jf.x, jf.y))*(1.0 - smoothstep(0.004, 0.02, pl)); }
+      else if (fpat < 1.5) { float bi = floor(q.x/0.14), hb = hash21(vec2(bi, sd)), lv = smoothstep(0.04, 0.14, pl);
+        c = fa*mix(0.80 + 0.36*hb, 0.98, lv);
+        c *= 1.0 - 0.3*(1.0 - lv)*max(smoothstep(0.44, 0.48, abs(fract(q.x/0.14) - 0.5)), 1.0 - smoothstep(0.0, 0.012, fract(q.y/1.3 + hb*7.0)*1.3)); }
+      else if (fpat < 2.5) c = mix(fa, fb, smoothstep(0.55, 0.75, vnoise(q*38.0))*(1.0 - smoothstep(0.01, 0.04, pl)))*(0.94 + 0.12*vnoise(q*3.0));
+      else { vec2 jf = abs(fract(q/0.6) - 0.5); c = mix(fa, fb, smoothstep(0.482, 0.492, max(jf.x, jf.y))*(1.0 - smoothstep(0.006, 0.03, pl)))*(0.95 + 0.1*hash21(floor(q/0.6) + sd)*(1.0 - smoothstep(0.1, 0.5, pl))); }
+    } else {
+      // techo con luminarias: focos empotrados, tubos fluorescentes o focos cálidos sobre techo oscuro
+      float lum;
+      c = lamp > 1.5 ? p0.rgb*0.55 : mix(p0.rgb, vec3(0.92), 0.6)*0.92;
+      if (lamp < 0.5 || lamp > 1.5) { float sp = lamp < 0.5 ? 1.3 : 1.7; vec2 g = (fract(h.xz/sp + 0.5) - 0.5)*sp; float r = length(g);
+        lum = clamp((0.10 - r)/pl + 0.5, 0.0, 1.0) + 0.22*exp(-r*r*10.0); }
+      else { vec2 g = vec2((fract(h.x/1.9) - 0.5)*1.9, (fract(h.z/1.7 + 0.5) - 0.5)*1.7);
+        lum = shR(g, vec2(-0.62, -0.07), vec2(0.62, 0.07), pl) + 0.18*exp(-g.y*g.y*8.0); }
+      glow = tint*mix(lum, 0.22, smoothstep(0.08, 0.5, pl))*4.5;
+    }
+  } else {
+    // paredes laterales: las estanterías del fondo siguen por los lados (dejando libre el primer metro), y también los espejos, los percheros y los cuadros
+    float pw = pf*clamp(abs(d.z/d.x), 1.0, 40.0);
+    float sdw = sd + (d.x > 0.0 ? 11.0 : 23.0);
+    c = p0.rgb*(h.y < 0.1 ? 0.6 : (h.y < 0.95 ? 0.86 : (h.y < 1.0 ? 1.08 : 1.0)));
+    if (idB > 0.5 && idB < 1.5) { vec4 s = shShelf(vec2(h.z - 1.0, h.y), vec2(sz.z - 1.0, 2.3), 0.4, pit, shape, pal, p3.rgb, sdw, pw); c = c*(1.0 - s.a) + s.rgb; }
+    else if ((idB > 2.5 && idB < 3.5) || (idB > 5.5 && idB < 6.5) || idB > 7.5) c = shBack(idB, vec2(h.z, h.y), vec3(sz.z, sz.y, sz.z), p0.rgb, p3.rgb, p7.rgb, shape, pal, sdw, pw);
+  }
+  c = c*tint*mix(1.0, 0.66, clamp(h.z/sz.z, 0.0, 1.0))*(0.70 + 0.30*smoothstep(0.0, 0.7, edge)) + glow;
+  // lineales de supermercado: góndolas de verdad (cajas perpendiculares al vidrio), con sus baldas por los dos lados
+  if (idF > 5.5 && idF < 6.5) {
+    float ng = max(1.0, floor(sz.x/2.5)), sp = sz.x/ng, tg = 1e9, gi = 0.0;
+    for (int k = 0; k < 6; k++) {
+      float fk = float(k);
+      if (fk >= ng) break;
+      vec3 ta = (vec3((fk + 0.5)*sp - 0.38, 0.0, 1.5) - ro)/d, tb = (vec3((fk + 0.5)*sp + 0.38, 1.8, sz.z - 0.7) - ro)/d;
+      vec3 t0 = min(ta, tb), t1 = max(ta, tb);
+      float tn = max(max(t0.x, t0.y), t0.z), tf = min(min(t1.x, t1.y), t1.z);
+      if (tn < tf && tn > 0.0 && tn < tg) { tg = tn; gi = fk; }
+    }
+    if (tg < t) {
+      vec3 g = ro + d*tg; float gc = (gi + 0.5)*sp, pg = px*(1.0 + tg/dist); vec3 gcol;
+      if (abs(g.z - 1.5) < 0.004) gcol = shShelf(vec2(g.x - gc + 0.38, g.y), vec2(0.76, 1.8), 0.36, pit, shape, pal, p4.rgb, sd + gi, pg).rgb;
+      else if (g.y > 1.795) gcol = p4.rgb*0.8;
+      else gcol = shShelf(vec2(g.z - 1.5, g.y), vec2(sz.z - 2.2, 1.8), 0.36, pit, shape, pal, p4.rgb, sd + gi*2.0 + step(gc, g.x), pg*clamp(abs(d.z/d.x), 1.0, 40.0)).rgb;
+      c = gcol*tint*mix(1.0, 0.66, clamp(g.z/sz.z, 0.0, 1.0)); t = tg;
+    }
+  }
+  // capas de mobiliario, de atrás adelante: solo se ven si el rayo las cruza antes de dar con la caja
+  float tl = min(3.1, sz.z - 1.2)/d.z;
+  if (idF > 0.5 && (idF < 5.5 || idF > 6.5) && tl < t) { vec4 L = shLayer(idF, o + d.xy*tl, sz.x, p4.rgb, p7.rgb, shape, pal, sd + 3.0, px*(1.0 + tl/dist)); c = L.rgb*tint*0.80 + c*(1.0 - L.a); }
+  tl = 1.7/d.z;
+  if (idN > 0.5 && tl < t) { vec4 L = shLayer(idN, o + d.xy*tl, sz.x, p5.rgb, p7.rgb, shape, pal, sd + 5.0, px*(1.0 + tl/dist)); c = L.rgb*tint*0.92 + c*(1.0 - L.a); }
+  tl = 0.42/d.z;
+  if (idS > 0.5 && door < 0.5 && tl < t) { vec4 L = shLayer(idS, o + d.xy*tl, sz.x, p6.rgb, p7.rgb, shape, pal, sd + 7.0, px*(1.0 + tl/dist)); c = L.rgb*tint + c*(1.0 - L.a); }
+  return c;
+}
+// el vidrio delante de la habitación: el interior con su luz propia (más al anochecer) y el reflejo del entorno con Fresnel
+vec3 shGlass(vec3 room, vec3 V, vec3 N){
+  float k = clamp(0.09 + 0.91*pow(1.0 - max(dot(N, V), 0.0), 5.0), 0.0, 1.0);
+  return emit(room, mix(1.05, 2.3, uDusk))*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
+}`;
+regKind('SHOPWIN', 20, `
+    float sw = vCol.r*16.0, stb = floor(vCol.g*255.0 + 0.5), stp = mod(stb, 32.0), sfl = floor(stb/32.0);
+    vec2 so = vec2(vInfo.x*sw, vInfo.y*6.0 - 1.0);
+    float spx = max(max(fwidth(so.x), fwidth(so.y)), 1e-4);
+    vec3 stu = T*(mod(sfl, 2.0) > 0.5 ? -1.0 : 1.0);
+    vec3 srm = shRoom(so, vec3(-dot(V, stu), -V.y, dot(V, n)), vec3(sw, vInfo.z*8.0, vInfo.w*16.32), stp, floor(vCol.b*255.0 + 0.5), spx, dist, step(1.5, mod(sfl, 4.0)));
+    vec3 c = shGlass(srm, V, N);
+    FRAG(c); return;`, SHOP_DECL);
+
+const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, init(ctx) {
   const { scene } = ctx;
-  // rótulos: 16 comercios en un atlas 4×4
-  const sign = new BABYLON.DynamicTexture('signs', { width: 1024, height: 512 }, scene, true);
+  // rótulos: un atlas de 2 × 16 celdas de 512 × 64 (proporción 8:1), una por tipo, con sus colores
+  const sign = new BABYLON.DynamicTexture('signs', { width: 1024, height: 1024 }, scene, true);
   {
-    const g = sign.getContext(), cols = ['#143d33', '#7c1d22', '#1c2c52', '#2b2b2f', '#5c3b16', '#17594c', '#3d1c4c', '#6b5a1e'];
-    SHOPS.forEach((s, r) => { const x = (r % 4) * 256, y = (3 - (r >> 2)) * 128;
-      g.fillStyle = cols[r % cols.length]; g.fillRect(x, y, 256, 128); g.strokeStyle = '#d8c9a3'; g.lineWidth = 4; g.strokeRect(x + 8, y + 10, 240, 108);
-      g.fillStyle = '#f6e8c9'; g.font = 'bold 36px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s, x + 128, y + 66, 228); });
+    const g = sign.getContext();
+    TYPES.forEach((t, r) => { const x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
+      g.fillStyle = t.sign[0]; g.fillRect(x, y, 512, 64); g.strokeStyle = t.sign[1]; g.globalAlpha = 0.55; g.lineWidth = 2; g.strokeRect(x + 6, y + 6, 500, 52); g.globalAlpha = 1;
+      g.fillStyle = t.sign[1]; g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.n, x + 256, y + 34, 470); });
     sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
   }
-  for (const m of ctx.detail.mats) m.setTexture('tSign', sign);
+  const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), 8, 32, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
+  par.wrapU = par.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+  for (const m of ctx.detail.mats) { m.setTexture('tSign', sign); m.setTexture('tShop', par); }
+  const ACERO = pbrAux(0.3, 1, 0, 0), NEON = pbrAux(0.5, 0, 0, 1), FRAME = [24, 24, 27];
 
   // ---------------------------------------------------------------- planta baja de un tramo (de calle o de patio)
-  // Azar: cada vano siembra su ámbito, env.rnd(2, tramo, vano), y saca de golpe sus números (rr): las capas BASE y ORNAMENTO
-  // ven los mismos, y nada depende de lo que consuman los demás vanos ni los demás módulos.
+  // Azar: cada vano siembra su ámbito, env.rnd(2, tramo, vano), y cada comercio el suyo, env.rnd(10, tramo, primer vano), y
+  // sacan de golpe sus números: las capas BASE y ORNAMENTO ven los mismos, y nada depende de los demás vanos ni módulos.
   function groundFloor(env, run) {
     const { W0, W1, F1, y0, u, stone, iron, shops, shopsHere, windowHole } = env;
     const { F, cover, street, nb, bw, N, wallC, gnd } = run;
+    if (F1 <= cover + 0.3) return;                            // tapado por el vecino
+    const yB = Math.max(y0, cover - 0.3), gls = [];
+    for (let W = 0; W < nb; W++) gls.push(Math.min(gnd((W + 0.5) * bw), F1 - 2.7));   // cota de la acera delante de cada vano (city.walkAt), con tope
+    const plan = street && shopsHere ? shopPlan(env, run, gls) : null;
     for (let W = 0; W < nb; W++) {
-      const a = W * bw, c = a + bw / 2;
+      const a = W * bw, c = a + bw / 2, gl = gls[W];
       env.rnd(2, run.i, W);
       const rr = [R(), R(), R(), R(), R(), R()];
-      const gl = Math.min(gnd(c), F1 - 2.7);                  // cota de la acera delante del vano (city.walkAt), con tope
-      if (F1 <= cover + 0.3) continue;                        // tapado por el vecino
-      const yB = Math.max(y0, cover - 0.3);
       if (street && W === N) { portalBay(env, run, a, c, gl, yB, rr); continue; }
-      if (street && shopsHere) { shopBay(env, run, a, c, gl, yB, rr); continue; }
+      if (plan) { shopBay(env, run, W, gl, yB, plan.of[W]); continue; }
       // ventana de planta baja (con reja si da a la calle)
       const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
       const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
@@ -45,39 +529,100 @@ window.BCN_INTERIORS = { SHOPS, init(ctx) {
       if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk); continue; }
       windowHole(W0, F, a, a + bw, tt, ct, yB, F1, st, yt, street ? 0.3 : 0.2, gc, gk, rr[0] < 0.6 ? 0.2 + rr[1] * 0.5 : 0);
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
-      else box(W1, F, tt - 0.06, ct + 0.06, st - 0.07, st, 0, 0.09, u, K.STUCCO);
+      else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
     }
+    if (plan) for (const s of plan.list) shopFront(env, run, s);
   }
 
-  // ---------------------------------------------------------------- piezas
-  // escaparate: machones y dintel de piedra, vidrio, carpintería metálica, rótulo y toldo
-  function shopBay(env, run, a, c, gl, yB, rr) {
-    const { W0, W1, F1, stone } = env, { F, bw } = run;
-    const Uw = bw * 0.84, B_ = a + (bw - Uw) / 2, V_ = B_ + Uw;
-    const top = Math.min(F1 - 0.6, gl + 3.7), sill = gl + 0.5;
-    const sc = stone, dk = shade(sc, 0.55);
-    rect(W0, F, a, B_, yB, F1, 0, sc, K.STONE); rect(W0, F, V_, a + bw, yB, F1, 0, sc, K.STONE);
-    rect(W0, F, B_, V_, top, F1, 0, sc, K.STONE); rect(W0, F, B_, V_, yB, sill, 0, shade(sc, 0.85), K.STONE);
-    jamb(W0, F, B_, sill, top, -0.4, 0, dk, K.STONE); jamb(W0, F, V_, sill, top, -0.4, 0, dk, K.STONE);
-    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), K.STONE); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
-    const tint = [[170, 150, 120], [120, 140, 150], [160, 120, 100], [140, 150, 120]][rr[0] * 4 | 0];
-    rect(W0, F, B_, V_, sill, top, -0.36, tint, K.GSHOP);
-    const met = [24, 24, 27];
-    box(W0, F, B_ + Uw * 0.5 - 0.035, B_ + Uw * 0.5 + 0.035, sill, top, -0.38, -0.3, met, K.METAL);
-    box(W0, F, B_ + 0.05, V_ - 0.05, sill, sill + 0.1, -0.4, -0.3, met, K.METAL);
-    const sv0 = top + 0.08, sv1 = Math.min(F1 - 0.3, top + 0.58);
-    if (rr[1] < 0.75 && sv1 - sv0 > 0.25) quad(W0, F, B_ + 0.15, sv0, 0.06, V_ - 0.15, sv0, 0.06, V_ - 0.15, sv1, 0.06, B_ + 0.15, sv1, 0.06, [255, 255, 255], K.SIGN, signAux((rr[2] * SHOPS.length) | 0));
-    if (rr[3] < 0.4) { const ac = AWNINGS[rr[4] * 4 | 0];
-      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, top - 0.75, 1.45, B_, top - 0.75, 1.45, ac, K.AWN);
-      quad(W1, F, B_, top - 0.75, 1.45, V_, top - 0.75, 1.45, V_, top - 0.95, 1.45, B_, top - 0.95, 1.45, ac, K.AWN); }
-    if (W1) {
-      box(W1, F, B_, B_ + 0.16, sill, top, -0.4, 0, shade(sc, 0.62), K.STONE); box(W1, F, V_ - 0.16, V_, sill, top, -0.4, 0, shade(sc, 0.62), K.STONE);
-      box(W1, F, B_, V_, top - 0.16, top, -0.4, 0, shade(sc, 0.62), K.STONE);
-      const fr = shade(sc, 0.35);
-      box(W1, F, B_ - 0.08, B_ + 0.03, sill, top + 0.06, -0.05, -0.004, fr, K.STONE); box(W1, F, V_ - 0.03, V_ + 0.08, sill, top + 0.06, -0.05, -0.004, fr, K.STONE);
-      box(W1, F, B_ - 0.08, V_ + 0.08, top - 0.02, top + 0.06, -0.05, -0.004, fr, K.STONE);
-      for (const y of [sill + 1.0, top - 0.7]) box(W1, F, B_ + 0.16, V_ - 0.16, y - 0.02, y + 0.02, -0.37, -0.33, met, K.METAL);
+  // ---------------------------------------------------------------- comercios
+  // Reparto: cada grupo de vanos contiguos a un lado del portal se parte en comercios de hasta 4 vanos o ~14 m. Cada comercio
+  // (ámbito env.rnd(10, tramo, primer vano)) tiene un tipo estable, un vano que es su puerta, y una habitación virtual común a
+  // todos sus vidrios: origen x0 (u del extremo), ancho W, suelo yF, alto H y fondo D.
+  const opening = (run, W) => { const Uw = run.bw * 0.84, B_ = W * run.bw + (run.bw - Uw) / 2; return [B_, B_ + Uw]; };
+  const topOf = (env, gl) => Math.min(env.F1 - 1.0, gl + 3.4);
+  function shopPlan(env, run, gls) {
+    const { nb, bw, N, F } = run, list = [], of = [];
+    const maxB = Math.max(1, Math.min(4, Math.floor(14 / bw)));
+    const seg = (a, b) => { const n = b - a; if (n <= 0) return; const k = Math.ceil(n / maxB);
+      for (let j = 0; j < k; j++) { const w0 = a + Math.round(n * j / k), w1 = a + Math.round(n * (j + 1) / k); if (w1 > w0) list.push({ w0, w1 }); } };
+    if (N >= 0) { seg(0, N); seg(N + 1, nb); } else seg(0, nb);
+    const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;     // ¿la tangente T del shader va en el sentido de u?
+    for (const s of list) {
+      env.rnd(10, run.i, s.w0);
+      const r = [R(), R(), R(), R(), R(), R()], n = s.w1 - s.w0;
+      s.type = API.force >= 0 ? API.force : n >= 3 && n * bw >= 9.5 && r[0] < 0.3 ? SUPER : pickType(r[1]);
+      s.T = TYPES[s.type];
+      s.door = s.w0 + Math.min(n - 1, (r[2] * n) | 0);
+      s.sign = r[3] < 0.93; s.awn = r[4] < 0.35; s.seed = 1 + ((r[5] * 254) | 0);
+      s.uA = opening(run, s.w0)[0]; s.uB = opening(run, s.w1 - 1)[1];
+      s.yF = gls[s.door] + 0.03; s.top = -1e9;
+      for (let W = s.w0; W < s.w1; W++) { s.top = Math.max(s.top, topOf(env, gls[W])); of[W] = s; }
+      const Wd = Math.min(16, s.uB - s.uA + 0.6), H = Math.min(7.9, Math.max(3.3, s.top - s.yF + 0.2)), D = Math.max(4, Math.min(5.5, Wd * 0.9));
+      s.x0 = s.uA - 0.3; s.Wb = Math.max(1, Math.round(Wd / 16 * 255)); s.W = s.Wb / 255 * 16;
+      s.Hb = Math.round(H / 8 * 255); s.Db = Math.round(D / 16.32 * 255); s.tb = s.type + 32 * dir;
     }
+    return { list, of };
+  }
+  // vidrio de comercio: un quad K.SHOPWIN con las coordenadas de habitación en sus bytes (empaquetado: ver SHOP_DECL)
+  function glassQuad(B, F, u0, u1, y0, y1, d, s, door) {
+    if (!B || u1 - u0 < 0.02 || y1 - y0 < 0.02) return;
+    const X = v => Math.max(0, Math.min(255, Math.round((v - s.x0) / s.W * 255))), Y = v => Math.max(0, Math.min(255, Math.round((v - s.yF + 1) / 6 * 255)));
+    const h = s.Hb, dd = s.Db;
+    quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [s.Wb, s.tb + (door ? 64 : 0), s.seed], K.SHOPWIN,
+      [X(u0), Y(y0), h, dd, X(u1), Y(y0), h, dd, X(u1), Y(y1), h, dd, X(u0), Y(y1), h, dd]);
+  }
+  // un vano de comercio: machones y dintel de piedra y, dentro, el escaparate o la puerta de vidrio de la tienda
+  function shopBay(env, run, W, gl, yB, s) {
+    const { W0, W1, F1, stone } = env, { F, bw } = run;
+    const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
+    const top = topOf(env, gl), sill = gl + 0.5, sc = stone, dk = shade(sc, 0.55), base = shade(sc, 0.85), met = FRAME;
+    rect(W0, F, a, B_, yB, F1, 0, sc, K.STONE); rect(W0, F, V_, a + bw, yB, F1, 0, sc, K.STONE); rect(W0, F, B_, V_, top, F1, 0, sc, K.STONE);
+    jamb(W0, F, B_, sill, top, -0.4, 0, dk, K.STONE); jamb(W0, F, V_, sill, top, -0.4, 0, dk, K.STONE);
+    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), K.STONE);
+    if (W !== s.door) {
+      rect(W0, F, B_, V_, yB, sill, 0, base, K.STONE); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
+      glassQuad(W0, F, B_, V_, sill, top, -0.36, s, false);
+      box(W0, F, B_ + Uw * 0.5 - 0.03, B_ + Uw * 0.5 + 0.03, sill, top, -0.38, -0.3, met, K.METAL);
+      box(W0, F, B_, V_, sill, sill + 0.08, -0.4, -0.3, met, K.METAL);
+      if (W1) { box(W1, F, B_, B_ + 0.05, sill, top, -0.4, -0.3, met, K.METAL, 4); box(W1, F, V_ - 0.05, V_, sill, top, -0.4, -0.3, met, K.METAL, 4);
+        box(W1, F, B_, V_, top - 0.06, top, -0.4, -0.3, met, K.METAL, 2); }
+    } else {
+      // puerta de vidrio centrada, con vidrios fijos a los lados y montante encima. El umbral baja hasta la acera
+      const dc = (B_ + V_) / 2, x0 = dc - 0.55, x1 = dc + 0.55, th = gl + 0.03, dt = Math.min(top - 0.3, th + 2.25);
+      rect(W0, F, B_, x0, yB, sill, 0, base, K.STONE); rect(W0, F, x1, V_, yB, sill, 0, base, K.STONE); rect(W0, F, x0, x1, yB, th, 0, base, K.STONE);
+      hpl(W0, F, B_, x0, sill, -0.4, 0, shade(sc, 0.72), K.STONE); hpl(W0, F, x1, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
+      jamb(W0, F, x0, th, sill, -0.4, 0, dk, K.STONE); jamb(W0, F, x1, th, sill, -0.4, 0, dk, K.STONE);
+      hpl(W0, F, x0, x1, th, -0.4, 0, shade(sc, 0.9), K.STONE);
+      glassQuad(W0, F, B_, x0, sill, top, -0.36, s, false); glassQuad(W0, F, x1, V_, sill, top, -0.36, s, false);
+      glassQuad(W0, F, x0, x1, th, dt, -0.36, s, true); glassQuad(W0, F, x0, x1, dt, top, -0.36, s, false);
+      box(W0, F, x0 - 0.04, x0 + 0.03, th, top, -0.38, -0.3, met, K.METAL); box(W0, F, x1 - 0.03, x1 + 0.04, th, top, -0.38, -0.3, met, K.METAL);
+      box(W0, F, x0, x1, dt - 0.03, dt + 0.04, -0.38, -0.3, met, K.METAL);
+      box(W0, F, B_, x0, sill, sill + 0.08, -0.4, -0.3, met, K.METAL); box(W0, F, x1, V_, sill, sill + 0.08, -0.4, -0.3, met, K.METAL);
+      if (W1) {
+        box(W1, F, x0 + 0.03, x1 - 0.03, th, th + 0.14, -0.38, -0.31, met, K.METAL, 1);                     // zócalo de la hoja
+        box(W1, F, x1 - 0.2, x1 - 0.16, th + 0.8, th + 1.4, -0.3, -0.25, [200, 202, 206], K.PBR, 7, ACERO);   // tirador
+        box(W1, F, x1 - 0.2, x1 - 0.16, th + 0.9, th + 0.94, -0.36, -0.3, [200, 202, 206], K.PBR, 4, ACERO);
+        box(W1, F, x1 - 0.2, x1 - 0.16, th + 1.26, th + 1.3, -0.36, -0.3, [200, 202, 206], K.PBR, 4, ACERO);
+        box(W1, F, B_, B_ + 0.05, sill, top, -0.4, -0.3, met, K.METAL, 4); box(W1, F, V_ - 0.05, V_, sill, top, -0.4, -0.3, met, K.METAL, 4);
+        box(W1, F, B_, V_, top - 0.06, top, -0.4, -0.3, met, K.METAL, 2);
+      }
+    }
+    if (s.awn) { const ac = s.T.awn;
+      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, top - 0.7, 1.35, B_, top - 0.7, 1.35, ac, K.AWN);
+      quad(W1, F, B_, top - 0.7, 1.35, V_, top - 0.7, 1.35, V_, top - 0.9, 1.35, B_, top - 0.9, 1.35, ac, K.AWN); }
+  }
+  // lo que es del comercio entero: rótulo centrado sobre sus vanos y, en la farmacia, la cruz luminosa en banderola
+  function shopFront(env, run, s) {
+    const { W0, W1, F1 } = env, { F } = run;
+    const sv0 = s.top + 0.12, hmax = Math.min(0.56, F1 - 0.2 - sv0);
+    if (s.sign && hmax > 0.22) {
+      const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
+      quad(W0, F, uc - w / 2, y, 0.07, uc + w / 2, y, 0.07, uc + w / 2, y + h, 0.07, uc - w / 2, y + h, 0.07, [255, 255, 255], K.SIGN, signAux(s.type));
+      box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, [30, 30, 32], K.METAL);
+    }
+    if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
+      box(W0, F, uc - 0.04, uc + 0.04, y - 0.11, y + 0.11, 0.2, 0.86, g, K.PBR, 7, NEON); box(W0, F, uc - 0.04, uc + 0.04, y - 0.33, y + 0.33, 0.42, 0.64, g, K.PBR, 7, NEON);
+      box(W1, F, uc - 0.015, uc + 0.015, y - 0.02, y + 0.02, 0, 0.2, FRAME, K.METAL); }
   }
   // portal: puerta de madera con montante de vidrio, recercado de piedra y farol
   function portalBay(env, run, a, c, gl, yB, rr) {

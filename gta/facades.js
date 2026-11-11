@@ -123,7 +123,7 @@ void main(){
     alb = mix(alb*0.80, alb*1.35 + vec3(0.04), mk) * mix(0.82, 1.08, dot(tx, vec3(0.33))); rough = 0.9;
   } else if (kind < 8.5) {                            // rótulo de comercio
     float id = floor(vInfo.z*255.0 + 0.5);
-    vec2 uv = vec2((mod(id, 4.0) + vInfo.x)/4.0, (floor(id/4.0) + vInfo.y)/4.0);
+    vec2 uv = vec2((mod(id, 2.0) + vInfo.x)/2.0, (floor(id/2.0) + vInfo.y)/16.0);   // atlas de 2 x 16 celdas
     alb = texture2D(tSign, uv).rgb; rough = 0.5;
     emis = emit(alb, uDusk*0.3);
   } else if (kind < 9.5) {                            // toldo a rayas
