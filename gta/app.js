@@ -405,7 +405,7 @@ void main(){
     float cw = mix(vnoise(vPos.xz*0.035 + 3.1), vnoise(vPos.xz*0.11)*0.6 + vnoise(vPos.xz*0.37)*0.4, 1.0 - smoothstep(3.0, 12.0, px));
     cw = mix(cw, 0.5, smoothstep(14.0, 45.0, px));
     float l = dot(alb, vec3(0.30, 0.60, 0.10));
-    vec3 ol = l*mix(vec3(0.90, 1.0, 0.66), vec3(0.86, 1.0, 0.60), mt)*mix(1.05, 0.96, mt)*mix(1.0, 0.55 + 0.9*cw, mix(0.5, 1.0, mt));
+    vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, 0.55 + 0.9*cw, mix(0.5, 1.0, mt));
     alb = mix(alb, ol, vg*mix(0.55, 1.0, mt)); }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
@@ -674,7 +674,7 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // DIA (de día pleno, se desvanece al ponerse el sol): desD desaturación del cielo como ambiente · skyD / gndD ganancia del
             // ambiente del cielo y del rebote del suelo · fogDay color de la bruma y del horizonte (azulado, como en las fotos)
             K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
-                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.08, sunD: 1.08, fogDD: 0.7, fogDay: [0.58, 0.71, 0.86],
+                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.12, sunD: 1.08, fogDD: 0.7, fogDay: [0.58, 0.71, 0.86],
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
                  city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
