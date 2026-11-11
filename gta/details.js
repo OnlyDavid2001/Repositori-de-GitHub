@@ -12,12 +12,14 @@ window.BCN_DETAILS = { init(ctx) {
   // ---------------------------------------------------------------- tramo ciego: medianera tapada por un vecino igual o más alto
   function blindRun(env, run) {
     const { W0, d, p, u, y0 } = env, { F, L, cover } = run;
+    env.rnd(5, run.i);                                        // ámbito de azar del tramo liso o ciego (hoy no saca ningún número)
     rect(W0, F, 0, L, Math.max(y0, cover - 0.5), d.y1 + 0.35, 0, shade(p, 0.86), K.STUCCO);
     box(W0, F, 0, L, d.y1 + 0.35, d.y1 + 0.45, -0.03, 0.08, u, K.STUCCO);
   }
   // ---------------------------------------------------------------- tramo liso: demasiado corto para abrir huecos
   function plainRun(env, run) {
     const { W0, d, p, u, y0, F1, C } = env, { F, L } = run;
+    env.rnd(5, run.i);
     rect(W0, F, 0, L, y0, C, 0, p, K.STUCCO);
     rect(W0, F, 0, L, C, d.y1 + 0.9, 0, p, K.STUCCO);
     box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, 0.3, u, K.STUCCO);
@@ -26,7 +28,8 @@ window.BCN_DETAILS = { init(ctx) {
   }
 
   // ---------------------------------------------------------------- faja y plantas de pisos de un tramo (de calle o de patio)
-  // Consume SIEMPRE 7 números de azar por vano y planta, se dibuje o no.
+  // Azar: cada vano de cada planta siembra su ámbito, env.rnd(3, tramo, W*64 + D), y saca de golpe sus números (rr): las capas
+  // BASE y ORNAMENTO ven los mismos, y nada depende de lo que consuman los demás vanos ni los demás módulos.
   function floors(env, run) {
     const { W0, W1, p, u, stone, shut, wood, glass, iron, style, porticones, F1, nF, m, y0, windowHole } = env;
     const { F, L, cover, street, nb, bw, M, wallC } = run;
@@ -36,10 +39,11 @@ window.BCN_DETAILS = { init(ctx) {
     // --- plantas de pisos
     for (let D = 1; D <= nF; D++) {
       const k = F1 + (D - 1) * m, P = k + m, U = D === nF;
-      if (P <= cover + 0.2) { for (let W = 0; W < nb; W++) { R(); R(); R(); R(); R(); R(); R(); } continue; }
+      if (P <= cover + 0.2) continue;                         // planta tapada por el vecino
       if (D > 1) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, street ? 0.16 : 0.08, u, K.STUCCO);
       for (let W = 0; W < nb; W++) {
         const a = W * bw, c = a + bw / 2;
+        env.rnd(3, run.i, W * 64 + D);
         const rr = [R(), R(), R(), R(), R(), R(), R()];
         if (k < cover) { rect(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, 0, wallC, K.STUCCO); continue; }
         if (!street) { yardWin(env, W0, W1, F, a, bw, c, k, P, wallC, u, rr); continue; }
@@ -92,6 +96,7 @@ window.BCN_DETAILS = { init(ctx) {
   function crown(env, run) {
     const { W0, W1, d, p, u, style, balusters, C } = env;
     const { F, L, cover, street, nb, bw, wallC } = run;
+    env.rnd(4, run.i);                                        // ámbito de azar de la coronación (hoy no saca ningún número)
     if (C > cover) {
       if (street) {
         if (style === 'sobrio') { box(W0, F, 0, L, C + 0.2, C + 0.45, 0, 0.45, u, K.STUCCO); }

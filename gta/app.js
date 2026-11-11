@@ -67,11 +67,16 @@ cam.inputs.clear(); cam.fov = 0.86; cam.minZ = 2; cam.maxZ = 170000;
 // PRELUDIO GLSL. mkMat lo antepone a TODOS los fragment shaders, así que los cuerpos no repiten nada de esto: ni la línea
 // «#extension», ni precision, ni los uniformes comunes, ni «varying vec3 vPos», ni las utilidades. A cambio, todo vertex
 // shader debe escribir vPos (posición de mundo). Los cuerpos tampoco escriben gl_FragColor: acaban con FRAG(color), que
-// aplica la niebla, o con FRAG_NOFOG(color). Es la única salida de color de todo el proyecto.
+// aplica la niebla, con FRAG_NOFOG(color) o, en un material con mezcla (opts.blend), con FRAGA(color, opacidad).
+// CONTRATO DE SOMBREADO (lo que el carril de luz reimplementará en HDR lineal y con sombras sin tocar los demás shaders):
+//   lit(alb, n)                            luz difusa de sol y cielo, para los shaders sencillos
+//   shade(alb, N, V, rough, metal, ao)     difusa + brillo del sol con lóbulo según la rugosidad + reflejo del entorno
+//   envRefl(r, rough)                      lo que se refleja en la dirección r: cielo analítico y, bajo el horizonte, la calle
+//   emit(col, gain)                        color autoiluminado (faroles, rótulos, ventanas encendidas)
 const PRELUDE = `#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec3 uCam; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform vec3 uSkyCol; uniform vec3 uGndCol;
-uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime;
+uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float uTime; uniform float uDusk;
 varying vec3 vPos;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float dith(){ return fract(52.9829189*fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
@@ -80,6 +85,25 @@ float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
 vec3 skyColor(vec3 d){ float t = clamp(d.y,0.0,1.0); vec3 c = mix(uFogCol, uZenCol, pow(t, 0.42));
   float s = max(dot(d,uSunDir),0.0); c += uSunCol*(pow(s,420.0)*5.0 + pow(s,14.0)*0.20); return c; }
 vec3 lit(vec3 alb, vec3 n){ float ndl = max(dot(n,uSunDir),0.0); vec3 amb = mix(uGndCol, uSkyCol, n.y*0.5+0.5); return alb*(uSunCol*ndl + amb); }
+vec3 envRefl(vec3 r, float rough){
+  vec3 d = normalize(vec3(r.x, max(r.y, 0.02), r.z));
+  float s = max(dot(d,uSunDir),0.0);
+  // el disco del sol solo se refleja nítido en lo muy pulido (en lo demás ya lo pone el brillo de shade)
+  vec3 c = mix(uFogCol, uZenCol, pow(clamp(d.y,0.0,1.0), 0.42)) + uSunCol*(pow(s,420.0)*5.0 + pow(s,14.0)*0.20)*(1.0 - smoothstep(0.0, 0.35, rough));
+  // por debajo del horizonte se refleja la calle de enfrente, oscura. Con rugosidad el horizonte se difumina
+  return mix(uFogCol*vec3(0.62,0.6,0.58), c, smoothstep(-0.02 - rough, 0.22 + rough, r.y)); }
+vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao){
+  float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough;   // pol: lo pulido que está
+  vec3 amb = mix(uGndCol, uSkyCol, N.y*0.5+0.5)*ao;
+  vec3 f0 = mix(vec3(0.04), alb, metal);
+  vec3 c = alb*(1.0 - metal)*(uSunCol*ndl + amb);
+  // brillo del sol: lóbulo de Blinn-Phong normalizado, más estrecho e intenso cuanto más pulido
+  float a = max(rough*rough, 0.03), sh = 2.0/(a*a) - 2.0;
+  c += uSunCol*f0*((sh + 2.0)*0.125*pow(max(dot(N, normalize(uSunDir + V)), 1e-4), sh)*ndl);
+  // reflejo del entorno, con Fresnel (más en rasante): los metales siempre, teñido por su color, y lo demás solo si es pulido
+  c += envRefl(reflect(-V, N), rough)*(f0 + (1.0 - f0)*pow(1.0 - ndv, 5.0))*(mix(pol*pol*pol, 1.0, metal)*ao);
+  return c; }
+vec3 emit(vec3 col, float gain){ return col*gain; }
 vec3 fog(vec3 c, vec3 wp){ vec3 d = wp-uCam; float dist = length(d); float rd = d.y/max(dist,1e-3); float b = 0.0007; float k = rd*b;
   float f = abs(k*dist) > 1e-3 ? (1.0-exp(-dist*k))/k : dist;
   float fa = 1.0-exp(-uFogD*exp(-max(uCam.y,0.0)*b)*f);
@@ -87,6 +111,7 @@ vec3 fog(vec3 c, vec3 wp){ vec3 d = wp-uCam; float dist = length(d); float rd = 
   return mix(c, fc, clamp(fa,0.0,1.0)); }
 #define FRAG(c) gl_FragColor = vec4(fog(c, vPos), 1.0)
 #define FRAG_NOFOG(c) gl_FragColor = vec4(c, 1.0)
+#define FRAGA(c, a) gl_FragColor = vec4(fog(c, vPos), a)
 `;
 const VS_BASIC = `precision highp float;
 attribute vec3 position; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos;
@@ -296,16 +321,26 @@ void main(){
 }`;
 
 // mkMat: la ÚNICA forma de crear materiales. Antepone el preludio al fragment shader, declara los uniformes comunes y
-// apunta el material en «mats» (ahí se actualizan cámara, sol, cielo y niebla). El vertex shader se usa tal cual.
-// opts (opcional): { defines: ['#define X', …] para #ifdef en ambos shaders · cull: true para descartar caras traseras }
-const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime'];
+// apunta el material en «mats» (ahí se actualizan cámara, tiempo, sol, cielo, niebla y uDusk). El vertex shader se usa tal cual.
+// opts (opcional): { defines: ['#define X', …] para #ifdef en ambos shaders · cull: true para descartar caras traseras ·
+//   blend: true = material con mezcla alfa: se dibuja después de todo lo opaco, sin escribir profundidad, y su shader acaba
+//   en FRAGA(color, opacidad). La mezcla es (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) para el color y (ZERO, ONE) para el alfa: el
+//   alfa del búfer NO se toca (el carril de luz guardará ahí la profundidad de lo opaco) }
+const BASEU = ['world', 'viewProjection', 'uCam', 'uSunDir', 'uSunCol', 'uSkyCol', 'uGndCol', 'uFogCol', 'uZenCol', 'uFogD', 'uTime', 'uDusk'];
 const mats = [];
+// Babylon no trae ese modo de mezcla. Se elige un alphaMode que no usa nadie más (así su caché de estado no lo confunde con
+// otro) y, al enlazar el material, se le cambian los factores: el motor ya ha fijado el modo y aún no ha dibujado
+const BLEND_MODE = BABYLON.Constants.ALPHA_EXCLUSION, GLB = { SRC_ALPHA: 0x0302, ONE_MINUS_SRC_ALPHA: 0x0303, ZERO: 0, ONE: 1 };
+let lightOn = false;                                         // ¿ya se ha fijado la hora alguna vez? (ver lightTo)
 function mkMat(name, vs, fs, attributes, uniforms, samplers, opts) {
   opts = opts || {};
   const m = new BABYLON.ShaderMaterial(name, scene, { vertexSource: vs, fragmentSource: PRELUDE + fs },
-    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: (samplers || []).slice(), defines: (opts.defines || []).slice() });
+    { attributes, uniforms: BASEU.concat(uniforms || []), samplers: (samplers || []).slice(), defines: (opts.defines || []).slice(), needAlphaBlending: !!opts.blend });
   m.backFaceCulling = !!opts.cull;
+  if (opts.blend) { m.alphaMode = BLEND_MODE;
+    m.onBindObservable.add(() => engine.alphaState.setAlphaBlendFunctionParameters(GLB.SRC_ALPHA, GLB.ONE_MINUS_SRC_ALPHA, GLB.ZERO, GLB.ONE)); }
   mats.push(m);
+  if (lightOn) lightTo(m);                                   // un material creado más tarde recibe la luz de la hora actual
   return m;
 }
 const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx']);
@@ -348,7 +383,12 @@ reg.meshes = MESHES;
 
 // ------------------------------------------------------------------ luz / hora
 const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol: new BABYLON.Color3(), gndCol: new BABYLON.Color3(),
-            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032 };
+            fogCol: new BABYLON.Color3(), zenCol: new BABYLON.Color3(), fogD: 0.000032, dusk: 0 };
+// uniformes de luz de un material (los comunes del preludio que dependen de la hora)
+function lightTo(m) {
+  m.setVector3('uSunDir', L.sunDir); m.setColor3('uSunCol', L.sunCol); m.setColor3('uSkyCol', L.skyCol); m.setColor3('uGndCol', L.gndCol);
+  m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD); m.setFloat('uDusk', L.dusk);
+}
 const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 function setHour(hh) {
   const az = (95 + (hh - 6.5) / 14 * 170) * Math.PI / 180;                 // el sol va de E (mañana) a O (tarde) por el sur
@@ -361,10 +401,9 @@ function setHour(hh) {
   L.sunCol.set(sc[0] * k * 0.82, sc[1] * k * 0.82, sc[2] * k * 0.82); L.skyCol.set(sk[0] * 0.80, sk[1] * 0.80, sk[2] * 0.80);
   L.gndCol.set(0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04);
   L.fogCol.set(fg[0], fg[1], fg[2]); L.zenCol.set(zn[0], zn[1], zn[2]);
-  for (const m of mats) {
-    m.setVector3('uSunDir', L.sunDir); m.setColor3('uSunCol', L.sunCol); m.setColor3('uSkyCol', L.skyCol); m.setColor3('uGndCol', L.gndCol);
-    m.setColor3('uFogCol', L.fogCol); m.setColor3('uZenCol', L.zenCol); m.setFloat('uFogD', L.fogD);
-  }
+  L.dusk = 1 - Math.min(1, Math.max(0, (L.sunDir.y - 0.02) / 0.22));        // 0 de día … 1 al anochecer (uDusk, en todos los materiales)
+  lightOn = true;
+  for (const m of mats) lightTo(m);
   scene.clearColor.set(fg[0], fg[1], fg[2], 1);
   const h = Math.floor(hh), mi = Math.round((hh - h) * 60);
   $('hourV').textContent = h + ':' + (mi < 10 ? '0' : '') + mi;
@@ -775,10 +814,9 @@ let t0 = performance.now(), time = 0;
 scene.onBeforeRenderObservable.add(() => {
   const now = performance.now(), dt = Math.min(0.1, (now - t0) / 1000); t0 = now; time = SHOT ? 10 : time + dt; frame++;   // en modo captura el tiempo se congela (capturas reproducibles)
   update(dt);
-  matSea.setFloat('uTime', time); matSky.setFloat('uTime', time);
+  for (const m of mats) m.setFloat('uTime', time);
 });
 scene.onAfterRenderObservable.add(() => { if ((frame & 1) === 0) updateLabels(); });
-for (const m of mats) m.setFloat('uTime', 0);
 await scene.whenReadyAsync();
 engine.runRenderLoop(() => scene.render());
 addEventListener('resize', () => engine.resize());
