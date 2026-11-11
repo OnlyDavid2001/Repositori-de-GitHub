@@ -57,7 +57,7 @@ float lampBath(vec3 p, vec3 n, float k){
     if (abs(L.w - (ci.x + ci.y*4096.0)) > 0.5) continue;
     vec3 d = vec3(ci.x*${LG_C}.0 + L.x, L.z + 8.6, ci.y*${LG_C}.0 + L.y) - p;
     float hy = p.y - L.z;
-    s += exp(-dot(d.xz, d.xz)*k)*(1.0 - smoothstep(1.5, 9.5, hy))*(0.25 + 0.75*max(dot(n, normalize(d)), 0.0));
+    s += exp(-dot(d.xz, d.xz)*k)*(1.0 - smoothstep(1.5, 9.0, hy))*(0.25 + 0.75*max(dot(n, normalize(d)), 0.0));
   }
   return s;
 }
@@ -189,8 +189,8 @@ void main(){
   }
   vec3 c = shade(alb, N, V, rough, metal, ao) + emis;
   // baño de sodio de las farolas en los bajos (de noche; los vidrios ya han salido: escaparates y ventanas no se tocan)
-  if (uDusk > 0.001) { float sd = lampBath(vPos, n, 1.0/84.5)*smoothstep(0.05, 0.3, uDusk);
-    c += emit(kAura*min(alb, vec3(0.55)), sd*0.75); }
+  if (uDusk > 0.001) { float sd = lampBath(vPos, n, 1.0/92.0)*smoothstep(0.05, 0.3, uDusk);
+    c += emit(kAura*min(alb, vec3(0.55)), sd*2.8); }
   FRAG(c);
 }`;
   const VS_DET = `precision highp float;
