@@ -22,10 +22,10 @@ const SP = [
     l: { nN: 620, sN: [0.42, 0.78], DN: 1, ys: [-0.7, 0.8], nF: 90, sF: [1.15, 1.9], DF: 1.2 }, imp: [5.2, 12.5],
     bark: [1, 1, 1, 1], leaf: [1, 1, 1, 0.82], fl: 0 },
   { id: 'lledoner', n: 'lledoner', g: { h: 3.4, r: 0.22, n: 6, y0: 3.0, len: [2.5, 3.1], up: 0.86, out: 0.55, rad: 0.14, kl: 0.66, dh: 3 },
-    l: { nN: 600, sN: [0.34, 0.62], DN: 0.95, ys: [-0.6, 0.9], nF: 95, sF: [0.95, 1.6], DF: 1.1 }, imp: [3.8, 11],
+    l: { nN: 620, sN: [0.44, 0.76], DN: 0.95, ys: [-0.7, 0.8], nF: 95, sF: [1.1, 1.75], DF: 1.1 }, imp: [3.8, 11],
     bark: [0.72, 0.73, 0.76, 0.15], leaf: [0.92, 0.97, 0.95, 0.78], fl: 0 },
-  { id: 'taronger', n: 'taronger', g: { h: 1.5, r: 0.12, n: 5, y0: 1.35, len: [1.35, 1.75], up: 0.62, out: 0.8, rad: 0.08, kl: 0.66, dh: 2 },
-    l: { nN: 420, sN: [0.26, 0.44], DN: 0.72, ys: [-0.9, 0.9], nF: 60, sF: [0.62, 0.95], DF: 0.8 }, imp: [2.6, 5.0],
+  { id: 'taronger', n: 'taronger', g: { h: 1.4, r: 0.12, n: 5, y0: 1.25, len: [1.1, 1.4], up: 0.82, out: 0.55, rad: 0.08, kl: 0.66, dh: 2 },
+    l: { nN: 520, sN: [0.34, 0.54], DN: 0.68, ys: [-1.1, 0.8], nF: 64, sF: [0.75, 1.1], DF: 0.75 }, imp: [2.2, 5.0],
     bark: [0.55, 0.53, 0.5, 0.2], leaf: [0.95, 1.0, 0.95, 0.9], fl: 0 },
   { id: 'palmera', n: 'palmera', g: { h: 11.5, r: 0.27, n: 0, y0: 11.5, len: [0, 0], up: 0, out: 0, rad: 0, kl: 0, dh: 0 },
     l: { nN: 22, sN: [3.6, 4.4], nF: 12, sF: [3.6, 4.4] }, imp: [3.6, 14],
@@ -34,10 +34,10 @@ const SP = [
     l: { nN: 460, sN: [0.4, 0.72], DN: 1.25, ys: [-0.5, 0.7], nF: 70, sF: [1.1, 1.7], DF: 1.3 }, imp: [4.6, 9.5],
     bark: [0.55, 0.5, 0.47, 0.15], leaf: [1, 1, 1, 0.9], fl: 0.55 },
   { id: 'tipuana', n: 'tipuana', g: { h: 4.0, r: 0.3, n: 6, y0: 3.7, len: [3.6, 4.4], up: 0.45, out: 0.9, rad: 0.18, kl: 0.66, dh: 3 },
-    l: { nN: 640, sN: [0.42, 0.8], DN: 1.1, ys: [-0.4, 0.6], nF: 95, sF: [1.2, 1.9], DF: 1.25 }, imp: [6.4, 12.5],
+    l: { nN: 640, sN: [0.55, 0.95], DN: 1.1, ys: [-0.4, 0.6], nF: 95, sF: [1.4, 2.2], DF: 1.25 }, imp: [6.4, 12.5],
     bark: [0.62, 0.56, 0.5, 0.15], leaf: [1.0, 1.02, 0.95, 0.85], fl: 0 },
   { id: 'pi', n: 'pi pinyer', g: { h: 7.2, r: 0.3, n: 6, y0: 6.6, len: [2.7, 3.4], up: 0.42, out: 0.92, rad: 0.15, kl: 0.72, dh: 2, lean: 0.9 },
-    l: { nN: 560, sN: [0.42, 0.74], DN: 1.15, ys: [-0.25, 0.35], nF: 85, sF: [1.2, 1.8], DF: 1.3 }, imp: [5.8, 12.5],
+    l: { nN: 600, sN: [0.55, 0.9], DN: 1.2, ys: [-0.25, 0.35], nF: 90, sF: [1.4, 2.1], DF: 1.3 }, imp: [5.8, 12.5],
     bark: [0.78, 0.5, 0.36, 0.1], leaf: [0.9, 0.95, 0.9, 0.85], fl: 0 },
 ];
 
@@ -236,9 +236,9 @@ function leafCanvas(k, far) {
   const disc = () => { const f = R(6.28), rr = Math.pow(R(), 0.55) * S * 0.44; return [S / 2 + Math.cos(f) * rr, S / 2 + Math.sin(f) * rr]; };
   const sc = far ? 0.62 : 1;
   if (sp.id === 'lledoner') {          // hoja lanceolada, verde algo grisáceo, menuda y apretada
-    for (let u = 0; u < (far ? 330 : 190); u++) { const [x, y] = disc(), gr = 70 + R(80); ovalLeaf(g, x, y, R(17, 27) * sc, R(6.28), 0.42, [gr * 0.66, gr, gr * 0.44], 0.05); }
+    for (let u = 0; u < (far ? 460 : 300); u++) { const [x, y] = disc(), gr = 70 + R(80); ovalLeaf(g, x, y, R(17, 27) * sc, R(6.28), 0.42, [gr * 0.66, gr, gr * 0.44], 0.05); }
   } else if (sp.id === 'taronger') {   // hoja ovalada brillante, verde oscuro, con naranjas
-    for (let u = 0; u < (far ? 360 : 210); u++) { const [x, y] = disc(), gr = 55 + R(70); ovalLeaf(g, x, y, R(16, 24) * sc, R(6.28), 0.55, [gr * 0.48, gr, gr * 0.3], 0.25); }
+    for (let u = 0; u < (far ? 480 : 340); u++) { const [x, y] = disc(), gr = 55 + R(70); ovalLeaf(g, x, y, R(16, 24) * sc, R(6.28), 0.55, [gr * 0.48, gr, gr * 0.3], 0.25); }
     for (let u = 0; u < (far ? 30 : 16); u++) { const [x, y] = disc(), r = R(11, 15) * sc;
       const T = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); T.addColorStop(0, '#ffb24a'); T.addColorStop(1, '#d9660f');
       g.fillStyle = T; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill(); }
@@ -248,18 +248,18 @@ function leafCanvas(k, far) {
       for (const sd of [-1, 1]) { const gr = 85 + R(70); g.strokeStyle = rgb(gr * 0.6, gr, gr * 0.38); g.lineWidth = R(4, 6);
         g.beginPath(); g.moveTo(S / 2, v); g.quadraticCurveTo(S / 2 + sd * len * 0.6, v + len * 0.12, S / 2 + sd * len, v + len * 0.35 + R(-6, 6)); g.stroke(); } }
   } else if (sp.id === 'jacaranda') {  // hoja bipinnada (foliolos menudos, verde claro) y racimos de flor lila
-    for (let u = 0; u < (far ? 120 : 70); u++) { const [x, y] = disc(), a = R(6.28), L = R(40, 70) * sc, gr = 95 + R(70);
+    for (let u = 0; u < (far ? 170 : 105); u++) { const [x, y] = disc(), a = R(6.28), L = R(40, 70) * sc, gr = 95 + R(70);
       for (let t = 0; t < 1; t += 0.09) { const px = x + Math.cos(a) * L * t, py = y + Math.sin(a) * L * t;
         for (const sd of [-1, 1]) ovalLeaf(g, px + Math.cos(a + sd * 1.3) * 6 * sc, py + Math.sin(a + sd * 1.3) * 6 * sc, 5.5 * sc, a + sd * 1.3 + 1.57, 0.45, [gr * 0.62, gr, gr * 0.42], 0.1); } }
     for (let u = 0; u < (far ? 60 : 34); u++) { const [x, y] = disc();
       for (let q = 0; q < 26; q++) { const f = R(6.28), r = R(18) * sc; g.fillStyle = rgb(150 + R(30), 115 + R(25), 205 + R(35)); g.beginPath(); g.arc(x + Math.cos(f) * r, y + Math.sin(f) * r, R(3.5, 6) * sc, 0, 6.29); g.fill(); } }
   } else if (sp.id === 'tipuana') {    // hoja pinnada: foliolos ovalados, verde amarillento
-    for (let u = 0; u < (far ? 150 : 85); u++) { const [x, y] = disc(), a = R(6.28), L = R(45, 75) * sc, gr = 100 + R(75);
+    for (let u = 0; u < (far ? 240 : 150); u++) { const [x, y] = disc(), a = R(6.28), L = R(45, 75) * sc, gr = 100 + R(75);
       for (let t = 0; t < 1; t += 0.12) { const px = x + Math.cos(a) * L * t, py = y + Math.sin(a) * L * t;
         for (const sd of [-1, 1]) ovalLeaf(g, px + Math.cos(a + sd * 1.4) * 8 * sc, py + Math.sin(a + sd * 1.4) * 8 * sc, 8 * sc, a + sd * 1.4 + 1.57, 0.5, [gr * 0.74, gr, gr * 0.32], 0.1); } }
   } else if (sp.id === 'pi') {         // penachos de acículas largas, verde oscuro
-    for (let u = 0; u < (far ? 170 : 95); u++) { const [x, y] = disc(), gr = 60 + R(65), L = R(30, 50) * sc;
-      g.strokeStyle = rgb(gr * 0.55, gr, gr * 0.42); g.lineWidth = 2.6 * sc + 0.6;
+    for (let u = 0; u < (far ? 270 : 170); u++) { const [x, y] = disc(), gr = 60 + R(65), L = R(30, 50) * sc;
+      g.strokeStyle = rgb(gr * 0.55, gr, gr * 0.42); g.lineWidth = 3.2 * sc + 0.8;
       for (let q = 0; q < 26; q++) { const a = R(6.28), l = L * R(0.6, 1); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l * 0.8); g.stroke(); } }
   }
   return cv;
