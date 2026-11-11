@@ -382,7 +382,7 @@ void main(){
 
 const FS_TER = `
 uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
-uniform sampler2D uStreet; uniform vec4 uStreetR;
+uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D coastTex;
 void main(){
   vec2 uv = vPos.xz/uSize;
   vec3 alb = texture2D(groundTex, uv).rgb;
@@ -424,23 +424,42 @@ void main(){
   // NAT: arena de playa. La ortofoto pinta las playas de un crema liso: de cerca, grano fino, ondulaciones del viento,
   // pasadas del rastrillo de limpieza y huellas; junto al agua, franja mojada más oscura y con brillo. Cada escala se apaga
   // cuando el píxel ya no la resuelve (sin moiré de lejos)
-  float sandM = 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv).rgb - vec3(0.882, 0.827, 0.655)));
-  float wet = 0.0, rough = 0.95;
+  // la ortofoto acaba la playa antes que el relieve: entre su línea de costa y el agua de verdad (y = 0) queda una franja
+  // pintada del color del mar. Si hay arena a menos de ~25 m, esa franja es arena mojada
+  vec3 g0 = texture2D(groundTex, uv).rgb;
+  vec3 SAND = vec3(0.882, 0.827, 0.655), SEA = vec3(0.588, 0.592, 0.420);
+  float sandC = 1.0 - smoothstep(0.035, 0.09, length(g0 - SAND)), seaC = 1.0 - smoothstep(0.02, 0.07, length(g0 - SEA));
+  float sandM = sandC, wet = 0.0, rough = 0.95, foamT = 0.0;
+  if (sandC + seaC > 0.01 && vPos.y > -2.0) {
+    vec2 q = vPos.xz; float px = length(fwidth(q));
+    float sandN = 0.0, seaN = 0.0;
+    for (int k = 0; k < 8; k++) {
+      float a = float(k)*0.7854; vec2 dd = vec2(cos(a), sin(a))/uSize;
+      sandN = max(sandN, 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv + dd*24.0).rgb - SAND)));
+      sandN = max(sandN, 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv + dd*12.0).rgb - SAND)));
+      seaN = max(seaN, 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + dd*10.0).rgb - SEA)));
+    }
+    sandM = max(sandC, seaC*sandN*(1.0 - smoothstep(2.0, 3.5, vPos.y)));
+    // el relieve acaba en un escalón donde empieza el agua (coast.png: 0 en tierra, crece mar adentro, téxel de 16 m).
+    // Con el filtrado bilineal, el borde de tierra recoge algo del primer téxel de mar: eso marca la franja de orilla
+    vec2 co = vec2(8.0)/uSize;
+    float cc = texture2D(coastTex, uv).r;
+    float cm = max(max(cc, texture2D(coastTex, uv + vec2(co.x, 0.0)).r), max(texture2D(coastTex, uv - vec2(co.x, 0.0)).r,
+               max(texture2D(coastTex, uv + vec2(0.0, co.y)).r, texture2D(coastTex, uv - vec2(0.0, co.y)).r)));
+    float wn = vnoise(q*0.15)*0.6 + vnoise(q*0.6)*0.4;
+    wet = max(seaC*0.8, smoothstep(0.0006, 0.010 + 0.012*wn, cm));
+    // espuma de la orilla: una línea blanda pegada al agua y restos sueltos de la ola que se retira
+    float fn = vnoise(q*0.7 + 3.0)*0.6 + vnoise(q*2.3)*0.4;
+    foamT = (smoothstep(0.010 + 0.006*fn, 0.020 + 0.006*fn, cc)*(0.55 + 0.45*fn)
+           + smoothstep(0.004, 0.008, cc)*(1.0 - smoothstep(0.010, 0.014, cc))*0.5*smoothstep(0.45, 0.75, fn))*sandM*(1.0 - smoothstep(1.0, 4.0, px));
+  }
   if (sandM > 0.001) {
     vec2 q = vPos.xz; float px = length(fwidth(q));
-    vec2 o = vec2(7.0)/uSize;
-    vec3 SEA = vec3(0.588, 0.592, 0.420);
-    float sea = 0.0;
-    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + vec2(o.x, 0.0)).rgb - SEA));
-    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv - vec2(o.x, 0.0)).rgb - SEA));
-    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + vec2(0.0, o.y)).rgb - SEA));
-    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv - vec2(0.0, o.y)).rgb - SEA));
-    wet = smoothstep(0.15, 1.2, sea + 0.8*(vnoise(q*0.08) - 0.5))*(1.0 - smoothstep(1.2, 2.6, vPos.y));
     vec3 sa = mix(vec3(0.80, 0.71, 0.55), vec3(0.86, 0.78, 0.62), vnoise(q*0.03));
     sa *= 0.93 + 0.1*vnoise(q*0.21) + 0.05*vnoise(q*1.3);
-    float g1 = 1.0 - smoothstep(0.015, 0.06, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
+    float g1 = 1.0 - smoothstep(0.004, 0.016, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
     sa *= mix(1.0, 0.86 + 0.28*hash21(floor(q*60.0)), g1*0.6);
-    sa *= mix(1.0, 0.9 + 0.2*vnoise(q*11.0), g2);
+    sa *= mix(1.0, 0.95 + 0.1*vnoise(q*11.0), g2);
     // ondulaciones del viento y pasadas del rastrillo (en franjas, con dirección que cambia poco a poco)
     float an = vnoise(q*0.012)*6.2832, ca = cos(an), sn = sin(an);
     float w1 = dot(q, vec2(ca, sn)) + 1.5*vnoise(q*0.4);
@@ -458,7 +477,8 @@ void main(){
     sa = mix(sa, sa*vec3(0.58, 0.58, 0.60), wet);
     rough = mix(0.95, 0.30, wet);
     alb = mix(alb, sa, sandM);
-    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM + vec3(0.0, 0.0, 0.0));
+    alb = mix(alb, vec3(0.90, 0.91, 0.90), clamp(foamT, 0.0, 1.0)*0.85);
+    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM*(1.0 - foamT));
   }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
@@ -682,7 +702,7 @@ function setLDR() {
 }
 const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx', 'uStreetR'], ['uStreet']);
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
-const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet']);
+const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet', 'coastTex']);
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
 for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
@@ -833,7 +853,7 @@ await tick();
   }
   const normTex = BABYLON.RawTexture.CreateRGBATexture(nrm, GW, GH, scene, true, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
   texOpts(normTex, 4);
-  matTer.setTexture('normTex', normTex);
+  matTer.setTexture('normTex', normTex); matTer.setTexture('coastTex', coastTex);   // NAT: orilla de la arena
   matTer.setVector2('uSize', new BABYLON.Vector2(WX, WZ)); matTer.setVector2('uGrid', new BABYLON.Vector2(GW, GH)); matTer.setFloat('uCell', CELL);
   const groundTex = texOpts(new BABYLON.Texture(await blobURL('data/ground.webp'), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE), 8);
   matTer.setTexture('groundTex', groundTex);

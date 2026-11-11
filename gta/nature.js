@@ -86,34 +86,35 @@ function rock(g, sx, sy, sz) {
 }
 function pack(g) { return { P: new Float32Array(g.P), N: new Float32Array(g.N), C: new Float32Array(g.C), I: new Uint32Array(g.I) }; }
 
-// especies: geometría cercana (hi) y de media distancia (lo)
-function pinea(hi) {   // pino piñonero: tronco alto que se abre en una copa plana en forma de sombrilla
+// especies: tres niveles de geometría (lv 0 cerca, 1 media, 2 lejos)
+function pinea(lv) {   // pino piñonero: tronco alto que se abre en una copa plana en forma de sombrilla
   _s = 11; const g = G(), H = 8.2;
-  cyl(g, 0, -0.3, 0, 0.35, 5.6, 0.15, 0.3, 0.16, hi ? 7 : 3, 1, H);
-  if (hi) { cyl(g, 0.3, 4.8, 0.13, -1.2, 6.3, 0.6, 0.12, 0.07, 4, 1, H); cyl(g, 0.3, 4.9, 0.13, 1.7, 6.2, -0.7, 0.12, 0.07, 4, 1, H); }
-  blob(g, 0.3, 6.7, 0.1, 3.7, 1.15, 3.5, hi ? 4 : 2, hi ? 10 : 6, 0, hi ? 0.07 : 0.03, H);
-  if (hi) for (let k = 0; k < 4; k++) { const a = k * 1.57 + rnd(0.6); blob(g, 0.3 + Math.cos(a) * 2.4, 6.9 + rnd(-0.2, 0.3), 0.1 + Math.sin(a) * 2.3, 1.5, 0.75, 1.5, 3, 6, 0, 0.12, H); }
+  cyl(g, 0, -0.3, 0, 0.35, 5.6, 0.15, 0.3, 0.16, [7, 4, 3][lv], 1, H);
+  if (lv === 0) { cyl(g, 0.3, 4.8, 0.13, -1.2, 6.3, 0.6, 0.12, 0.07, 4, 1, H); cyl(g, 0.3, 4.9, 0.13, 1.7, 6.2, -0.7, 0.12, 0.07, 4, 1, H); }
+  blob(g, 0.3, 6.7, 0.1, 3.7, 1.15, 3.5, [3, 3, 2][lv], [9, 7, 5][lv], 0, [0.07, 0.04, 0.03][lv], H);
+  if (lv === 0) for (let k = 0; k < 3; k++) { const a = k * 2.09 + rnd(0.6); blob(g, 0.3 + Math.cos(a) * 2.4, 6.9 + rnd(-0.2, 0.3), 0.1 + Math.sin(a) * 2.3, 1.5, 0.75, 1.5, 3, 6, 0, 0.12, H); }
   return pack(g);
 }
-function halep(hi) {   // pino carrasco: tronco algo torcido y copa irregular y abierta
+function halep(lv) {   // pino carrasco: tronco algo torcido y copa irregular y abierta
   _s = 23; const g = G(), H = 9.5;
-  cyl(g, 0, -0.3, 0, 0.5, 3.6, 0.2, 0.24, 0.17, hi ? 6 : 3, 1, H);
-  if (hi) cyl(g, 0.5, 3.6, 0.2, 0.2, 7.2, -0.3, 0.17, 0.08, 5, 1, H);
-  const B = [[0.6, 5.6, 0.6, 1.9], [-0.4, 6.4, -0.6, 1.7], [0.3, 7.6, 0.1, 1.5], [1.3, 6.6, -0.8, 1.3], [-1.0, 5.2, 0.7, 1.2]];
-  for (let k = 0; k < (hi ? 5 : 2); k++) { const b = B[k], s = hi ? 1 : 1.3; blob(g, b[0], b[1], b[2], b[3] * s, b[3] * 0.72 * s, b[3] * 0.95 * s, hi ? 3 : 2, hi ? 7 : 5, 0, hi ? 0.16 : 0.05, H); }
+  cyl(g, 0, -0.3, 0, 0.5, 3.6, 0.2, 0.24, 0.17, [6, 3, 3][lv], 1, H);
+  if (lv === 0) cyl(g, 0.5, 3.6, 0.2, 0.2, 7.2, -0.3, 0.17, 0.08, 5, 1, H);
+  const B = [[0.6, 5.6, 0.6, 1.9], [-0.4, 6.4, -0.6, 1.7], [0.3, 7.6, 0.1, 1.5], [1.3, 6.6, -0.8, 1.3]];
+  const nb = [4, 2, 1][lv], sc = [1, 1.25, 1.55][lv];
+  for (let k = 0; k < nb; k++) { const b = B[k]; blob(g, b[0], b[1] + (lv === 2 ? 0.6 : 0), b[2], b[3] * sc, b[3] * 0.72 * sc, b[3] * 0.95 * sc, lv === 2 ? 2 : 3, [6, 5, 5][lv], 0, [0.16, 0.08, 0.04][lv], H); }
   return pack(g);
 }
-function ilex(hi) {    // encina: tronco corto y copa redonda y densa
+function ilex(lv) {    // encina: tronco corto y copa redonda y densa
   _s = 37; const g = G(), H = 6.6;
-  cyl(g, 0, -0.3, 0, 0.1, 2.3, 0.05, 0.27, 0.2, hi ? 6 : 3, 1, H);
-  blob(g, 0.1, 4.0, 0, 3.0, 2.3, 2.8, hi ? 5 : 3, hi ? 10 : 6, 0, hi ? 0.08 : 0.03, H);
-  if (hi) for (let k = 0; k < 3; k++) { const a = k * 2.1 + 0.4; blob(g, Math.cos(a) * 1.9, 4.6 + rnd(-0.5, 0.6), Math.sin(a) * 1.8, 1.5, 1.2, 1.5, 3, 6, 0, 0.12, H); }
+  cyl(g, 0, -0.3, 0, 0.1, 2.3, 0.05, 0.27, 0.2, [6, 3, 3][lv], 1, H);
+  blob(g, 0.1, 4.0, 0, 3.0, 2.3, 2.8, [4, 3, 2][lv], [9, 7, 5][lv], 0, [0.08, 0.04, 0.03][lv], H);
+  if (lv === 0) for (let k = 0; k < 2; k++) { const a = k * 3.1 + 0.4; blob(g, Math.cos(a) * 1.9, 4.6 + rnd(-0.5, 0.6), Math.sin(a) * 1.8, 1.5, 1.2, 1.5, 3, 6, 0, 0.12, H); }
   return pack(g);
 }
-function bush(hi) {    // arbusto (lentisco, coscoja): dos o tres bolas bajas
+function bush(lv) {    // arbusto (lentisco, coscoja): dos o tres bolas bajas
   _s = 51; const g = G(), H = 1.6;
-  if (hi) { blob(g, 0, 0.55, 0, 1.15, 0.85, 1.05, 3, 7, 0, 0.18, H); blob(g, 0.8, 0.4, 0.3, 0.8, 0.6, 0.75, 3, 6, 0, 0.18, H); blob(g, -0.5, 0.35, 0.7, 0.7, 0.5, 0.7, 2, 6, 0, 0.18, H); }
-  else blob(g, 0.15, 0.5, 0.25, 1.4, 0.8, 1.3, 2, 5, 0, 0.05, H);
+  if (lv === 0) { blob(g, 0, 0.55, 0, 1.15, 0.85, 1.05, 3, 7, 0, 0.18, H); blob(g, 0.8, 0.4, 0.3, 0.8, 0.6, 0.75, 3, 6, 0, 0.18, H); blob(g, -0.5, 0.35, 0.7, 0.7, 0.5, 0.7, 2, 6, 0, 0.18, H); }
+  else blob(g, 0.15, 0.5, 0.25, 1.4, 0.8, 1.3, lv === 1 ? 3 : 2, lv === 1 ? 6 : 4, 0, 0.05, H);
   return pack(g);
 }
 function grass() { _s = 61; const g = G(); blades(g, 11, 0.45, 0.95, 0.05, 0.35, 3); return pack(g); }
@@ -162,10 +163,10 @@ void main(){
     alb *= mix(1.0, 0.74 + 0.5*cl, nf);
     // silueta deshilachada: en el borde de la copa (normal casi de canto) se abren huecos entre racimos
     float rim = abs(dot(n, V));
-    if (rim < 0.42 && cl < 0.62*(1.0 - rim/0.42)*nf + 0.0) discard;
+    if (rim < 0.6 && cl < 0.85*(1.0 - rim/0.6)*nf) discard;
     n = normalize(n + (vec3(vnoise(q.xy + 1.3), vnoise(q.yz + 7.1), vnoise(q.zx + 4.4)) - 0.5)*1.1*nf);
     alb *= mix(0.62, 1.0, ao);
-    c = lit(alb, normalize(n + vec3(0.0, 0.25, 0.0)));
+    c = lit(alb, normalize(n + vec3(0.0, 0.7, 0.0)));
     c += alb*vec3(1.0, 1.15, 0.6)*uSunCol*max(dot(-V, uSunDir), 0.0)*0.12*sunVis();
   } else if (part < 1.5) {                              // tronco
     alb = mix(vec3(0.20, 0.15, 0.12), vec3(0.30, 0.21, 0.16), rn)*(0.8 + 0.4*vnoise(vPos.xz*9.0 + vPos.y*3.0))*ao;
@@ -182,7 +183,10 @@ void main(){
     alb = mix(vec3(0.30, 0.33, 0.18), vec3(0.62, 0.58, 0.38), hl)*mix(0.85, 1.1, rn)*ao;
     c = lit(alb, vec3(0.0, 1.0, 0.0)*0.6 + n*0.4);
   } else {                                              // madera de pasarela, gastada por el sol y la sal
-    alb = vec3(0.50, 0.42, 0.32)*(0.82 + 0.25*vnoise(vec2(vPos.x + vPos.z, vPos.y)*vec2(0.6, 12.0)))*ao;
+    // vC.b: metros a lo largo de la pasarela: juntas entre tablones cada 0,25 m (se apagan de lejos)
+    float j = abs(fract(vC.b/0.25) - 0.5);
+    alb = vec3(0.50, 0.42, 0.32)*(0.85 + 0.25*hash21(vec2(floor(vC.b/0.25), 3.0)))*ao;
+    alb *= 1.0 - 0.45*(1.0 - smoothstep(0.0, 0.035, 0.5 - j))*(1.0 - smoothstep(0.05, 0.2, px));
     c = lit(alb, n);
   }
   c *= 1.0 - 0.55*uNight;                               // de noche, el monte casi negro (como el terreno)
@@ -236,16 +240,19 @@ window.BCN_NATURE = { async init(ctx) {
   const tMask = performance.now() - t0;
 
   // ---------------------------------------------------------------- tipos, mallas y materiales
-  // band: [fin del cercano (fundido a, b), fin del medio (c, d)]; close: radio de las que proyectan sombra
+  // por tipo: geo = geometría por nivel; ends = fundido de salida de cada nivel [a, b] (el siguiente entra en el mismo
+  // tramo); keep = fracción de plantas que se quedan en ese nivel (las lejanas se aclaran y engordan: grow); close = radio de
+  // las que proyectan sombra (subconjunto del nivel 0)
   const S = { on: QS.get('nat') !== '0', q: 1 };
+  const TREE = { ends: [[100, 130], [260, 310], [580, 700]], keep: [1, 1, 0.4], grow: [1, 1, 1.2], close: 60 };
   const TYPES = [
-    { id: 'pinea', hi: pinea(true), lo: pinea(false), near: [290, 340], mid: [760, 900], close: 70, sc: [0.8, 1.25] },
-    { id: 'halep', hi: halep(true), lo: halep(false), near: [290, 340], mid: [760, 900], close: 70, sc: [0.75, 1.2] },
-    { id: 'ilex', hi: ilex(true), lo: ilex(false), near: [290, 340], mid: [760, 900], close: 70, sc: [0.7, 1.2] },
-    { id: 'bush', hi: bush(true), lo: bush(false), near: [170, 210], mid: [400, 480], close: 0, sc: [0.6, 1.4] },
-    { id: 'grass', hi: grass(), lo: null, near: [85, 115], mid: null, close: 0, sc: [0.7, 1.3] },
-    { id: 'reed', hi: reed(), lo: null, near: [110, 150], mid: null, close: 0, sc: [0.8, 1.2] },
-    { id: 'rock', hi: stone(), lo: null, near: [200, 250], mid: null, close: 0, sc: [0.5, 2.2] },
+    Object.assign({ id: 'pinea', geo: [0, 1, 2].map(pinea), sc: [0.8, 1.25] }, TREE),
+    Object.assign({ id: 'halep', geo: [0, 1, 2].map(halep), sc: [0.75, 1.2] }, TREE),
+    Object.assign({ id: 'ilex', geo: [0, 1, 2].map(ilex), sc: [0.7, 1.2] }, TREE),
+    { id: 'bush', geo: [0, 1, 2].map(bush), ends: [[60, 80], [170, 210], [360, 420]], keep: [1, 1, 0.5], grow: [1, 1, 1.15], close: 0, sc: [0.6, 1.4] },
+    { id: 'grass', geo: [grass()], ends: [[85, 115]], keep: [1], grow: [1], close: 0, sc: [0.8, 1.5] },
+    { id: 'reed', geo: [reed()], ends: [[110, 150]], keep: [1], grow: [1], close: 0, sc: [0.8, 1.2] },
+    { id: 'rock', geo: [stone()], ends: [[200, 250]], keep: [1], grow: [1], close: 0, sc: [0.5, 2.2] },
   ];
   const mats = [];
   function mat(name, band) { const m = mkMat('nat_' + name, VS, FS, ['position', 'normal', 'color', 'icol'], ['uBand'], []);
@@ -258,12 +265,15 @@ window.BCN_NATURE = { async init(ctx) {
     reg(me, { cast: !!cast, layer: 'nature' });
     return me;
   }
+  // mallas por tipo: [sombra (nivel 0 cercano), nivel 0, nivel 1, nivel 2]
   for (const T of TYPES) {
-    const mN = mat(T.id + 'N', [-2, -1, T.near[0], T.near[1]]);
-    T.mesh = [T.close ? mesh('nc_' + T.id, T.hi, mN, true) : null, mesh('nn_' + T.id, T.hi, mN, false),
-      T.lo ? mesh('nm_' + T.id, T.lo, mat(T.id + 'M', [T.near[0], T.near[1], T.mid[0], T.mid[1]]), false) : null];
-    T.tri = [T.hi.I.length / 3, T.hi.I.length / 3, T.lo ? T.lo.I.length / 3 : 0];
-    T.R = T.mid ? T.mid[1] : T.near[1];
+    T.mesh = []; T.tri = [];
+    T.geo.forEach((g, l) => {
+      const a = l ? T.ends[l - 1] : [-2, -1], m = mat(T.id + l, [a[0], a[1], T.ends[l][0], T.ends[l][1]]);
+      if (l === 0) { T.mesh.push(T.close ? mesh('nc_' + T.id, g, m, true) : null); T.tri.push(g.I.length / 3); }
+      T.mesh.push(mesh('n' + l + '_' + T.id, g, m, false)); T.tri.push(g.I.length / 3);
+    });
+    T.R = T.ends[T.ends.length - 1][1];
   }
   const TI = {}; TYPES.forEach((T, k) => { TI[T.id] = k; });
   const RMAX = Math.max(...TYPES.map(T => T.R));
@@ -276,8 +286,8 @@ window.BCN_NATURE = { async init(ctx) {
   // probabilidades por muestra y clase: [pinea, halep, ilex, bush, grass, reed, rock]
   const PROB = {
     [C_FOREST]: [0.05, 0.11, 0.08, 0.12, 0.08, 0, 0.008],
-    [C_PARK]: [0.045, 0.015, 0.025, 0.05, 0.18, 0, 0.003],
-    [C_GRASS]: [0.006, 0.004, 0.006, 0.05, 0.22, 0.004, 0.004],
+    [C_PARK]: [0.045, 0.015, 0.025, 0.05, 0.40, 0, 0.003],
+    [C_GRASS]: [0.006, 0.004, 0.006, 0.05, 0.45, 0.004, 0.004],
     [C_FARM]: [0, 0, 0, 0.006, 0.05, 0.008, 0],
     [C_SCRUB]: [0.012, 0.03, 0.012, 0.14, 0.16, 0, 0.03],
   };
@@ -310,8 +320,54 @@ window.BCN_NATURE = { async init(ctx) {
     return out.map(a => a.length ? new Float32Array(a) : null);
   }
 
+  // ---------------------------------------------------------------- pasarelas de madera en la arena
+  // En cada bloque de 120 m con playa: desde el borde de tierra de la arena hacia el agua por el camino más corto, hasta
+  // ~10 m de la orilla. Tablones de 1,6 m de ancho en tramos de 2 m que siguen el suelo. Una sola malla fija (~100 k tri. como
+  // mucho; medido en stats().walkTris), con una instancia para usar el mismo material
+  let walkTris = 0;
+  {
+    const g = G(), B = 24, DIRS = []; for (let k = 0; k < 16; k++) DIRS.push([Math.cos(k * Math.PI / 8), Math.sin(k * Math.PI / 8)]);
+    const cl = (i, j) => i < 0 || j < 0 || i >= MW || j >= MH ? C_NONE : CLS[j * MW + i];
+    const placed = [];
+    const box = (x0, z0, x1, z1, y0, y1, w, along0) => {   // tablero de x0,z0 a x1,z1, de ancho w, cara de arriba a y1
+      const dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz), px = -dz / L * w / 2, pz = dx / L * w / 2, base = g.P.length / 3;
+      const V = [[x0 - px, z0 - pz, y0, along0], [x0 + px, z0 + pz, y0, along0], [x1 + px, z1 + pz, y1, along0 + L], [x1 - px, z1 - pz, y1, along0 + L]];
+      for (const v of V) { g.P.push(v[0], v[2], v[1]); g.N.push(0, 1, 0); g.C.push(1, 0, v[3], 5); }
+      g.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
+      // cantos
+      for (const [a, b, nx, nz] of [[0, 3, -px, -pz], [2, 1, px, pz]]) { const q = g.P.length / 3, A = V[a], Bv = V[b], l = Math.hypot(nx, nz);
+        for (const v of [A, Bv]) { g.P.push(v[0], v[2], v[1], v[0], v[2] - 0.22, v[1]); g.N.push(nx / l, 0, nz / l, nx / l, 0, nz / l); g.C.push(0.7, 0, v[3], 5, 0.5, 0, v[3], 5); }
+        g.I.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); }
+    };
+    for (let bj = 0; bj < MH; bj += B) for (let bi = 0; bi < MW; bi += B) {
+      let n = 0, sx = 0, sy = 0; for (let j = bj; j < bj + B; j++) for (let i = bi; i < bi + B; i++) if (cl(i, j) === C_SAND) { n++; sx += i; sy += j; }
+      if (n < 60) continue;
+      let ci = Math.round(sx / n), cj = Math.round(sy / n);
+      if (cl(ci, cj) !== C_SAND) { let bd = 1e9; for (let j = bj; j < bj + B; j++) for (let i = bi; i < bi + B; i++) if (cl(i, j) === C_SAND) { const d = (i - ci) ** 2 + (j - cj) ** 2; if (d < bd) { bd = d; ci = i; cj = j; } } }
+      // dirección al mar: la más corta de 16
+      let best = null; for (const D of DIRS) for (let s = 1; s < 30; s++) { const k = cl(Math.round(ci + D[0] * s), Math.round(cj + D[1] * s));
+        if (k === C_SEA) { if (!best || s < best[1]) best = [D, s]; break; } if (k !== C_SAND && k !== C_NONE) break; }
+      if (!best) continue;
+      const D = best[0]; let back = 0; while (back < 30 && cl(Math.round(ci - D[0] * (back + 1)), Math.round(cj - D[1] * (back + 1))) === C_SAND) back++;
+      // en metros del mundo (z crece hacia el norte: la fila de la imagen, al revés)
+      const ax = (ci - D[0] * back + 0.5) * PX, az = WZ - (cj - D[1] * back + 0.5) * PX, ux = D[0], uz = -D[1];
+      const L = (back + best[1]) * PX - 12;
+      if (L < 18 || placed.some(p => Math.hypot(p[0] - ax, p[1] - az) < 70)) continue;
+      if (hasRoad(ax + ux * 3, az + uz * 3, 0.5)) continue;
+      placed.push([ax, az]);
+      for (let a = 0; a + 2 <= L; a += 2) { const x0 = ax + ux * a, z0 = az + uz * a, x1 = x0 + ux * 2, z1 = z0 + uz * 2;
+        box(x0, z0, x1, z1, Math.max(heightAt(x0, z0), 0.2) + 0.12, Math.max(heightAt(x1, z1), 0.2) + 0.12, 1.6, a); }
+    }
+    if (g.I.length) {
+      const pk = pack(g), mW = mat('walk', [-2, -1, 500, 700]), me = mesh('nWalk', pk, mW, false);
+      me.thinInstanceSetBuffer('matrix', new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), 16, true);
+      me.thinInstanceSetBuffer('icol', new Float32Array([0.5, 0.5, 0.4, 0.5]), 4, true); me.thinInstanceCount = 1;
+      walkTris = pk.I.length / 3;
+    }
+  }
+
   // ---------------------------------------------------------------- selección de instancias
-  let queue = [], lastSel = null, dirty = false, nInst = TYPES.map(() => [0, 0, 0]), tris = 0, genMs = 0, genN = 0;
+  let queue = [], lastSel = null, dirty = false, nInst = TYPES.map(T => T.mesh.map(() => 0)), tris = 0, genMs = 0, genN = 0;
   const cellD = (ci, P) => { const i = ci % NX, j = (ci / NX) | 0;
     const dx = Math.max(i * CS - P.x, 0, P.x - (i + 1) * CS), dz = Math.max(j * CS - P.z, 0, P.z - (j + 1) * CS); return Math.hypot(dx, dz); };
   function plan(P, alt) {
@@ -328,22 +384,25 @@ window.BCN_NATURE = { async init(ctx) {
   function getBuf(key, n) { let b = bufs.get(key); if (!b || b.length < n || b.length > n * 4 + 64) { b = new Float32Array(Math.max(16, Math.ceil(n * 1.3))); bufs.set(key, b); } return b; }
   function select(P) {
     lastSel = { x: P.x, y: P.y, z: P.z }; dirty = false;
-    const L = TYPES.map(() => [[], [], []]);
+    const L = TYPES.map(T => T.mesh.map(() => []));
     for (const [ci, C] of cells) {
       if (cellD(ci, P) > RMAX + 2) continue;
-      for (let t = 0; t < TYPES.length; t++) { const A = C[t]; if (!A) continue; const T = TYPES[t], cl = T.close, n1 = T.near[1] + 2, n0 = T.near[0] - 2, m1 = T.mid ? T.mid[1] + 2 : -1;
+      for (let t = 0; t < TYPES.length; t++) { const A = C[t]; if (!A) continue; const T = TYPES[t], E = T.ends, nl = E.length, Lt = L[t];
         for (let k = 0; k < A.length; k += 10) {
-          const d = Math.hypot(A[k] - P.x, A[k + 1] + 3 - P.y, A[k + 2] - P.z);
-          if (d < n1) L[t][d < cl ? 0 : 1].push(A, k);
-          if (d > n0 && d < m1) L[t][2].push(A, k);
+          const d = Math.hypot(A[k] - P.x, A[k + 1] + 3 - P.y, A[k + 2] - P.z); if (d > T.R + 2) continue;
+          const r = A[k + 9];
+          for (let l = 0; l < nl; l++) {
+            if (d > E[l][1] + 2 || (l && d < E[l - 1][0] - 2) || r >= T.keep[l]) continue;
+            Lt[l === 0 && d < T.close ? 0 : l + 1].push(A, k, T.grow[l]);
+          }
         } }
     }
     tris = 0;
-    for (let t = 0; t < TYPES.length; t++) for (let l = 0; l < 3; l++) {
+    for (let t = 0; t < TYPES.length; t++) for (let l = 0; l < TYPES[t].mesh.length; l++) {
       const me = TYPES[t].mesh[l]; if (!me) { nInst[t][l] = 0; continue; }
-      const src = L[t][l], n = src.length / 2, M = getBuf(me.name + 'm', n * 16), Cc = getBuf(me.name + 'c', n * 4);
-      for (let q = 0, w = 0, c = 0; q < src.length; q += 2, w += 16, c += 4) {
-        const A = src[q], k = src[q + 1], s = A[k + 3], sy = A[k + 4], cs = Math.cos(A[k + 5]), sn = Math.sin(A[k + 5]);
+      const src = L[t][l], n = src.length / 3, M = getBuf(me.name + 'm', n * 16), Cc = getBuf(me.name + 'c', n * 4);
+      for (let q = 0, w = 0, c = 0; q < src.length; q += 3, w += 16, c += 4) {
+        const A = src[q], k = src[q + 1], gr = src[q + 2], s = A[k + 3] * gr, sy = A[k + 4] * gr, cs = Math.cos(A[k + 5]), sn = Math.sin(A[k + 5]);
         M[w] = cs * s; M[w + 1] = 0; M[w + 2] = -sn * s; M[w + 3] = 0;
         M[w + 4] = 0; M[w + 5] = sy; M[w + 6] = 0; M[w + 7] = 0;
         M[w + 8] = sn * s; M[w + 9] = 0; M[w + 10] = cs * s; M[w + 11] = 0;
@@ -371,7 +430,7 @@ window.BCN_NATURE = { async init(ctx) {
   function flush(P, groundY) { const alt = Math.max(0, P.y - groundY); lastPlan = { x: P.x, z: P.z, a: alt }; plan(P, alt); work(P, 1e9); select(P); }
   function setRange(q) { S.on = q > 0; lastPlan = null; if (!S.on) { cells.clear(); queue = []; } }
   function stats() {
-    const o = { cells: cells.size, queue: queue.length, tris, maskMs: Math.round(tMask), genMsPerCell: genN ? +(genMs / genN).toFixed(2) : 0 };
+    const o = { cells: cells.size, queue: queue.length, tris, walkTris, maskMs: Math.round(tMask), genMsPerCell: genN ? +(genMs / genN).toFixed(2) : 0 };
     TYPES.forEach((T, t) => { o[T.id] = nInst[t].slice(); });
     return o;
   }
