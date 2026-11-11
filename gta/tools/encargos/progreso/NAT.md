@@ -34,6 +34,11 @@ antes de la luz), `index.html` (el `<script>` de `nature.js`, tras los hitos), `
 - Sombras: los árboles a < 60 m entran en las dos cascadas (coll_pie: 385 k tri. en la lejana).
 
 ## Pendiente / flojo
+- En el mirador de los búnkers del Carmel salen pinos encima de la explanada (la máscara la pinta de matorral y no hay
+  calle ni edificio que la proteja): un tronco tapa media vista `carmel`. Faltaría excluir miradores/plazas (p. ej. por hitos).
+- La franja mojada sigue los píxeles de 5 m de la ortofoto: desde el dron se ven manchas oscuras irregulares a media playa
+  y, a pie, una banda amarillenta ondulada junto al agua (brillo del `shade` mojado).
+- Desde el avión el cambio es pequeño (relieve de copas y mosaico de campos): las plantas 3D acaban a 700 m.
 - La espuma de la orilla depende de `coast.png` (téxel de 16 m) y el borde del relieve no coincide exacto con él: la línea
   de espuma es suave pero no siempre pegada a la arena. El relieve acaba en un escalón (~1,5 m) en el agua.
 - Las copas de cerca siguen leyéndose algo «de bolas»; faltaría una textura de hojas con alfa.
