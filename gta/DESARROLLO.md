@@ -19,7 +19,7 @@ nos hemos comido para no repetirlos.
 | `ground.js` | Suelo: bloque GLSL del asfalto de cerca (lo inserta `app.js`) y hook de `streets.js` con las marcas viales (pasos de cebra). |
 | `lighting.js` | Módulo de iluminación: vacío y cableado (se inicia el último y se llama cada fotograma). |
 | `data/` | Datos de la ciudad (contenedores binarios envueltos en PNG), texturas y los props de Transeúnte (`tr_props.*`). |
-| `tools/` | Arnés de capturas (`shot.js`), comparador (`cmp.py`) y vistas con nombre (`views.json`). No se publica. |
+| `tools/` | Arnés de capturas (`shot.js`), comparador (`cmp.py`), vistas con nombre (`views.json`) y pruebas de `geo.js` (`geo_test.js`). No se publica. |
 
 Qué fichero es de quién, firmas y contratos entre módulos: **§6**.
 
@@ -37,6 +37,7 @@ node tools/shot.js tools/out/prueba eix_acera,eix_tienda,rambla_pie      # vista
 node tools/shot.js tools/out/p '[{"x":12064.6,"z":14541,"walk":true,"yaw":-0.78,"pitch":0}]'
 SIZE=1600x900 FMT=png HOUR=19.5 node tools/shot.js tools/out/tarde eix_fachada
 python3 tools/cmp.py a.png b.png diff.png                               # diferencia media, máxima y % de píxeles
+node tools/geo_test.js                                                  # geo.js sin navegador: primitivas y azar (1 s)
 ```
 
 - Cada vista: `{x, z, y | agl | walk:true, yaw, pitch, hour?, fx?, st?, frames?, eval?}`. `walk:true` pone el ojo a 1,75 m
@@ -115,6 +116,10 @@ python3 tools/cmp.py a.png b.png diff.png                               # difere
 14. **Patrones sobre superficies curvas**: las coordenadas de cara `P` del shader de detalle salen de la normal; en una
     superficie de normales suaves cambian de píxel a píxel y un patrón dibujado con `P` se deforma. En lo curvo, patrones
     con `vLoc` (la altura `vLoc.y`, o ruido sobre `vLoc.xz + vLoc.y`).
+15. **El lienzo tiene canal alfa** (premultiplicado, el valor por defecto de WebGL): un píxel que llegue a pantalla con
+    alfa < 1 deja ver el fondo de la página y sale lavado en las capturas. Hoy todo escribe alfa 1 y los materiales con
+    mezcla no lo tocan (§6.4). Quien guarde otra cosa en el alfa (profundidad…) que lo haga en un búfer intermedio y
+    termine con un pase que escriba alfa 1.
 
 ## 5. Reglas de trabajo
 
@@ -245,7 +250,7 @@ lineal, sombras, oclusión…) sin tocar los demás shaders, así que **no copie
 | Función | Qué devuelve | Hoy |
 | --- | --- | --- |
 | `vec3 lit(vec3 alb, vec3 n)` | Luz difusa de sol y cielo sobre un albedo. Para los shaders sencillos (relieve, acera, árboles, volúmenes simples). | `alb*(sol·n + ambiente)` |
-| `vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao)` | Sombreado completo: difusa + brillo del sol con lóbulo según `rough` + reflejo del entorno. `V` = unitario hacia la cámara; `rough` 0 pulido … 1 mate; `metal` 0 … 1 (el albedo tiñe el reflejo y no hay difusa); `ao` 0 … 1 atenúa lo ambiental. | difusa de `lit` + Blinn-Phong normalizado + `envRefl` (los metales siempre; lo demás solo si es pulido, sobre todo en rasante) |
+| `vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao)` | Sombreado completo: difusa + brillo del sol con lóbulo según `rough` + reflejo del entorno. `V` = unitario hacia la cámara; `rough` 0 pulido … 1 mate; `metal` 0 … 1 (el albedo tiñe el reflejo y no hay difusa); `ao` 0 … 1 atenúa lo ambiental. | difusa de `lit` + Blinn-Phong normalizado + `envRefl` con Fresnel (los metales siempre; lo demás solo si es pulido: pesa `(1 − rough)³`) |
 | `vec3 envRefl(vec3 r, float rough)` | Lo que se refleja en la dirección `r`: cielo analítico y, bajo el horizonte, la calle (oscura). Con `rough` se difumina. | lo que hacía el vidrio; con `rough = 0` incluye el disco del sol |
 | `vec3 emit(vec3 col, float gain)` | Color autoiluminado (faroles, rótulos, ventanas encendidas); se **suma** al resultado de `shade`. | `col*gain` |
 
@@ -407,7 +412,7 @@ El tipo de material viaja en el alfa del color de vértice y elige la rama del s
 ```js
 const PINTURA = pbrAux(0.42, 0, 0, 0), ACERO = pbrAux(0.4, 1, 0, 0);           // una vez, fuera de los bucles
 obox(W, x, z, y, 1.5, 1.4, 1.1, ang, [20, 77, 158], K.PBR, pbrAux(0.6, 0, 2, 0));   // contenedor de plástico con nervios
-rev(W, F0, x, z, [[0.17, y], [0.1, y + 0.7], [0.055, y + 7.8]], 7, [38, 46, 42], K.PBR, { aux: PINTURA, cap: 1 });
+rev(W, F0, x, z, [[0.16, y], [0.09, y + 0.55], [0.055, y + 7.8]], 7, [38, 46, 42], K.PBR, { aux: PINTURA, cap: 1 });
 ```
 
 **Rangos de id reservados:** 0–19 núcleo (`facades.js`) · 20–39 `interiors.js` · 40–59 `details.js` · 60–79
@@ -499,7 +504,9 @@ El shader descarta el sustituto, con el tramado **complementario** al de entrada
 de los dos, sin huecos ni dobles), **solo si la capa ORNAMENTO de su celda existe**: mientras no esté construida, el
 sustituto se queda. Eso lo dice el uniforme por malla `uCellHi` (0/1), que el material fija al enlazar cada malla
 leyendo `mesh.metadata.bcn.cell.hi` (la malla BASE lleva su celda desde `reg`; las demás mallas valen 0). `uFadeHi`
-lleva las distancias del fundido. Hoy ningún quad es sustituto. Ojo: en la capa BASE el byte 255 de `aux.w` queda
+lleva las distancias del fundido. El relevo es exacto píxel a píxel cuando lo que entra está más o menos a la misma
+profundidad que el sustituto (medido con dos paños coplanarios en plena banda: ni un hueco); si queda mucho más al fondo,
+en la banda de 70–95 m puede asomar algún píxel suelto. Hoy ningún quad es sustituto. Ojo: en la capa BASE el byte 255 de `aux.w` queda
 reservado para esto, y en la malla de mobiliario (que usa `matB` sin celda) la marca no hace nada.
 
 ### 6.9 Hooks de fachada: `interiors.js` y `details.js`

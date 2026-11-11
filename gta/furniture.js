@@ -57,8 +57,8 @@ window.BCN_FURNITURE = { init(ctx) {
       along(24, 5, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.5, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (!inCell(x, z) || nearJ(x, z, 6)) return; const ns = freeWalk(x, z); if (ns < -1) return;
         const y = walkY(ns, x, z) - 0.02, H = hw > 6 ? 9.5 : 7.8, lx = x - ox, lz = z - oz;
-        // columna torneada de una pieza: base, moldura y fuste cónico
-        rev(W, F0, lx, lz, [[0.17, y], [0.155, y + 0.55], [0.1, y + 0.68], [0.055, y + H]], 7, lampC, K.PBR, { aux: PAINT, cap: 1 });
+        // columna torneada de una pieza: base, moldura y fuste cónico (sin engordar la de antes: hay calles muy estrechas)
+        rev(W, F0, lx, lz, [[0.16, y], [0.125, y + 0.46], [0.09, y + 0.55], [0.055, y + H]], 7, lampC, K.PBR, { aux: PAINT, cap: 1 });
         // brazo: tubo en arco desde la punta del fuste hasta la luminaria
         const reach = Math.min(1.9, hw * 0.45), dx = -px * side, dz = -pz * side, ex = lx + dx * reach, ez = lz + dz * reach;
         tube(W, F0, [[lx, y + H - 0.12, lz], [lx + dx * reach * 0.3, y + H + 0.16, lz + dz * reach * 0.3], [ex - dx * 0.05, y + H + 0.02, ez - dz * 0.05]], 0.04, 4, lampC, K.PBR, { aux: PAINT });
@@ -72,7 +72,7 @@ window.BCN_FURNITURE = { init(ctx) {
         seed(T_BIN, n, s); const c = R() < 0.6 ? [150, 30, 32] : [70, 74, 78];
         const y = walkY(ns, x, z) - 0.02, bx = x - ox + px * side * 0.2, bz = z - oz + pz * side * 0.2, dark = [18, 18, 20];
         cyl(W, x - ox, z - oz, y, y + 1.0, 0.035, 0.035, 4, ironC, K.PBR, PAINT);
-        rev(W, F0, bx, bz, [[0.195, y + 0.38], [0.225, y + 0.92], [0.225, y + 0.92, dark], [0, y + 0.86, dark]], 10, c, K.PBR, { aux: SLATS });
+        rev(W, F0, bx, bz, [[0.195, y + 0.38], [0.22, y + 0.92], [0.22, y + 0.92, dark], [0, y + 0.86, dark]], 10, c, K.PBR, { aux: SLATS });
       });
       // bancos (solo en aceras anchas)
       along(53, 27, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 2.4, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;

@@ -93,15 +93,15 @@ vec3 envRefl(vec3 r, float rough){
   // por debajo del horizonte se refleja la calle de enfrente, oscura. Con rugosidad el horizonte se difumina
   return mix(uFogCol*vec3(0.62,0.6,0.58), c, smoothstep(-0.02 - rough, 0.22 + rough, r.y)); }
 vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao){
-  float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough;
+  float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough;   // pol: lo pulido que está
   vec3 amb = mix(uGndCol, uSkyCol, N.y*0.5+0.5)*ao;
   vec3 f0 = mix(vec3(0.04), alb, metal);
   vec3 c = alb*(1.0 - metal)*(uSunCol*ndl + amb);
   // brillo del sol: lóbulo de Blinn-Phong normalizado, más estrecho e intenso cuanto más pulido
   float a = max(rough*rough, 0.03), sh = 2.0/(a*a) - 2.0;
   c += uSunCol*f0*((sh + 2.0)*0.125*pow(max(dot(N, normalize(uSunDir + V)), 1e-4), sh)*ndl);
-  // reflejo del entorno: los metales siempre (teñido por su color) y lo demás solo si es pulido, sobre todo en rasante
-  c += envRefl(reflect(-V, N), rough)*(f0*mix(pol, 1.0, metal) + (1.0 - f0)*(pol*pol*pol*pow(1.0 - ndv, 5.0)))*ao;
+  // reflejo del entorno, con Fresnel (más en rasante): los metales siempre, teñido por su color, y lo demás solo si es pulido
+  c += envRefl(reflect(-V, N), rough)*(f0 + (1.0 - f0)*pow(1.0 - ndv, 5.0))*(mix(pol*pol*pol, 1.0, metal)*ao);
   return c; }
 vec3 emit(vec3 col, float gain){ return col*gain; }
 vec3 fog(vec3 c, vec3 wp){ vec3 d = wp-uCam; float dist = length(d); float rd = d.y/max(dist,1e-3); float b = 0.0007; float k = rd*b;
