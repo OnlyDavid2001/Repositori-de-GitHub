@@ -834,9 +834,9 @@ const BREC = { dv: [], n: 0 };
 
 // ------------------------------------------------------------------ etiquetas y barrios
 const labels = [];
+const addLabel = (txt, cls, x, y, z) => { const e = document.createElement('div'); e.className = 'lb ' + cls; e.textContent = txt; e.style.display = 'none'; $('labels').appendChild(e); labels.push({ e, k: cls, p: new BABYLON.Vector3(x, y, z), on: false }); };
 {
-  const box = $('labels');
-  const add = (txt, cls, x, y, z) => { const e = document.createElement('div'); e.className = 'lb ' + cls; e.textContent = txt; e.style.display = 'none'; box.appendChild(e); labels.push({ e, k: cls, p: new BABYLON.Vector3(x, y, z), on: false }); };
+  const add = addLabel;
   for (const b of META.barris) add(b.n, 'b', b.c[0], heightAt(b.c[0], b.c[1]) + 45, b.c[1]);
   for (const d of META.districtes) add(d.n, 'd', d.c[0], heightAt(d.c[0], d.c[1]) + 160, d.c[1]);
   for (const q of META.poi) add(q.n, 'p', q.p[0], q.p[1] + (q.n.indexOf('Torre') >= 0 ? 300 : q.n === 'Sagrada Família' ? 185 : 70), q.p[2]);
@@ -855,7 +855,9 @@ function barriAt(x, z) {
 // ctx.detail (materiales del shader de detalle) al iniciarse; cada módulo iniciado queda además en ctx.mods[id].
 const st = { yaw: 0, pitch: 0.5, walk: false, keys: {}, fly: null, showLabels: true, maxDist: 40000 };   // cámara y controles
 const CTX = { scene, engine, canvas, cam, st, SHOT, GEO: window.BCN_GEO, mkMat, mats, eachMat, out: OUT, setLDR, shNone: SH_NONE, relight: () => setHour(L.hour), reg, heightAt, WX, WZ, CH, SEG, ROFF, RCOL, META, PAL,
-  BREC, bldChunks, blobURL, L, matBld, mods: {} };
+  BREC, bldChunks, blobURL, L, matBld, mods: {},
+  // etiqueta de punto de interés (la usan los hitos): si ya hay una con ese texto, se mueve a (x, y, z)
+  label: (txt, x, y, z) => { const l = labels.find(q => q.k === 'p' && q.e.textContent === txt); if (l) l.p.set(x, y, z); else addLabel(txt, 'p', x, y, z); } };
 // Módulos con protocolo común { update(P, groundY, dt, frame), busy(), stats(), setRange?(q), flush?(P, groundY) }, en orden
 // de actualización. Si uno falla al iniciarse, la ciudad sigue funcionando sin él.
 const MODS = [];
@@ -870,6 +872,11 @@ CTX.hooks = async (what, glob, fb) => {
   try { const M = window[glob]; if (!M) throw new Error(glob + ' no se ha cargado'); return Object.assign(fb, await M.init(CTX)); }
   catch (e) { console.warn('Sin ' + what, e); return fb; }
 };
+// hitos (edificios y monumentos singulares): ANTES de las fachadas, porque los edificios que sustituyen dejan de tener
+// fachada de detalle (BREC.elig) y facades.js monta sus índices al iniciarse
+setMsg('Construyendo edificios singulares…', 0.965);
+await tick();
+const LMS = await addMod('lm', 'BCN_LANDMARKS', 'hitos');
 // fachadas de detalle (calidad Transeúnte al acercarse)
 setMsg('Preparando fachadas de detalle…', 0.97);
 await tick();
@@ -1042,7 +1049,7 @@ function flushAll() {
   }
 }
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
-  ctx: CTX, reg, mods: MODS, fx: FXS, streets: STS, light: LIGHT,
+  ctx: CTX, reg, mods: MODS, fx: FXS, streets: STS, light: LIGHT, lm: LMS ? LMS.api : null,
   detailBusy: () => MODS.some(o => !!o.m.busy && o.m.busy()),
   detailStats: () => { const o = { fx: null, st: null }; for (const { id, m } of MODS) o[id] = m.stats ? m.stats() : null; return o; },
   fxFlush: flushAll });

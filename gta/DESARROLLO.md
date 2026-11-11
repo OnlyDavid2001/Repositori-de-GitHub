@@ -1001,3 +1001,173 @@ Ojo: la hora de una vista (`hour`) se queda puesta para las siguientes de la mis
 - La viga y el tótem de una estación de Bicing usan una sola cota (la del tótem): en una calle en cuesta la viga no sigue la pendiente.
 - Las bolsas de basura pueden rozar el pedal del contenedor vecino.
 - Triángulos por encima del objetivo del encargo (§9.2).
+
+## 10. Hitos: edificios y monumentos singulares
+
+Los edificios y monumentos que se reconocen de lejos (Torre Glòries, Sagrada Família, Camp Nou, Colom…) no salen de los
+volúmenes genéricos: cada uno es una malla propia, modelada con pocas piezas, que **sustituye** a los volúmenes simples
+de ese sitio. Catálogo de los que hay que hacer: `HITOS.md` y `data/hitos_catalogo.json`.
+
+### 10.1 Ficheros y arranque
+
+| Fichero | Qué es | Dueño |
+| --- | --- | --- |
+| `landmarks.js` | Núcleo: `window.BCN_LM` (registro, tipos `K`, biblioteca `lib`), el shader de los hitos y el módulo `BCN_LANDMARKS`. | núcleo de hitos |
+| `landmarks_a.js` … `landmarks_e.js` | Los hitos de cada lote: solo llamadas a `BCN_LM.add({...})`. Un fichero por agente. | cada lote |
+| `tools/hitos/hoja.py` | Hojas de contacto de hitos (§10.8). | núcleo de hitos |
+
+- Orden de `<script>`: `…, lighting.js, landmarks.js, landmarks_a.js … landmarks_e.js, app.js`. Los lotes declaran sus
+  hitos **al cargar** (nivel superior del fichero); después de iniciarse el módulo, `add` avisa y no hace nada.
+- Arranque (`app.js`): `BCN_LANDMARKS.init(ctx)` va **antes** de `BCN_FACADES.init`, porque los edificios sustituidos
+  dejan de ser candidatos a fachada de detalle (`BREC.elig`) y `facades.js` monta sus índices al iniciarse. Por eso, al
+  construirse los hitos aún no existe `ctx.city`. Su módulo va en `MODS` con id `lm` (su `update` no hace nada).
+- Las mallas de los hitos están **siempre cargadas**, sin niveles de detalle ni fundidos: se ven desde toda la ciudad
+  (no les afecta `st.maxDist`). Proyectan sombra (`reg(malla, { cast: true, layer: 'lm', lm })`).
+- Un constructor que lanza una excepción (o que deja vértices no finitos, o que no emite nada) no tumba a los demás: se
+  avisa en la consola («Hito «id»: el constructor ha fallado…»), el hito no se crea y **sus edificios no se ocultan**.
+
+### 10.2 Cómo se añade un hito
+
+```js
+// landmarks_d.js (nivel superior del fichero)
+const { add, lib: L, K } = window.BCN_LM;
+add({ id: 'arc_triomf', nombre: 'Arc de Triomf', nivel: 'A', x: 13099.5, z: 14491.5, rot: 133, alto: 29.5,
+  noche: 'focos', edificios: [118700, 119009, 119010],
+  build(B, h, L) {
+    const LAD = [164, 80, 58], PIE = [206, 186, 152];
+    L.arco(B, 0, 0, -1, 29.5, 10, 24.5, 10.5, 21, { col: LAD, k: K.LADRILLO, aux: L.aux.ladrillo(0.3, 0.6) });
+    L.caja(B, 0, 0, 20.6, 29.9, 10.6, 2.8, 0, PIE, K.PIEDRA);                       // friso
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])                            // pináculos
+      L.cupula(B, sx * 13.8, sz * 4.1, 29.6, 1.15, 1.1, { lados: 8, col: [206, 168, 84], k: K.METAL });
+  } });
+```
+
+1. Busca en el catálogo su posición, giro, alto y los índices de los edificios que sustituye. Si hace falta, en el
+   arnés: `BCN.lm.near(x, z, r)` lista los edificios del registro con su centro a menos de `r` m (índice, clase, alto,
+   cota inferior, caja), del más cercano al más lejano.
+2. Modela en metros locales: origen en el centro de la base, `y = 0` en la cota de la base, `+Z` hacia el rumbo `rot` y
+   `+X` a su derecha. Empieza las piezas apoyadas en el suelo 1–2 m por debajo de `y = 0` si el terreno tiene pendiente
+   (`h.y(x, z)` da la cota del terreno en cualquier punto local).
+3. Míralo con la hoja de contacto (§10.8) de día y a las 22:00, y comprueba la posición contra las calles en una vista aérea.
+
+### 10.3 La ficha
+
+| Campo | Qué es |
+| --- | --- |
+| `id` | Único, `minusculas_y_digitos`. Lo usan `BCN.lm.view(id)` y la hoja de contacto. |
+| `nombre` | En catalán. Sale como etiqueta de punto de interés sobre el hito (si ya hay una con ese texto, se mueve ahí). `etiqueta: false` la quita. |
+| `x`, `z` | Centro de la base, en el mundo (m). |
+| `rot` | Grados: rumbo del eje `+Z` local, desde el norte hacia el este (0 = `+Z` al norte; 90 = al este). |
+| `alto` | Alto total (m): encuadre de la vista, caída de los focos y altura de la etiqueta. `ancho`, `largo` (opcionales): solo para el encuadre. |
+| `y` / `dy` | Opcionales: cota absoluta de la base o desplazamiento sobre `heightAt(x, z)` (por defecto, la cota del terreno en el centro). |
+| `noche` | `'focos'` (monumento bañado con luz cálida desde abajo, que cae con la altura) · `'led'` (fachada encendida de color: `led: '#rrggbb'`, o sin `led` el color de cada vértice saturado) · `'ventanas'` (oficinas y hoteles: huecos de `VENTANAS`, `CORTINA` y `METAL` encendidos con `homeOn`) · `'nada'`. Todo con `uDusk`; focos y LED bajan de madrugada (`uLate`). Con `focos` las ventanas también se encienden, más flojas. |
+| `edificios` | Índices de `BREC` que sustituye: se ocultan en todos los pases (pantalla y sombras: sus vértices se colapsan una vez, en el búfer del trozo) y dejan de tener fachada de detalle. |
+| `nivel` | `'A'` modelo propio · `'B'` arquetipo con parámetros · `'C'` retoque del volumen existente. Informativo. |
+| `build(B, h, lib)` | El constructor: emite triángulos en `B` (un `GB` de `geo.js` con origen 0, 0). Sin `build` (nivel C) no hay malla. |
+| `ocultar: false` | No oculta los edificios (nivel C). Con `retoque: { color: '#rrggbb', estilo: 0–15, alto: m }` cambia su color, su estilo de `FS_BLD` (3 vidrio, 1 liso, 0 viviendas…, la clase del edificio) y su altura sobre su base. `fachada: false`: además, sin fachada de detalle. |
+| `sombra: false` | La malla no proyecta sombra (piezas finas o enormes y planas). |
+
+### 10.4 Lo que recibe el constructor: `h`
+
+`h.id`, `h.x`, `h.z`, `h.yb` (cota absoluta de la base), `h.rot`, `h.alto`, `h.ancho`, `h.largo`, `h.seed` (entero estable
+del id) · `h.y(lx, lz)`: cota del terreno en un punto local, relativa a la base · `h.edif`: los edificios que sustituye,
+`[{ b, cls, alto, y0, plantas: [[[x, z], …], …] }]` en coordenadas locales (alto y cota inferior relativos a la base) ·
+`h.plantas`: el primer anillo de cada uno (para extruir la planta real: `L.prisma(B, h.plantas[0], 0, 30, …)`) ·
+`h.mundo(lx, lz)` → `[x, z]` de mundo y `h.local(x, z)` al revés · `h.R(a?, b?)`: azar ya sembrado con el id (úsalo
+solo dentro de `build`).
+
+### 10.5 Tipos de material: `BCN_LM.K` y sus auxiliares
+
+El shader de los hitos (`FS_LM`, en `landmarks.js`) es propio, no el de las fachadas: los ids de `K` son de los hitos y no
+chocan con los de `BCN_GEO.K`. Formato de vértice = el de `GB` (color con el tipo en el alfa, auxiliar, normal con marca
+de suave), así que valen todas las primitivas de `geo.js`. Los patrones se dibujan en metros de la cara (a lo largo del
+muro y en altura; en las cubiertas, en planta) y **se funden con su media cuando ya no caben en el píxel** (no hacen
+moaré de lejos). En las superficies suaves (`rev`, `aguja`, `cupula`…) la coordenada horizontal es el arco alrededor del
+eje vertical **del hito**: las rejillas regulares solo salen bien en piezas centradas en el origen.
+
+| `K.` | Qué pinta | Auxiliar (`L.aux.…`) |
+| --- | --- | --- |
+| `PIEDRA` | Sillares a soga con juntas y variación por pieza. | `piedra(hilada 0,6, sillar 1,2)` |
+| `LADRILLO` | Hiladas de ladrillo (de lejos, el tono con las juntas). | `ladrillo(hilada 0,3, pieza 0,6)` |
+| `LISO` | Estuco, hormigón o chapa lisa (algo de ruido). | `liso(lado)`: despiece de paneles opcional |
+| `VENTANAS` | Muro con rejilla de huecos (vidrio oscuro). De noche, ventanas de piso (`homeOn`). | `ventanas(planta 3,5, vano 3, ancho 0,45, alto 0,55)` (ancho y alto: fracción del vano y de la planta) |
+| `CORTINA` | Muro cortina: montantes, forjados y vidrio reflectante (Fresnel, `envRefl` vía `shade` con algo de metal), con tono por paño. De noche, paños encendidos. En las caras horizontales, cubierta gris. | `cortina(planta 3,8, montante 1,5, variación 0,35)` |
+| `METAL` | Paneles o chapa satinada: juntas, variación de tono por panel y huecos sueltos (ventanas). | `panel(lado 1,5, variación 0–1, fracción de huecos 0–1)` |
+| `TEJA` | Teja: hiladas y variación por pieza. | — |
+| `TRENCADIS` | Mosaico de cerámica rota: teselas blancas, azules, ocres, verdes y rojas sobre el color base. | — |
+| `CESPED` | Franjas de corte (campo de fútbol). | `cesped(franja 5)` |
+| `GRADA` | Filas de asientos (por la altura) y sectores de color alrededor del eje del hito. | `grada(fila 0,85, sectores 16)` |
+| `AGUA` | Agua casi especular con oleaje suave. | — |
+| `EMISIVO` | Luz propia del color del vértice. | `emisivo(ganancia 1, soloNoche)` |
+
+`lib.aux4(x, y, z, w)` da un auxiliar a mano (bytes 0–255; los tipos que leen metros los leen en decímetros).
+
+### 10.6 Noche
+
+Por hito, en un uniforme por malla (`uLmN` = modo y color LED, `uLmH` = alto y semilla, fijados en `onBindObservable`,
+§4.13). Las reglas son las del §7.6: `uDusk` enciende, `uLate` atenúa de madrugada, `homeOn(h)` decide cada ventana
+(con `homeFrac()` en las oficinas de muro cortina, en paños sueltos). Además, el aura de la calle (`uGlow.y`) baña la
+parte baja de los muros como en los volúmenes simples. Las cubiertas no se encienden.
+
+### 10.7 Biblioteca: `BCN_LM.lib` (tercer argumento de `build`)
+
+Todas reciben `B` primero, trabajan en metros locales del hito y aceptan colores `[r, g, b]` o `'#rrggbb'`. Los ángulos
+de las piezas (`ang`) van en grados con el mismo convenio que `rot` (rumbo de su `+Z`). Triángulos aproximados entre
+paréntesis.
+
+| Función | Qué hace |
+| --- | --- |
+| `rect(ancho, largo)` · `elipse(rx, rz, n)` · `poligono(r, n, ang0)` · `mover(planta, dx, dz, ang, escala)` | Plantas `[[x, z], …]` centradas, y moverlas, girarlas o escalarlas (`escala` número o `[sx, sz]`). |
+| `prisma(B, planta, y0, y1, col, k, o)` | Extruye una planta; `y1` puede ser una función `(x, z) → y` (cubierta inclinada). `o = { aux, techo, kTecho, auxTecho, sinTecho, suelo }`. (2 por lado + tapa) |
+| `loft(B, niveles, col, k, o)` | Une plantas con el mismo número de vértices a distintas alturas, `niveles = [[y, planta], …]` de abajo arriba: lo que se estrecha, se tuerce o se curva en altura (la vela del Hotel W). `o` como en `prisma`. (2 por lado y nivel + tapa) |
+| `caja(B, x, z, y0, ancho, largo, alto, ang, col, k, o)` | Prisma rectangular. (12) |
+| `extruir(B, perfil, d0, d1, col, k, o)` | Perfil vertical `[[u, y], …]` extruido en `Z` de `d0` a `d1`; `o = { aux, x, z, ang, tapas }`. |
+| `torre(B, o)` | `o = { x, z, ang, y0, alto, planta \| ancho + largo \| radio + lados, col, k, aux, techo, tramos: [[desde, escala], …], corona: { alto, escala, col, k } }`: prisma con retranqueos y coronación. |
+| `aguja(B, x, z, y0, alto, r, o)` | Huso de revolución: recto hasta `recto` y después `r·(1 − s^pot)^exp`. `pot 1, exp 0,5` paraboloide (Gaudí) · `pot 2, exp 0,5` bala · `pot 1, exp 1` cono. `o = { lados, pasos, recto, pot, exp, col, cols: [[t, color], …], cortes, k, aux, sx, sz, remate: { alto, r, col, k, forma } }`. (2·lados por anillo) |
+| `cupula(B, x, z, y0, r, alto, o)` | Media elipse de revolución; `o.linterna = { r, alto, col, k }`. |
+| `tambor(B, x, z, y0, y1, r, o)` | Cilindro o tronco de cono (`o.r1`) con tapa; `o.a0`, `o.a1`: arco parcial en radianes (0 = `+X`, π/2 = `+Z`). |
+| `cubierta(B, x, z, y0, ancho, largo, alto, o)` | `o.tipo`: `'dos'` (cumbrera a lo largo de `Z`), `'cuatro'`, `'boveda'`, `'piramide'`; `o = { ang, col, k (TEJA), vuelo, colHastial }`. |
+| `piramide(B, x, z, y0, ancho, largo, alto, o)` | Pirámide (chapiteles, remates). |
+| `nave(B, o)` | Iglesia a lo largo de `+Z`: nave, tejado a dos aguas, ábside en `+Z`, 0–2 campanarios con chapitel en la fachada (`−Z`). `o = { x, z, ang, ancho, largo, alto, col, k, tejado, abside, campanarios, altoCamp, ladoCamp, agujaCamp, colCamp }`. (~150) |
+| `columnata(B, x0, z0, x1, z1, y0, alto, n, r, o)` | `n` columnas con entablamento. `o = { col, k, lados, entablamento, colEnt }`. |
+| `arco(B, x, z, y0, ancho, fondo, alto, luz, altoLuz, o)` | Bloque con un vano de medio punto (clave a `altoLuz`); el paso va a lo largo de `Z`. `o = { ang, col, k, aux, pasos }`. |
+| `chimenea(B, x, z, y0, alto, r0, r1, o)` | Fuste troncocónico con boca oscura; `o.bandas = [[y0, y1, color], …]` (franjas). |
+| `grada(B, cx, cz, rx0, rz0, y0, rx1, rz1, y1, o)` | Anillo de graderío elíptico con pendiente (borde interior a `y0`, exterior a `y1`) y muro exterior hasta el suelo. `o = { lados, ang, col, k, aux, muro, kMuro, auxMuro, sinMuro, a0, a1 }` (tramo parcial en grados). (4·lados) |
+| `anillo(B, cx, cz, r0, r1, y, o)` · `disco(B, cx, cz, r, y, o)` | Corona plana (o inclinada con `o.y1`) y disco; `o.rz` = proporción `Z/X` (elíptico). Cubiertas de estadio, plazas, fuentes. |
+| `mastil(B, x, z, y0, alto, r, o)` | Fuste afilado con vientos: `o.vientos = { n, alturas, dist, col }`. |
+| `esfera(B, x, y, z, r, o)` | Esfera o elipsoide (`o.sy`). |
+| `poly(B, pts, col, k, aux)` · `q4(B, a, b, c, d, col, k, aux)` · `pv` / `tri` | Polígono plano 3D cualquiera (triangulado con earcut), cuadrilátero, y vértice/triángulo sueltos. |
+| `xf(B, v0, x, z, ang, sx, sz, dy)` | Transforma lo emitido desde el vértice `v0` (`B.nv` antes de empezar): escala, gira, traslada. Así se modela una pieza centrada y luego se coloca. |
+| `color`, `mixc`, `shade`, `ramp(cols, t)` | Colores: `'#rrggbb'` → `[r, g, b]`, mezcla, aclarar/oscurecer, degradado por tramos. |
+| `F0, quad, rev, tube, sphere, obox, bar, cyl` | Las primitivas de `geo.js` (§6.6), con `F0` = coordenadas locales del hito. |
+
+Ejemplos completos y comentados: Torre Glòries y Hotel W (`landmarks_c.js`) y Arc de Triomf (`landmarks_d.js`).
+
+### 10.8 Herramientas y pruebas
+
+```bash
+python3 tools/hitos/hoja.py torre_glories,hotel_w --noche --out tools/out/mis_hitos    # día (16 h) y 22:00, rumbos 210 y 30
+python3 tools/hitos/hoja.py --lote c --rumbos 120,300 --k 3 --elev 25 --out tools/out/lote_c
+Q='?lmtest=1' python3 tools/hitos/hoja.py hotel_w --rumbos 30                          # fichas de prueba (abajo)
+```
+
+- `hoja.py` genera las vistas (órbita a `k` × el tamaño del hito, a `elev` grados, desde cada rumbo; `BCN.st.maxDist` =
+  40 000), lanza el arnés, imprime errores, avisos y `BCN.lm.stats()`, y monta una hoja rotulada (`<out>.jpg`; capturas
+  sueltas `<out>_<id>_<rumbo>_<hora>.jpg`). Pocas vistas por ejecución: cada una cuesta 0,5–2 min.
+- En el arnés o la consola: `BCN.lm.view(id, rumbo?, k?, elev?)` → vista para `applyView`/`flyTo` · `BCN.lm.stats()` →
+  `{ hitos, fichas, tris, errores: [ids], ocultos, retocados }` · `BCN.lm.list()` · `BCN.lm.get(id)` · `BCN.lm.near(x, z, r)`.
+- `?lmtest=1` en la URL añade tres fichas de prueba junto al Hotel W: `prueba_falla` (el constructor lanza) y
+  `prueba_nan` (vértices NaN), que deben acabar en `errores` y dejar sus volúmenes (el basamento del hotel) intactos, y
+  `prueba_retoque` (nivel C: el volumen 52541 pasa a azul, estilo vidrio y 60 m).
+
+### 10.9 Límites y trampas
+
+- **Triángulos**: un icono, 3 000–12 000; uno normal, 300–2 000; todos juntos, ≤ 400 000 (`BCN.lm.stats().tris`). Una
+  malla y una llamada de dibujo por hito.
+- Las caras planas se ven por los dos lados (la normal se voltea hacia la cámara); las suaves (`rev`, `tube`, `sphere`,
+  `aguja`…) no: tienen que ser cerradas o mirar hacia fuera.
+- `rot` gira todo el hito; `ang` de las piezas, la pieza dentro del hito. En la duda, una vista aérea (`elev` 70).
+- Los volúmenes sustituidos siguen en `ctx.city` (cotas de acera, `coverAt`): solo dejan de verse y de tener fachada.
+- El retoque de nivel C cambia los datos por vértice del volumen simple: color, estilo (el alfa) y altura. No puede
+  cambiar la planta ni añadir detalle; para eso, un hito de nivel B.
+- Nada de rótulos, escudos ni logotipos reales; los nombres de los sitios sí (en la etiqueta).
