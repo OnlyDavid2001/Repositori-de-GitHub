@@ -1,0 +1,5759 @@
+{
+ "version": 2,
+ "etapa": "R2",
+ "nota": "Cada ficha: id, nombre (en catalán), lote (a…e), nivel (A/B/C), cat, lat, lon, confianza (de la posición), alto, ancho, largo (m reales), rot (rumbo del eje largo, grados desde el norte hacia el este, 0–180), forma, rasgos, colores, noche, fuente, y opcionalmente nota. x, z, y, edificios y en_datos los añade la etapa R2 (encaje con los datos del juego): `node tools/hitos/encaje.js` escribe tools/hitos/encaje.json y este script lo mezcla (orden: catalogo.py → encaje.js → catalogo.py). Fuentes de la posición: «cawiki» / «eswiki» / «enwiki» = coordenadas de la API de Wikipedia (GeoData) consultadas el 2026-11-11; «memoria» = de memoria (puede desviarse 100–200 m; R2 la corrige con la planta real o el poi del juego). Las medidas de R1 (alto, ancho, largo, rot) eran casi todas de memoria; R2 corrige ancho, largo y rot con la planta del registro cuando la selección de edificios es fiable (los valores de R1 quedan en `r1`) y guarda lo medido en `planta` (ancho, largo, rot, area, alto en los datos, clases). x, z (m, mundo) y y (cota del terreno) son los del juego; `edificios` = índices de BREC (app.js) que el hito sustituye o retoca; `en_datos` = qué hay hoy; `encaje` = cómo se eligió. Ejes de la cuadrícula del Eixample: calles paralelas al mar ≈ 45°, calles mar-montaña ≈ 135°. Diagonal ≈ 72°.",
+ "ajuste": {
+  "metodo": "UTM 31N (ETRS89) + traslación",
+  "ox": -418400.68,
+  "oz": -4567997.59,
+  "rms": 11,
+  "residuos": [
+   {
+    "n": "Sagrada Família",
+    "ex": -2.7,
+    "ez": 9.4
+   },
+   {
+    "n": "Torre Glòries",
+    "ex": 4.8,
+    "ez": 4.2
+   },
+   {
+    "n": "Camp Nou",
+    "ex": -2.7,
+    "ez": -8.5
+   },
+   {
+    "n": "Castell de Montjuïc",
+    "ex": -0.3,
+    "ez": 6.9
+   },
+   {
+    "n": "Palau Nacional (MNAC)",
+    "ex": -17.1,
+    "ez": -16.3
+   },
+   {
+    "n": "Arc de Triomf",
+    "ex": -4.2,
+    "ez": 3.8
+   },
+   {
+    "n": "Catedral",
+    "ex": 15.4,
+    "ez": -9.3
+   },
+   {
+    "n": "Hotel W",
+    "ex": 10.6,
+    "ez": 9.7
+   },
+   {
+    "n": "Estadi Olímpic",
+    "ex": -3.8,
+    "ez": 5.1
+   },
+   {
+    "n": "Estació de Sants",
+    "ex": -0.6,
+    "ez": -8.9
+   },
+   {
+    "n": "Plaça de Catalunya",
+    "ex": -3.4,
+    "ez": 2.9
+   },
+   {
+    "n": "Plaça d'Espanya",
+    "ex": 8.1,
+    "ez": 2.6
+   },
+   {
+    "n": "Torre de Collserola (meta.stats)",
+    "ex": -8.6,
+    "ez": -1.8
+   },
+   {
+    "n": "Sagrat Cor (meta.stats)",
+    "ex": 4.2,
+    "ez": 0.2
+   }
+  ]
+ },
+ "hitos": [
+  {
+   "id": "sagrada_familia",
+   "nombre": "Sagrada Família",
+   "lote": "a",
+   "nivel": "A",
+   "cat": "templo",
+   "lat": 41.40369,
+   "lon": 2.17433,
+   "confianza": "alta",
+   "alto": 172.5,
+   "ancho": 84,
+   "largo": 142,
+   "rot": 136,
+   "forma": "Templo ACABADO en cruz latina (nave de 5 naves, crucero de 60 m, ábside al NO sobre Provença) con 18 torres: 12 de apóstoles en las fachadas del Nacimiento (NE, c/ Marina), Pasión (SO, c/ Sardenya) y Gloria (SE, c/ Mallorca, la principal, con pórtico ancho), de 98–112 m; 4 de evangelistas de 135 m y la de María de 138 m alrededor de la central de Jesucristo de 172,5 m; claustro perimetral bajo.",
+   "rasgos": [
+    "torre central de 172,5 m rematada por una cruz de cuatro brazos",
+    "torres de apóstoles de pan de azúcar con pináculos de trencadís",
+    "evangelistas con su símbolo y María con la estrella",
+    "silueta escalonada de agujas, piedra ocre"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#a39a8a",
+    "#e6dcc4",
+    "#d24b3a",
+    "#e8c547"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Hoy el juego tiene 19 agujas OSM + naves simplificadas (meta.stats). Torre central y Gloria se modelan como acabadas. R2: la planta del juego está a 31 m de la coordenada lat/lon; x, z son los de la planta.",
+   "x": 12597.9,
+   "z": 15875.2,
+   "y": 30.5,
+   "edificios": [
+    136884,
+    136885,
+    138817,
+    138818,
+    138820,
+    139042,
+    139043,
+    139044,
+    139045,
+    139046,
+    139047,
+    139048,
+    139049,
+    139050,
+    139051,
+    139052,
+    139053,
+    139054,
+    139055,
+    139056,
+    139057,
+    139058,
+    139059,
+    139060,
+    139061,
+    139062,
+    139063,
+    139064,
+    139065,
+    139066,
+    139067,
+    139068,
+    139069,
+    139070,
+    139071,
+    139072,
+    139073,
+    139074,
+    139075,
+    139076,
+    139077,
+    139078,
+    139079,
+    139080,
+    139081,
+    139082,
+    139083,
+    139084,
+    139085,
+    139086,
+    139087,
+    139088,
+    139089,
+    139090,
+    139091,
+    139092,
+    139093,
+    139094,
+    139095,
+    139096,
+    139097,
+    139098,
+    139099,
+    139100,
+    139101,
+    139102,
+    139103,
+    139104,
+    139105,
+    139106,
+    139107,
+    139108,
+    139109,
+    139110,
+    139111,
+    139112,
+    139113,
+    139114,
+    139115,
+    139116,
+    139117,
+    139118,
+    139119,
+    139120,
+    139121,
+    139122,
+    139123,
+    139124,
+    139125,
+    139126,
+    139127,
+    139128,
+    139129,
+    139130,
+    139131,
+    139132,
+    139133,
+    139134,
+    139135,
+    139136,
+    139137,
+    139138,
+    139139,
+    139140,
+    139141,
+    139142,
+    139143,
+    139144,
+    139145,
+    139146,
+    139147,
+    139148,
+    139149,
+    139150,
+    139151,
+    139152,
+    139153,
+    139154,
+    139155,
+    139156,
+    139157,
+    139158,
+    139159,
+    139160,
+    139161,
+    139162,
+    139163,
+    139164,
+    139165,
+    139166,
+    139167,
+    139168,
+    139169,
+    139170,
+    139171,
+    139172,
+    139173,
+    139174,
+    139176,
+    139177,
+    139178,
+    139179,
+    139180,
+    139181,
+    139182,
+    139183,
+    139184,
+    139185
+   ],
+   "en_datos": "2 volúmenes, 8 295 m² en total, hasta 173 m (+146 partes de OSM); clase 11 , 14",
+   "planta": {
+    "ancho": 84,
+    "largo": 142,
+    "rot": 136,
+    "area": 8295,
+    "alto": 172.5,
+    "clases": [
+     11,
+     14
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 60,
+    "largo": 95,
+    "rot": 135
+   }
+  },
+  {
+   "id": "casa_mila",
+   "nombre": "Casa Milà (La Pedrera)",
+   "lote": "a",
+   "nivel": "A",
+   "cat": "edificio",
+   "lat": 41.39528,
+   "lon": 2.16167,
+   "confianza": "alta",
+   "alto": 34,
+   "ancho": 35,
+   "largo": 58,
+   "rot": 48,
+   "forma": "Bloque de esquina en el chaflán Pg. de Gràcia / Provença; fachada continua y ondulada de piedra caliza crema, sin aristas, con balcones de hierro forjado oscuro que parecen algas; desván con ventanitas y azotea ondulada con escaleras y chimeneas «guerreros».",
+   "rasgos": [
+    "fachada ondulada como olas de piedra",
+    "balcones de hierro negro enmarañado",
+    "chimeneas-guerrero en la azotea"
+   ],
+   "colores": [
+    "#d8ccb4",
+    "#efe9dc",
+    "#3a3a32"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 11535.7,
+   "z": 14987.7,
+   "y": 37.6,
+   "edificios": [
+    112845,
+    112869,
+    112891,
+    112898,
+    112938,
+    112948,
+    112964,
+    112975,
+    112981,
+    112989,
+    112992,
+    112993,
+    113010
+   ],
+   "en_datos": "1 volumen de 1 674 m² y 30 m (+12 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 35,
+    "largo": 58,
+    "rot": 48,
+    "area": 1674,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 45,
+    "largo": 50,
+    "rot": 45
+   }
+  },
+  {
+   "id": "casa_batllo",
+   "nombre": "Casa Batlló",
+   "lote": "a",
+   "nivel": "A",
+   "cat": "edificio",
+   "lat": 41.39158,
+   "lon": 2.16492,
+   "confianza": "alta",
+   "alto": 32,
+   "ancho": 15,
+   "largo": 30,
+   "rot": 46,
+   "forma": "Casa entre medianeras en Pg. de Gràcia 43 (lado SO, mira al NE): planta baja y principal con columnas en forma de hueso, fachada de trencadís azul-verdoso con balcones-máscara, remate de cubierta como lomo de dragón de escamas cerámicas y torrecilla con cruz de cuatro brazos a un lado.",
+   "rasgos": [
+    "lomo de dragón de escamas en la cubierta",
+    "fachada azul-verde brillante",
+    "balcones-máscara y columnas-hueso"
+   ],
+   "colores": [
+    "#5f9fb5",
+    "#7aa88a",
+    "#d9a441",
+    "#c9c2b0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Entre medianeras: frente de 15 m.",
+   "x": 11775.8,
+   "z": 14563.1,
+   "y": 28.9,
+   "edificios": [
+    114428
+   ],
+   "en_datos": "1 volumen de 303 m² y 20 m; clase 0",
+   "planta": {
+    "ancho": 15,
+    "largo": 30,
+    "rot": 46,
+    "area": 303,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "largo": 35,
+    "rot": 45
+   }
+  },
+  {
+   "id": "casa_amatller",
+   "nombre": "Casa Amatller",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.39145,
+   "lon": 2.16501,
+   "confianza": "alta",
+   "alto": 28,
+   "ancho": 17,
+   "largo": 18,
+   "rot": 136,
+   "forma": "Casa entre medianeras junto a la Batlló, con hastial escalonado de estilo flamenco que corona la fachada, esgrafiado rosa y ocre con cerámica brillante.",
+   "rasgos": [
+    "hastial escalonado",
+    "fachada rosada con esgrafiados"
+   ],
+   "colores": [
+    "#e6c9a8",
+    "#b5544a",
+    "#c9b48a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 11788.5,
+   "z": 14552.5,
+   "y": 28.7,
+   "edificios": [
+    114377
+   ],
+   "en_datos": "1 volumen de 179 m² y 20 m; clase 0",
+   "planta": {
+    "ancho": 17,
+    "largo": 18,
+    "rot": 136,
+    "area": 179,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 18,
+    "largo": 30,
+    "rot": 45
+   }
+  },
+  {
+   "id": "casa_lleo_morera",
+   "nombre": "Casa Lleó i Morera",
+   "lote": "a",
+   "nivel": "C",
+   "cat": "edificio",
+   "lat": 41.39124,
+   "lon": 2.16553,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 19,
+   "largo": 33,
+   "rot": 47,
+   "forma": "Casa de esquina Pg. de Gràcia / Consell de Cent, piedra clara con mucha escultura y una tribuna-templete redonda en la esquina.",
+   "rasgos": [
+    "templete de esquina",
+    "piedra clara muy ornamentada"
+   ],
+   "colores": [
+    "#e3d9c6",
+    "#b8a57e"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 11821.7,
+   "z": 14518.1,
+   "y": 27.5,
+   "edificios": [
+    114478,
+    115079
+   ],
+   "en_datos": "1 volumen de 395 m² y 17 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 19,
+    "largo": 33,
+    "rot": 47,
+    "area": 395,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 20,
+    "largo": 30,
+    "rot": 45
+   }
+  },
+  {
+   "id": "park_guell",
+   "nombre": "Park Güell (zona monumental)",
+   "lote": "a",
+   "nivel": "A",
+   "cat": "parque",
+   "lat": 41.4136,
+   "lon": 2.1528,
+   "confianza": "media",
+   "alto": 20,
+   "ancho": 90,
+   "largo": 160,
+   "rot": 340,
+   "forma": "Conjunto en ladera: a la entrada (c/ Olot, al S) dos pabellones de cuento con cubiertas onduladas de trencadís marrón y blanco (uno con torre y cruz de cuatro brazos); escalinata doble con el dragón de trencadís; encima, la sala hipóstila de 86 columnas dóricas que sostiene la gran plaza, rematada por el banco ondulado de trencadís de colores.",
+   "rasgos": [
+    "pabellones de cuento con tejados de «nata»",
+    "banco ondulado multicolor al borde de la plaza",
+    "columnata dórica bajo la plaza",
+    "dragón en la escalinata"
+   ],
+   "colores": [
+    "#c79a6b",
+    "#f2efe6",
+    "#4f8fc0",
+    "#d24b3a",
+    "#8a6a4a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "La coordenada es el centro del parque; la zona monumental está algo al S/SE (≈ 41.4135, 2.1530). Poi del juego «Park Güell». R2: la planta del juego está a 30 m de la coordenada lat/lon; x, z son los de la planta. R2: Recinto: se cuentan los pabellones y construcciones del núcleo monumental (sala hipóstila, entrada); el banco y la plaza no son volúmenes.",
+   "x": 10794.5,
+   "z": 16990.8,
+   "y": 133,
+   "edificios": [
+    164249,
+    164254,
+    164255,
+    164256,
+    164272,
+    164377,
+    164400,
+    164407,
+    164417,
+    164419,
+    164430,
+    164454,
+    164474,
+    164478,
+    164491,
+    164494,
+    164561,
+    164601,
+    164645,
+    164646,
+    164647,
+    164648,
+    164649
+   ],
+   "en_datos": "22 volúmenes, 4 088 m² en total, hasta 20 m (+1 parte de OSM); clase 0 , 2 , 6 , 1",
+   "planta": {
+    "ancho": 111,
+    "largo": 182,
+    "rot": 135,
+    "area": 4088,
+    "alto": 20.2,
+    "clases": [
+     0,
+     2,
+     6,
+     1
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "sant_pau",
+   "nombre": "Recinte Modernista de Sant Pau",
+   "lote": "a",
+   "nivel": "A",
+   "cat": "hospital",
+   "lat": 41.4128,
+   "lon": 2.1744,
+   "confianza": "alta",
+   "alto": 50,
+   "ancho": 300,
+   "largo": 400,
+   "rot": 0,
+   "forma": "Ciudad-hospital al final de la Av. Gaudí, girada 45° respecto al Eixample (ejes N-S): pabellones de ladrillo rojo con cúpulas y torres revestidas de cerámica verde y ocre, unidos por jardines; pabellón de Administración a la entrada con torre-campanario central y dos alas.",
+   "rasgos": [
+    "torre central del pabellón de entrada",
+    "cúpulas de cerámica verde y amarilla",
+    "ladrillo rojo"
+   ],
+   "colores": [
+    "#b5543a",
+    "#d9a441",
+    "#3f8f6b",
+    "#e0d2b0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Alto de la torre de Administración: de memoria (baja). Poi del juego «Hospital de Sant Pau» (≈ 150 m al S de esta coordenada: será la entrada). R2: Recinto modernista: se cuentan sus pabellones. El poi «Hospital de Sant Pau» del juego marca la Administració, ~150 m al S del centro.",
+   "x": 12599.2,
+   "z": 16904.1,
+   "y": 61.3,
+   "edificios": [
+    155107,
+    155298,
+    155299,
+    155300,
+    155301,
+    155302,
+    155495,
+    155500,
+    155501,
+    155504,
+    155509,
+    155514,
+    155522,
+    155523,
+    155524,
+    155528,
+    155541,
+    155585,
+    155595,
+    155598,
+    155607,
+    155631,
+    155833,
+    155836,
+    155839,
+    155840,
+    155841,
+    155845,
+    155846,
+    155853,
+    155866,
+    155874,
+    155913,
+    155916,
+    155919,
+    155922,
+    155927,
+    155928,
+    155932,
+    155935,
+    155936,
+    155937,
+    155938,
+    155940,
+    155948,
+    155949,
+    155951,
+    155952,
+    155955,
+    155960,
+    155964,
+    155965,
+    155969,
+    155972,
+    155975,
+    155977,
+    155981,
+    155997,
+    155998,
+    156005,
+    156012,
+    156013,
+    156014,
+    156020,
+    156024,
+    156026,
+    156028,
+    156029,
+    156034,
+    156036,
+    156129,
+    166277,
+    166278,
+    166279,
+    166286,
+    166287,
+    166293,
+    166294,
+    166295,
+    166296,
+    166297,
+    166302,
+    166303,
+    166304,
+    166307,
+    166308,
+    166309,
+    166311,
+    166312,
+    166313,
+    166314,
+    166315,
+    166316,
+    166317,
+    166319,
+    166320,
+    166321,
+    166323,
+    166325,
+    166332,
+    166333,
+    166335,
+    166336,
+    166337,
+    166339,
+    166340,
+    166344,
+    166345,
+    166346,
+    166348,
+    166349,
+    166351,
+    166352,
+    166355,
+    166357,
+    166358,
+    166360,
+    166364,
+    166366,
+    166367,
+    166368,
+    166369,
+    166370,
+    166371,
+    166372,
+    166373,
+    166374,
+    166375,
+    166376,
+    166377,
+    166378,
+    166379,
+    166380,
+    166381,
+    166382,
+    166383,
+    166384,
+    166385,
+    166386,
+    166388,
+    166390,
+    166400,
+    166401,
+    166404,
+    166405,
+    166407,
+    166785,
+    166789,
+    167173,
+    167182,
+    168055,
+    168166,
+    168169,
+    168262,
+    168263,
+    168264,
+    168265,
+    168480,
+    168481,
+    168482,
+    168483,
+    168538,
+    168609
+   ],
+   "en_datos": "152 volúmenes, 29 227 m² en total, hasta 33 m (+11 partes de OSM); clase 0 , 1 , 2",
+   "planta": {
+    "ancho": 319,
+    "largo": 372,
+    "rot": 179,
+    "area": 29227,
+    "alto": 33,
+    "clases": [
+     0,
+     1,
+     2
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "palau_musica",
+   "nombre": "Palau de la Música Catalana",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "teatro",
+   "lat": 41.38767,
+   "lon": 2.17528,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 28,
+   "largo": 59,
+   "rot": 137,
+   "forma": "Edificio de ladrillo visto rojo en una esquina estrecha de Sant Pere més alt; columnas cubiertas de mosaico floral, grupo escultórico en la esquina y cuerpo de vidrio moderno anexo.",
+   "rasgos": [
+    "ladrillo rojo con mosaicos de flores",
+    "esquina con grupo escultórico"
+   ],
+   "colores": [
+    "#b5543a",
+    "#d9a441",
+    "#4f8f6b",
+    "#e0d2b0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Entre medianeras y calles estrechas: solo se ve de cerca.",
+   "x": 12647.4,
+   "z": 14115.6,
+   "y": 10.5,
+   "edificios": [
+    97284
+   ],
+   "en_datos": "1 volumen de 1 294 m² y 17 m; clase 2",
+   "planta": {
+    "ancho": 28,
+    "largo": 59,
+    "rot": 137,
+    "area": 1294,
+    "alto": 17,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 35,
+    "largo": 50,
+    "rot": 45
+   }
+  },
+  {
+   "id": "casa_vicens",
+   "nombre": "Casa Vicens",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "casa",
+   "lat": 41.40349,
+   "lon": 2.15064,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 19,
+   "largo": 22,
+   "rot": 60,
+   "forma": "Casa de aire mudéjar en Gràcia: ladrillo y franjas de azulejo verde y blanco a cuadros con claveles amarillos, torrecillas y miradores en las esquinas.",
+   "rasgos": [
+    "ajedrezado de azulejo verde y blanco",
+    "torrecillas de esquina"
+   ],
+   "colores": [
+    "#2f7a4a",
+    "#f0ece0",
+    "#b5543a",
+    "#e2b93b"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10603,
+   "z": 15898.1,
+   "y": 72.1,
+   "edificios": [
+    127731,
+    127733,
+    131450
+   ],
+   "en_datos": "1 volumen de 282 m² y 11 m (+2 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 19,
+    "largo": 22,
+    "rot": 60,
+    "area": 282,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 18,
+    "rot": 45
+   }
+  },
+  {
+   "id": "palau_guell",
+   "nombre": "Palau Güell",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.37882,
+   "lon": 2.17439,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 24,
+   "largo": 27,
+   "rot": 38,
+   "forma": "Palacio entre medianeras en Nou de la Rambla: fachada de piedra gris oscura con dos arcos parabólicos de entrada; azotea con una veintena de chimeneas de trencadís de colores y una aguja cónica central.",
+   "rasgos": [
+    "dos arcos parabólicos",
+    "chimeneas de colores y aguja central"
+   ],
+   "colores": [
+    "#8c8778",
+    "#d24b3a",
+    "#e8c547",
+    "#4f8fc0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 12550.1,
+   "z": 13139.3,
+   "y": 6.7,
+   "edificios": [
+    79036
+   ],
+   "en_datos": "1 volumen de 549 m² y 17 m; clase 2",
+   "planta": {
+    "ancho": 24,
+    "largo": 27,
+    "rot": 38,
+    "area": 549,
+    "alto": 17,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 18,
+    "largo": 22,
+    "rot": 45
+   }
+  },
+  {
+   "id": "bellesguard",
+   "nombre": "Torre Bellesguard",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "casa",
+   "lat": 41.40956,
+   "lon": 2.12686,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 17,
+   "largo": 18,
+   "rot": 146,
+   "forma": "Casa-castillo neogótica en la falda de Collserola: volumen cúbico de pizarra gris y piedra, almenas y una torre-aguja con cruz de cuatro brazos.",
+   "rasgos": [
+    "aguja con cruz de cuatro brazos",
+    "volumen cúbico gris"
+   ],
+   "colores": [
+    "#7d7a6e",
+    "#a39a8a",
+    "#d24b3a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 8623.3,
+   "z": 16590.7,
+   "y": 172,
+   "edificios": [
+    147126
+   ],
+   "en_datos": "1 volumen de 253 m² y 9 m; clase 0",
+   "planta": {
+    "ancho": 17,
+    "largo": 18,
+    "rot": 146,
+    "area": 253,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 20,
+    "largo": 20,
+    "rot": 0
+   }
+  },
+  {
+   "id": "casa_punxes",
+   "nombre": "Casa de les Punxes",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.39798,
+   "lon": 2.16378,
+   "confianza": "alta",
+   "alto": 40,
+   "ancho": 39,
+   "largo": 84,
+   "rot": 86,
+   "forma": "Edificio-castillo de ladrillo rojo que ocupa una manzana triangular entre Diagonal y Rosselló, con seis torres redondas acabadas en agujas cónicas (punxes) de teja.",
+   "rasgos": [
+    "seis torres con agujas cónicas",
+    "ladrillo rojo y piedra"
+   ],
+   "colores": [
+    "#b5543a",
+    "#5a4a3a",
+    "#d8ccb4"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 11696.8,
+   "z": 15279.1,
+   "y": 40.3,
+   "edificios": [
+    133912,
+    133914,
+    133923,
+    133924,
+    133926,
+    133929,
+    133938,
+    133944,
+    134071,
+    134072,
+    134073,
+    134077,
+    134078,
+    134079,
+    134080,
+    134081,
+    134083,
+    134084,
+    134085,
+    134086,
+    134087,
+    134088,
+    134089,
+    134090,
+    134091,
+    134092,
+    134093,
+    134094,
+    134095,
+    134096,
+    134098,
+    134100,
+    134101,
+    134102,
+    134103,
+    134104,
+    135676,
+    135687,
+    135688,
+    135689,
+    135690,
+    135692,
+    135693,
+    135694,
+    135695,
+    135696,
+    135697,
+    135698,
+    135700,
+    136036,
+    136037
+   ],
+   "en_datos": "46 volúmenes, 1 390 m² en total, hasta 36 m (+5 partes de OSM); clase 0 , 5",
+   "planta": {
+    "ancho": 39,
+    "largo": 84,
+    "rot": 86,
+    "area": 1390,
+    "alto": 36.2,
+    "clases": [
+     0,
+     5
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 40,
+    "largo": 70,
+    "rot": 72
+   }
+  },
+  {
+   "id": "pavellons_guell",
+   "nombre": "Pavellons Güell",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.38932,
+   "lon": 2.11927,
+   "confianza": "alta",
+   "alto": 12,
+   "ancho": 13,
+   "largo": 32,
+   "rot": 63,
+   "forma": "Portería y caballerizas de la finca Güell en Pedralbes: verja de hierro con el dragón, pabellón de portería con cupulín y caballerizas de ladrillo con linterna; ladrillo ocre y rojo con trencadís.",
+   "rasgos": [
+    "verja del dragón",
+    "cupulines con trencadís"
+   ],
+   "colores": [
+    "#c79a6b",
+    "#b5543a",
+    "#e6dcc4"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 7950.5,
+   "z": 14348,
+   "y": 77,
+   "edificios": [
+    90015
+   ],
+   "en_datos": "1 volumen de 328 m² y 4 m; clase 2",
+   "planta": {
+    "ancho": 13,
+    "largo": 32,
+    "rot": 63,
+    "area": 328,
+    "alto": 4.2,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 30,
+    "largo": 60,
+    "rot": 72
+   }
+  },
+  {
+   "id": "teresianes",
+   "nombre": "Col·legi de les Teresianes",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.39977,
+   "lon": 2.1332,
+   "confianza": "baja",
+   "alto": 25,
+   "ancho": 18,
+   "largo": 65,
+   "rot": 0,
+   "forma": "Colegio de Gaudí: bloque alargado de ladrillo y piedra de cuatro plantas, coronado por almenas puntiagudas con cruces en las esquinas.",
+   "rasgos": [
+    "bloque alargado de ladrillo",
+    "almenas puntiagudas"
+   ],
+   "colores": [
+    "#b5543a",
+    "#c9b48a"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "nota": "rot de memoria (baja).",
+   "x": 9142,
+   "z": 15501.7,
+   "y": 91.9,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: Hay varios volúmenes bajos (9–22 m) en la parcela y ninguno con la planta alargada de 18×65 m; candidatos: #124633 (995 m², 9 m), #124634 (469 m², 22 m), #124630 (411 m², 15 m).",
+   "encaje": "dudoso",
+   "r1": {
+    "confianza": "alta"
+   }
+  },
+  {
+   "id": "fundacio_tapies",
+   "nombre": "Fundació Antoni Tàpies",
+   "lote": "a",
+   "nivel": "C",
+   "cat": "museo",
+   "lat": 41.39167,
+   "lon": 2.16361,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 25,
+   "largo": 47,
+   "rot": 137,
+   "forma": "Edificio de ladrillo rojo entre medianeras en Aragó, coronado por la escultura de tubos metálicos enmarañados «Núvol i cadira».",
+   "rasgos": [
+    "nube de tubos metálicos en la azotea"
+   ],
+   "colores": [
+    "#b5543a",
+    "#8c8c8c"
+   ],
+   "noche": "nada",
+   "fuente": "eswiki",
+   "x": 11675.5,
+   "z": 14576.8,
+   "y": 29,
+   "edificios": [
+    112626
+   ],
+   "en_datos": "1 volumen de 1 099 m² y 25 m; clase 0",
+   "planta": {
+    "ancho": 25,
+    "largo": 47,
+    "rot": 137,
+    "area": 1099,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 20,
+    "largo": 35,
+    "rot": 45
+   }
+  },
+  {
+   "id": "monumental",
+   "nombre": "Plaça de toros Monumental",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "arena",
+   "lat": 41.4,
+   "lon": 2.1811,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 100,
+   "largo": 100,
+   "rot": 167,
+   "forma": "Coso circular neomudéjar de ladrillo con arcos, torres en las entradas rematadas por cúpulas en forma de huevo revestidas de cerámica blanca y azul.",
+   "rasgos": [
+    "anillo de ladrillo",
+    "cúpulas-huevo de cerámica blanca y azul"
+   ],
+   "colores": [
+    "#b5543a",
+    "#f2efe6",
+    "#3a6fb0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Coordenada redondeada en la fuente; está en Gran Via / Marina.",
+   "x": 13156.7,
+   "z": 15496.1,
+   "y": 15.2,
+   "edificios": [
+    139529,
+    139539,
+    139540,
+    139541,
+    139542,
+    139543,
+    139544,
+    139545,
+    139546,
+    139547,
+    139548,
+    139549,
+    139550,
+    139551,
+    139552,
+    139553,
+    139554,
+    139555,
+    139556
+   ],
+   "en_datos": "1 volumen de 7 868 m² y 25 m (+18 partes de OSM); clase 5",
+   "planta": {
+    "ancho": 100,
+    "largo": 100,
+    "rot": 167,
+    "area": 7868,
+    "alto": 25,
+    "clases": [
+     5
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 95,
+    "largo": 95,
+    "rot": 0,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "universitat",
+   "nombre": "Universitat de Barcelona (edifici històric)",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.3866,
+   "lon": 2.1639,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 59,
+   "largo": 132,
+   "rot": 46,
+   "forma": "Edificio neorrománico simétrico frente a Gran Via (entre Balmes y Aribau): fachada de piedra ocre, dos torres cuadradas en los extremos y cuerpo central del paraninfo con ventanales; jardín detrás.",
+   "rasgos": [
+    "fachada simétrica con dos torres",
+    "piedra ocre"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#8c6a4a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 11685,
+   "z": 14026.8,
+   "y": 22,
+   "edificios": [
+    95418,
+    95419,
+    95422,
+    95423,
+    95424,
+    95426,
+    95427,
+    95429,
+    95430,
+    95431,
+    95432,
+    95433,
+    95434,
+    95437,
+    95438,
+    95440,
+    95441,
+    95445,
+    95446,
+    95447,
+    95449,
+    95450,
+    95451,
+    95452,
+    95453
+   ],
+   "en_datos": "21 volúmenes, 4 251 m² en total, hasta 30 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 59,
+    "largo": 132,
+    "rot": 46,
+    "area": 4251,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 80,
+    "largo": 130,
+    "rot": 45
+   }
+  },
+  {
+   "id": "mercat_sant_antoni",
+   "nombre": "Mercat de Sant Antoni",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "mercado",
+   "lat": 41.37861,
+   "lon": 2.16208,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 108,
+   "largo": 108,
+   "rot": 46,
+   "forma": "Mercado de hierro que ocupa una manzana del Eixample, con planta en cruz de San Andrés (las naves van por las diagonales de la manzana) y nave central octogonal con cúpula; cubiertas de cinc gris.",
+   "rasgos": [
+    "planta en aspa",
+    "linterna central",
+    "cubiertas grises de dos aguas"
+   ],
+   "colores": [
+    "#6f7f6f",
+    "#a0a8a8",
+    "#c9b48a"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 11531.5,
+   "z": 13128.1,
+   "y": 13.2,
+   "edificios": [
+    77046,
+    77047,
+    77048,
+    77049,
+    77050,
+    77051,
+    77160,
+    77161
+   ],
+   "en_datos": "1 volumen de 2 679 m² y 23 m (+7 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 108,
+    "largo": 108,
+    "rot": 46,
+    "area": 2679,
+    "alto": 23.4,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 110,
+    "largo": 110,
+    "rot": 0
+   }
+  },
+  {
+   "id": "castell_tres_dragons",
+   "nombre": "Castell dels Tres Dragons",
+   "lote": "a",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.38807,
+   "lon": 2.18339,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 47,
+   "largo": 53,
+   "rot": 137,
+   "forma": "Edificio-castillo de ladrillo rojo visto en el Parc de la Ciutadella, con almenas, cuatro torretas angulares y escudos cerámicos blancos en el friso.",
+   "rasgos": [
+    "ladrillo rojo con almenas",
+    "torretas angulares"
+   ],
+   "colores": [
+    "#b5543a",
+    "#f2efe6"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 13318.8,
+   "z": 14168,
+   "y": 6.8,
+   "edificios": [
+    99107
+   ],
+   "en_datos": "1 volumen de 1 188 m² y 19 m; clase 0",
+   "planta": {
+    "ancho": 47,
+    "largo": 53,
+    "rot": 137,
+    "area": 1188,
+    "alto": 18.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 40,
+    "largo": 60,
+    "rot": 45
+   }
+  },
+  {
+   "id": "casa_calvet",
+   "nombre": "Casa Calvet",
+   "lote": "a",
+   "nivel": "C",
+   "cat": "edificio",
+   "lat": 41.39083,
+   "lon": 2.17306,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 16,
+   "largo": 52,
+   "rot": 135,
+   "forma": "Casa entre medianeras en Casp: fachada de piedra con dos remates barrocos curvos y tribuna central.",
+   "rasgos": [
+    "remates curvos",
+    "piedra clara"
+   ],
+   "colores": [
+    "#d8ccb4"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 12477.1,
+   "z": 14467.9,
+   "y": 18.8,
+   "edificios": [
+    115277,
+    116764
+   ],
+   "en_datos": "1 volumen de 622 m² y 20 m (+1 parte de OSM); clase 2",
+   "planta": {
+    "ancho": 16,
+    "largo": 52,
+    "rot": 135,
+    "area": 622,
+    "alto": 20.2,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 18,
+    "largo": 30
+   }
+  },
+  {
+   "id": "camp_nou",
+   "nombre": "Camp Nou",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "estadio",
+   "lat": 41.3808,
+   "lon": 2.1228,
+   "confianza": "alta",
+   "alto": 60,
+   "ancho": 230,
+   "largo": 260,
+   "rot": 158,
+   "forma": "Estadio REMODELADO y ACABADO: cuenco oval de tres graderíos continuos; por fuera, anillos horizontales blancos (los voladizos de las terrazas) con antepechos en colores azul y granate; gran cubierta en anillo en voladizo, abierta sobre el campo verde.",
+   "rasgos": [
+    "óvalo de terrazas horizontales blancas",
+    "anillo de cubierta sobre las gradas",
+    "gradas azul y granate",
+    "césped"
+   ],
+   "colores": [
+    "#e8e8e4",
+    "#2b4a8a",
+    "#a50044",
+    "#3c8c3c"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "rot (eje del campo) de memoria; R2 lo saca de la planta. Sin escudos ni rótulos. R2: Las medidas de la planta de los datos (estadio viejo en obras) son menores que las del estadio acabado: se conservan las del catálogo; el rumbo, de los datos.",
+   "x": 8253.4,
+   "z": 13411.6,
+   "y": 48,
+   "edificios": [
+    70092,
+    70093,
+    70094,
+    70095,
+    70096
+   ],
+   "en_datos": "1 volumen de 29 598 m² y 25 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 162,
+    "largo": 209,
+    "rot": 158,
+    "area": 29598,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "rot": 140
+   }
+  },
+  {
+   "id": "palau_blaugrana",
+   "nombre": "Palau Blaugrana",
+   "lote": "b",
+   "nivel": "C",
+   "cat": "pabellon",
+   "lat": 41.3801,
+   "lon": 2.1201,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 80,
+   "largo": 84,
+   "rot": 158,
+   "forma": "Pabellón deportivo junto al Camp Nou: caja ancha de cubierta casi plana.",
+   "rasgos": [
+    "caja ancha baja"
+   ],
+   "colores": [
+    "#c8c4bc",
+    "#2b4a8a",
+    "#a50044"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 8028,
+   "z": 13319.5,
+   "y": 47,
+   "edificios": [
+    69987,
+    70097
+   ],
+   "en_datos": "1 volumen de 4 712 m² y 6 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 80,
+    "largo": 84,
+    "rot": 158,
+    "area": 4712,
+    "alto": 5.8,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "largo": 110,
+    "rot": 50
+   }
+  },
+  {
+   "id": "estadi_olimpic",
+   "nombre": "Estadi Olímpic Lluís Companys",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "estadio",
+   "lat": 41.36472,
+   "lon": 2.15556,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 170,
+   "largo": 220,
+   "rot": 70,
+   "forma": "Estadio neoclásico de 1929 en Montjuïc: fachada perimetral de piedra ocre con arcadas, puerta de Maratón con pórtico y dos grupos ecuestres, una sola marquesina blanca curva sobre la tribuna; pista y campo dentro; pebetero.",
+   "rasgos": [
+    "fachada ocre con arcadas",
+    "marquesina blanca de la tribuna",
+    "pista roja"
+   ],
+   "colores": [
+    "#d2b48c",
+    "#f2efe6",
+    "#b5543a",
+    "#3c8c3c"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "rot de memoria. Poi del juego «Estadi Olímpic». R2: El volumen de los datos incluye la explanada (44 781 m²): se conservan medidas y rumbo del catálogo.",
+   "x": 10983.3,
+   "z": 11594.6,
+   "y": 100.9,
+   "edificios": [
+    52371,
+    52372
+   ],
+   "en_datos": "1 volumen de 44 781 m² y 22 m (+1 parte de OSM); clase 9",
+   "planta": {
+    "ancho": 191,
+    "largo": 277,
+    "rot": 2,
+    "area": 44781,
+    "alto": 22,
+    "clases": [
+     9
+    ]
+   },
+   "encaje": "auto"
+  },
+  {
+   "id": "palau_sant_jordi",
+   "nombre": "Palau Sant Jordi",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "pabellon",
+   "lat": 41.36339,
+   "lon": 2.15256,
+   "confianza": "alta",
+   "alto": 45,
+   "ancho": 110,
+   "largo": 132,
+   "rot": 1,
+   "forma": "Pabellón de Isozaki: gran cubierta metálica gris en cúpula rebajada (caparazón de tortuga) con lucernarios en franja, sobre un zócalo de hormigón y ladrillo; explanada delante con un bosque de columnas finas.",
+   "rasgos": [
+    "cúpula rebajada gris metálica",
+    "zócalo macizo"
+   ],
+   "colores": [
+    "#8c949c",
+    "#c4a68a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10722.1,
+   "z": 11449.3,
+   "y": 78.6,
+   "edificios": [
+    52375,
+    52376
+   ],
+   "en_datos": "1 volumen de 12 946 m² y 9 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 110,
+    "largo": 132,
+    "rot": 1,
+    "area": 12946,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "largo": 160,
+    "rot": 70
+   }
+  },
+  {
+   "id": "torre_calatrava",
+   "nombre": "Torre de Calatrava (Torre de Comunicacions de Montjuïc)",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.36417,
+   "lon": 2.15056,
+   "confianza": "alta",
+   "alto": 136,
+   "ancho": 10,
+   "largo": 40,
+   "rot": 0,
+   "forma": "Torre blanca de Calatrava: un fuste esbelto inclinado (como un atleta con la antorcha) sobre una base revestida de trencadís, con un anillo semicircular de antenas a media altura.",
+   "rasgos": [
+    "fuste blanco inclinado",
+    "anillo semicircular",
+    "base de trencadís"
+   ],
+   "colores": [
+    "#f2f2ee",
+    "#c8c8c0"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "nota": "rot (dirección de la inclinación) de memoria (baja).",
+   "x": 10559.2,
+   "z": 11544.8,
+   "y": 80.7,
+   "edificios": [
+    52411,
+    52412,
+    52413
+   ],
+   "en_datos": "1 volumen de 105 m² y 136 m (+2 partes de OSM); clase 4",
+   "planta": {
+    "ancho": 11,
+    "largo": 12,
+    "rot": 54,
+    "area": 105,
+    "alto": 136,
+    "clases": [
+     4
+    ]
+   },
+   "encaje": "auto-alto"
+  },
+  {
+   "id": "palau_nacional",
+   "nombre": "Palau Nacional (MNAC)",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "palacio",
+   "lat": 41.36833,
+   "lon": 2.15331,
+   "confianza": "alta",
+   "alto": 50,
+   "ancho": 147,
+   "largo": 168,
+   "rot": 64,
+   "forma": "Palacio de 1929 que preside Montjuïc mirando a la Pl. d'Espanya (al NNO): gran cúpula central elíptica, dos cúpulas menores, cuatro torres de esquina tipo campanario, piedra ocre; escalinatas y cascadas delante.",
+   "rasgos": [
+    "cúpula central",
+    "cuatro torres de esquina",
+    "escalinatas y cascadas"
+   ],
+   "colores": [
+    "#d6c39c",
+    "#8c8478",
+    "#a8b8c0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Palau Nacional (MNAC)». R2: la planta del juego está a 33 m de la coordenada lat/lon; x, z son los de la planta.",
+   "x": 10820.8,
+   "z": 11985,
+   "y": 79.7,
+   "edificios": [
+    52387,
+    52388,
+    52389
+   ],
+   "en_datos": "1 volumen de 15 857 m² y 11 m (+2 partes de OSM); clase 2",
+   "planta": {
+    "ancho": 147,
+    "largo": 168,
+    "rot": 64,
+    "area": 15857,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 110,
+    "largo": 170,
+    "rot": 65
+   }
+  },
+  {
+   "id": "font_magica",
+   "nombre": "Font Màgica",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "fuente",
+   "lat": 41.37114,
+   "lon": 2.15173,
+   "confianza": "alta",
+   "alto": 3,
+   "ancho": 50,
+   "largo": 65,
+   "rot": 65,
+   "forma": "Vaso oval escalonado de piedra a los pies del Palau Nacional; de noche, chorros de agua de colores de hasta 50 m.",
+   "rasgos": [
+    "vaso oval escalonado",
+    "chorros de colores de noche"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#6fa8d0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10659.9,
+   "z": 12308,
+   "y": 37.8,
+   "edificios": [],
+   "en_datos": "no existe: fuente: no hay volumen en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "quatre_columnes",
+   "nombre": "Les Quatre Columnes",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "monumento",
+   "lat": 41.37063,
+   "lon": 2.1521,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 4,
+   "largo": 40,
+   "rot": 65,
+   "forma": "Cuatro columnas jónicas exentas de piedra, en fila, en el eje de la Av. Reina Maria Cristina bajo el Palau Nacional.",
+   "rasgos": [
+    "cuatro columnas jónicas en fila"
+   ],
+   "colores": [
+    "#d8ccb4"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10690.2,
+   "z": 12251,
+   "y": 40.7,
+   "edificios": [],
+   "en_datos": "no existe: columnas: no existen en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "torres_venecianes",
+   "nombre": "Torres Venecianes",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.3742,
+   "lon": 2.15,
+   "confianza": "alta",
+   "alto": 47,
+   "ancho": 9,
+   "largo": 42,
+   "rot": 63,
+   "forma": "Dos campanarios de ladrillo rojo a la entrada de la Av. Reina Maria Cristina (Pl. d'Espanya): fuste cuadrado, cuerpo de campanas con arcos y aguja piramidal; a 50 m uno de otro.",
+   "rasgos": [
+    "pareja de campanarios rojos",
+    "aguja piramidal"
+   ],
+   "colores": [
+    "#b5543a",
+    "#d8ccb4",
+    "#5f7f6a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10502.1,
+   "z": 12628.6,
+   "y": 27.4,
+   "edificios": [
+    58995,
+    59058,
+    59059,
+    59060,
+    59061,
+    59062,
+    59063,
+    59064
+   ],
+   "en_datos": "2 volúmenes, 172 m² en total, hasta 47 m (+6 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 9,
+    "largo": 42,
+    "rot": 63,
+    "area": 172,
+    "alto": 47,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 8,
+    "largo": 55,
+    "rot": 65
+   }
+  },
+  {
+   "id": "arenas",
+   "nombre": "Las Arenas",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "arena",
+   "lat": 41.3763,
+   "lon": 2.149,
+   "confianza": "alta",
+   "alto": 35,
+   "ancho": 100,
+   "largo": 100,
+   "rot": 49,
+   "forma": "Antigua plaza de toros convertida en centro comercial: anillo neomudéjar de ladrillo rojo con arcos de herradura y bandas de cerámica, coronado por una cubierta-mirador circular y una cúpula baja; torre de ascensores exterior.",
+   "rasgos": [
+    "anillo neomudéjar de ladrillo",
+    "arcos de herradura",
+    "cubierta-mirador"
+   ],
+   "colores": [
+    "#b5543a",
+    "#e6dcc4",
+    "#8c949c"
+   ],
+   "noche": "focos",
+   "fuente": "memoria",
+   "x": 10463.3,
+   "z": 12880.9,
+   "y": 22.7,
+   "edificios": [
+    75880,
+    75894,
+    75895,
+    75896,
+    75897,
+    75898,
+    75940,
+    75941,
+    75942,
+    75943,
+    75951,
+    75952
+   ],
+   "en_datos": "1 volumen de 7 861 m² y 25 m (+11 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 100,
+    "largo": 100,
+    "rot": 49,
+    "area": 7861,
+    "alto": 25,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 105,
+    "largo": 105,
+    "rot": 0,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "castell_montjuic",
+   "nombre": "Castell de Montjuïc",
+   "lote": "b",
+   "nivel": "A",
+   "cat": "fortaleza",
+   "lat": 41.3634,
+   "lon": 2.1662,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 166,
+   "largo": 222,
+   "rot": 61,
+   "forma": "Fortaleza abaluartada del s. XVIII en la cima: planta en estrella con baluartes, foso seco y muros en talud de piedra ocre; cuerpo central cuadrado con patio y una torre de vigía pequeña.",
+   "rasgos": [
+    "planta en estrella con baluartes",
+    "foso",
+    "torre de vigía"
+   ],
+   "colores": [
+    "#c4a77d",
+    "#8c7a5a",
+    "#6a7a4a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Castell de Montjuïc».",
+   "x": 11842.8,
+   "z": 11426.8,
+   "y": 183.6,
+   "edificios": [
+    52440,
+    52444,
+    52449,
+    52450,
+    52451
+   ],
+   "en_datos": "1 volumen de 25 457 m² y 8 m (+4 partes de OSM); clase 2",
+   "planta": {
+    "ancho": 166,
+    "largo": 222,
+    "rot": 61,
+    "area": 25457,
+    "alto": 8.2,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 150,
+    "largo": 180,
+    "rot": 0
+   }
+  },
+  {
+   "id": "picornell",
+   "nombre": "Piscines Bernat Picornell",
+   "lote": "b",
+   "nivel": "C",
+   "cat": "pabellon",
+   "lat": 41.3656,
+   "lon": 2.1502,
+   "confianza": "alta",
+   "alto": 15,
+   "ancho": 62,
+   "largo": 112,
+   "rot": 92,
+   "forma": "Piscinas olímpicas: caja baja con gradas.",
+   "rasgos": [
+    "caja baja con gradas"
+   ],
+   "colores": [
+    "#d8d8d0"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 10537.8,
+   "z": 11702.3,
+   "y": 83.2,
+   "edificios": [
+    52385
+   ],
+   "en_datos": "1 volumen de 3 439 m² y 12 m; clase 9",
+   "planta": {
+    "ancho": 62,
+    "largo": 112,
+    "rot": 92,
+    "area": 3439,
+    "alto": 12,
+    "clases": [
+     9
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 60,
+    "largo": 100,
+    "rot": 70
+   }
+  },
+  {
+   "id": "pavello_mies",
+   "nombre": "Pavelló Mies van der Rohe",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "pabellon",
+   "lat": 41.37056,
+   "lon": 2.15,
+   "confianza": "alta",
+   "alto": 4,
+   "ancho": 25,
+   "largo": 55,
+   "rot": 65,
+   "forma": "Pabellón de 1929: losa de cubierta plana y fina sobre muros de travertino, ónice y vidrio, con dos estanques.",
+   "rasgos": [
+    "losa fina flotante",
+    "estanques"
+   ],
+   "colores": [
+    "#f2f2ee",
+    "#d8ccb4",
+    "#2a3a3a"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "nota": "rot de memoria (baja).",
+   "x": 10512.1,
+   "z": 12241.7,
+   "y": 38,
+   "edificios": [
+    58997
+   ],
+   "en_datos": "1 volumen de 349 m² y 11 m; clase 2",
+   "planta": {
+    "ancho": 14,
+    "largo": 25,
+    "rot": 153,
+    "area": 349,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto"
+  },
+  {
+   "id": "caixaforum",
+   "nombre": "CaixaForum (Casaramona)",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "fabrica",
+   "lat": 41.37133,
+   "lon": 2.14975,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 83,
+   "largo": 91,
+   "rot": 135,
+   "forma": "Antigua fábrica modernista de ladrillo rojo: naves bajas almenadas y dos torres de aguja ornamentadas.",
+   "rasgos": [
+    "dos torres de aguja",
+    "naves almenadas de ladrillo"
+   ],
+   "colores": [
+    "#b5543a",
+    "#e0d2b0"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "x": 10462.3,
+   "z": 12345.4,
+   "y": 33.7,
+   "edificios": [
+    59057
+   ],
+   "en_datos": "1 volumen de 5 943 m² y 11 m; clase 2",
+   "planta": {
+    "ancho": 83,
+    "largo": 91,
+    "rot": 135,
+    "area": 5943,
+    "alto": 10.8,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "nota": "R2: la planta del juego está a 35 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 80,
+    "largo": 100,
+    "rot": 65
+   }
+  },
+  {
+   "id": "palaus_fira",
+   "nombre": "Palaus d'Alfons XIII i Victòria Eugènia",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "palacio",
+   "lat": 41.37009,
+   "lon": 2.15244,
+   "confianza": "baja",
+   "alto": 30,
+   "ancho": 160,
+   "largo": 200,
+   "rot": 65,
+   "forma": "Dos palacios gemelos de exposición a ambos lados de la Av. Reina Maria Cristina: fachadas claras ornamentadas con torretas y cupulines en las esquinas.",
+   "rasgos": [
+    "pareja de palacios simétricos",
+    "torretas de esquina"
+   ],
+   "colores": [
+    "#e6dcc4",
+    "#c9b48a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10718.1,
+   "z": 12190.8,
+   "y": 44.9,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: La coordenada de cawiki cae en la explanada de la Font Màgica. Los palacios que flanquean la avenida tienen en los datos plantas grandes y bajas (11–29 m) que no se distinguen con seguridad de los pabellones de la Fira: #58992 (5 923 m², E), #60010 (7 499 m², O), #60012 (17 742 m², O).",
+   "encaje": "dudoso",
+   "r1": {
+    "confianza": "alta"
+   }
+  },
+  {
+   "id": "poble_espanyol",
+   "nombre": "Poble Espanyol (Torres d'Àvila)",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "conjunto",
+   "lat": 41.36914,
+   "lon": 2.14669,
+   "confianza": "alta",
+   "alto": 24,
+   "ancho": 40,
+   "largo": 30,
+   "rot": 0,
+   "forma": "Recinto amurallado; lo reconocible es la puerta de entrada copia de las murallas de Ávila: dos torres almenadas de piedra con lienzo de muralla entre ellas.",
+   "rasgos": [
+    "dos torres almenadas de muralla"
+   ],
+   "colores": [
+    "#b8a688",
+    "#8c7a5a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "La coordenada es el centro del recinto; la puerta queda en su lado E (≈ 41.3687, 2.1490).",
+   "x": 10248.1,
+   "z": 12086.4,
+   "y": 59.3,
+   "edificios": [
+    52069,
+    52070,
+    52072,
+    52077,
+    58078,
+    58082,
+    58083,
+    58086,
+    58087,
+    58089,
+    58090,
+    58092,
+    58093,
+    58094,
+    58095,
+    58097,
+    58098,
+    58099,
+    58101,
+    58102,
+    58103,
+    58104,
+    58108,
+    58111,
+    58112,
+    58113,
+    58115,
+    58117,
+    58118,
+    58119,
+    58121,
+    58122,
+    58128,
+    58137,
+    58138,
+    58140,
+    58141,
+    58143,
+    58144,
+    58147,
+    58148,
+    58149,
+    58151,
+    58155,
+    58156,
+    58159,
+    58161,
+    58163,
+    58168,
+    58172,
+    58183,
+    58184,
+    58191,
+    58239,
+    58737
+   ],
+   "en_datos": "55 volúmenes, 6 431 m² en total, hasta 9 m; clase 0",
+   "planta": {
+    "ancho": 117,
+    "largo": 206,
+    "rot": 152,
+    "area": 6431,
+    "alto": 9,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "fundacio_miro",
+   "nombre": "Fundació Joan Miró",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "museo",
+   "lat": 41.36861,
+   "lon": 2.16,
+   "confianza": "alta",
+   "alto": 12,
+   "ancho": 66,
+   "largo": 87,
+   "rot": 49,
+   "forma": "Edificio blanco de Sert: volúmenes bajos de hormigón blanco con lucernarios en cuarto de cilindro y una torre octogonal.",
+   "rasgos": [
+    "blanco puro",
+    "lucernarios curvos"
+   ],
+   "colores": [
+    "#f2f2ee"
+   ],
+   "noche": "nada",
+   "fuente": "enwiki",
+   "x": 11339.3,
+   "z": 12016.5,
+   "y": 86.6,
+   "edificios": [
+    60046
+   ],
+   "en_datos": "1 volumen de 3 742 m² y 4 m; clase 0",
+   "planta": {
+    "ancho": 66,
+    "largo": 87,
+    "rot": 49,
+    "area": 3742,
+    "alto": 4.2,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 60,
+    "largo": 80,
+    "rot": 0
+   }
+  },
+  {
+   "id": "teatre_grec",
+   "nombre": "Teatre Grec",
+   "lote": "b",
+   "nivel": "C",
+   "cat": "teatro",
+   "lat": 41.3694,
+   "lon": 2.15972,
+   "confianza": "alta",
+   "alto": 10,
+   "ancho": 42,
+   "largo": 54,
+   "rot": 178,
+   "forma": "Teatro al aire libre en una antigua cantera: gradas semicirculares de piedra.",
+   "rasgos": [
+    "gradas semicirculares"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#6a7a4a"
+   ],
+   "noche": "nada",
+   "fuente": "eswiki",
+   "x": 11321.5,
+   "z": 12118.6,
+   "y": 58.2,
+   "edificios": [
+    60045,
+    60294
+   ],
+   "en_datos": "1 volumen de 1 677 m² y 12 m (+1 parte de OSM); clase 2",
+   "planta": {
+    "ancho": 42,
+    "largo": 54,
+    "rot": 178,
+    "area": 1677,
+    "alto": 12,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 70,
+    "largo": 70,
+    "rot": 0
+   }
+  },
+  {
+   "id": "piscina_montjuic",
+   "nombre": "Piscina Municipal de Montjuïc",
+   "lote": "b",
+   "nivel": "C",
+   "cat": "pabellon",
+   "lat": 41.36945,
+   "lon": 2.16504,
+   "confianza": "alta",
+   "alto": 15,
+   "ancho": 50,
+   "largo": 70,
+   "rot": 0,
+   "forma": "Piscina de saltos con gradas mirando la ciudad.",
+   "rasgos": [
+    "plataforma de saltos"
+   ],
+   "colores": [
+    "#d8d8d0",
+    "#3a8fc0"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 11775,
+   "z": 12079.3,
+   "y": 77.4,
+   "edificios": [
+    60293
+   ],
+   "en_datos": "1 volumen de 1 880 m² y 12 m; clase 9",
+   "planta": {
+    "ancho": 20,
+    "largo": 96,
+    "rot": 91,
+    "area": 1880,
+    "alto": 12,
+    "clases": [
+     9
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 30 m de la coordenada lat/lon; x, z son los de la planta."
+  },
+  {
+   "id": "velodrom_horta",
+   "nombre": "Velòdrom d'Horta",
+   "lote": "b",
+   "nivel": "B",
+   "cat": "estadio",
+   "lat": 41.43813,
+   "lon": 2.14886,
+   "confianza": "alta",
+   "alto": 12,
+   "ancho": 128,
+   "largo": 128,
+   "rot": 45,
+   "forma": "Velódromo de hormigón: óvalo con pista peraltada y graderío bajo.",
+   "rasgos": [
+    "óvalo de pista peraltada"
+   ],
+   "colores": [
+    "#c8c4bc",
+    "#b5543a"
+   ],
+   "noche": "nada",
+   "fuente": "eswiki",
+   "x": 10492.7,
+   "z": 19741.8,
+   "y": 147.9,
+   "edificios": [
+    207295,
+    207296
+   ],
+   "en_datos": "1 volumen de 13 004 m² y 7 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 128,
+    "largo": 128,
+    "rot": 45,
+    "area": 13004,
+    "alto": 7.4,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 100,
+    "largo": 150,
+    "rot": 0
+   }
+  },
+  {
+   "id": "torre_glories",
+   "nombre": "Torre Glòries",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.40349,
+   "lon": 2.18952,
+   "confianza": "alta",
+   "alto": 144,
+   "ancho": 37,
+   "largo": 40,
+   "rot": 121,
+   "forma": "Bala de planta elíptica que se afila arriba en cúpula; piel de lamas de vidrio sobre chapa de colores (rojos y naranjas abajo, azules y grises arriba).",
+   "rasgos": [
+    "silueta de bala",
+    "degradado rojo-azul",
+    "de noche, LED de colores"
+   ],
+   "colores": [
+    "#b23a3a",
+    "#2b5fa8",
+    "#cfd8e3"
+   ],
+   "noche": "led",
+   "fuente": "cawiki",
+   "x": 13854.6,
+   "z": 15869.5,
+   "y": 9.6,
+   "edificios": [
+    141753,
+    141754,
+    141755,
+    141756,
+    141757,
+    141758,
+    141759
+   ],
+   "en_datos": "1 volumen de 1 163 m² y 144 m (+6 partes de OSM); clase 12 (Torre Glòries)",
+   "planta": {
+    "ancho": 37,
+    "largo": 40,
+    "rot": 121,
+    "area": 1163,
+    "alto": 144.4,
+    "clases": [
+     12
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 36,
+    "rot": 0
+   }
+  },
+  {
+   "id": "hotel_arts",
+   "nombre": "Hotel Arts",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.38667,
+   "lon": 2.19611,
+   "confianza": "alta",
+   "alto": 154,
+   "ancho": 36,
+   "largo": 37,
+   "rot": 46,
+   "forma": "Torre de planta cuadrada junto al Port Olímpic con un exoesqueleto de acero blanco en retícula y cruces de San Andrés separado de la fachada de vidrio oscuro; podio bajo.",
+   "rasgos": [
+    "exoesqueleto blanco reticulado",
+    "vidrio oscuro detrás"
+   ],
+   "colores": [
+    "#f2f2ee",
+    "#3a4a5a"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 14397.4,
+   "z": 14018.7,
+   "y": 4.6,
+   "edificios": [
+    102614
+   ],
+   "en_datos": "1 volumen de 1 323 m² y 154 m; clase 3",
+   "planta": {
+    "ancho": 36,
+    "largo": 37,
+    "rot": 46,
+    "area": 1323,
+    "alto": 154,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "largo": 36,
+    "rot": 45
+   }
+  },
+  {
+   "id": "torre_mapfre",
+   "nombre": "Torre Mapfre",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.38778,
+   "lon": 2.1975,
+   "confianza": "alta",
+   "alto": 154,
+   "ancho": 33,
+   "largo": 33,
+   "rot": 136,
+   "forma": "Gemela del Hotel Arts al otro lado del puerto: prisma de vidrio verde-azulado con bandas horizontales claras en cada forjado y remate técnico.",
+   "rasgos": [
+    "prisma de vidrio verdoso con bandas",
+    "pareja con el Hotel Arts"
+   ],
+   "colores": [
+    "#5f8f9f",
+    "#d8dcd8"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 14492.8,
+   "z": 14116.5,
+   "y": 7,
+   "edificios": [
+    102818
+   ],
+   "en_datos": "1 volumen de 1 102 m² y 154 m; clase 3",
+   "planta": {
+    "ancho": 33,
+    "largo": 33,
+    "rot": 136,
+    "area": 1102,
+    "alto": 154,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 36,
+    "largo": 36,
+    "rot": 45
+   }
+  },
+  {
+   "id": "peix",
+   "nombre": "Peix d'Or (Peix de Frank Gehry)",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "escultura",
+   "lat": 41.3863,
+   "lon": 2.1965,
+   "confianza": "media",
+   "alto": 35,
+   "ancho": 35,
+   "largo": 56,
+   "rot": 45,
+   "forma": "Escultura de un pez de 56 m hecha de lamas de acero dorado sobre una pérgola, al pie del Hotel Arts, frente a la playa.",
+   "rasgos": [
+    "silueta de pez",
+    "malla dorada"
+   ],
+   "colores": [
+    "#c8a050",
+    "#8c6a3a"
+   ],
+   "noche": "focos",
+   "fuente": "memoria",
+   "x": 14419.5,
+   "z": 13955.3,
+   "y": 7.1,
+   "edificios": [],
+   "en_datos": "no existe: escultura sobre el zócalo del Hotel Arts; debajo hay el volumen bajo #102827 (2 878 m², 5 m)",
+   "encaje": "no"
+  },
+  {
+   "id": "hotel_w",
+   "nombre": "Hotel W (Hotel Vela)",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.36847,
+   "lon": 2.19024,
+   "confianza": "alta",
+   "alto": 99,
+   "ancho": 40,
+   "largo": 79,
+   "rot": 98,
+   "forma": "Torre en forma de vela al final de la Barceloneta: planta de aleta (curva, se estrecha a los extremos), vidrio espejo azulado; podio bajo en abanico.",
+   "rasgos": [
+    "silueta de vela",
+    "vidrio espejo azul"
+   ],
+   "colores": [
+    "#7f9fbf",
+    "#c8d8e8"
+   ],
+   "noche": "ventanas",
+   "fuente": "enwiki",
+   "nota": "rot de memoria (media).",
+   "x": 13860.2,
+   "z": 11980.5,
+   "y": 3.7,
+   "edificios": [
+    52511,
+    52517,
+    52518,
+    52519,
+    52520,
+    52521,
+    52522,
+    52523,
+    52524,
+    52525,
+    52526,
+    52527,
+    52528,
+    52529,
+    52530,
+    52531,
+    52532,
+    52533,
+    52534,
+    52535,
+    52536,
+    52537,
+    52538,
+    52539,
+    52540
+   ],
+   "en_datos": "1 volumen de 2 338 m² y 87 m (+24 partes de OSM); clase 3",
+   "planta": {
+    "ancho": 40,
+    "largo": 79,
+    "rot": 98,
+    "area": 2338,
+    "alto": 87.4,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 30,
+    "largo": 75,
+    "rot": 60
+   }
+  },
+  {
+   "id": "torres_caixa",
+   "nombre": "Torres «la Caixa» (Diagonal)",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.38751,
+   "lon": 2.12668,
+   "confianza": "alta",
+   "alto": 86,
+   "ancho": 34,
+   "largo": 138,
+   "rot": 72,
+   "forma": "Dos torres de oficinas gemelas en la Diagonal (Les Corts): prismas de muro cortina negro y aluminio, unidos por un podio bajo.",
+   "rasgos": [
+    "dos prismas negros gemelos",
+    "muro cortina oscuro"
+   ],
+   "colores": [
+    "#1f2428",
+    "#7c848c"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "nota": "El usuario las pidió por su nombre («el edificio de la Caixa»). Alto de memoria (media). R2: la planta del juego está a 49 m de la coordenada lat/lon; x, z son los de la planta.",
+   "x": 8536.9,
+   "z": 14129.8,
+   "y": 62.4,
+   "edificios": [
+    90403,
+    90429,
+    90811,
+    90812
+   ],
+   "en_datos": "2 volúmenes, 1 704 m² en total, hasta 85 m (+2 partes de OSM); clase 3 , 0",
+   "planta": {
+    "ancho": 34,
+    "largo": 138,
+    "rot": 72,
+    "area": 1704,
+    "alto": 85,
+    "clases": [
+     3,
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 30,
+    "largo": 100
+   }
+  },
+  {
+   "id": "edifici_forum",
+   "nombre": "Edifici Fòrum",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "edificio",
+   "lat": 41.41101,
+   "lon": 2.22092,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 164,
+   "largo": 177,
+   "rot": 138,
+   "forma": "Gran triángulo equilátero de 180 m de lado elevado sobre pilotes; fachada azul ultramar rugosa con grietas de vidrio.",
+   "rasgos": [
+    "triángulo azul flotante"
+   ],
+   "colores": [
+    "#1f3f8f",
+    "#4f6faf"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 16520.2,
+   "z": 16706.1,
+   "y": 11.1,
+   "edificios": [
+    161386,
+    161387
+   ],
+   "en_datos": "1 volumen de 14 326 m² y 15 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 164,
+    "largo": 177,
+    "rot": 138,
+    "area": 14326,
+    "alto": 15,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "nota": "R2: la planta del juego está a 43 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 180,
+    "largo": 180,
+    "rot": 0
+   }
+  },
+  {
+   "id": "pergola_forum",
+   "nombre": "Pèrgola fotovoltaica del Fòrum",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "estructura",
+   "lat": 41.412,
+   "lon": 2.2268,
+   "confianza": "media",
+   "alto": 50,
+   "ancho": 50,
+   "largo": 112,
+   "rot": 0,
+   "forma": "Placa fotovoltaica inclinada de 112 × 50 m sobre cuatro pilares de hormigón, junto al mar.",
+   "rasgos": [
+    "gran placa inclinada sobre pilares"
+   ],
+   "colores": [
+    "#2a3a5a",
+    "#c8c4bc"
+   ],
+   "noche": "nada",
+   "fuente": "memoria",
+   "x": 16978.4,
+   "z": 16785.4,
+   "y": 10.9,
+   "edificios": [],
+   "en_datos": "no existe: pérgola: no existe en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "diagonal_zerozero",
+   "nombre": "Torre Diagonal ZeroZero",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.4103,
+   "lon": 2.2172,
+   "confianza": "alta",
+   "alto": 110,
+   "ancho": 31,
+   "largo": 65,
+   "rot": 72,
+   "forma": "Prisma de vidrio en el arranque de la Diagonal, con celosía exterior de acero en rombos.",
+   "rasgos": [
+    "prisma de vidrio con malla de rombos"
+   ],
+   "colores": [
+    "#9fb0bf",
+    "#e0e4e8"
+   ],
+   "noche": "ventanas",
+   "fuente": "memoria",
+   "x": 16452.8,
+   "z": 16798.5,
+   "y": 4,
+   "edificios": [
+    161373
+   ],
+   "en_datos": "1 volumen de 1 128 m² y 110 m; clase 3",
+   "planta": {
+    "ancho": 31,
+    "largo": 65,
+    "rot": 72,
+    "area": 1128,
+    "alto": 110,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 340 m de la coordenada lat/lon; x, z son los de la planta. R2: Identificada por altura (110 m en los datos) junto al Edifici Fòrum; la coordenada de memoria se iba ~300 m.",
+   "r1": {
+    "ancho": 25,
+    "largo": 40,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "hotel_princess",
+   "nombre": "Hotel Princess",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.411,
+   "lon": 2.219,
+   "confianza": "media",
+   "alto": 105,
+   "ancho": 34,
+   "largo": 82,
+   "rot": 61,
+   "forma": "Dos torres de distinta altura en Diagonal 1, de vidrio oscuro y paneles claros, unidas en la base.",
+   "rasgos": [
+    "dos torres escalonadas"
+   ],
+   "colores": [
+    "#3a4a5a",
+    "#d8dcd8"
+   ],
+   "noche": "ventanas",
+   "fuente": "memoria",
+   "nota": "Alto y planta de memoria (baja). R2: la planta del juego está a 126 m de la coordenada lat/lon; x, z son los de la planta. R2: Identificado por altura (97 y 78 m en los datos) junto a la Diagonal ZeroZero: dos torres; confirmar con vista.",
+   "x": 16358.5,
+   "z": 16801.7,
+   "y": 4,
+   "edificios": [
+    161483,
+    176088
+   ],
+   "en_datos": "2 volúmenes, 946 m² en total, hasta 97 m; clase 3",
+   "planta": {
+    "ancho": 34,
+    "largo": 82,
+    "rot": 61,
+    "area": 946,
+    "alto": 97,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 25,
+    "largo": 60,
+    "rot": 72,
+    "confianza": "baja"
+   }
+  },
+  {
+   "id": "torres_diagonal_mar",
+   "nombre": "Torres de Diagonal Mar",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.4075,
+   "lon": 2.2155,
+   "confianza": "media",
+   "alto": 85,
+   "ancho": 30,
+   "largo": 30,
+   "rot": 0,
+   "forma": "Torres de viviendas de 20–25 plantas alrededor del Parc de Diagonal Mar: prismas claros con balcones corridos.",
+   "rasgos": [
+    "torres residenciales claras"
+   ],
+   "colores": [
+    "#e6e2d8",
+    "#7a8a9a"
+   ],
+   "noche": "ventanas",
+   "fuente": "memoria",
+   "nota": "Grupo: R2 debe localizarlas por altura (> 60 m) en el registro alrededor del Parc de Diagonal Mar. R2: Grupo: torres de vivienda de 75–87 m alrededor del Parc de Diagonal Mar; ancho/largo de cada torre, del catálogo.",
+   "x": 16055,
+   "z": 16302,
+   "y": 6.1,
+   "edificios": [
+    160844,
+    160845,
+    161456,
+    161458,
+    161464,
+    161465
+   ],
+   "en_datos": "4 volúmenes, 2 597 m² en total, hasta 87 m (+2 partes de OSM); clase 0 , 3",
+   "planta": {
+    "ancho": 66,
+    "largo": 352,
+    "rot": 151,
+    "area": 2597,
+    "alto": 87.4,
+    "clases": [
+     0,
+     3
+    ]
+   },
+   "encaje": "altas",
+   "r1": {
+    "confianza": "baja"
+   }
+  },
+  {
+   "id": "torre_mare_nostrum",
+   "nombre": "Torre Mare Nostrum (Gas Natural)",
+   "lote": "c",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.3833,
+   "lon": 2.19046,
+   "confianza": "alta",
+   "alto": 86,
+   "ancho": 40,
+   "largo": 80,
+   "rot": 45,
+   "forma": "Torre de vidrio espejo con un enorme cuerpo horizontal en voladizo a media altura y otros volúmenes escalonados.",
+   "rasgos": [
+    "gran voladizo horizontal",
+    "vidrio espejo"
+   ],
+   "colores": [
+    "#8fa8b8",
+    "#c8d8e0"
+   ],
+   "noche": "ventanas",
+   "fuente": "eswiki",
+   "x": 13913.4,
+   "z": 13616.7,
+   "y": 4.5,
+   "edificios": [
+    84484,
+    84485,
+    102644,
+    102645,
+    102646,
+    102647,
+    102648,
+    102649,
+    102652,
+    102653,
+    102654
+   ],
+   "en_datos": "10 volúmenes, 2 127 m² en total, hasta 60 m (+1 parte de OSM); clase 0 , 3",
+   "planta": {
+    "ancho": 80,
+    "largo": 90,
+    "rot": 136,
+    "area": 2127,
+    "alto": 60,
+    "clases": [
+     0,
+     3
+    ]
+   },
+   "encaje": "rect",
+   "nota": "R2: El rectángulo recoge la torre (60 m en los datos) y los volúmenes bajos del conjunto; revisar antes de ocultar."
+  },
+  {
+   "id": "wtc",
+   "nombre": "World Trade Center Barcelona",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.37134,
+   "lon": 2.18167,
+   "confianza": "alta",
+   "alto": 40,
+   "ancho": 98,
+   "largo": 111,
+   "rot": 122,
+   "forma": "Conjunto en el muelle de Barcelona: anillo de edificios de vidrio y piedra con planta de barco elíptica.",
+   "rasgos": [
+    "anillo en forma de barco"
+   ],
+   "colores": [
+    "#c8d0d8",
+    "#d8ccb4"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 13159.6,
+   "z": 12309.5,
+   "y": 4.8,
+   "edificios": [
+    64243,
+    64252,
+    64262,
+    64289,
+    64290,
+    64291,
+    64292
+   ],
+   "en_datos": "1 volumen de 6 574 m² y 7 m (+6 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 98,
+    "largo": 111,
+    "rot": 122,
+    "area": 6574,
+    "alto": 7.4,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 120,
+    "largo": 150,
+    "rot": 150
+   }
+  },
+  {
+   "id": "edifici_colon",
+   "nombre": "Edifici Colón",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.3765,
+   "lon": 2.1752,
+   "confianza": "alta",
+   "alto": 110,
+   "ancho": 38,
+   "largo": 55,
+   "rot": 15,
+   "forma": "Primer rascacielos de la ciudad, en Av. de les Drassanes: prisma oscuro de 28 plantas.",
+   "rasgos": [
+    "prisma oscuro aislado"
+   ],
+   "colores": [
+    "#5a4a3a",
+    "#8c8478"
+   ],
+   "noche": "ventanas",
+   "fuente": "enwiki",
+   "x": 12628.4,
+   "z": 12902.7,
+   "y": 5,
+   "edificios": [
+    79063,
+    79064,
+    79065,
+    79066,
+    79067
+   ],
+   "en_datos": "1 volumen de 1 649 m² y 110 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 38,
+    "largo": 55,
+    "rot": 15,
+    "area": 1649,
+    "alto": 110,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 25,
+    "largo": 25,
+    "rot": 45
+   }
+  },
+  {
+   "id": "edificis_trade",
+   "nombre": "Edificis Trade",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.38605,
+   "lon": 2.1277,
+   "confianza": "alta",
+   "alto": 50,
+   "ancho": 51,
+   "largo": 107,
+   "rot": 177,
+   "forma": "Cuatro torres de oficinas de Coderch con fachada de vidrio oscuro ondulada (planta de curvas).",
+   "rasgos": [
+    "fachadas onduladas de vidrio oscuro"
+   ],
+   "colores": [
+    "#2a3a3a",
+    "#6a7a7a"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 8677.4,
+   "z": 13977.4,
+   "y": 56.9,
+   "edificios": [
+    90621,
+    90623,
+    90851,
+    90852
+   ],
+   "en_datos": "4 volúmenes, 1 837 m² en total, hasta 39 m; clase 0",
+   "planta": {
+    "ancho": 51,
+    "largo": 107,
+    "rot": 177,
+    "area": 1837,
+    "alto": 39.4,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "altas",
+   "r1": {
+    "ancho": 60,
+    "largo": 120,
+    "rot": 72
+   }
+  },
+  {
+   "id": "melia_sky",
+   "nombre": "Hotel Melià Sky",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.404,
+   "lon": 2.1975,
+   "confianza": "alta",
+   "alto": 120,
+   "ancho": 18,
+   "largo": 36,
+   "rot": 29,
+   "forma": "Torre de hotel en Poblenou: prisma con fachada de bandas verticales y un gran retranqueo/hueco en la parte alta.",
+   "rasgos": [
+    "torre con hueco en la parte alta"
+   ],
+   "colores": [
+    "#d8dcd8",
+    "#3a4a5a"
+   ],
+   "noche": "ventanas",
+   "fuente": "memoria",
+   "x": 14791.3,
+   "z": 16161.7,
+   "y": 3.9,
+   "edificios": [
+    159825,
+    159826,
+    159829,
+    160270,
+    160273,
+    160275,
+    160278,
+    160282,
+    160293,
+    160297
+   ],
+   "en_datos": "3 volúmenes, 628 m² en total, hasta 116 m (+7 partes de OSM); clase 3",
+   "planta": {
+    "ancho": 18,
+    "largo": 36,
+    "rot": 29,
+    "area": 628,
+    "alto": 116,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 363 m de la coordenada lat/lon; x, z son los de la planta. R2: Identificado por altura (116 m en los datos, Pere IV); la coordenada de memoria se iba ~360 m. Al lado, otra torre de ~100 m (#160161 y partes).",
+   "r1": {
+    "ancho": 30,
+    "largo": 50,
+    "rot": 45,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "encants",
+   "nombre": "Mercat dels Encants",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "mercado",
+   "lat": 41.40112,
+   "lon": 2.18666,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 115,
+   "largo": 136,
+   "rot": 135,
+   "forma": "Mercado al aire libre cubierto por una gran cubierta de espejo facetada a 25 m de altura.",
+   "rasgos": [
+    "techo de espejo facetado"
+   ],
+   "colores": [
+    "#c8d0d8",
+    "#e8ecf0"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 13609.9,
+   "z": 15594.2,
+   "y": 14.2,
+   "edificios": [
+    139521
+   ],
+   "en_datos": "1 volumen de 9 106 m² y 8 m; clase 1",
+   "planta": {
+    "ancho": 115,
+    "largo": 136,
+    "rot": 135,
+    "area": 9106,
+    "alto": 8,
+    "clases": [
+     1
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 120,
+    "largo": 150,
+    "rot": 0
+   }
+  },
+  {
+   "id": "disseny_hub",
+   "nombre": "Disseny Hub",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.40253,
+   "lon": 2.18802,
+   "confianza": "alta",
+   "alto": 45,
+   "ancho": 40,
+   "largo": 140,
+   "rot": 45,
+   "forma": "La «grapadora»: cuerpo superior de chapa oscura que vuela en voladizo sobre la plaza de Glòries.",
+   "rasgos": [
+    "volumen oscuro en voladizo"
+   ],
+   "colores": [
+    "#3a3a3a",
+    "#8c8c8c"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 13725.2,
+   "z": 15753.1,
+   "y": 10.8,
+   "edificios": [
+    141731,
+    141732,
+    141744,
+    141745
+   ],
+   "en_datos": "4 volúmenes, 1 369 m² en total, hasta 33 m; clase 0",
+   "planta": {
+    "ancho": 40,
+    "largo": 54,
+    "rot": 136,
+    "area": 1369,
+    "alto": 33,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "xemeneies_besos",
+   "nombre": "Tres Xemeneies del Besòs",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "chimenea",
+   "lat": 41.4266,
+   "lon": 2.2319,
+   "confianza": "media",
+   "alto": 200,
+   "ancho": 20,
+   "largo": 140,
+   "rot": 140,
+   "forma": "Tres chimeneas de hormigón de 200 m de la antigua central térmica, en fila junto al mar, y la nave de turbinas al pie.",
+   "rasgos": [
+    "tres fustes de 200 m en fila"
+   ],
+   "colores": [
+    "#c8c4bc",
+    "#b5543a"
+   ],
+   "noche": "nada",
+   "fuente": "memoria",
+   "nota": "Poi del juego «Tres Xemeneies del Besòs» (posición fiable; lat/lon sacadas de ese poi con un ajuste provisional, la de memoria se iba 680 m al S). Fuera del término de Barcelona (Sant Adrià).",
+   "x": 17419,
+   "z": 18402.5,
+   "y": 4.2,
+   "edificios": [],
+   "en_datos": "no existe: las tres chimeneas de 200 m no existen en los datos (posición: poi del juego)",
+   "encaje": "no"
+  },
+  {
+   "id": "torre_aigues_besos",
+   "nombre": "Torre de les Aigües del Besòs",
+   "lote": "c",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.4058,
+   "lon": 2.21229,
+   "confianza": "alta",
+   "alto": 60,
+   "ancho": 12,
+   "largo": 12,
+   "rot": 0,
+   "forma": "Torre industrial de ladrillo de 1882, cilíndrica, con depósito de agua arriba.",
+   "rasgos": [
+    "torre de ladrillo cilíndrica"
+   ],
+   "colores": [
+    "#b5543a"
+   ],
+   "noche": "focos",
+   "fuente": "eswiki",
+   "nota": "Alto de memoria (baja).",
+   "x": 15760.8,
+   "z": 16104,
+   "y": 4.1,
+   "edificios": [
+    161363,
+    161364,
+    161365
+   ],
+   "en_datos": "1 volumen de 24 m² y 63 m (+2 partes de OSM); clase 4",
+   "planta": {
+    "ancho": 5,
+    "largo": 6,
+    "rot": 126,
+    "area": 24,
+    "alto": 63,
+    "clases": [
+     4
+    ]
+   },
+   "encaje": "g"
+  },
+  {
+   "id": "torre_urquinaona",
+   "nombre": "Torre Urquinaona",
+   "lote": "c",
+   "nivel": "C",
+   "cat": "torre",
+   "lat": 41.38979,
+   "lon": 2.17288,
+   "confianza": "alta",
+   "alto": 73,
+   "ancho": 26,
+   "largo": 45,
+   "rot": 136,
+   "forma": "Torre de oficinas gris en la Pl. Urquinaona.",
+   "rasgos": [
+    "prisma gris"
+   ],
+   "colores": [
+    "#8c8c8c"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 12453.8,
+   "z": 14354.2,
+   "y": 17,
+   "edificios": [
+    96044,
+    98005,
+    98006
+   ],
+   "en_datos": "1 volumen de 503 m² y 70 m (+2 partes de OSM); clase 3",
+   "planta": {
+    "ancho": 26,
+    "largo": 45,
+    "rot": 136,
+    "area": 503,
+    "alto": 70,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 25,
+    "largo": 25,
+    "rot": 45
+   }
+  },
+  {
+   "id": "torre_melina",
+   "nombre": "Torre Melina",
+   "lote": "c",
+   "nivel": "C",
+   "cat": "torre",
+   "lat": 41.38133,
+   "lon": 2.10875,
+   "confianza": "alta",
+   "alto": 90,
+   "ancho": 24,
+   "largo": 32,
+   "rot": 127,
+   "forma": "Torre de hotel de vidrio en la Diagonal alta, de planta triangular.",
+   "rasgos": [
+    "planta triangular de vidrio"
+   ],
+   "colores": [
+    "#7f9fbf"
+   ],
+   "noche": "ventanas",
+   "fuente": "eswiki",
+   "nota": "Alto de memoria (baja). R2: la planta del juego está a 53 m de la coordenada lat/lon; x, z son los de la planta.",
+   "x": 7056.5,
+   "z": 13426.8,
+   "y": 80.4,
+   "edificios": [
+    68831
+   ],
+   "en_datos": "1 volumen de 578 m² y 65 m; clase 3",
+   "planta": {
+    "ancho": 24,
+    "largo": 32,
+    "rot": 127,
+    "area": 578,
+    "alto": 65,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 30,
+    "largo": 50,
+    "rot": 72
+   }
+  },
+  {
+   "id": "colom",
+   "nombre": "Monument a Colom",
+   "lote": "d",
+   "nivel": "A",
+   "cat": "monumento",
+   "lat": 41.3758,
+   "lon": 2.17776,
+   "confianza": "alta",
+   "alto": 60,
+   "ancho": 28,
+   "largo": 28,
+   "rot": 45,
+   "forma": "Columna corintia de hierro fundido sobre pedestal octogonal escalonado con ocho leones de bronce y relieves; encima, un globo con coronas y la estatua de Colón señalando al mar.",
+   "rasgos": [
+    "columna esbelta de 60 m",
+    "estatua arriba señalando al mar",
+    "pedestal con leones"
+   ],
+   "colores": [
+    "#4a4a40",
+    "#c9b48a",
+    "#6f6a50"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "nota": "Hoy NO existe en el juego (lo dice comun.md).",
+   "x": 12843.5,
+   "z": 12802,
+   "y": 4.4,
+   "edificios": [
+    82738,
+    82739,
+    82740,
+    82741
+   ],
+   "en_datos": "1 volumen de 611 m² y 53 m (+3 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 28,
+    "largo": 28,
+    "rot": 45,
+    "area": 611,
+    "alto": 53,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 20,
+    "largo": 20,
+    "rot": 0
+   }
+  },
+  {
+   "id": "catedral",
+   "nombre": "Catedral de Barcelona",
+   "lote": "d",
+   "nivel": "A",
+   "cat": "templo",
+   "lat": 41.3839,
+   "lon": 2.1764,
+   "confianza": "alta",
+   "alto": 70,
+   "ancho": 45,
+   "largo": 94,
+   "rot": 134,
+   "forma": "Catedral gótica con fachada neogótica al Pla de la Seu: aguja central de 70 m sobre el cimborio, dos agujas laterales caladas, dos campanarios octogonales sobre el crucero; piedra gris dorada; claustro al lado.",
+   "rasgos": [
+    "tres agujas caladas en la fachada",
+    "campanarios octogonales"
+   ],
+   "colores": [
+    "#b8a688",
+    "#8c8070"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Catedral».",
+   "x": 12750.6,
+   "z": 13711,
+   "y": 14.1,
+   "edificios": [
+    95948,
+    95950,
+    95952,
+    95957,
+    95960,
+    96096,
+    96097
+   ],
+   "en_datos": "1 volumen de 3 034 m² y 80 m (+6 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 45,
+    "largo": 94,
+    "rot": 134,
+    "area": 3034,
+    "alto": 80,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 40,
+    "largo": 93,
+    "rot": 135
+   }
+  },
+  {
+   "id": "santa_maria_mar",
+   "nombre": "Santa Maria del Mar",
+   "lote": "d",
+   "nivel": "A",
+   "cat": "templo",
+   "lat": 41.38361,
+   "lon": 2.18194,
+   "confianza": "alta",
+   "alto": 40,
+   "ancho": 45,
+   "largo": 79,
+   "rot": 53,
+   "forma": "Basílica gótica catalana sobria y maciza: nave alta con contrafuertes, gran rosetón y dos campanarios octogonales esbeltos a los lados de la fachada.",
+   "rasgos": [
+    "dos campanarios octogonales",
+    "rosetón",
+    "volumen macizo de piedra"
+   ],
+   "colores": [
+    "#b8a688",
+    "#8c8070"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "rot de memoria (media).",
+   "x": 13197.5,
+   "z": 13669.2,
+   "y": 4.7,
+   "edificios": [
+    99176,
+    99177,
+    99178,
+    99179,
+    99181,
+    99182,
+    99183,
+    99184,
+    99185,
+    101392,
+    101405,
+    102600,
+    102601
+   ],
+   "en_datos": "11 volúmenes, 1 006 m² en total, hasta 42 m (+2 partes de OSM); clase 0 , 5",
+   "planta": {
+    "ancho": 45,
+    "largo": 79,
+    "rot": 53,
+    "area": 1006,
+    "alto": 42,
+    "clases": [
+     0,
+     5
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 33,
+    "largo": 80,
+    "rot": 60
+   }
+  },
+  {
+   "id": "santa_maria_pi",
+   "nombre": "Santa Maria del Pi",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "templo",
+   "lat": 41.3822,
+   "lon": 2.1739,
+   "confianza": "alta",
+   "alto": 54,
+   "ancho": 25,
+   "largo": 60,
+   "rot": 135,
+   "forma": "Iglesia gótica de una nave con gran rosetón y un campanario octogonal macizo de 54 m.",
+   "rasgos": [
+    "campanario octogonal macizo",
+    "rosetón"
+   ],
+   "colores": [
+    "#b8a688"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 12526.1,
+   "z": 13492.3,
+   "y": 8.3,
+   "edificios": [
+    81887,
+    81900,
+    81910,
+    82725,
+    82726,
+    82727
+   ],
+   "en_datos": "2 volúmenes, 2 124 m² en total, hasta 54 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 61,
+    "largo": 64,
+    "rot": 38,
+    "area": 2124,
+    "alto": 54,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: Nave (#81910, 7 m en los datos) y campanario (#81900, 54 m)."
+  },
+  {
+   "id": "merce",
+   "nombre": "Basílica de la Mercè",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "templo",
+   "lat": 41.37952,
+   "lon": 2.17958,
+   "confianza": "baja",
+   "alto": 70,
+   "ancho": 30,
+   "largo": 50,
+   "rot": 135,
+   "forma": "Basílica barroca con cúpula coronada por la gran estatua de la Mercè.",
+   "rasgos": [
+    "cúpula con estatua"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#8c8478"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Alto de memoria (baja).",
+   "x": 12997.7,
+   "z": 13215.9,
+   "y": 4,
+   "edificios": [],
+   "en_datos": "no existe con seguridad: La basílica no se distingue en los datos (manzana de volúmenes de 4–17 m, sin cúpula); el punto cae en #83401 (174 m², 17 m). Candidatos: #83401, #83404, #83405.",
+   "encaje": "dudoso",
+   "r1": {
+    "confianza": "alta"
+   }
+  },
+  {
+   "id": "arc_triomf",
+   "nombre": "Arc de Triomf",
+   "lote": "d",
+   "nivel": "A",
+   "cat": "monumento",
+   "lat": 41.39111,
+   "lon": 2.18056,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 13,
+   "largo": 28,
+   "rot": 46,
+   "forma": "Arco neomudéjar de ladrillo rojo en el eje del Pg. de Lluís Companys, con frisos escultóricos y remates.",
+   "rasgos": [
+    "arco de ladrillo rojo"
+   ],
+   "colores": [
+    "#b5543a",
+    "#d8ccb4"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Arc de Triomf».",
+   "x": 13099.6,
+   "z": 14491.7,
+   "y": 10.8,
+   "edificios": [
+    118700,
+    119009,
+    119010
+   ],
+   "en_datos": "3 volúmenes, 280 m² en total, hasta 29 m; clase 0",
+   "planta": {
+    "ancho": 13,
+    "largo": 28,
+    "rot": 46,
+    "area": 280,
+    "alto": 29,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 12,
+    "largo": 30,
+    "rot": 45
+   }
+  },
+  {
+   "id": "cascada",
+   "nombre": "Cascada de la Ciutadella",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "fuente",
+   "lat": 41.38996,
+   "lon": 2.18659,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 30,
+   "largo": 45,
+   "rot": 45,
+   "forma": "Fuente monumental con arcos, grutas y escalinatas, coronada por una cuadriga dorada.",
+   "rasgos": [
+    "cuadriga dorada",
+    "arcos"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#c8a050"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 13591.8,
+   "z": 14361.9,
+   "y": 8.3,
+   "edificios": [
+    99108,
+    99109
+   ],
+   "en_datos": "2 volúmenes, 2 232 m² en total, hasta 28 m; clase 2 , 0",
+   "planta": {
+    "ancho": 81,
+    "largo": 85,
+    "rot": 0,
+    "area": 2232,
+    "alto": 28.2,
+    "clases": [
+     2,
+     0
+    ]
+   },
+   "encaje": "g"
+  },
+  {
+   "id": "parlament",
+   "nombre": "Parlament de Catalunya",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "palacio",
+   "lat": 41.38806,
+   "lon": 2.18889,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 71,
+   "largo": 98,
+   "rot": 148,
+   "forma": "Antiguo arsenal barroco en la Ciutadella: palacio ocre de dos plantas con alas y cuerpo central.",
+   "rasgos": [
+    "palacio ocre con alas"
+   ],
+   "colores": [
+    "#d6c39c"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "x": 13788.2,
+   "z": 14167.7,
+   "y": 4,
+   "edificios": [
+    102656,
+    102658,
+    102659,
+    102660,
+    102662,
+    102663,
+    102665,
+    102666,
+    102667,
+    102668,
+    102669,
+    102670,
+    102671,
+    102672,
+    102676
+   ],
+   "en_datos": "12 volúmenes, 4 832 m² en total, hasta 17 m (+3 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 71,
+    "largo": 98,
+    "rot": 148,
+    "area": 4832,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 60,
+    "largo": 100,
+    "rot": 45
+   }
+  },
+  {
+   "id": "estacio_franca",
+   "nombre": "Estació de França",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "estacion",
+   "lat": 41.384,
+   "lon": 2.186,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 137,
+   "largo": 235,
+   "rot": 114,
+   "forma": "Estación de 1929: dos naves curvas de hierro y vidrio (marquesina doble) y edificio de viajeros clasicista.",
+   "rasgos": [
+    "dos naves curvas de hierro"
+   ],
+   "colores": [
+    "#8c949c",
+    "#d8ccb4"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "nota": "Coordenada redondeada en la fuente.",
+   "x": 13566.5,
+   "z": 13708.6,
+   "y": 6,
+   "edificios": [
+    99155,
+    99156,
+    99157,
+    102640,
+    102641
+   ],
+   "en_datos": "1 volumen de 25 568 m² y 30 m (+4 partes de OSM); clase 2",
+   "planta": {
+    "ancho": 137,
+    "largo": 235,
+    "rot": 114,
+    "area": 25568,
+    "alto": 30,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 100,
+    "largo": 200,
+    "rot": 160,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "santa_caterina",
+   "nombre": "Mercat de Santa Caterina",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "mercado",
+   "lat": 41.38618,
+   "lon": 2.17834,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 70,
+   "largo": 86,
+   "rot": 129,
+   "forma": "Mercado con cubierta ondulada de cerámica de colores en hexágonos (verde, naranja, amarillo).",
+   "rasgos": [
+    "cubierta ondulada multicolor"
+   ],
+   "colores": [
+    "#3f8f3f",
+    "#e0803a",
+    "#e8c547"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 12919.2,
+   "z": 13948.3,
+   "y": 6,
+   "edificios": [
+    100070
+   ],
+   "en_datos": "1 volumen de 4 486 m² y 4 m; clase 0",
+   "planta": {
+    "ancho": 70,
+    "largo": 86,
+    "rot": 129,
+    "area": 4486,
+    "alto": 4.2,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 60,
+    "largo": 90,
+    "rot": 45
+   }
+  },
+  {
+   "id": "boqueria",
+   "nombre": "Mercat de la Boqueria",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "mercado",
+   "lat": 41.3818,
+   "lon": 2.17155,
+   "confianza": "alta",
+   "alto": 15,
+   "ancho": 39,
+   "largo": 97,
+   "rot": 59,
+   "forma": "Mercado con portada modernista de hierro y vidrieras de colores a La Rambla; nave metálica detrás.",
+   "rasgos": [
+    "portada de hierro y vidrieras"
+   ],
+   "colores": [
+    "#5f7f6a",
+    "#d24b3a",
+    "#e8c547"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 12324.6,
+   "z": 13473.3,
+   "y": 9.9,
+   "edificios": [
+    79055,
+    79057,
+    79058
+   ],
+   "en_datos": "3 volúmenes, 3 597 m² en total, hasta 11 m; clase 0",
+   "planta": {
+    "ancho": 39,
+    "largo": 97,
+    "rot": 59,
+    "area": 3597,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 60,
+    "largo": 100,
+    "rot": 45
+   }
+  },
+  {
+   "id": "macba",
+   "nombre": "MACBA",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "museo",
+   "lat": 41.38333,
+   "lon": 2.16694,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 47,
+   "largo": 109,
+   "rot": 59,
+   "forma": "Museo blanco de Richard Meier en la Pl. dels Àngels: fachada blanca con parasoles y gran rampa acristalada.",
+   "rasgos": [
+    "blanco con rampa de vidrio"
+   ],
+   "colores": [
+    "#f2f2ee",
+    "#c8d0d8"
+   ],
+   "noche": "nada",
+   "fuente": "enwiki",
+   "x": 11931.4,
+   "z": 13620.2,
+   "y": 13.8,
+   "edificios": [
+    94812
+   ],
+   "en_datos": "1 volumen de 3 646 m² y 11 m; clase 2",
+   "planta": {
+    "ancho": 47,
+    "largo": 109,
+    "rot": 59,
+    "area": 3646,
+    "alto": 10.6,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "nota": "R2: la planta del juego está a 32 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 35,
+    "largo": 120,
+    "rot": 45
+   }
+  },
+  {
+   "id": "drassanes",
+   "nombre": "Drassanes Reials",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.37527,
+   "lon": 2.17628,
+   "confianza": "alta",
+   "alto": 18,
+   "ancho": 116,
+   "largo": 117,
+   "rot": 115,
+   "forma": "Atarazanas góticas: naves paralelas con cubiertas a dos aguas y muralla con torre en una esquina.",
+   "rasgos": [
+    "naves paralelas a dos aguas"
+   ],
+   "colores": [
+    "#b8a688",
+    "#b5543a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 12707.4,
+   "z": 12755.4,
+   "y": 4,
+   "edificios": [
+    63075,
+    63076,
+    63077,
+    63079,
+    63080,
+    63083,
+    63084,
+    63088,
+    63090,
+    63091,
+    63092,
+    63093,
+    63094,
+    79062
+   ],
+   "en_datos": "14 volúmenes, 10 428 m² en total, hasta 11 m; clase 0",
+   "planta": {
+    "ancho": 116,
+    "largo": 117,
+    "rot": 115,
+    "area": 10428,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 80,
+    "largo": 110,
+    "rot": 45
+   }
+  },
+  {
+   "id": "sant_jaume",
+   "nombre": "Palau de la Generalitat i Casa de la Ciutat",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "palacio",
+   "lat": 41.3825,
+   "lon": 2.177,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 40,
+   "largo": 120,
+   "rot": 135,
+   "forma": "Dos palacios enfrentados en la Pl. de Sant Jaume: Generalitat (fachada renacentista de piedra con frontón) y Ayuntamiento (fachada neoclásica).",
+   "rasgos": [
+    "dos fachadas de piedra enfrentadas"
+   ],
+   "colores": [
+    "#c9b48a",
+    "#b8a688"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki / eswiki",
+   "nota": "Generalitat 41.3828, 2.1767 · Casa de la Ciutat 41.3822, 2.1775. R2: Dos palacios enfrentados (Generalitat al NO, Ajuntament al SE) con la plaza en medio: el rectángulo incluye manzanas vecinas del Gòtic; no sustituir sin mirar.",
+   "x": 12786.3,
+   "z": 13550.5,
+   "y": 12.3,
+   "edificios": [
+    79132,
+    79133,
+    79139,
+    82748,
+    82750,
+    82751,
+    82752,
+    82753,
+    82754
+   ],
+   "en_datos": "7 volúmenes, 3 493 m² en total, hasta 17 m (+2 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 60,
+    "largo": 143,
+    "rot": 133,
+    "area": 3493,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "born_ccm",
+   "nombre": "El Born CCM (antic mercat)",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "mercado",
+   "lat": 41.3855,
+   "lon": 2.1837,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 58,
+   "largo": 138,
+   "rot": 135,
+   "forma": "Antiguo mercado de hierro (1876): naves con cubierta de pizarra y cinc, lucernarios y linterna en el cruce.",
+   "rasgos": [
+    "nave de hierro con linterna"
+   ],
+   "colores": [
+    "#5f6f6a",
+    "#8c949c"
+   ],
+   "noche": "nada",
+   "fuente": "memoria",
+   "x": 13357.9,
+   "z": 13910.8,
+   "y": 5,
+   "edificios": [
+    99110,
+    99111,
+    99158,
+    99159,
+    99160,
+    99161,
+    99162,
+    99163,
+    99164,
+    99165,
+    99166,
+    99167,
+    99168,
+    99169,
+    99170,
+    99171,
+    99172,
+    99173,
+    99174
+   ],
+   "en_datos": "1 volumen de 8 039 m² y 26 m (+18 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 58,
+    "largo": 138,
+    "rot": 135,
+    "area": 8039,
+    "alto": 26,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 36 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 50,
+    "largo": 135,
+    "rot": 45,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "duana",
+   "nombre": "Edifici de la Duana",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.373,
+   "lon": 2.178,
+   "confianza": "media",
+   "alto": 30,
+   "ancho": 31,
+   "largo": 73,
+   "rot": 122,
+   "forma": "Aduana de 1902 en el puerto, junto a Colom: piedra ocre, cuatro torres de esquina con cúpulas y esculturas.",
+   "rasgos": [
+    "cuatro torres con cúpulas"
+   ],
+   "colores": [
+    "#d6c39c",
+    "#5f7f6a"
+   ],
+   "noche": "focos",
+   "fuente": "memoria",
+   "x": 12889,
+   "z": 12537.7,
+   "y": 2.5,
+   "edificios": [
+    64248
+   ],
+   "en_datos": "1 volumen de 1 535 m² y 11 m; clase 10",
+   "planta": {
+    "ancho": 31,
+    "largo": 73,
+    "rot": 122,
+    "area": 1535,
+    "alto": 10.6,
+    "clases": [
+     10
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 54 m de la coordenada lat/lon; x, z son los de la planta. R2: Volumen bajo de 1 535 m² (11 m) a 54 m de la coordenada de memoria: es lo único que encaja; confirmar con vista.",
+   "r1": {
+    "ancho": 50,
+    "largo": 80,
+    "rot": 45
+   }
+  },
+  {
+   "id": "correus",
+   "nombre": "Edifici de Correus",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.38153,
+   "lon": 2.18145,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 60,
+   "largo": 75,
+   "rot": 45,
+   "forma": "Edificio noucentista en Via Laietana / Pg. de Colom con cuatro torres de esquina rematadas por cupulines.",
+   "rasgos": [
+    "cuatro torres de esquina"
+   ],
+   "colores": [
+    "#d8ccb4"
+   ],
+   "noche": "focos",
+   "fuente": "eswiki",
+   "x": 13138.9,
+   "z": 13444.6,
+   "y": 5.2,
+   "edificios": [
+    83131,
+    83133,
+    83134,
+    83135,
+    83136,
+    83352,
+    83374,
+    83376,
+    83911,
+    84258,
+    84267
+   ],
+   "en_datos": "10 volúmenes, 1 055 m² en total, hasta 30 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 54,
+    "largo": 96,
+    "rot": 20,
+    "area": 1055,
+    "alto": 29.8,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "rect",
+   "nota": "R2: El rectángulo puede recoger volúmenes vecinos; revisar antes de ocultar."
+  },
+  {
+   "id": "torre_jaume_i",
+   "nombre": "Torre Jaume I",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.37208,
+   "lon": 2.18012,
+   "confianza": "alta",
+   "alto": 107,
+   "ancho": 11,
+   "largo": 11,
+   "rot": 123,
+   "forma": "Torre de celosía de acero del teleférico del puerto, con plataforma y sala de máquinas arriba.",
+   "rasgos": [
+    "torre de celosía con plataforma"
+   ],
+   "colores": [
+    "#7a6a5a",
+    "#c8c4bc"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 13034.9,
+   "z": 12386.5,
+   "y": 4.5,
+   "edificios": [
+    64247,
+    64319,
+    64320,
+    64321,
+    64322,
+    64323,
+    64324
+   ],
+   "en_datos": "1 volumen de 120 m² y 107 m (+6 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 11,
+    "largo": 11,
+    "rot": 123,
+    "area": 120,
+    "alto": 107,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 15,
+    "largo": 15,
+    "rot": 0
+   }
+  },
+  {
+   "id": "torre_sant_sebastia",
+   "nombre": "Torre Sant Sebastià",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.37311,
+   "lon": 2.1878,
+   "confianza": "alta",
+   "alto": 78,
+   "ancho": 7,
+   "largo": 7,
+   "rot": 90,
+   "forma": "Torre de celosía de acero del teleférico del puerto en la Barceloneta, con restaurante arriba.",
+   "rasgos": [
+    "torre de celosía con cabina"
+   ],
+   "colores": [
+    "#7a6a5a",
+    "#c8c4bc"
+   ],
+   "noche": "focos",
+   "fuente": "enwiki",
+   "x": 13679.8,
+   "z": 12501.5,
+   "y": 2.6,
+   "edificios": [
+    64416,
+    64417,
+    64418
+   ],
+   "en_datos": "1 volumen de 37 m² y 78 m (+2 partes de OSM); clase 4",
+   "planta": {
+    "ancho": 7,
+    "largo": 7,
+    "rot": 90,
+    "area": 37,
+    "alto": 78.4,
+    "clases": [
+     4
+    ]
+   },
+   "encaje": "auto-alto",
+   "r1": {
+    "ancho": 15,
+    "largo": 15,
+    "rot": 0
+   }
+  },
+  {
+   "id": "cap_barcelona",
+   "nombre": "El Cap de Barcelona",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "escultura",
+   "lat": 41.3806,
+   "lon": 2.1808,
+   "confianza": "media",
+   "alto": 14,
+   "ancho": 8,
+   "largo": 10,
+   "rot": 0,
+   "forma": "Escultura de Roy Lichtenstein: una cabeza de 14 m en mosaico de cerámica de colores primarios, estilo cómic.",
+   "rasgos": [
+    "cabeza de cómic multicolor"
+   ],
+   "colores": [
+    "#f2efe6",
+    "#d24b3a",
+    "#e8c547",
+    "#2b5fa8"
+   ],
+   "noche": "focos",
+   "fuente": "memoria",
+   "x": 13100.9,
+   "z": 13334.8,
+   "y": 4.2,
+   "edificios": [],
+   "en_datos": "no existe: escultura; la coordenada de memoria cae dentro de un edificio (#83377): está unos 30–60 m más al mar, en la acera del Passeig de Colom",
+   "encaje": "no"
+  },
+  {
+   "id": "estel_ferit",
+   "nombre": "L'Estel Ferit",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "escultura",
+   "lat": 41.37619,
+   "lon": 2.1909,
+   "confianza": "alta",
+   "alto": 10,
+   "ancho": 4,
+   "largo": 4,
+   "rot": 0,
+   "forma": "Escultura de Rebecca Horn en la playa de la Barceloneta: cuatro cubos de acero oxidado apilados y torcidos.",
+   "rasgos": [
+    "cubos apilados torcidos",
+    "óxido"
+   ],
+   "colores": [
+    "#8c5a3a"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 13940.8,
+   "z": 12837.3,
+   "y": 3.2,
+   "edificios": [],
+   "en_datos": "no existe: escultura sobre la arena: no existe en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "llapis",
+   "nombre": "El Llapis (Cinc d'Oros)",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "monumento",
+   "lat": 41.3955,
+   "lon": 2.1595,
+   "confianza": "media",
+   "alto": 33,
+   "ancho": 3,
+   "largo": 3,
+   "rot": 0,
+   "forma": "Obelisco blanco muy fino en el cruce de Diagonal y Pg. de Gràcia (Monument a la República).",
+   "rasgos": [
+    "obelisco blanco fino"
+   ],
+   "colores": [
+    "#f2f2ee"
+   ],
+   "noche": "focos",
+   "fuente": "memoria",
+   "nota": "Alto de memoria (baja).",
+   "x": 11335.9,
+   "z": 15006,
+   "y": 39.9,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos (Cinc d'Oros, cruce Diagonal / Passeig de Gràcia)",
+   "encaje": "no"
+  },
+  {
+   "id": "rambla_mar",
+   "nombre": "Rambla de Mar",
+   "lote": "d",
+   "nivel": "B",
+   "cat": "pasarela",
+   "lat": 41.37504,
+   "lon": 2.18103,
+   "confianza": "alta",
+   "alto": 3,
+   "ancho": 20,
+   "largo": 200,
+   "rot": 135,
+   "forma": "Pasarela ondulada de madera sobre el Port Vell, con puente basculante, entre Colom y el Maremagnum.",
+   "rasgos": [
+    "pasarela ondulada sobre el agua"
+   ],
+   "colores": [
+    "#8c6a4a",
+    "#c8c4bc"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 13114.3,
+   "z": 12717.4,
+   "y": 1.4,
+   "edificios": [],
+   "en_datos": "no existe: pasarela: no existe en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "torre_collserola",
+   "nombre": "Torre de Collserola",
+   "lote": "e",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.41722,
+   "lon": 2.11417,
+   "confianza": "alta",
+   "alto": 288,
+   "ancho": 40,
+   "largo": 40,
+   "rot": 0,
+   "forma": "Torre de telecomunicaciones de Foster: fuste de hormigón muy esbelto atirantado con cables, 13 plataformas de planta triangular con esquinas redondeadas apiladas a media altura y una antena-mástil roja y blanca arriba.",
+   "rasgos": [
+    "fuste fino atirantado",
+    "paquete de plataformas triangulares",
+    "mástil rojo y blanco"
+   ],
+   "colores": [
+    "#c8c8c4",
+    "#d24b3a",
+    "#f2f2ee"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "Poi y meta.stats.torre_collserola (posición fiable, base a 443 m).",
+   "x": 7580.5,
+   "z": 17458,
+   "y": 443.1,
+   "edificios": [
+    162670,
+    162671,
+    162672,
+    162673,
+    162674,
+    162675,
+    162676,
+    162677,
+    162678,
+    162679,
+    162680,
+    162681,
+    162682,
+    162683,
+    162684,
+    162685,
+    162686,
+    162687
+   ],
+   "en_datos": "1 volumen de 487 m² y 288 m (+17 partes de OSM); clase 13 (Torre de Collserola)",
+   "planta": {
+    "ancho": 26,
+    "largo": 26,
+    "rot": 167,
+    "area": 487,
+    "alto": 288.4,
+    "clases": [
+     13
+    ]
+   },
+   "encaje": "auto"
+  },
+  {
+   "id": "sagrat_cor",
+   "nombre": "Temple del Sagrat Cor",
+   "lote": "e",
+   "nivel": "A",
+   "cat": "templo",
+   "lat": 41.42208,
+   "lon": 2.11886,
+   "confianza": "alta",
+   "alto": 70,
+   "ancho": 57,
+   "largo": 75,
+   "rot": 103,
+   "forma": "Templo en la cima del Tibidabo: cripta románica de piedra oscura y encima iglesia neogótica clara con agujas, torre central coronada por la estatua dorada del Sagrado Corazón con los brazos abiertos.",
+   "rasgos": [
+    "estatua dorada con brazos abiertos en lo alto",
+    "agujas neogóticas"
+   ],
+   "colores": [
+    "#8c8070",
+    "#d8ccb4",
+    "#d8b050"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "nota": "meta.stats.sagrat_cor (posición fiable).",
+   "x": 7959.3,
+   "z": 17987.7,
+   "y": 510,
+   "edificios": [
+    176499,
+    176500,
+    176501,
+    176502,
+    176503
+   ],
+   "en_datos": "1 volumen de 2 775 m² y 68 m (+4 partes de OSM); clase 2",
+   "planta": {
+    "ancho": 57,
+    "largo": 75,
+    "rot": 103,
+    "area": 2775,
+    "alto": 67.5,
+    "clases": [
+     2
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 30,
+    "largo": 50,
+    "rot": 0
+   }
+  },
+  {
+   "id": "tibidabo_parc",
+   "nombre": "Parc d'Atraccions del Tibidabo",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "parque",
+   "lat": 41.42175,
+   "lon": 2.12004,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 80,
+   "largo": 150,
+   "rot": 0,
+   "forma": "Junto al templo: noria de cestas de colores, la Talaia (brazo giratorio) y el avión colgado.",
+   "rasgos": [
+    "noria de colores",
+    "Talaia"
+   ],
+   "colores": [
+    "#d24b3a",
+    "#e8c547",
+    "#2b5fa8"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 8040.7,
+   "z": 17929.4,
+   "y": 495,
+   "edificios": [
+    176505,
+    176507,
+    176509,
+    176511,
+    176532
+   ],
+   "en_datos": "5 volúmenes, 1 551 m² en total, hasta 9 m; clase 0 , 2",
+   "planta": {
+    "ancho": 84,
+    "largo": 149,
+    "rot": 162,
+    "area": 1551,
+    "alto": 9,
+    "clases": [
+     0,
+     2
+    ]
+   },
+   "encaje": "rect",
+   "nota": "R2: la planta del juego está a 35 m de la coordenada lat/lon; x, z son los de la planta."
+  },
+  {
+   "id": "observatori_fabra",
+   "nombre": "Observatori Fabra",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "edificio",
+   "lat": 41.41841,
+   "lon": 2.12405,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 17,
+   "largo": 31,
+   "rot": 93,
+   "forma": "Edificio modernista claro en la ladera de Collserola con la cúpula plateada del telescopio.",
+   "rasgos": [
+    "cúpula plateada"
+   ],
+   "colores": [
+    "#e6dcc4",
+    "#b8bcc0"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 8402.7,
+   "z": 17577.2,
+   "y": 406.5,
+   "edificios": [
+    162698,
+    162699
+   ],
+   "en_datos": "1 volumen de 351 m² y 14 m (+1 parte de OSM); clase 0",
+   "planta": {
+    "ancho": 17,
+    "largo": 31,
+    "rot": 93,
+    "area": 351,
+    "alto": 13.8,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 20,
+    "largo": 40,
+    "rot": 0
+   }
+  },
+  {
+   "id": "monestir_pedralbes",
+   "nombre": "Monestir de Pedralbes",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "templo",
+   "lat": 41.3956,
+   "lon": 2.1122,
+   "confianza": "alta",
+   "alto": 35,
+   "ancho": 94,
+   "largo": 120,
+   "rot": 41,
+   "forma": "Monasterio gótico: iglesia de una nave con campanario octogonal y claustro de tres pisos.",
+   "rasgos": [
+    "campanario octogonal",
+    "claustro"
+   ],
+   "colores": [
+    "#c9b48a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 7375.2,
+   "z": 15055.7,
+   "y": 125.9,
+   "edificios": [
+    104726,
+    104728,
+    104729,
+    104731,
+    104737,
+    104738,
+    104742,
+    104743,
+    105103
+   ],
+   "en_datos": "9 volúmenes, 7 568 m² en total, hasta 17 m; clase 0 , 2",
+   "planta": {
+    "ancho": 94,
+    "largo": 120,
+    "rot": 41,
+    "area": 7568,
+    "alto": 17,
+    "clases": [
+     0,
+     2
+    ]
+   },
+   "encaje": "rect",
+   "r1": {
+    "ancho": 60,
+    "largo": 90,
+    "rot": 0
+   }
+  },
+  {
+   "id": "palau_pedralbes",
+   "nombre": "Palau Reial de Pedralbes",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "palacio",
+   "lat": 41.38842,
+   "lon": 2.11703,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 38,
+   "largo": 130,
+   "rot": 59,
+   "forma": "Palacio italianizante blanco y ocre en U, con jardín delante abierto a la Diagonal.",
+   "rasgos": [
+    "palacio en U claro"
+   ],
+   "colores": [
+    "#efe9dc",
+    "#c9b48a"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 7776.9,
+   "z": 14249.9,
+   "y": 78.4,
+   "edificios": [
+    89896,
+    89898,
+    89903,
+    89909,
+    89910
+   ],
+   "en_datos": "1 volumen de 2 985 m² y 11 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 38,
+    "largo": 130,
+    "rot": 59,
+    "area": 2985,
+    "alto": 10.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 50,
+    "largo": 80,
+    "rot": 0
+   }
+  },
+  {
+   "id": "bunquers_carmel",
+   "nombre": "Búnquers del Carmel",
+   "lote": "e",
+   "nivel": "C",
+   "cat": "mirador",
+   "lat": 41.4194,
+   "lon": 2.16174,
+   "confianza": "media",
+   "alto": 3,
+   "ancho": 60,
+   "largo": 80,
+   "rot": 0,
+   "forma": "Plataformas circulares de hormigón de la batería antiaérea en la cima del Turó de la Rovira.",
+   "rasgos": [
+    "plataformas circulares de hormigón"
+   ],
+   "colores": [
+    "#a8a49c"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Turó de la Rovira».",
+   "x": 11548.8,
+   "z": 17657.6,
+   "y": 255.9,
+   "edificios": [],
+   "en_datos": "no existe: ruinas a ras de suelo: no hay volumen",
+   "encaje": "no"
+  },
+  {
+   "id": "estacio_sants",
+   "nombre": "Estació de Sants",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "estacion",
+   "lat": 41.3789,
+   "lon": 2.14,
+   "confianza": "alta",
+   "alto": 15,
+   "ancho": 136,
+   "largo": 150,
+   "rot": 51,
+   "forma": "Edificio de estación largo y bajo con la gran marquesina plana de la plaza (Països Catalans) delante.",
+   "rasgos": [
+    "edificio largo y bajo",
+    "marquesina plana"
+   ],
+   "colores": [
+    "#8c8c8c",
+    "#c8c4bc"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "nota": "Poi del juego «Estació de Sants».",
+   "x": 9700.7,
+   "z": 13205.4,
+   "y": 30.7,
+   "edificios": [
+    74236,
+    74354,
+    74355,
+    74356,
+    74357
+   ],
+   "en_datos": "1 volumen de 20 265 m² y 43 m (+4 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 136,
+    "largo": 150,
+    "rot": 51,
+    "area": 20265,
+    "alto": 42.6,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 100,
+    "largo": 300,
+    "rot": 45,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "hotel_torre_catalunya",
+   "nombre": "Hotel Torre Catalunya",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.3797,
+   "lon": 2.1425,
+   "confianza": "alta",
+   "alto": 115,
+   "ancho": 16,
+   "largo": 46,
+   "rot": 46,
+   "forma": "Torre de hotel de vidrio junto a la estación de Sants.",
+   "rasgos": [
+    "prisma de vidrio"
+   ],
+   "colores": [
+    "#7f9fbf",
+    "#d8dcd8"
+   ],
+   "noche": "ventanas",
+   "fuente": "enwiki",
+   "x": 9898.3,
+   "z": 13258.6,
+   "y": 30,
+   "edificios": [
+    74364,
+    75227,
+    75229
+   ],
+   "en_datos": "3 volúmenes, 721 m² en total, hasta 100 m; clase 3 , 5",
+   "planta": {
+    "ancho": 16,
+    "largo": 46,
+    "rot": 46,
+    "area": 721,
+    "alto": 100,
+    "clases": [
+     3,
+     5
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 30,
+    "largo": 40,
+    "rot": 45
+   }
+  },
+  {
+   "id": "espanya_industrial",
+   "nombre": "Parc de l'Espanya Industrial (torres-far)",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "parque",
+   "lat": 41.3775,
+   "lon": 2.1408,
+   "confianza": "alta",
+   "alto": 30,
+   "ancho": 35,
+   "largo": 160,
+   "rot": 65,
+   "forma": "Diez torres-farola blancas tipo faro alineadas sobre las gradas escalonadas del parque.",
+   "rasgos": [
+    "hilera de torres-faro blancas"
+   ],
+   "colores": [
+    "#f2f2ee"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 9753.5,
+   "z": 13094,
+   "y": 27.4,
+   "edificios": [
+    74242,
+    74346,
+    74347,
+    74348,
+    74349,
+    74350,
+    74351,
+    74352
+   ],
+   "en_datos": "8 volúmenes, 294 m² en total, hasta 10 m; clase 4",
+   "planta": {
+    "ancho": 35,
+    "largo": 160,
+    "rot": 65,
+    "area": 294,
+    "alto": 10,
+    "clases": [
+     4
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 71 m de la coordenada lat/lon; x, z son los de la planta. R2: Las torres-faro del parque están en los datos como 8 pilares de 10 m (clase 4).",
+   "r1": {
+    "ancho": 40,
+    "largo": 200,
+    "rot": 45
+   }
+  },
+  {
+   "id": "auditori",
+   "nombre": "L'Auditori",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "teatro",
+   "lat": 41.39824,
+   "lon": 2.18585,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 52,
+   "largo": 173,
+   "rot": 135,
+   "forma": "Bloque de hormigón gris de Moneo con fachada reticulada y un cubo de luz.",
+   "rasgos": [
+    "bloque gris reticulado"
+   ],
+   "colores": [
+    "#9c968c",
+    "#8c5a3a"
+   ],
+   "noche": "nada",
+   "fuente": "cawiki",
+   "x": 13518,
+   "z": 15309.2,
+   "y": 10.7,
+   "edificios": [
+    139573,
+    139575,
+    139576
+   ],
+   "en_datos": "1 volumen de 7 468 m² y 17 m (+2 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 52,
+    "largo": 173,
+    "rot": 135,
+    "area": 7468,
+    "alto": 17,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "nota": "R2: la planta del juego está a 31 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 100,
+    "largo": 150,
+    "rot": 45
+   }
+  },
+  {
+   "id": "tnc",
+   "nombre": "Teatre Nacional de Catalunya",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "teatro",
+   "lat": 41.39972,
+   "lon": 2.18611,
+   "confianza": "alta",
+   "alto": 25,
+   "ancho": 59,
+   "largo": 99,
+   "rot": 136,
+   "forma": "Templo clásico moderno de Bofill: caja de vidrio rodeada de columnas de hormigón ocre y frontón.",
+   "rasgos": [
+    "columnata y frontón",
+    "caja de vidrio"
+   ],
+   "colores": [
+    "#d6c39c",
+    "#8fa8b8"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 13530.2,
+   "z": 15481.7,
+   "y": 13.8,
+   "edificios": [
+    139560,
+    139563,
+    139566
+   ],
+   "en_datos": "1 volumen de 5 837 m² y 20 m (+2 partes de OSM); clase 0",
+   "planta": {
+    "ancho": 59,
+    "largo": 99,
+    "rot": 136,
+    "area": 5837,
+    "alto": 20.2,
+    "clases": [
+     0
+    ]
+   },
+   "encaje": "auto",
+   "nota": "R2: la planta del juego está a 45 m de la coordenada lat/lon; x, z son los de la planta.",
+   "r1": {
+    "ancho": 60,
+    "largo": 110,
+    "rot": 135
+   }
+  },
+  {
+   "id": "mistos",
+   "nombre": "Mistos",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "escultura",
+   "lat": 41.4268,
+   "lon": 2.1453,
+   "confianza": "baja",
+   "alto": 20,
+   "ancho": 5,
+   "largo": 20,
+   "rot": 0,
+   "forma": "Escultura de Oldenburg: cerillas gigantes de colores (rojo, azul, amarillo) en la Vall d'Hebron.",
+   "rasgos": [
+    "cerillas gigantes"
+   ],
+   "colores": [
+    "#d24b3a",
+    "#2b5fa8",
+    "#e8c547"
+   ],
+   "noche": "nada",
+   "fuente": "memoria",
+   "nota": "Posición de memoria (baja).",
+   "x": 10183.1,
+   "z": 18492.5,
+   "y": 144.6,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos; posición de memoria",
+   "encaje": "no"
+  },
+  {
+   "id": "pont_bac_de_roda",
+   "nombre": "Pont de Bac de Roda",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "puente",
+   "lat": 41.4162,
+   "lon": 2.1924,
+   "confianza": "alta",
+   "alto": 20,
+   "ancho": 30,
+   "largo": 130,
+   "rot": 45,
+   "forma": "Puente blanco de Calatrava sobre las vías: dos pares de arcos inclinados con tirantes.",
+   "rasgos": [
+    "arcos blancos inclinados"
+   ],
+   "colores": [
+    "#f2f2ee"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 14107.7,
+   "z": 17278,
+   "y": 13.4,
+   "edificios": [],
+   "en_datos": "no existe: puente: no existe en los datos",
+   "encaje": "no"
+  },
+  {
+   "id": "aeroport",
+   "nombre": "Aeroport (T1 i torre de control)",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "aeropuerto",
+   "lat": 41.2884,
+   "lon": 2.0731,
+   "confianza": "alta",
+   "alto": 40,
+   "ancho": 499,
+   "largo": 1099,
+   "rot": 66,
+   "forma": "Terminal T1: nave larguísima de vidrio con cubierta ondulada clara; al lado, la torre de control.",
+   "rasgos": [
+    "nave larga con cubierta ondulada",
+    "torre de control"
+   ],
+   "colores": [
+    "#d8dcd8",
+    "#7f9fbf"
+   ],
+   "noche": "ventanas",
+   "fuente": "memoria",
+   "nota": "Poi del juego «Aeroport · Terminal 1». Posición de la torre de control: R2 (baja). R2: la planta del juego está a 338 m de la coordenada lat/lon; x, z son los de la planta. R2: Terminal 1 (#607); la torre de control no está en los datos.",
+   "x": 4285.4,
+   "z": 3345.4,
+   "y": 4,
+   "edificios": [
+    605,
+    606,
+    607
+   ],
+   "en_datos": "1 volumen de 128 796 m² y 11 m (+2 partes de OSM); clase 10",
+   "planta": {
+    "ancho": 499,
+    "largo": 1099,
+    "rot": 66,
+    "area": 128796,
+    "alto": 10.6,
+    "clases": [
+     10
+    ]
+   },
+   "encaje": "g",
+   "r1": {
+    "ancho": 150,
+    "largo": 600,
+    "rot": 45,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "hotel_porta_fira",
+   "nombre": "Hotel Porta Fira",
+   "lote": "e",
+   "nivel": "A",
+   "cat": "torre",
+   "lat": 41.35489,
+   "lon": 2.12554,
+   "confianza": "alta",
+   "alto": 113,
+   "ancho": 36,
+   "largo": 38,
+   "rot": 65,
+   "forma": "Torre de Toyo Ito en la Pl. d'Europa: piel de tubos rojos verticales ondulantes; la torre se retuerce y se ensancha hacia arriba.",
+   "rasgos": [
+    "torre roja retorcida",
+    "tubos verticales"
+   ],
+   "colores": [
+    "#c0282a",
+    "#8c1a1a"
+   ],
+   "noche": "ventanas",
+   "fuente": "eswiki",
+   "x": 8440.6,
+   "z": 10543.4,
+   "y": 6.2,
+   "edificios": [
+    41345
+   ],
+   "en_datos": "1 volumen de 1 066 m² y 113 m; clase 3",
+   "planta": {
+    "ancho": 36,
+    "largo": 38,
+    "rot": 65,
+    "area": 1066,
+    "alto": 113,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto-alto",
+   "r1": {
+    "ancho": 30,
+    "largo": 30,
+    "rot": 0
+   }
+  },
+  {
+   "id": "torre_realia",
+   "nombre": "Torre Realia BCN",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.35555,
+   "lon": 2.12511,
+   "confianza": "alta",
+   "alto": 110,
+   "ancho": 32,
+   "largo": 40,
+   "rot": 15,
+   "forma": "Torre cilíndrica de vidrio claro junto al Hotel Porta Fira.",
+   "rasgos": [
+    "cilindro de vidrio"
+   ],
+   "colores": [
+    "#c8d0d8"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 8412.5,
+   "z": 10609.2,
+   "y": 6.4,
+   "edificios": [
+    41346
+   ],
+   "en_datos": "1 volumen de 1 288 m² y 112 m; clase 3",
+   "planta": {
+    "ancho": 32,
+    "largo": 40,
+    "rot": 15,
+    "area": 1288,
+    "alto": 112,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto",
+   "r1": {
+    "ancho": 30,
+    "largo": 30,
+    "rot": 0
+   }
+  },
+  {
+   "id": "ciutat_justicia",
+   "nombre": "Ciutat de la Justícia",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "conjunto",
+   "lat": 41.3642,
+   "lon": 2.1325,
+   "confianza": "alta",
+   "alto": 70,
+   "ancho": 215,
+   "largo": 234,
+   "rot": 61,
+   "forma": "Conjunto de bloques de Chipperfield de colores pastel (ocre, rosa, verde, gris) de distintas alturas.",
+   "rasgos": [
+    "bloques de colores pastel"
+   ],
+   "colores": [
+    "#d6c39c",
+    "#d8a8a0",
+    "#a8c0a0",
+    "#a8a8a8"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 9049.2,
+   "z": 11551.8,
+   "y": 12.5,
+   "edificios": [
+    50815,
+    50817,
+    51366,
+    51367,
+    51662,
+    51663,
+    51665,
+    51667,
+    51668,
+    51671,
+    51672,
+    51673,
+    51674,
+    51677,
+    51680,
+    51682,
+    51683,
+    51685,
+    51686,
+    51687,
+    51690,
+    51693,
+    51694,
+    51696,
+    51697,
+    51698,
+    51700,
+    51703,
+    51705,
+    51706,
+    51708,
+    51709,
+    51711,
+    51712,
+    51713,
+    51716,
+    51873,
+    52019,
+    52020,
+    52021,
+    52029,
+    52032,
+    52033
+   ],
+   "en_datos": "31 volúmenes, 9 085 m² en total, hasta 51 m (+12 partes de OSM); clase 2 , 0",
+   "planta": {
+    "ancho": 215,
+    "largo": 234,
+    "rot": 61,
+    "area": 9085,
+    "alto": 51.3,
+    "clases": [
+     2,
+     0
+    ]
+   },
+   "encaje": "altas",
+   "r1": {
+    "ancho": 150,
+    "largo": 250,
+    "rot": 45
+   }
+  },
+  {
+   "id": "hesperia_tower",
+   "nombre": "Hesperia Tower",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "torre",
+   "lat": 41.3461,
+   "lon": 2.1083,
+   "confianza": "alta",
+   "alto": 107,
+   "ancho": 18,
+   "largo": 51,
+   "rot": 136,
+   "forma": "Torre de hotel de Rogers con cúpula de vidrio (restaurante) en voladizo en lo alto y núcleos laterales rojos.",
+   "rasgos": [
+    "cúpula de vidrio arriba",
+    "núcleos rojos"
+   ],
+   "colores": [
+    "#c8c4bc",
+    "#c0282a"
+   ],
+   "noche": "ventanas",
+   "fuente": "cawiki",
+   "x": 7018.8,
+   "z": 9558,
+   "y": 4.3,
+   "edificios": [
+    26147
+   ],
+   "en_datos": "1 volumen de 744 m² y 105 m; clase 3",
+   "planta": {
+    "ancho": 18,
+    "largo": 51,
+    "rot": 136,
+    "area": 744,
+    "alto": 105,
+    "clases": [
+     3
+    ]
+   },
+   "encaje": "auto-alto",
+   "r1": {
+    "ancho": 30,
+    "largo": 40,
+    "rot": 0
+   }
+  },
+  {
+   "id": "xemeneies_parallel",
+   "nombre": "Tres Xemeneies del Paral·lel",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "chimenea",
+   "lat": 41.3735,
+   "lon": 2.169,
+   "confianza": "alta",
+   "alto": 72,
+   "ancho": 6,
+   "largo": 56,
+   "rot": 112,
+   "forma": "Tres chimeneas de ladrillo de 72 m de la antigua central eléctrica, en el parque del mismo nombre.",
+   "rasgos": [
+    "tres chimeneas de ladrillo"
+   ],
+   "colores": [
+    "#b5543a"
+   ],
+   "noche": "nada",
+   "fuente": "memoria",
+   "x": 12277.4,
+   "z": 12621.8,
+   "y": 7.9,
+   "edificios": [
+    63105,
+    63106,
+    63107
+   ],
+   "en_datos": "3 volúmenes, 135 m² en total, hasta 72 m; clase 4",
+   "planta": {
+    "ancho": 6,
+    "largo": 56,
+    "rot": 112,
+    "area": 135,
+    "alto": 72,
+    "clases": [
+     4
+    ]
+   },
+   "encaje": "g",
+   "nota": "R2: la planta del juego está a 183 m de la coordenada lat/lon; x, z son los de la planta. R2: Las tres chimeneas están en los datos (clase 4, 72 m); la coordenada de memoria se iba ~180 m.",
+   "r1": {
+    "ancho": 10,
+    "largo": 50,
+    "rot": 45,
+    "confianza": "media"
+   }
+  },
+  {
+   "id": "fabra_coats",
+   "nombre": "Fabra i Coats",
+   "lote": "e",
+   "nivel": "C",
+   "cat": "fabrica",
+   "lat": 41.43295,
+   "lon": 2.19064,
+   "confianza": "alta",
+   "alto": 15,
+   "ancho": 100,
+   "largo": 150,
+   "rot": 0,
+   "forma": "Antigua fábrica textil de ladrillo con naves y chimenea.",
+   "rasgos": [
+    "naves de ladrillo y chimenea"
+   ],
+   "colores": [
+    "#b5543a"
+   ],
+   "noche": "nada",
+   "fuente": "eswiki",
+   "x": 13986.2,
+   "z": 19130.7,
+   "y": 26,
+   "edificios": [
+    197803,
+    199008,
+    199027,
+    199047,
+    209994
+   ],
+   "en_datos": "5 volúmenes, 7 396 m² en total, hasta 14 m; clase 0 , 2 , 1",
+   "planta": {
+    "ancho": 115,
+    "largo": 165,
+    "rot": 8,
+    "area": 7396,
+    "alto": 13.8,
+    "clases": [
+     0,
+     2,
+     1
+    ]
+   },
+   "encaje": "rect"
+  },
+  {
+   "id": "dona_ocell",
+   "nombre": "Dona i Ocell",
+   "lote": "e",
+   "nivel": "B",
+   "cat": "escultura",
+   "lat": 41.3778,
+   "lon": 2.147,
+   "confianza": "alta",
+   "alto": 22,
+   "ancho": 5,
+   "largo": 5,
+   "rot": 0,
+   "forma": "Escultura de Miró de 22 m recubierta de trencadís (rojo, amarillo, verde, azul) sobre un estanque en el Parc Joan Miró.",
+   "rasgos": [
+    "figura alargada de trencadís",
+    "estanque"
+   ],
+   "colores": [
+    "#d24b3a",
+    "#e8c547",
+    "#3f8f3f",
+    "#2b5fa8"
+   ],
+   "noche": "focos",
+   "fuente": "cawiki",
+   "x": 10271.6,
+   "z": 13051.2,
+   "y": 28.6,
+   "edificios": [],
+   "en_datos": "no existe: escultura: no existe en los datos",
+   "encaje": "no"
+  }
+ ]
+}
