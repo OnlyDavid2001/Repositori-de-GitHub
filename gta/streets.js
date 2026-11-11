@@ -141,7 +141,7 @@ void main(){
   // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
   if (uGlow.x > 0.001) {
     float gW = (0.55 + 0.45*exp(-dA/5.0))*mix(0.40, 1.0, smoothstep(40.0, 240.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
-    c += emit(kAura*(alb*0.95 + 0.05), gW*0.7*uGlow.x);
+    c += emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);   // tope: el granito claro de las ramblas no se enciende de más
   }
   FRAG(c);
 }`;
@@ -163,8 +163,8 @@ uniform float uKind; uniform vec4 uBand; uniform sampler2D tMap; uniform sampler
 // mucho en el tronco y la panza de la copa, casi nada arriba. De lejos, su valor medio (como la calzada)
 float treeGlow(float dist, float ny){
   float s = 1.0 - smoothstep(2.5, 12.0, vHl);
-  float w = (0.10 + 0.90*s*s)*mix(1.15, 0.6, clamp(ny*0.5 + 0.5, 0.0, 1.0));
-  w = mix(w, 0.80, smoothstep(220.0, 650.0, dist));
+  float w = (0.16 + 0.84*s*s)*mix(1.15, 0.6, clamp(ny*0.5 + 0.5, 0.0, 1.0));
+  w = mix(w, 0.40, smoothstep(150.0, 600.0, dist));
   return w*mix(0.55, 1.0, smoothstep(20.0, 160.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y))*uGlow.x;
 }
 void main(){
@@ -189,7 +189,7 @@ void main(){
   vec3 c = lit(alb, normalize(n + vec3(0.0, 0.35, 0.0)));
   float bt = pow(max(dot(-V, uSunDir), 0.0), 3.0)*0.85 + max(dot(-n, uSunDir), 0.0)*0.26;
   c += alb*vec3(1.05, 1.2, 0.55)*uSunCol*bt*0.3;
-  if (uGlow.x > 0.001) c += emit(kAura*(alb*2.4 + 0.06), treeGlow(dist, uKind > 1.5 ? 0.0 : n.y));
+  if (uGlow.x > 0.001) c += emit(kAura*(mix(alb, vec3(dot(alb, vec3(0.3, 0.6, 0.1))), 0.6)*2.2 + 0.05), treeGlow(dist, uKind > 1.5 ? 0.0 : n.y));
   FRAG(c);
 }`;
   const mkTreeMat = (name, kind, map, nrm) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand'], ['tMap', 'tNrm']);

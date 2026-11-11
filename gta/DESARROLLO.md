@@ -971,6 +971,16 @@ proyecta sombra). De día se descarta entero.
 - Solo ilumina el suelo: los objetos y los coches que pisan el charco no reciben esa luz. Cuando el carril LUZ tenga
   luces de verdad, basta con no devolver `poolMat`.
 
+**Aura nocturna en árboles y aceras (etapa FZ2).** Las copas de los plátanos de calle (`FS_TREE`, los tres niveles) y las
+aceras de detalle (`FS_WALK`) reciben de noche la luz de farola del aura de la ciudad (`uGlow.x`, color `kAura`, §7.6), con
+el mismo criterio que la calzada en `FS_ROAD`. Árbol: `treeGlow()` pesa por la altura local del vértice (`vHl`, tronco
+0–5,4 m, copa hasta ~12 m): casi todo en el tronco y la panza de la copa, un 16 % arriba, algo más en las caras que miran
+abajo; a partir de 150–600 m pasa a un valor medio fijo (0,4) (desde el aire se ve sobre todo lo alto de las copas) y la luz se
+tiñe con la luminancia de la hoja, no con su verde, para que no salgan líneas de neón amarillo. Acera: sin charcos (el
+shader no conoce la posición a lo largo de la calle), más junto al bordillo (`exp(−dA/5)`, donde están los postes) que
+junto a la fachada, atenuada al 40 % a menos de ~40 m porque ahí pintan los charcos reales de §9.4, y con el albedo topado
+a 0,4 para que el granito claro de ramblas y plazas no se encienda de más. Nada de esto se evalúa de día (`uGlow = 0`).
+
 ### 9.5 Cómo añadir un objeto
 
 1. Escribe `miObjeto(B, A, F, y, …)` con las dos ramas: `if (A.lod < 2) { versión de pocas cajas; return; }` y el detalle.
@@ -997,6 +1007,7 @@ Ojo: la hora de una vista (`hour`) se queda puesta para las siguientes de la mis
 - El charco de luz solo ilumina el suelo (§9.4), y la lente de la farola es un rectángulo plano: el halo lo pone el bloom.
 - Las motos son de baja poligonización (se nota a 2 m: neumáticos de 9 lados, carrocería de tubo de 6) y están todas
   derechas, sin apoyarse en la pata. La matrícula va en blanco.
+- La acera recibe el aura de noche como un valor continuo, sin el dibujo de charcos cada 24 m que tiene la calzada.
 - Los bolardos, el buzón y el parquímetro no saben de los árboles ni de los vados: alguno puede caer pegado a un alcorque.
 - La viga y el tótem de una estación de Bicing usan una sola cota (la del tótem): en una calle en cuesta la viga no sigue la pendiente.
 - Las bolsas de basura pueden rozar el pedal del contenedor vecino.
