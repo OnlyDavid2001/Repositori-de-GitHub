@@ -60,7 +60,12 @@ add({ id: 'torre_collserola', nombre: 'Torre de Collserola', nivel: 'A', x: 7580
     L.rev(B, L.F0, 0, 0, prof, 12, ROJO, K.METAL);
     L.tambor(B, 0, 0, 286, 288.3, 0.25, { lados: 6, col: ROJO, k: K.METAL });
     // balizas (de noche se ven como puntos rojos)
-    for (const yb of [205, 246, 286]) L.esfera(B, 0, yb + 0.6, 0, 0.9, { gajos: 6, anillos: 4, col: [255, 40, 30], k: K.EMISIVO, aux: L.aux.emisivo(2.5, true) });
+    // grandes, para que de noche se lean desde toda la ciudad: tres en la antena y un anillo de cuatro en la corona
+    for (const [yb, rb] of [[205, 2.2], [246, 2.0], [287.2, 2.6]]) L.esfera(B, 0, yb + 0.6, 0, rb, { gajos: 8, anillos: 5, col: [255, 36, 26], k: K.EMISIVO, aux: L.aux.emisivo(4, true) });
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; L.esfera(B, Math.cos(a) * 4.6, YT + 4.6, Math.sin(a) * 4.6, 1.6, { gajos: 6, anillos: 4, col: [255, 36, 26], k: K.EMISIVO, aux: L.aux.emisivo(4, true) }); }
+    // anillos de luz blanca cálida en el borde de tres plataformas (la 1.ª, la del mirador y la última)
+    for (const i of [0, 9, 12]) { const y = Y0 + i * PASO + 1.15, R = RR[i] * 1.12;
+      L.prisma(B, triRed(R + 0.25, R * 0.36 + 0.1, A0, 7), y, y + 0.7, [255, 236, 200], K.EMISIVO, { aux: L.aux.emisivo(3, true), sinTecho: true }); }
     // vientos: por cada punta del triángulo, un par de cables de lo alto del fuste a la punta de arriba del paquete, y otro par
     // de la punta de abajo al monte (anclajes a ~95 m, a la cota del terreno)
     const R0 = RR[0] * 1.12 - 1.5, R12 = RR[12] * 1.12 - 1.5;
