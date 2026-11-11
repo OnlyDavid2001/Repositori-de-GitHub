@@ -707,7 +707,7 @@ add({ id: 'castell_tres_dragons', nombre: 'Castell dels Tres Dragons', nivel: 'B
 add({ id: 'casa_lleo_morera', nombre: 'Casa Lleó i Morera', nivel: 'C', x: 11821.7, z: 14518.1, rot: 47, alto: 30, edificios: [115079], ocultar: false,
   noche: 'focos', retoque: { color: '#e3d9c6', estilo: 0, alto: 24 } });
 add({ id: 'casa_calvet', nombre: 'Casa Calvet', nivel: 'C', x: 12477.1, z: 14467.9, rot: 135, alto: 25, edificios: ED.casa_calvet, ocultar: false,
-  noche: 'nada', retoque: { color: '#d8ccb4', estilo: 0, alto: 21 },
+  noche: 'focos', retoque: { color: '#c9b48e', alto: 21 },     // (sin estilo 0: el estilo liso dejaba una caja gris azulada sin ventanas)
   build(B, h, L) {                                                  // los dos remates curvos sobre la fachada de Casp (+Z)
     let z1 = -1e9; for (const pl of h.plantas || []) for (const p of pl || []) if (p && isFinite(p[1])) z1 = Math.max(z1, p[1]);
     if (!(z1 > 0)) z1 = 26;

@@ -558,6 +558,9 @@ window.BCN_LANDMARKS = { init(ctx) {
       }
     }
     // volúmenes simples: se ocultan solo si el hito se ha construido; los de nivel C (ocultar: false) se retocan
+    { let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9, hh = 0;                       // extensión de los volúmenes sustituidos (para la vista)
+      for (const e of edif) { const bb = BREC.bb, k = e.b * 4; x0 = Math.min(x0, bb[k]); z0 = Math.min(z0, bb[k + 1]); x1 = Math.max(x1, bb[k + 2]); z1 = Math.max(z1, bb[k + 3]); hh = Math.max(hh, e.alto); }
+      rec.ext = edif.length ? Math.max(x1 - x0, z1 - z0) : 0; rec.altoEd = hh; }
     const hide = rec.ok && f.ocultar !== false;
     for (const e of edif) {
       if (hide) { chEdit(e.b).hide.push(e.b); BREC.elig[e.b] = 0; ST.ocultos++; continue; }
@@ -569,10 +572,11 @@ window.BCN_LANDMARKS = { init(ctx) {
   }
   try { applyEdits(); } catch (e) { console.warn('Hitos: no se han podido retocar los volúmenes simples', e); }
 
-  // vista de cámara que encuadra el hito: órbita a k veces su tamaño, con elevación elev (grados) desde el rumbo dado
+  // vista de cámara que encuadra el hito: órbita a k veces su tamaño (alto y ancho/largo de la ficha; sin ellos, el radio del
+  // modelo o la extensión de los volúmenes sustituidos), nunca a menos de 60 m, con elevación elev (grados) desde el rumbo dado
   function view(id, rumbo, k, elev) {
     const r = byId.get(id); if (!r) return null;
-    const S = Math.max(r.alto || 0, 2 * (r.r || 0), r.ancho || 0, r.largo || 0, 12), D = Math.max(S * (k || 2.4), 60), az = (rumbo === undefined ? 210 : rumbo) * Math.PI / 180, el = (elev === undefined ? 30 : elev) * Math.PI / 180;
+    const dim = r.ancho || r.largo, S = Math.max(r.alto || 0, dim ? Math.max(r.ancho || 0, r.largo || 0) : Math.max(2 * (r.r || 0), r.ext || 0), 12), D = Math.max(S * (k || 2.4), 60), az = (rumbo === undefined ? 210 : rumbo) * Math.PI / 180, el = (elev === undefined ? 30 : elev) * Math.PI / 180;
     const ty = r.yb + r.alto * 0.42, hd = D * Math.cos(el), x = r.x + Math.sin(az) * hd, z = r.z + Math.cos(az) * hd;
     const y = Math.max(ty + D * Math.sin(el), heightAt(x, z) + 6);
     return { x, y, z, yaw: Math.atan2(r.x - x, r.z - z), pitch: Math.atan2(y - ty, hd), walk: false };
