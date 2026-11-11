@@ -355,6 +355,15 @@ void main(){
       vec3 c8 = floor(vCol.rgb*255.0 + 0.5);
       float ri = mod(c8.r, 4.0) + 4.0*mod(c8.g, 4.0) + 16.0*mod(c8.b, 4.0);
       vec3 rD = texture2D(uRoofPal, vec2((ri + 0.5)/64.0, 0.5)).rgb;
+      // grano de cubierta ESTABLE (el de antes era ruido por píxel): losas de ~9 m de la propia cubierta, cada una con su
+      // tono, y una de cada cuatro con el color hermano (rasilla rojiza ↔ baldosa clara, otro gris, otra grava). Cuando la
+      // losa baja de ~3 píxeles se pinta su media exacta, así que el color de conjunto es el mismo a cualquier distancia
+      vec3 rA = texture2D(uRoofPal, vec2((mod(ri + 8.0, 16.0) + 16.0*floor(ri/16.0) + 0.5)/64.0, 0.5)).rgb;
+      vec2 cid = floor(vLoc.xz/9.0 + vec2(seed*0.37, seed*0.61));
+      float hc = hash21(cid + vec2(seed*17.0, ri*3.1)), hk = fract(hc*13.7);
+      vec3 rC = mix(rD, rA, step(0.75, hk))*(0.90 + 0.20*hc);
+      vec3 rM = mix(rD, rA, 0.25);
+      rD = mix(rC, rM, smoothstep(2.5, 4.5, length(fwidth(vLoc.xz))));
       vec3 rN = abs(style-2.0) < 0.5 ? mix(vec3(0.60,0.50,0.42), vec3(0.52,0.50,0.48), r) : abs(style-6.0) < 0.5 ? mix(vec3(0.72,0.44,0.32), vec3(0.64,0.40,0.30), r) :
                 mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r));
       roof = mix(rD, rN, uNight);
