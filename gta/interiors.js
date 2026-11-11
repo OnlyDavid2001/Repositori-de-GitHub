@@ -116,9 +116,9 @@ float shS(float x, float px){ return clamp(x/px + 0.5, 0.0, 1.0); }
 // las capas se componen con alfa premultiplicado
 vec4 shOv(vec4 d, vec3 c, float a){ return vec4(c*a, a) + d*(1.0 - a); }
 float shPitch(float s){ return s < 0.5 ? 0.15 : (s < 1.5 ? 0.24 : (s < 2.5 ? 0.10 : (s < 3.5 ? 0.045 : (s < 5.5 ? 0.24 : 0.13)))); }
-// color de un artículo: la paleta 0 es un arcoíris suave y las demás salen de la textura (8 colores por paleta)
+// color de un artículo: la paleta 0 es un arcoíris apagado (un tercio, en tonos de cartón y papel) y las demás salen de la textura (8 colores por paleta)
 vec3 shPal(float pal, float h){
-  if (pal < 0.5) return 0.52 + 0.35*cos(6.2832*(h + vec3(0.0, 0.33, 0.67)));
+  if (pal < 0.5) return mix(vec3(0.62, 0.58, 0.52), 0.52 + 0.35*cos(6.2832*(h + vec3(0.0, 0.33, 0.67))), step(0.35, fract(h*3.3))*0.75);
   return shPar(8.0 + floor(fract(h*5.71 + 0.13)*8.0), pal).rgb*(0.86 + 0.26*fract(h*13.7));
 }
 // fila de artículos de pie sobre y = 0 (p en metros), uno cada pitch metros y de hasta hm de alto.
@@ -625,7 +625,7 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
   vec3 tint;
   if (zg) {
     on = step(0.2, h2)*uDusk*(1.0 - 0.45*uLate);
-    day = mix(0.42, 0.62, step(0.2, h2));
+    day = mix(0.55, 0.8, step(0.2, h2));
     tint = vec3(1.08, 0.94, 0.74);
   } else {
     on = homeOn(fract(sd*0.6180339 + 0.21));
@@ -640,7 +640,7 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     float tf = (1.6 + 0.6*h2)/d.z;
     if (tf < t) { vec4 L = hmFurn(o + d.xy*tf, sz.x, sd, px*(1.0 + tf/dist)); c = L.rgb*lv*mix(vec3(1.0), tint, on) + c*(1.0 - L.a); }
     vec2 cp = o + d.xy*(0.12/d.z);
-    float cw = 0.35 + 0.25*h2, fold = 0.82 + 0.18*cos(cp.x*38.0)*(1.0 - smoothstep(0.01, 0.04, px));
+    float cw = 0.12 + 0.2*h2, fold = 0.82 + 0.18*cos(cp.x*38.0)*(1.0 - smoothstep(0.01, 0.04, px));
     float cm = max(shR(cp, vec2(0.25, 0.0), vec2(0.5 + cw, sz.y), px), shR(cp, vec2(sz.x - 0.5 - cw, 0.0), vec2(sz.x - 0.25, sz.y), px));
     vec3 cc = h1 > 0.5 ? vec3(0.92, 0.88, 0.80) : 0.55 + 0.25*cos(6.2832*(h3 + vec3(0.1, 0.4, 0.7)));
     float sheer = step(0.7, h3)*0.35;
@@ -659,17 +659,20 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
   return c;
 }
 // vidrio de portal o de ventana: el interior y el reflejo con el Fresnel de shGlass. En el portal, reja de forja sobre el vidrio
-vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px){
+vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px, float sd){
   vec3 r = reflect(-V, N);
   float k = clamp((mode < 0.5 ? 0.07 : 0.10) + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0);
   vec3 c = emit(room, 1.0)*(1.0 - k) + envRefl(r, 0.0)*k*(1.0 - 0.4*uDusk) + uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.0;
   if (mode < 0.5) {
     // reja: barrotes cada 12 cm, dos travesaños y una banda de anillos; de lejos se funde a su tono medio
-    float x = o.x - 0.35, bw = 0.12, fx = abs(fract(x/bw) - 0.5)*bw, e = px*0.8;
-    float m = 1.0 - shS(fx - 0.008, e);
-    m = max(m, 1.0 - shS(min(abs(o.y - 0.75), abs(o.y - 2.05)) - 0.014, e));
-    vec2 q = vec2((fract(x/bw) - 0.5)*bw, (fract((o.y - 1.0)/bw) - 0.5)*bw);
-    m = max(m, (1.0 - shS(abs(length(q) - 0.045) - 0.006, e))*step(1.0, o.y)*step(o.y, 1.6));
+    // dos modelos según la semilla: banda de anillos a media altura, o barrotes más juntos con la banda arriba y rombos abajo
+    float vb = step(0.5, hash21(vec2(sd, 7.7))), x = o.x - 0.35, bw = mix(0.12, 0.10, vb), fx = abs(fract(x/bw) - 0.5)*bw, e = px*0.8;
+    float m = 1.0 - shS(fx - 0.008, e), b0 = mix(1.0, 2.1, vb), b1 = mix(1.6, 2.55, vb);
+    m = max(m, 1.0 - shS(min(min(abs(o.y - 0.75), abs(o.y - 2.05)), min(abs(o.y - b0 + 0.04), abs(o.y - b1 - 0.04))*vb + (1.0 - vb)*9.0) - 0.014, e));
+    vec2 q = vec2((fract(x/bw) - 0.5)*bw, (fract((o.y - b0)/bw) - 0.5)*bw);
+    m = max(m, (1.0 - shS(abs(length(q) - 0.045) - 0.006, e))*step(b0, o.y)*step(o.y, b1));
+    vec2 rq = abs(fract(vec2(x, o.y)/0.2) - 0.5)*0.2;
+    m = max(m, vb*(1.0 - shS(abs(rq.x + rq.y - 0.1) - 0.006, e))*step(0.8, o.y)*step(o.y, 1.6));
     m = mix(m, 0.32, smoothstep(0.01, 0.03, px));
     c = mix(c, shade(vec3(0.05, 0.05, 0.055), N, V, 0.45, 0.0, 1.0), m);
   }
@@ -681,7 +684,7 @@ regKind('HOMEWIN', 21, `
     float hpx = max(max(fwidth(ho.x), fwidth(ho.y)), 1e-4);
     vec3 htu = T*(mod(floor(hb/2.0), 2.0) > 0.5 ? -1.0 : 1.0);
     vec3 hrm = hmRoom(ho, vec3(-dot(V, htu), -V.y, dot(V, n)), vec3(hw, vInfo.z*8.0, vInfo.w*16.32), hmode, floor(vCol.b*255.0 + 0.5), hpx, dist);
-    vec3 c = hmGlass(hrm, V, N, ho, hw, hmode, hpx);
+    vec3 c = hmGlass(hrm, V, N, ho, hw, hmode, hpx, floor(vCol.b*255.0 + 0.5));
     FRAG(c); return;`, HOME_DECL);
 // vidrio de zaguán o de piso: un quad K.HOMEWIN con las coordenadas de su habitación. rm = { x0, W, yF, H, D, mode, seed }
 // (x0 = u del extremo de la habitación, yF = cota de su suelo). Lo usan portalBay y, a través de env, las ventanas de details.js

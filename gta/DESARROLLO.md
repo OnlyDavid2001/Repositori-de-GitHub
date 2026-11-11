@@ -864,7 +864,8 @@ vistas v.json alta` escribe 34 vistas (cada tipo forzado en caliente, de frente 
 
 **Límites conocidos (IY1).** El interior es un decorado plano por capas: el género de la repisa y los muebles no tienen
 grosor (de muy cerca y muy en oblicuo se nota que son planos a 0,42, 1,7 y 3,1 m). No hay gente dentro. El género de las
-paletas `VARIADO` (súper, queviures, papereria) es un arcoíris saturado, poco creíble de cerca. El reflejo del vidrio es
+paletas `VARIADO` (súper, queviures, papereria) era un arcoíris saturado; desde IY2 un tercio de los artículos sale en tonos
+de cartón y papel y el resto, algo apagado. El reflejo del vidrio es
 el de `envRefl` (cielo y «calle de enfrente» lisa): no refleja los edificios ni los árboles reales. Los toldos no dan
 sombra sobre el interior (no le llega el sol a propósito). La cuña oscura de `gotic_calle` (`reglas2.md` §4) ya no aparece:
 la planta baja de ese tramo es ahora un comercio con su geometría nueva (machones, jambas y vidrio); no se llegó a aislar
@@ -882,6 +883,54 @@ persiana delante como hasta ahora.
 
 
 
+
+### 8.2 Portales, pisos y terrazas (etapa IY2)
+
+**Zaguanes y pisos: tipo `K.HOMEWIN`** (id 21, `interiors.js`). La misma técnica que los comercios (habitación virtual
+pintada por píxel en el quad del vidrio, sin geometría), con una habitación más sencilla y su propio shader:
+`hmRoom(o, d, sz, modo, semilla, px, dist)` (modo 0 zaguán, 1 piso; mismos ejes que `shRoom`), `hmGlass` (vidrio con el
+Fresnel de `shGlass`, brillo del sol y, en el portal, la reja de forja dibujada encima), `hmFurn` (muebles de un piso) y
+`hmWall` (color de pared por semilla). El quad lo emite **`roomQuad(B, F, u0, u1, y0, y1, d, rm)`**, exportado en
+`BCN_INTERIORS.roomQuad`, con `rm = { x0, W, yF, H, D, mode, seed }` (u del extremo de la habitación, ancho, cota del
+suelo, alto, fondo, modo y semilla 1–255). Empaquetado: `color.r` = ancho/16 m · `color.g` = modo + 2·sentido del marco ·
+`color.b` = semilla · `aux` como `K.SHOPWIN` (x/ancho, (y + 1)/6 m, alto/8 m, fondo/16,32 m).
+
+- **Portal** (`portalBay`): dos hojas de vidrio con reja (barrotes cada 12 cm, dos travesaños y una banda de anillos; de
+  lejos se funde a su tono medio), largueros, encuentro, travesaño del montante y zócalo de madera (capa BASE), plafones del
+  zócalo, tiradores de latón, placa del número en la pilastra derecha y portero automático en la izquierda (ORNAMENTO).
+  Detrás, el zaguán: el ancho de la puerta + 70 cm, ≥ 3,3 m de alto y 9 m de fondo; suelo de mármol en damero girado o de
+  baldosa hidráulica con roseta, zócalo de mármol, buzones en una pared lateral, al fondo el arranque de la escalera con su
+  barandilla y la puerta del ascensor (con el botón encendido), dos plafones en el techo y una planta en su maceta.
+  Luz: de día 0,55–0,8 con la lámpara encendida; **de noche `uDusk`** (×1,5), un 45 % más tenue de madrugada (`uLate`), y
+  un 20 % de los zaguanes a oscuras (semilla). La semilla sale del ámbito del vano del portal (`rr[1]`).
+- **Pisos** (`details.js`, `floors`): el vano de piso saca ahora 9 números; con `rr[7] < 0,3` la persiana queda subida del
+  todo y el vidrio es un `K.HOMEWIN` (lo pinta `env.windowHole(…, gq)`: el último argumento opcional sustituye al `K.GLASS`).
+  Habitación: el ancho del hueco + 1,1 m, el alto de la planta, 4 m de fondo, pared de un color de casa, tarima, una puerta
+  oscura al pasillo y un cuadro al fondo, lámpara de techo, muebles insinuados en un plano a 1,6–2,2 m (sofá con lámpara de
+  pie, librería con cuadro, mesa con mantel y sillas, o cómoda con televisor) y cortinas a los lados del vidrio (y visillo en
+  algunos). Luz: de día 0,44–0,64 de la que entra (cae hacia el fondo) y manda el reflejo salvo de frente; **de noche
+  `homeOn(h)`** (h = azar estable por ventana, de la semilla) con ganancia 1,5: cálida casi siempre, alguna fría y alguna
+  azulada de televisor. Está en la capa BASE: de lejos, las ventanas encendidas siguen ahí. Las ventanas de patio y las
+  tribunas no cambian.
+- **Terrazas** (`terrace`, en `groundFloor` tras `shopFront`): delante de BAR, CAFÈ, RESTAURANT y GELATERIA (85 % de ellos)
+  si la acera mide ≥ 5,2 m (el menor de tres `city.roadDist` a lo largo del comercio). Ocupan de 0,6 m a `min(2,9, acera −
+  3,2)` m de la fachada (los árboles van a 1,3 m del bordillo y los bancos a 2,4 m), sin tapar la puerta y donde no haya
+  edificio (`coverAt`). 2–6 mesas redondas de pie central (tablero de mármol o metal) cada 1,9 m con 2–4 sillas (aluminio,
+  ratán o pintadas), sombrillas del color del toldo del local en el 60 % de las mesas (abiertas o cerradas; no si el local
+  tiene toldo), jardineras con tres matas en los extremos y una pizarra de caballete junto a la puerta. Cota: `walkAt`.
+  En BASE, tableros y sombrillas de 6 lados marcados como sustitutos (`subAux`) y las jardineras. Azar:
+  `env.rnd(11, tramo, primer vano del comercio)`, 40 números de golpe. ~2 000 triángulos por terraza en ORNAMENTO.
+
+**Depuración.** `BCN_INTERIORS.log = []` y reconstruir (`BCN.fx.setRange(0); BCN.fx.setRange(1)`) apunta en esa lista
+portales `['P', x, z, nx, nz]`, comercios candidatos a terraza `['T', x, z, nx, nz, acera]` y ventanas abiertas
+`['W', x, z, nx, nz, y, planta]` en coordenadas de mundo: sirve para montar vistas de frente (cámara en `p + n·4,5`,
+`yaw = atan2(−nx, −nz)`). Vistas del carril: `tools/views_iy2.json`.
+
+**Límites conocidos (IY2).** El zaguán y el piso son decorados planos (la escalera y los muebles están pintados en planos;
+de muy cerca y en oblicuo se nota). Las ventanas de piso de día se leen poco: es lo pedido (interior oscuro, manda el
+reflejo), pero con el reflejo liso de `envRefl` el vidrio queda casi negro mirando desde abajo. Las terrazas no comprueban
+el mobiliario de `furniture.js` uno a uno (confían en las distancias al bordillo); en esquinas o aceras raras podría
+solaparse algo. Las sillas son cajas (sin curvas) y no hay personas.
 
 ## 9. Carril DETALLE
 
