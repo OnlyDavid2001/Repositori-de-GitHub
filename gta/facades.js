@@ -21,6 +21,8 @@ const { K, GB, rect, jamb, hpl, shade, mixc, seed, R, pick } = GEO;
 const SHUTTERS = [[43, 77, 51], [84, 87, 69], [36, 59, 77], [107, 77, 48], [60, 92, 64], [120, 118, 104]];
 const WOODS = [[64, 38, 20], [38, 28, 20], [36, 51, 41], [79, 48, 26]];
 const CAR = new Set([0, 1, 2, 3, 4, 5, 6, 8, 10, 11]);      // clases de vía con calzada: ahí no hay acera
+const WALK = new Set([2, 3, 4, 5, 6]);                      // calles con aceras a ambos lados
+const WSW = 14;                                             // ancho máximo de acera desde el bordillo (Passeig de Gràcia y similares)
 
 window.BCN_FACADES = { init: async function (ctx) {
   const { scene, engine, mkMat, reg, heightAt, BREC, bldChunks, SEG, ROFF, META, PAL, WX, WZ, blobURL } = ctx;
@@ -29,17 +31,21 @@ window.BCN_FACADES = { init: async function (ctx) {
   // ---------------------------------------------------------------- materiales
   // El preludio común lo antepone mkMat. Ramas por tipo de material («kind»): las del núcleo van aquí; las que registran
   // los demás módulos con GEO.regKind() se insertan antes de la rama final (variables disponibles: DESARROLLO.md §6).
+  // CONTRATO DE SOMBREADO: cada rama solo fija alb, N, rough, metal, ao y emis; al final hay UNA salida, shade(…) + emis.
+  // Las únicas que salen antes son los vidrios, y lo hacen con las mismas piezas del preludio: envRefl(), emit() y FRAG().
   const FS_DET = `
-varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN;
-uniform vec2 uFade; uniform float uDusk;
+varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
+uniform vec2 uFade; uniform vec2 uFadeHi; uniform float uCellHi;
 uniform sampler2D tPlD; uniform sampler2D tPlN; uniform sampler2D tAsD; uniform sampler2D tAsN; uniform sampler2D tSign;
 ` + GEO.kindsDecl() + `
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   float dt = dith();
   if (dt < smoothstep(uFade.x, uFade.y, dist)) discard;
+  // sustituto (aux.w = 255, capa BASE): cede el sitio a la capa ORNAMENTO de su celda, con el tramado complementario al de su entrada
+  if (vInfo.w > 0.99 && uCellHi > 0.5 && dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;
   vec3 n = normalize(vN);
-  if (dot(n, V) < 0.0) n = -n;
+  if (vSm < 0.5 && dot(n, V) < 0.0) n = -n;   // las normales suaves (4.º byte a 255) no se voltean: superficies cerradas
   float kind = floor(vCol.a*255.0 + 0.5);
   vec3 alb = vCol.rgb;
   vec3 an = abs(n);
@@ -47,15 +53,17 @@ void main(){
   vec3 Bv = an.y > 0.7 ? vec3(0.0,0.0,1.0) : vec3(0.0,1.0,0.0);
   vec2 P = vec2(dot(vLoc, T), dot(vLoc, Bv));   // coordenadas locales de celda: precisión para mipmaps y patrones
   float nearF = 1.0 - smoothstep(50.0, 170.0, dist);
-  vec3 N = n; float spec = 0.04, shin = 12.0; vec3 emis = vec3(0.0);
+  vec3 N = n; float rough = 0.62, metal = 0.0, ao = 1.0; vec3 emis = vec3(0.0);
   float v = vInfo.x;
   if (kind < 0.5) {                                   // estuco fotografiado, con suciedad y churretes
+    rough = 0.9;
     vec3 tx = texture2D(tPlD, P*0.21).rgb; float lum = dot(tx, vec3(0.3,0.6,0.1));
     float grime = smoothstep(0.38, 0.85, vnoise(P*0.08)*0.65 + vnoise(P*0.55)*0.35);
     alb *= mix(0.74, 1.16, smoothstep(0.15, 0.75, lum)) * mix(1.0, 0.82, grime);
     if (an.y < 0.7) { float s = vnoise(vec2(P.x*1.3, P.y*0.07))*0.75 + vnoise(vec2(P.x*3.1, P.y*0.15))*0.25; alb *= mix(1.02, 0.86, smoothstep(0.5, 0.9, s)); }
     vec3 tn = texture2D(tPlN, P*0.21).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.75*nearF);
   } else if (kind < 1.5) {                            // sillar
+    rough = 0.8;
     vec3 tx = texture2D(tAsD, P*vec2(0.30, 0.38)).rgb;
     alb *= tx*1.95*mix(0.88, 1.08, vnoise(P*0.6));
     alb *= mix(1.0, 0.8, smoothstep(0.45, 0.85, vnoise(vec2(P.x*0.9, P.y*0.04))));
@@ -63,8 +71,7 @@ void main(){
   } else if (kind < 2.5 || (kind > 10.5 && kind < 11.5)) {   // vidrio: reflejo del cielo, interior, cortinas
     vec2 cid = floor(P/vec2(1.35, 3.1)); float h = hash21(cid + 0.37), h2 = hash21(cid*1.7 + 4.1);
     vec3 r = reflect(-V, N);
-    vec3 refl = skyColor(normalize(vec3(r.x, max(r.y, 0.02), r.z)));
-    refl = mix(uFogCol*vec3(0.62,0.6,0.58), refl, smoothstep(-0.02, 0.22, r.y));   // la calle de enfrente refleja oscuro
+    vec3 refl = envRefl(r, 0.0);                      // cielo, y por debajo del horizonte la calle de enfrente, oscura
     float fres = 0.06 + 0.94*pow(1.0 - max(dot(N, V), 0.0), 5.0);
     vec3 inside = mix(vec3(0.030,0.034,0.040), vec3(0.10,0.085,0.065), h);
     float yy = fract(P.y/3.1);
@@ -72,17 +79,17 @@ void main(){
     if (kind > 10.5) inside = vec3(0.30,0.26,0.20)*(0.7 + 0.6*vnoise(P*2.3)) + vCol.rgb*0.25;   // escaparate iluminado
     vec3 c = mix(inside*(uSkyCol*1.4 + uSunCol*0.25), refl, clamp(fres*0.92 + 0.10, 0.0, 1.0));
     c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.5;
-    if (kind < 2.5) c += vec3(1.0,0.74,0.42)*step(h, 0.05 + uDusk*0.30)*uDusk*0.55;
-    else c += vec3(1.0,0.85,0.62)*uDusk*0.35;
+    if (kind < 2.5) c += emit(vec3(1.0,0.74,0.42), step(h, 0.05 + uDusk*0.30)*uDusk*0.55);
+    else c += emit(vec3(1.0,0.85,0.62), uDusk*0.35);
     FRAG(c); return;
   } else if (kind < 3.5) {                            // persiana enrollable de lamas
     float s = fract(vLoc.y*14.0), fw = fwidth(vLoc.y*14.0);
-    alb *= mix(mix(0.55, 1.06, smoothstep(0.0, 0.5, s)), 0.86, smoothstep(0.3, 1.0, fw)) * mix(0.85, 1.05, vnoise(P*3.0));
+    alb *= mix(mix(0.55, 1.06, smoothstep(0.0, 0.5, s)), 0.86, smoothstep(0.3, 1.0, fw)) * mix(0.85, 1.05, vnoise(P*3.0)); rough = 0.7;
   } else if (kind < 4.5) {                            // madera
     float g = vnoise(vec2(P.x*28.0, P.y*1.3))*0.6 + vnoise(vec2(P.x*90.0, P.y*4.0))*0.4;
-    alb *= 0.78 + 0.38*g; spec = 0.12; shin = 30.0;
-  } else if (kind < 5.5) {                            // metal
-    spec = 0.5; shin = 40.0;
+    alb *= 0.78 + 0.38*g; rough = 0.5;
+  } else if (kind < 5.5) {                            // metal pintado o lacado (carpintería, barandillas, herrajes): satinado
+    rough = 0.4;
   } else if (kind < 6.5 || (kind > 9.5 && kind < 10.5)) {   // forja calada / balaustrada
     float u = P.x, fw;
     if (kind < 6.5) {
@@ -96,14 +103,14 @@ void main(){
       float m = max(max(bar*step(0.06, v)*step(v, 0.95), hb), motif*step(0.2, v)*step(v, 0.8));
       float far = smoothstep(0.3, 0.7, fw);   // de lejos la reja pasa a ser una banda opaca de tono medio
       if (m < 0.5 && far < 0.999 && fract(dt*7.31 + 0.37) >= far) discard;
-      alb = mix(vec3(0.075, 0.075, 0.085), alb*0.55, far*0.55*(1.0 - m)); spec = 0.35; shin = 30.0;
+      alb = mix(vec3(0.075, 0.075, 0.085), alb*0.55, far*0.55*(1.0 - m)); rough = 0.45;
     } else {
       float w = 0.3, x = u/w; fw = fwidth(x);
       float dx = abs(fract(x) - 0.5)*w;
       float r = 0.035 + 0.05*smoothstep(0.1, 0.42, v)*(1.0 - smoothstep(0.5, 0.82, v)) + 0.035*(step(v, 0.08) + step(0.92, v));
       float far = smoothstep(0.35, 0.75, fw);
       if (dx > r && far < 0.999 && fract(dt*7.31 + 0.37) >= far) discard;
-      vec3 tx = texture2D(tPlD, P*0.4).rgb; alb *= mix(0.8, 1.1, dot(tx, vec3(0.33)));
+      vec3 tx = texture2D(tPlD, P*0.4).rgb; alb *= mix(0.8, 1.1, dot(tx, vec3(0.33))); rough = 0.85;
       N = normalize(n + T*clamp((fract(x) - 0.5)*w/max(r, 0.01), -1.0, 1.0)*0.9);
     }
   } else if (kind < 7.5) {                            // esgrafiado modernista
@@ -113,39 +120,57 @@ void main(){
     float stem = smoothstep(0.015, 0.0, abs(f.y + 0.02*sin(f.x*12.0)))*step(0.28, abs(f.x));
     float mk = max(max(petal, dot_), stem) * nearF;
     vec3 tx = texture2D(tPlD, P*0.21).rgb;
-    alb = mix(alb*0.80, alb*1.35 + vec3(0.04), mk) * mix(0.82, 1.08, dot(tx, vec3(0.33)));
+    alb = mix(alb*0.80, alb*1.35 + vec3(0.04), mk) * mix(0.82, 1.08, dot(tx, vec3(0.33))); rough = 0.9;
   } else if (kind < 8.5) {                            // rótulo de comercio
     float id = floor(vInfo.z*255.0 + 0.5);
     vec2 uv = vec2((mod(id, 4.0) + vInfo.x)/4.0, (floor(id/4.0) + vInfo.y)/4.0);
-    alb = texture2D(tSign, uv).rgb; spec = 0.1;
-    emis = alb*uDusk*0.3;
+    alb = texture2D(tSign, uv).rgb; rough = 0.5;
+    emis = emit(alb, uDusk*0.3);
   } else if (kind < 9.5) {                            // toldo a rayas
     float s = step(0.5, fract(P.x*2.4));
-    alb = mix(alb, vec3(0.88, 0.86, 0.80), s*0.85) * (0.85 + 0.2*vnoise(P*4.0));
+    alb = mix(alb, vec3(0.88, 0.86, 0.80), s*0.85) * (0.85 + 0.2*vnoise(P*4.0)); rough = 0.9;
   } else if (kind < 12.5) {                           // farol
-    emis = vec3(1.0, 0.86, 0.6)*(0.35 + uDusk*1.6);
+    emis = emit(vec3(1.0, 0.86, 0.6), 0.35 + uDusk*1.6);
   } else if (kind < 13.5) {                           // liso
+  } else if (kind > 14.5 && kind < 15.5) {            // PBR genérico: albedo = color de vértice, aux = (rugosidad, metal, patrón, emisión)
+    rough = max(vInfo.x, 0.05); metal = vInfo.y;
+    float pat = floor(vInfo.z*255.0 + 0.5);
+    if (pat > 0.5 && pat < 1.5) {                     // 1: lamas horizontales cada 6 cm (vale también en superficies curvas)
+      float q = vLoc.y/0.06, s = fract(q), fw = fwidth(q);
+      float slat = smoothstep(0.0, 0.2, s)*(1.0 - smoothstep(0.8, 1.0, s));
+      alb *= mix(mix(0.5, 1.0, slat), 0.88, smoothstep(0.3, 0.9, fw));
+    } else if (pat > 1.5 && pat < 2.5) {              // 2: nervios verticales cada 14 cm (solo en caras planas)
+      float q = P.x/0.14, s = fract(q), fw = fwidth(q);
+      float rib = smoothstep(0.0, 0.12, s)*(1.0 - smoothstep(0.88, 1.0, s));
+      alb *= mix(mix(0.72, 1.0, rib), 0.95, smoothstep(0.3, 0.9, fw));
+    } else if (pat > 2.5 && pat < 3.5) {              // 3: pintura gastada, con roces y suciedad
+      vec2 q = vLoc.xz*2.3 + vLoc.y*vec2(1.7, 2.9);
+      float w = smoothstep(0.42, 0.8, vnoise(q)*0.6 + vnoise(q*3.7)*0.4);
+      alb *= mix(1.05, 0.74, w); rough = mix(rough, 0.92, w); metal *= 1.0 - 0.6*w;
+    }
+    emis = emit(alb, vInfo.w*2.04);
   }` + GEO.kindsGLSL() + ` else {                                            // hojas
     alb *= 0.6 + 0.7*vnoise(P*9.0); N = normalize(n + vec3(vnoise(P*7.0) - 0.5, 0.0, vnoise(P*7.0 + 3.0) - 0.5)*1.4);
   }
-  vec3 c = lit(alb, N);
-  vec3 hlf = normalize(uSunDir + V);
-  c += uSunCol*spec*pow(max(dot(N, hlf), 0.0), shin)*step(0.0, dot(N, uSunDir));
-  c += emis;
+  vec3 c = shade(alb, N, V, rough, metal, ao) + emis;
   FRAG(c);
 }`;
   const VS_DET = `precision highp float;
 attribute vec3 position; attribute vec4 color; attribute vec4 uv; attribute vec4 nrm; uniform mat4 world; uniform mat4 viewProjection;
-varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN;
-void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; vN = nrm.xyz*2.0 - 1.0; gl_Position = viewProjection*wp; }`;
+varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
+void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; vN = nrm.xyz*2.0 - 1.0; vSm = nrm.w; gl_Position = viewProjection*wp; }`;
   const KU = GEO.kindsUniforms();   // uniformes y samplers que declaran los tipos registrados
-  const UNI = ['uFade', 'uDusk'].concat(KU.uniforms), SMP = ['tPlD', 'tPlN', 'tAsD', 'tAsN', 'tSign'].concat(KU.samplers);
+  const UNI = ['uFade', 'uFadeHi', 'uCellHi'].concat(KU.uniforms), SMP = ['tPlD', 'tPlN', 'tAsD', 'tAsN', 'tSign'].concat(KU.samplers);
   const matB = mkMat('fx0', VS_DET, FS_DET, ['position', 'color', 'uv', 'nrm'], UNI, SMP);
   const matH = mkMat('fx1', VS_DET, FS_DET, ['position', 'color', 'uv', 'nrm'], UNI, SMP);
   const tex = async (f) => { const t = new BABYLON.Texture(await blobURL('data/' + f), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
     t.wrapU = t.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE; t.anisotropicFilteringLevel = 8; return t; };
   const [tPlD, tPlN, tAsD, tAsN] = await Promise.all(['fx_plaster_d.webp', 'fx_plaster_n.webp', 'fx_ashlar_d.webp', 'fx_ashlar_n.webp'].map(tex));
-  for (const m of [matB, matH]) { m.setTexture('tPlD', tPlD); m.setTexture('tPlN', tPlN); m.setTexture('tAsD', tAsD); m.setTexture('tAsN', tAsN); m.setTexture('tSign', tPlD); m.setFloat('uDusk', 0); }
+  for (const m of [matB, matH]) { m.setTexture('tPlD', tPlD); m.setTexture('tPlN', tPlN); m.setTexture('tAsD', tAsD); m.setTexture('tAsN', tAsN); m.setTexture('tSign', tPlD); }
+  // bandera por malla «la celda tiene ORNAMENTO» (uCellHi): la malla BASE de una celda lleva su celda en metadata.bcn.cell.
+  // Se fija en el efecto al enlazar cada malla, también a 0 en las que no son BASE (ORNAMENTO, mobiliario)
+  for (const m of [matB, matH]) m.onBindObservable.add(mesh => { const e = m.getEffect(), o = mesh.metadata && mesh.metadata.bcn, c = o && o.cell;
+    if (e) e.setFloat('uCellHi', c && c.hi ? 1 : 0); });
   // para los hooks y para streets.js: materiales de detalle (cada módulo fija ahí sus texturas y uniformes; tSign lo pone interiors.js)
   ctx.detail = { matB, matH, mats: [matB, matH], mkMesh: mkMeshFrom };
 
@@ -236,7 +261,27 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function nearestCar(x, z) { const c = cellOf(x, z); let best = -1, bd = 1e9;
     for (let k = ROADS.start[c]; k < ROADS.start[c + 1]; k++) { const s = ROADS.list[k]; if (!CAR.has(SEG[s * 6 + 5])) continue; const d = segDist(s, x, z) - SEG[s * 6 + 4]; if (d < bd) { bd = d; best = s; } }
     return [best, bd]; }
-  const walkAt = (x, z) => walkY(nearestCar(x, z)[0], x, z);   // cota de la acera en un punto cualquiera
+  // --- cota de la acera en un punto cualquiera: EXACTAMENTE la de la malla de acera de streets.js, que es una retícula de 1 m
+  // (coordenadas de mundo enteras) partida en triángulos por la diagonal (0,0)–(1,1). En cada vértice manda el tramo con
+  // calzada más cercano de los que lo alcanzan con su acera (una calle con aceras llega a WSW m de su bordillo; cualquier otra
+  // calzada, a 1,5 m): es la misma regla, con sus mismos redondeos, que el campo de aceras de streets.js. Si cambia allí, aquí también.
+  function walkVert(gx, gz) {
+    const i0 = Math.min(NX - 1, Math.max(0, Math.floor(gx / CS))), j0 = Math.min(NZ - 1, Math.max(0, Math.floor(gz / CS))); let best = -1, bd = 99;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NX || j >= NZ) continue;
+      // un tramo solo figura en las celdas que toca: también hay que mirar las vecinas que queden a menos de 16 m
+      if ((di < 0 ? gx - i0 * CS : di > 0 ? (i0 + 1) * CS - gx : 0) > 16 || (dj < 0 ? gz - j0 * CS : dj > 0 ? (j0 + 1) * CS - gz : 0) > 16) continue;
+      const c = j * NX + i;
+      for (let k = ROADS.start[c]; k < ROADS.start[c + 1]; k++) { const s = ROADS.list[k], o = s * 6, cls = SEG[o + 5]; if (!CAR.has(cls)) continue;
+        const hw = SEG[o + 4], rc = (WALK.has(cls) ? hw + WSW : hw + 1.5) + 0.5, ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3];
+        if (gx + 0.5 <= Math.min(ax, bx) - rc || gx - 0.5 >= Math.max(ax, bx) + rc || gz + 0.5 <= Math.min(az, bz) - rc || gz - 0.5 >= Math.max(az, bz) + rc) continue;
+        const d = segDist(s, gx + 0.25, gz + 0.25) - hw; if (d < bd) { bd = d; best = s; } } }
+    return walkY(best, gx, gz);
+  }
+  function walkAt(x, z) {
+    const gi = Math.floor(x), gj = Math.floor(z), fx = x - gi, fz = z - gj, a = walkVert(gi, gj), c = walkVert(gi + 1, gj + 1);
+    if (fx >= fz) { const b = walkVert(gi + 1, gj); return a + (b - a) * fx + (c - b) * fz; }
+    const d = walkVert(gi, gj + 1); return a + (c - d) * fx + (d - a) * fz;
+  }
   // tramos rectos de fachada: une vértices casi alineados (las plantas de OSM vienen muy troceadas)
   function runsOf(r) {
     const pts = []; const m0 = r.length / 2;
@@ -258,7 +303,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
     return out;
   }
-  ctx.city = { CS, NX, NZ, cellOf, ALL, ELIG, ROADS, BB, CAR, bget, inside, coverAt, roadDist, segDist, nearestCar, roadY, walkY, walkAt };
+  ctx.city = { CS, NX, NZ, cellOf, ALL, ELIG, ROADS, BB, CAR, WALK, WSW, bget, inside, coverAt, roadDist, segDist, nearestCar, roadY, walkY, walkAt };
 
   // ---------------------------------------------------------------- disposición de un edificio (se calcula una vez)
   function layoutB(b) {
@@ -297,11 +342,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
 
   // ---------------------------------------------------------------- generador de fachada (capa base W0, ornamento W1)
   // Esqueleto: decide estilo, colores y cotas del edificio (env), prepara cada tramo (run) y reparte el trabajo entre los
-  // hooks. El orden de las llamadas al azar es sagrado: edificio (estilo, colores, banderas) → por tramo: M → planta baja
-  // (6 por vano) → pisos (7 por vano y planta). BASE y ORNAMENTO se generan en pasadas distintas y deben consumir lo mismo.
+  // hooks. AZAR POR ÁMBITO: cada parte siembra el suyo con env.rnd(…ids) = seed(b, …ids) y saca de golpe sus valores, así que
+  // nada depende del orden ni de lo que consuman los demás, y las pasadas BASE y ORNAMENTO salen iguales:
+  //   edificio (b): estilo, colores, banderas · tramo (b, 1, i): tribuna · vano de planta baja (b, 2, i, W) · vano de piso
+  //   (b, 3, i, W*64 + D) · coronación (b, 4, i) · tramo liso o ciego (b, 5, i)
   function genB(lay, b, W0, W1, ox, oz) {
     const { d, gHi, H, runs } = lay;
-    seed((b * 2654435761) ^ 0x5bd1e995);
+    const rnd = (i, j, k) => seed(b, i, j, k);
+    rnd();                                            // ámbito del edificio
     const cls6 = d.cls === 6;
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
     const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [150, 138, 120], 0.6), 0.92);
@@ -316,19 +364,22 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const shopsHere = shops && F1 - gHi > 3.6;
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
-      p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole };
+      p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd };
 
-    for (const r of runs) {
+    for (let i = 0; i < runs.length; i++) {
+      const r = runs[i];
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
       const F = { x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz };
-      const run = { r, F, L: r.L, kind: r.kind, cover: r.cover, street: false };
+      const run = { r, i, F, L: r.L, kind: r.kind, cover: r.cover, street: false };
       if (r.kind === 'blind') { D.blindRun(env, run); continue; }
       if (r.kind === 'plain') { D.plainRun(env, run); continue; }
       const L = r.L, street = r.kind === 'street';
       const bwT = street ? 3.7 : 3.2, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
       const N = r === lay.portal && L >= 9 ? nb >> 1 : -1;
-      const M = street && tribunaOK && nb >= 3 && nF >= 3 && R() < 0.6 ? nb >> 1 : -9;
-      const gnd = c => heightAt(r.ax + r.tx * c + r.nx * 1.0, r.az + r.tz * c + r.nz * 1.0) + 0.32;   // cota de la acera
+      rnd(1, i); const rM = R();                      // ámbito del tramo
+      const M = street && tribunaOK && nb >= 3 && nF >= 3 && rM < 0.6 ? nb >> 1 : -9;
+      // cota de la acera al pie de la fachada: la misma que usa la malla de acera, para que puertas y escaparates casen con ella
+      const gnd = c => walkAt(r.ax + r.tx * c + r.nx * 0.3, r.az + r.tz * c + r.nz * 0.3);
       const wallC = street ? p : shade(p, 0.95);
       run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd;
       I.groundFloor(env, run);
@@ -380,7 +431,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       yield;
     }
     if (cells.get(ci) !== cell || (hi && !cell.base)) return;   // la celda se descartó mientras se construía
-    const mesh = reg(mkMeshFrom(W, hi ? matH : matB, (hi ? 'fh' : 'fb') + ci), hi ? { cast: false, layer: 'orn' } : { cast: true, layer: 'base' });
+    const mesh = reg(mkMeshFrom(W, hi ? matH : matB, (hi ? 'fh' : 'fb') + ci), hi ? { cast: false, layer: 'orn' } : { cast: true, layer: 'base', cell });
     const t = W.ni / 3;
     if (hi) { cell.hi = mesh; cell.hiTris = t; tris[1] += t; }
     else { cell.base = mesh; cell.baseTris = t; tris[0] += t; cell.blds = done; for (const b of done) setFlag(b, 1); }
@@ -439,8 +490,6 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
     for (const ch of dirty) ch.vbInfo.update(ch.inf);
     dirty.clear();
-    const sy = ctx.L.sunDir.y, dusk = 1 - Math.min(1, Math.max(0, (sy - 0.02) / 0.22));
-    matB.setFloat('uDusk', dusk); matH.setFloat('uDusk', dusk);
   }
   function setRange(q) {   // 0 apagado · 1 normal · 2 alto
     S.on = q > 0;
@@ -448,6 +497,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     Object.assign(S, { R0: 170 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 70 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
     ctx.matBld.setVector2('uFx', new BABYLON.Vector2(S.R0, S.R1));
     matB.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1)); matH.setVector2('uFade', new BABYLON.Vector2(S.H0, S.H1));
+    for (const m of [matB, matH]) m.setVector2('uFadeHi', new BABYLON.Vector2(S.H0, S.H1));   // fundido de entrada del ORNAMENTO (sustitutos)
     if (!S.on) dropAll();
     planT = 0;
   }

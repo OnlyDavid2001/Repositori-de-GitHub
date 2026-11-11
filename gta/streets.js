@@ -11,15 +11,14 @@
    árboles e instancias, celdas y streaming. Contrato del contexto de celda (cell, seg): DESARROLLO.md §6. */
 (function () {
 'use strict';
-const { GB, seed, R, hash2 } = window.BCN_GEO;
+const { GB, seedRaw, R, hash2 } = window.BCN_GEO;   // seedRaw: las texturas y el árbol son secuencias heredadas de Transeúnte
 
-const WALK = new Set([2, 3, 4, 5, 6]);                      // calles con aceras a ambos lados
 const PED = new Set([7, 9, 15, 16]);                        // peatonales, caminos y escaleras: enlosado
 const TREE = new Set([2, 3, 4, 5, 6]);                      // calles arboladas (si la acera es estrecha, el control de fachada los descarta)
 
 window.BCN_STREETS = { init: async function (ctx) {
   const { scene, engine, mkMat, reg, SEG, blobURL } = ctx;
-  const { ROADS, CS, NX, NZ, CAR, coverAt, nearestCar, roadY, walkY } = ctx.city;   // índices y consultas de facades.js
+  const { ROADS, CS, NX, NZ, CAR, WALK, WSW, coverAt, nearestCar, roadY, walkY } = ctx.city;   // índices y consultas de facades.js
   const { matB, mkMesh: mkMeshFrom } = ctx.detail;                                  // el mobiliario usa el shader de detalle
 
   // ---------------------------------------------------------------- texturas
@@ -29,7 +28,7 @@ window.BCN_STREETS = { init: async function (ctx) {
 
   // panot: el mismo generador procedural de Transeúnte (baldosa de 20×20 cm con relieve)
   const [tPanD, tPanN] = (() => {
-    seed(1906);
+    seedRaw(1906);
     const S = 512, e = new Float32Array(S * S), col = new Uint8Array(S * S * 4), nrm = new Uint8Array(S * S * 4);
     const r = 0.31, o = 0.285, a = 0.365, h = 0.05, gs = (f, w = h) => Math.exp(-(f * f) / (w * w));
     const d = new Float32Array(4096).map(() => R());
@@ -56,7 +55,7 @@ window.BCN_STREETS = { init: async function (ctx) {
   // hojas de plátano: atlas dibujado como en Transeúnte (cerca: hojas grandes; lejos: más y menudas; impostor: silueta)
   function leafCanvas(far, size) {
     const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d', { willReadFrequently: true });
-    seed(far ? 62 : 61);
+    seedRaw(far ? 62 : 61);
     const leaf = (x, y, sc, rot, gr) => {
       g.save(); g.translate(x, y); g.rotate(rot); g.scale(sc, sc); g.beginPath(); g.moveTo(0, 1);
       for (const [S, M] of [[-2.7, .36], [-2.15, .62], [-1.75, .42], [-1.05, .92], [-.72, .5], [-.3, .78], [0, 1.05], [.3, .78], [.72, .5], [1.05, .92], [1.75, .42], [2.15, .62], [2.7, .36]]) g.lineTo(Math.sin(S) * M, -Math.cos(S) * M);
@@ -73,7 +72,7 @@ window.BCN_STREETS = { init: async function (ctx) {
   }
   function impostorCanvas() {
     const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d', { willReadFrequently: true });
-    seed(63);
+    seedRaw(63);
     g.fillStyle = '#6d5a44'; g.beginPath(); g.moveTo(S * 0.47, S); g.lineTo(S * 0.53, S); g.lineTo(S * 0.515, S * 0.45); g.lineTo(S * 0.485, S * 0.45); g.fill();
     for (let i = 0; i < 1400; i++) { const a = R(6.28), rr = Math.sqrt(R()); const x = S / 2 + Math.cos(a) * rr * S * 0.46, y = S * 0.36 + Math.sin(a) * rr * S * 0.3;
       const gr = 70 + R(90); g.fillStyle = `rgb(${gr * 0.72 | 0},${gr | 0},${gr * 0.3 | 0})`; g.beginPath(); g.arc(x, y, R(5, 13), 0, 6.3); g.fill(); }
@@ -183,7 +182,7 @@ void main(){
 
   // ---------------------------------------------------------------- geometría del plátano (como en Transeúnte)
   function treeGeo(hi) {
-    seed(5);
+    seedRaw(5);
     const P = [], Nn = [], U = [], I = [];
     const ring = (c, ax, r, sides, v) => { // anillo perpendicular a ax
       let ux = -ax[2], uy = 0, uz = ax[0]; let l = Math.hypot(ux, uy, uz); if (l < 1e-4) { ux = 1; uz = 0; l = 1; } ux /= l; uz /= l;
@@ -224,7 +223,7 @@ void main(){
     return { bark, tips };
   }
   function leafGeo(tips, n, s0, s1, D) {
-    seed(41);
+    seedRaw(41);
     const fy = tips.reduce((a, t) => a + t[1], 0) / tips.length;
     const P = [], N = [], U = [], I = [];
     for (let q = 0; q < n; q++) {
@@ -317,7 +316,9 @@ void main(){
   matW.setTexture('tField', atlas); matW.setTexture('tPanD', tPanD); matW.setTexture('tPanN', tPanN); matW.setTexture('tGrD', tGrD); matW.setTexture('tGrN', tGrN);
   const freeSlots = []; for (let k = SLOTS * SLOTS - 1; k >= 0; k--) freeSlots.push(k);
 
-  const WSW = 14;  // ancho máximo de acera desde el bordillo (Passeig de Gràcia y similares)
+  // WALK (calles con aceras) y WSW (ancho máximo de acera desde el bordillo) vienen de ctx.city: city.walkAt reproduce el
+  // campo y la malla de esta función para dar la cota exacta de la acera en cualquier punto. Si cambias la regla de `near` o
+  // las cotas de los vértices (vert), cambia también walkVert/walkAt en facades.js.
   function* cellJob(ci) {
     const cell = cells.get(ci), cx = ci % NX, cz = (ci / NX) | 0, ox = cx * CS, oz = cz * CS;
     const fx0 = ox - MG * RES, fz0 = oz - MG * RES;

@@ -24,14 +24,16 @@ window.BCN_INTERIORS = { SHOPS, init(ctx) {
   for (const m of ctx.detail.mats) m.setTexture('tSign', sign);
 
   // ---------------------------------------------------------------- planta baja de un tramo (de calle o de patio)
-  // Consume SIEMPRE 6 números de azar por vano, se dibuje o no: lo que venga después (pisos) depende de ello.
+  // Azar: cada vano siembra su ámbito, env.rnd(2, tramo, vano), y saca de golpe sus números (rr): las capas BASE y ORNAMENTO
+  // ven los mismos, y nada depende de lo que consuman los demás vanos ni los demás módulos.
   function groundFloor(env, run) {
     const { W0, W1, F1, y0, u, stone, iron, shops, shopsHere, windowHole } = env;
     const { F, cover, street, nb, bw, N, wallC, gnd } = run;
     for (let W = 0; W < nb; W++) {
       const a = W * bw, c = a + bw / 2;
+      env.rnd(2, run.i, W);
       const rr = [R(), R(), R(), R(), R(), R()];
-      let gl = Math.min(gnd(c), F1 - 2.7);
+      const gl = Math.min(gnd(c), F1 - 2.7);                  // cota de la acera delante del vano (city.walkAt), con tope
       if (F1 <= cover + 0.3) continue;                        // tapado por el vecino
       const yB = Math.max(y0, cover - 0.3);
       if (street && W === N) { portalBay(env, run, a, c, gl, yB, rr); continue; }
@@ -82,6 +84,8 @@ window.BCN_INTERIORS = { SHOPS, init(ctx) {
     const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run;
     const dw = Math.min(1.2, bw / 2 - 0.35), dtop = Math.min(F1 - 0.55, gl + 3.5), x0 = c - dw, x1 = c + dw, sc = stone;
     rect(W0, F, a, x0, yB, F1, 0, sc, K.STONE); rect(W0, F, x1, a + bw, yB, F1, 0, sc, K.STONE); rect(W0, F, x0, x1, dtop, F1, 0, sc, K.STONE);
+    // umbral a ras del peldaño y zócalo debajo: sin huecos aunque la acera baje por un lado (calle en cuesta)
+    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, K.STONE); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), K.STONE);
     jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE);
     hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), K.STONE);
     const tr = dtop - 0.95;
