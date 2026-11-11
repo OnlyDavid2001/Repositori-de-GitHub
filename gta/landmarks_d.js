@@ -143,65 +143,70 @@ add({ id: 'catedral', nombre: 'Catedral de Barcelona', nivel: 'A', x: 12750.6, z
 // Santa Maria del Mar. Silueta: bloque macizo de piedra (nave de 33 m y naves laterales de 26 m), fachada plana a la
 // plaça de Santa Maria (−Z) entre dos campanarios octogonales esbeltos de 40 m con remate plano. Rasgos: los dos
 // campanarios; el gran rosetón sobre la portada; los contrafuertes. (Eje real: 30°, no los 53° del catálogo.)
-add({ id: 'santa_maria_mar', nombre: 'Santa Maria del Mar', nivel: 'A', x: 13207.5, z: 13687.8, rot: 30, alto: 42, ancho: 30, largo: 78,
+add({ id: 'santa_maria_mar', nombre: 'Santa Maria del Mar', nivel: 'A', x: 13207.5, z: 13687.8, rot: 30, alto: 46, ancho: 30, largo: 78,
   noche: 'focos', edificios: [99176, 99177, 99178, 99179, 99180, 99181, 99182, 99183, 99184, 99185, 99186, 99187, 99188, 99189, 99190,
     99191, 99192, 99193, 99194, 99195, 99196],
   build(B, h, L) {
-    const C = [184, 164, 130], C2 = [158, 142, 114];
-    const lat = [[-13, -38.6], [13, -38.6], [12.9, 26], [11.7, 31.5], [8.1, 36.2], [3.2, 38.5], [-3, 38.5], [-8.6, 35.9], [-11.9, 31.4], [-12.8, 27.6]];
-    L.prisma(B, lat, -2, 26, C, K.PIEDRA, { aux: aPie, techo: C2 });
-    const cen = [[-7.3, -38.6], [7.3, -38.6], [7.2, 26], [6.1, 28.8], [4.3, 31.3], [1.7, 32.6], [-1.6, 32.7], [-4.7, 31.1], [-6.4, 28.8], [-7, 26]];
-    L.prisma(B, cen, 25, 32.5, C, K.PIEDRA, { aux: aPie, techo: C2 });
-    L.cubierta(B, 0, -6, 32.5, 14.6, 64, 1.6, { col: [150, 124, 100] });
+    const C = [192, 172, 138], C2 = [166, 150, 120];
+    // naves laterales y girola: cabecera poligonal (pocos lados, aristas vivas), no redondeada
+    const lat = [[-13, -38.6], [13, -38.6], [13, 26], [10.5, 33.5], [4, 38.5], [-4, 38.5], [-10.5, 33.5], [-13, 26]];
+    L.prisma(B, lat, -2, 25, C, K.PIEDRA, { aux: aPie, techo: C2 });
+    // nave central: prisma recto con cubierta de losas casi plana; el ábside, poligonal y más bajo
+    L.caja(B, 0, -6.3, 24, 14.6, 64.6, 9, 0, C, K.PIEDRA, { aux: aPie, techo: C2 });
+    L.prisma(B, [[-7.3, 25.5], [7.3, 25.5], [5.2, 31.5], [0, 33.5], [-5.2, 31.5]], 24, 30.5, C, K.PIEDRA, { aux: aPie, techo: C2 });
+    L.cubierta(B, 0, -6.3, 33, 14.6, 64.6, 0.6, { col: C2, k: K.PIEDRA });
     // contrafuertes macizos en los costados y sobre las naves laterales
     for (let z = -30; z <= 22; z += 8.6) for (const s of [-1, 1]) {
-      L.caja(B, s * 13.6, z, -2, 1.6, 2.4, 27.5, 0, C, K.PIEDRA, { aux: aPie });
-      L.caja(B, s * 8.1, z, 25, 1.8, 2, 6.5, 0, C2, K.PIEDRA); }
+      L.caja(B, s * 13.6, z, -2, 1.6, 2.4, 27, 0, C, K.PIEDRA, { aux: aPie });
+      L.caja(B, s * 8.1, z, 24, 1.8, 2, 8, 0, C2, K.PIEDRA); }
     // fachada: contrafuertes, portada apuntada, rosetón y galería
     for (const x of [-7.8, 7.8]) L.caja(B, x, -39.3, -2, 2.2, 1.6, 30, 0, C2, K.PIEDRA, { aux: aPie });
     L.extruir(B, apuntado(5.5, -1, 7.5, 12.5), -38.9, -38.6, OSCURO, K.LISO);
     roseton(B, 0, 20.5, -38.75, 4.6, -1, C);
     L.caja(B, 0, -39, 29, 14, 0.9, 1.2, 0, C2, K.PIEDRA);
-    // campanarios octogonales esbeltos, con remate plano y huecos en los dos cuerpos altos
+    // campanarios octogonales, del mismo tono claro, que pasan 10 m por encima de la nave (remate plano a 45 m)
+    const cb = L.shade(L.color(C), 0.72);
     for (const x of [-15, 15]) {
-      torreOct(B, x, -36, -2, 34, 3.1, C, [[27, 32.5]]);
-      L.tambor(B, x, -36, 34, 35, 3.5, { lados: 8, col: C2, k: K.PIEDRA });
-      torreOct(B, x, -36, 35, 41, 2.7, C, [[36, 39.8]]);
-      L.tambor(B, x, -36, 41, 42, 3, { lados: 8, col: C2, k: K.PIEDRA }); }
+      torreOct(B, x, -36, -2, 35, 3.2, C, []);
+      L.tambor(B, x, -36, 26, 33, 3.25, { lados: 8, col: cb, k: K.VENTANAS, aux: L.aux.ventanas(2.4, 5, 0.5, 0.8) });
+      L.tambor(B, x, -36, 35, 36.2, 3.6, { lados: 8, col: C2, k: K.PIEDRA });
+      torreOct(B, x, -36, 36.2, 44, 2.8, C, []);
+      L.tambor(B, x, -36, 37.5, 42.5, 2.85, { lados: 8, col: cb, k: K.VENTANAS, aux: L.aux.ventanas(2.1, 4, 0.5, 0.8) });
+      L.tambor(B, x, -36, 44, 45.2, 3.1, { lados: 8, col: C2, k: K.PIEDRA }); }
   } });
 
 // Arc de Triomf. Silueta: arco de 29 m de alto y 29,5 de ancho, un solo vano de medio punto, a lo largo del passeig de
 // Lluís Companys (el paso mira al 133°). Rasgos: ladrillo rojo neomudéjar; friso de piedra clara sobre el vano; remate
 // almenado con cuatro pináculos en las esquinas rematados con bolas doradas.
-add({ id: 'arc_triomf', nombre: 'Arc de Triomf', nivel: 'A', x: 13099.5, z: 14491.5, rot: 133, alto: 29.5, ancho: 29.5, largo: 10.4,
+add({ id: 'arc_triomf', nombre: 'Arc de Triomf', nivel: 'A', x: 13099.5, z: 14491.5, rot: 133, alto: 32, ancho: 29.5, largo: 10.4,
   noche: 'focos', edificios: [118700, 119009, 119010],
   build(B, h, L) {
     const W = 29.5, D = 10, LAD = [164, 80, 58], LAD2 = [138, 64, 48], PIE = [206, 186, 152], ORO = [206, 168, 84];
     const aL = L.aux.ladrillo(0.3, 0.6), aP = L.aux.piedra(0.55, 1.1);
     // cuerpo: arco de medio punto de 10,5 m de luz con la clave a 20 m (arranca 1 m bajo tierra por si hay pendiente)
-    L.arco(B, 0, 0, -1, W, D, 24.5, 10.5, 21, { col: LAD, k: K.LADRILLO, aux: aL, pasos: 14 });
+    L.arco(B, 0, 0, -1, W, D, 25.3, 12.6, 22.4, { col: LAD, k: K.LADRILLO, aux: aL, pasos: 14 });
     // zócalo de piedra en los dos machones
-    for (const s of [-1, 1]) L.caja(B, s * 10, 0, -1, 9.8, D + 0.5, 3.2, 0, PIE, K.PIEDRA, { aux: aP });
+    for (const s of [-1, 1]) L.caja(B, s * 10.6, 0, -1, 8.3, D + 0.5, 3.2, 0, PIE, K.PIEDRA, { aux: aP });
     // rosca del arco en piedra, por las dos caras
-    const rosca = []; const ro = 5.95, ri = 5.25, ys = 20 - 5.25;
+    const rosca = []; const ro = 7.1, ri = 6.3, ys = 21.4 - 6.3;
     for (let i = 0; i <= 12; i++) { const t = Math.PI * i / 12; rosca.push([Math.cos(t) * ro, ys + Math.sin(t) * ro]); }
     for (let i = 12; i >= 0; i--) { const t = Math.PI * i / 12; rosca.push([Math.cos(t) * ri, ys + Math.sin(t) * ri]); }
     for (const d of [D / 2 - 0.05, -D / 2 - 0.3]) L.extruir(B, rosca, d, d + 0.35, PIE, K.PIEDRA, { aux: aP });
     // friso de piedra clara sobre el vano y cornisa
-    L.caja(B, 0, 0, 20.6, W + 0.4, D + 0.6, 2.8, 0, PIE, K.PIEDRA, { aux: aP });
-    L.caja(B, 0, 0, 23.4, W + 0.9, D + 1.1, 0.6, 0, [190, 170, 140], K.PIEDRA);
+    L.caja(B, 0, 0, 21.4, W + 0.4, D + 0.6, 2.8, 0, PIE, K.PIEDRA, { aux: aP });
+    L.caja(B, 0, 0, 24.2, W + 0.9, D + 1.1, 0.6, 0, [190, 170, 140], K.PIEDRA);
     // ático de ladrillo y almenas escalonadas
-    L.caja(B, 0, 0, 24, W, D, 2.2, 0, LAD2, K.LADRILLO, { aux: aL });
+    L.caja(B, 0, 0, 24.8, W, D, 2.2, 0, LAD2, K.LADRILLO, { aux: aL });
     for (const [x0, z0, x1, z1, n] of [[-W / 2, -D / 2, W / 2, -D / 2, 12], [-W / 2, D / 2, W / 2, D / 2, 12], [-W / 2, -D / 2, -W / 2, D / 2, 4], [W / 2, -D / 2, W / 2, D / 2, 4]])
       for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
-        L.caja(B, x, z, 26.2, 0.9, 0.9, 1.3, 0, LAD, K.LADRILLO); L.caja(B, x, z, 27.5, 0.5, 0.5, 0.5, 0, LAD, K.LADRILLO); }
+        L.caja(B, x, z, 27, 0.9, 0.9, 1.3, 0, LAD, K.LADRILLO); L.caja(B, x, z, 28.3, 0.5, 0.5, 0.5, 0, LAD, K.LADRILLO); }
     // cuatro pináculos en las esquinas: pilastra, templete de piedra, cupulín y bola dorada
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const x = sx * (W / 2 - 0.9), z = sz * (D / 2 - 0.9);
-      L.caja(B, x, z, -1, 2.4, 2.4, 28.2, 0, LAD2, K.LADRILLO, { aux: aL });
-      L.tambor(B, x, z, 28.2, 29.6, 1.05, { lados: 8, col: PIE, k: K.PIEDRA });
-      L.cupula(B, x, z, 29.6, 1.15, 1.1, { lados: 8, anillos: 3, col: ORO, k: K.METAL });
-      L.esfera(B, x, 31.2, z, 0.5, { gajos: 8, anillos: 5, col: ORO, k: K.METAL });
+      L.caja(B, x, z, -1, 2.0, 2.0, 30, 0, LAD2, K.LADRILLO, { aux: aL });
+      L.tambor(B, x, z, 29, 30.4, 1.05, { lados: 8, col: PIE, k: K.PIEDRA });
+      L.cupula(B, x, z, 30.4, 1.15, 1.1, { lados: 8, anillos: 3, col: ORO, k: K.METAL });
+      L.esfera(B, x, 32, z, 0.5, { gajos: 8, anillos: 5, col: ORO, k: K.METAL });
     }
   } });
 
@@ -332,20 +337,32 @@ add({ id: 'santa_caterina', nombre: 'Mercat de Santa Caterina', nivel: 'B', x: 1
 
 // Mercat de la Boqueria: nave metálica con tres cubiertas y, a La Rambla (+Z), la portada modernista de hierro: gran arco
 // con vidriera de colores en el tímpano.
-add({ id: 'boqueria', nombre: 'Mercat de la Boqueria', nivel: 'B', x: 12324.6, z: 13473.3, rot: 59, alto: 19, ancho: 40, largo: 97,
-  noche: 'nada', edificios: [79055, 79057, 79058],
+add({ id: 'boqueria', nombre: 'Mercat de la Boqueria', nivel: 'B', x: 12324.6, z: 13473.3, rot: 59, alto: 24, ancho: 40, largo: 97,
+  noche: 'focos', edificios: [79055, 79057, 79058],
   build(B, h, L) {
     const V = [86, 120, 98], V2 = [70, 98, 82];
     L.caja(B, 0, 0, -1.5, 40, 96, 10, 0, V, K.METAL, { aux: L.aux.panel(2, 0.2, 0.35), sinTecho: true });
     for (const x of [-13.33, 0, 13.33]) L.cubierta(B, x, 0, 8.5, 13.4, 96, 3.6, { col: [120, 130, 128], k: K.METAL, colHastial: V2, kHastial: K.METAL });
-    // portada: dos pilares, arco de hierro y tímpano de vidriera
-    const z = 48.6, ar = []; for (let i = 0; i <= 14; i++) { const t = Math.PI * i / 14; ar.push([Math.cos(t) * 9.4, 10 + Math.sin(t) * 9.4]); }
-    for (let i = 14; i >= 0; i--) { const t = Math.PI * i / 14; ar.push([Math.cos(t) * 7.8, 10 + Math.sin(t) * 7.8]); }
-    L.extruir(B, ar, z, z + 1.2, V2, K.METAL);
-    const ti = []; for (let i = 0; i <= 14; i++) { const t = Math.PI * i / 14; ti.push([Math.cos(t) * 7.8, 10 + Math.sin(t) * 7.8]); }
-    L.extruir(B, ti, z + 0.4, z + 0.7, [232, 200, 120], K.TRENCADIS);
-    for (const s of [-1, 1]) L.caja(B, s * 8.6, z + 0.6, -1.5, 1.6, 1.6, 11.5, 0, V2, K.METAL);
-    L.caja(B, 0, z + 0.6, 9.4, 17.4, 1, 0.6, 0, V2, K.METAL);
+    // portada hacia la Rambla (+Z): gran arco de forja verde de 24 m de luz sobre dos pilares, tímpano de vidrieras de
+    // colores en abanico (de noche brillan) con montantes de hierro, rótulo corrido y el hueco oscuro de la entrada
+    const z = 48.8, R0 = 12.4, R1 = 11, YA = 9.5, n = 18, FE = [52, 92, 70];
+    const media = (r, y) => { const p = []; for (let i = 0; i <= n; i++) { const t = Math.PI * i / n; p.push([Math.cos(t) * r, y + Math.sin(t) * r]); } return p; };
+    L.extruir(B, media(R0, YA).concat(media(R1, YA).reverse()), z, z + 1.4, FE, K.METAL);
+    const VC = [[214, 60, 52], [236, 196, 64], [52, 112, 190], [72, 160, 92], [228, 128, 52], [150, 72, 160]];
+    for (let i = 0; i < 9; i++) { const t0 = Math.PI * i / 9, t1 = Math.PI * (i + 1) / 9, p = [[Math.cos(t0) * 3, YA + Math.sin(t0) * 3]];
+      for (let j = 0; j <= 3; j++) { const t = t0 + (t1 - t0) * j / 3; p.push([Math.cos(t) * R1, YA + Math.sin(t) * R1]); }
+      p.push([Math.cos(t1) * 3, YA + Math.sin(t1) * 3]);
+      L.extruir(B, p, z + 0.5, z + 0.8, VC[i % VC.length], K.EMISIVO, { aux: L.aux.emisivo(0.7, true) });
+      L.bar(B, [Math.cos(t0) * 2.8, YA + Math.sin(t0) * 2.8, z + 0.95], [Math.cos(t0) * R1, YA + Math.sin(t0) * R1, z + 0.95], 0.18, FE, K.METAL); }
+    L.extruir(B, media(3, YA), z + 0.4, z + 1.0, FE, K.METAL);
+    for (const s of [-1, 1]) { L.caja(B, s * 11.7, z + 0.7, -1.5, 1.8, 1.8, YA + 1.5, 0, FE, K.METAL);
+      L.caja(B, s * 11.7, z + 0.7, YA, 2.4, 2.2, 1, 0, FE, K.METAL); }
+    L.caja(B, 0, z + 0.7, YA - 1.6, 22, 0.8, 1.6, 0, [232, 220, 180], K.LISO);           // rótulo (sin texto)
+    L.caja(B, 0, z + 0.9, YA - 2, 22.6, 0.9, 0.4, 0, FE, K.METAL);
+    L.caja(B, 0, z + 0.2, -1.5, 21.6, 0.3, YA - 0.5, 0, [40, 44, 40], K.LISO);              // hueco de la entrada
+    for (let i = -4; i <= 4; i++) L.caja(B, i * 2.4, z + 0.45, -1.5, 0.25, 0.25, YA - 2, 0, FE, K.METAL);
+    // remates de los pilares
+    for (const s of [-1, 1]) L.esfera(B, s * 11.7, YA + 1.6, z + 0.7, 0.9, { gajos: 8, anillos: 5, col: FE, k: K.METAL });
   } });
 
 // MACBA: volumen blanco de Richard Meier; a la plaça dels Àngels (+X), el atrio acristalado de las rampas bajo una visera
@@ -425,30 +442,45 @@ add({ id: 'correus', nombre: 'Edifici de Correus', nivel: 'B', x: 13138.9, z: 13
 // volúmenes de los datos recogen también partes de las manzanas vecinas, así que NO se ocultan: se retocan (piedra, sin
 // fachada de vivienda, 19 m) y se añaden las dos fachadas a la plaza. Generalitat: renacentista, con columnas pareadas y
 // frontón sobre la portada. Ajuntament: neoclásica, con pórtico de cuatro columnas y balaustrada.
-add({ id: 'sant_jaume', nombre: 'Palau de la Generalitat i Casa de la Ciutat', nivel: 'B', x: 12786.3, z: 13550.5, rot: 135, alto: 24,
+add({ id: 'sant_jaume', nombre: 'Palau de la Generalitat i Casa de la Ciutat', nivel: 'B', x: 12786.3, z: 13550.5, rot: 135, alto: 26,
   ancho: 60, largo: 90, noche: 'focos', edificios: [79132, 79133, 79139, 82748, 82750, 82751, 82752, 82753, 82754],
-  ocultar: false, fachada: false, retoque: { color: '#c6b28c', alto: 19 },
+  ocultar: false, fachada: false, retoque: { color: '#d4c29c', alto: 21 },
   build(B, h, L) {
-    const C = [204, 186, 146], C2 = [180, 164, 130];
+    const C = [226, 212, 178], C2 = [200, 186, 152], aP = L.aux.piedra(0.7, 1.4);
+    // la plaza: losa clara de piedra que llena el hueco entre las dos fachadas (sin nada encima)
+    { const px = -12, pz = -10.3, w = 40, l = 39.6, y = Math.max(h.y(px, pz), h.y(px - w / 2, pz), h.y(px + w / 2, pz));
+      L.caja(B, px, pz, Math.min(h.y(px - w / 2, pz - l / 2), h.y(px + w / 2, pz + l / 2), h.y(px, pz)) - 1.2, w, l, y + 1.25 - Math.min(h.y(px - w / 2, pz - l / 2), h.y(px + w / 2, pz + l / 2), h.y(px, pz)), 0,
+        [214, 206, 190], K.PIEDRA, { aux: L.aux.piedra(1.2, 1.2) }); }
     const fachada = (cx, cz, dir, w, alto) => {                     // dir: +1 mira a +Z, −1 a −Z
       const y0 = Math.min(h.y(cx - w / 2, cz), h.y(cx + w / 2, cz), h.y(cx, cz)) - 1.5, f = cz + dir * 0.6;
-      L.caja(B, cx, cz, y0, w, 1.2, alto - y0, 0, C, K.VENTANAS, { aux: L.aux.ventanas(5.2, 3.6, 0.4, 0.55) });
-      L.caja(B, cx, f + dir * 0.1, alto - 0.2, w + 0.8, 1.2, 0.8, 0, C2, K.PIEDRA);
-      L.extruir(B, [[cx - 2.2, y0], [cx + 2.2, y0], [cx + 2.2, h.y(cx, cz) + 5.5], [cx, h.y(cx, cz) + 7.6], [cx - 2.2, h.y(cx, cz) + 5.5]], f, f + dir * 0.25, OSCURO, K.LISO);
+      L.caja(B, cx, cz - dir * 3, y0, w, 7.2, alto - y0, 0, C, K.VENTANAS, { aux: L.aux.ventanas(5.6, 3.8, 0.38, 0.5), techo: C2 });
+      L.caja(B, cx, f + dir * 0.1, alto - 0.2, w + 0.8, 1.4, 1, 0, C2, K.PIEDRA);
+      L.extruir(B, [[cx - 2.4, y0], [cx + 2.4, y0], [cx + 2.4, h.y(cx, cz) + 6], [cx, h.y(cx, cz) + 8.2], [cx - 2.4, h.y(cx, cz) + 6]], f, f + dir * 0.25, OSCURO, K.LISO);
       return { y: h.y(cx, cz), f };
     };
-    // Generalitat (mira a la plaza, +Z)
-    const g = fachada(-9, -31.4, 1, 30, 20);
-    for (const dx of [-5, -3.6, 3.6, 5]) { L.tambor(B, -9 + dx, g.f + 0.6, g.y - 1.5, g.y + 9, 0.5, { lados: 8, col: C, k: K.PIEDRA });
-      L.tambor(B, -9 + dx, g.f + 0.6, g.y + 10, g.y + 16.5, 0.42, { lados: 8, col: C, k: K.PIEDRA }); }
-    L.caja(B, -9, g.f + 0.7, g.y + 9, 12, 1.6, 1, 0, C2, K.PIEDRA);
-    L.extruir(B, [[-15.5, g.y + 16.5], [-2.5, g.y + 16.5], [-9, g.y + 20.5]], g.f, g.f + 1.2, C, K.PIEDRA);
-    // Casa de la Ciutat (mira a la plaza, −Z)
-    const a = fachada(-15, 10.8, -1, 30, 19);
-    for (const dx of [-5.4, -1.8, 1.8, 5.4]) L.tambor(B, -15 + dx, a.f - 0.7, a.y + 5.5, a.y + 15.5, 0.55, { lados: 8, col: C, k: K.PIEDRA });
-    L.caja(B, -15, a.f - 0.7, a.y - 1.5, 13, 2, 7, 0, C2, K.PIEDRA);
-    L.caja(B, -15, a.f - 0.7, a.y + 15.5, 13, 2, 1.4, 0, C2, K.PIEDRA);
-    for (let i = 0; i <= 10; i++) L.caja(B, -21 + i * 1.2, a.f - 0.2, 19.6, 0.35, 0.35, 1.1, 0, C, K.PIEDRA);
+    // mástil con bandera: asta clara y paño rectangular a franjas (la bandera catalana: amarilla con cuatro barras rojas)
+    const bandera = (x, z, y, dir) => {
+      L.tambor(B, x, z, y, y + 7, 0.09, { lados: 6, col: [236, 236, 232], k: K.METAL });
+      for (let i = 0; i < 9; i++) L.caja(B, x + dir * 1.6, z, y + 6.9 - (i + 1) * 0.29, 3.1, 0.06, 0.29, 0, i % 2 ? [204, 40, 36] : [242, 200, 52], K.LISO);
+    };
+    // Generalitat (mira a la plaza, +Z): fachada renacentista con pórtico de cuatro columnas, balcón y frontón
+    const g = fachada(-9, -31.4, 1, 32, 23);
+    const gf = g.f + 1.0;
+    for (const dx of [-5, -3.4, 3.4, 5]) { L.tambor(B, -9 + dx, gf, g.y - 1.5, g.y + 9.5, 0.62, { lados: 10, col: C, k: K.PIEDRA });
+      L.tambor(B, -9 + dx, gf, g.y + 10.6, g.y + 17.5, 0.5, { lados: 10, col: C, k: K.PIEDRA }); }
+    L.caja(B, -9, gf, g.y + 9.5, 13.6, 2.2, 1.1, 0, C2, K.PIEDRA);
+    L.caja(B, -9, gf, g.y + 17.5, 13.6, 2.2, 1.1, 0, C2, K.PIEDRA);
+    L.extruir(B, [[-16.3, g.y + 18.6], [-1.7, g.y + 18.6], [-9, g.y + 22.6]], gf - 1, gf + 1, C, K.PIEDRA);
+    L.extruir(B, [[-14.6, g.y + 19], [-3.4, g.y + 19], [-9, g.y + 21.7]], gf + 1, gf + 1.15, C2, K.PIEDRA);
+    bandera(-9, g.f - 1, 23.2 + 0.8, 1); bandera(-21, g.f - 1, 23.2 + 0.8, 1); bandera(3, g.f - 1, 23.2 + 0.8, 1);
+    // Casa de la Ciutat (mira a la plaza, −Z): fachada neoclásica con pórtico de cuatro columnas y ático
+    const a = fachada(-15, 10.8, -1, 32, 22);
+    const af = a.f - 1.0;
+    L.caja(B, -15, af, a.y - 1.5, 14, 2.2, 7, 0, C2, K.PIEDRA);
+    for (const dx of [-5.4, -1.8, 1.8, 5.4]) L.tambor(B, -15 + dx, af, a.y + 5.5, a.y + 16, 0.62, { lados: 10, col: C, k: K.PIEDRA });
+    L.caja(B, -15, af, a.y + 16, 14, 2.2, 1.6, 0, C2, K.PIEDRA);
+    for (let i = 0; i <= 11; i++) L.caja(B, -21.6 + i * 1.2, a.f - 0.2, 22.6, 0.35, 0.35, 1.1, 0, C, K.PIEDRA);
+    bandera(-15, a.f + 1, 22.6 + 1, -1); bandera(-25, a.f + 1, 22.6 + 1, -1); bandera(-5, a.f + 1, 22.6 + 1, -1);
   } });
 
 // Torres del telefèric del port: celosías de acero con la sala de máquinas arriba.
@@ -481,8 +513,10 @@ add({ id: 'torre_sant_sebastia', nombre: 'Torre Sant Sebastià', nivel: 'B', x: 
 
 // El Cap de Barcelona (Lichtenstein): cabeza de 14 m de perfil, plana como una viñeta, de cerámica de colores. Movido
 // unos 90 m hacia el mar respecto al catálogo (la coordenada de memoria caía dentro de una manzana): en el paseo del
-// Moll de la Fusta, al otro lado de la calzada del Passeig de Colom, fuera de la arboleda.
-add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13181, z: 13304, rot: 135, alto: 14, ancho: 8, largo: 4,
+// Moll de la Fusta, al otro lado de la calzada del Passeig de Colom. En FIX, 7 m más hacia el mar, entre la fila de
+// plátanos del paseo (streets.js; no se pueden quitar desde los lotes) y la calzada de la Ronda (sin árboles); más allá
+// hay un edificio de los datos.
+add({ id: 'cap_barcelona', nombre: 'El Cap de Barcelona', nivel: 'B', x: 13186, z: 13299, rot: 135, alto: 14, ancho: 8, largo: 4,
   noche: 'focos', edificios: [],
   build(B, h, L) {
     L.caja(B, 0, 0, -1.5, 5, 3.2, 2, 0, [190, 186, 178], K.LISO);
