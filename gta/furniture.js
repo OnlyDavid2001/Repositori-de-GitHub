@@ -225,7 +225,7 @@ function container(B, A, F, y, kind) {
   // cuerpo: más estrecho abajo, aristas redondeadas y reborde bajo la tapa
   loft(B, F, 0, 0, [[hl - 0.07, hd - 0.1, 0.08, y + 0.11], [hl, hd, 0.1, y + 0.42], [hl, hd, 0.1, y + 1.0], [hl + 0.03, hd + 0.03, 0.1, y + 1.0], [hl + 0.03, hd + 0.03, 0.1, y + 1.07]], 2, col, A.PLASTIC, 2);
   // tapa abombada, de otro tono
-  loft(B, F, 0, 0, [[hl + 0.04, hd + 0.04, 0.1, y + 1.07], [hl + 0.04, hd + 0.04, 0.12, y + 1.15], [hl - 0.1, hd - 0.09, 0.2, y + 1.29], [hl - 0.4, hd - 0.34, 0.25, y + 1.34]], 2, lid, A.PLASTIC, 1);
+  loft(B, F, 0, 0, [[hl + 0.04, hd + 0.04, 0.1, y + 1.07], [hl + 0.04, hd + 0.04, 0.12, y + 1.15], [hl - 0.1, hd - 0.09, 0.2, y + 1.29], [hl - 0.4, hd - 0.34, 0.25, y + 1.34]], 2, lid, A.PAINT, 1);
   // adhesivo con el pictograma en el frente y otro detrás, y bandas reflectantes hacia la calzada
   const fd = hd + 0.006;
   dq(B, F, -0.3, -0.66, y + 0.52, y + 0.92, fd, mixc(col, [20, 20, 20], 0.15), A.dec(pic));
@@ -236,7 +236,7 @@ function container(B, A, F, y, kind) {
   else {                                                                                                         // resta y orgànica: asa de la tapa y pedal
     tube(B, F, [[-0.45, y + 1.12, hd + 0.03], [-0.45, y + 1.19, hd + 0.11], [0.45, y + 1.19, hd + 0.11], [0.45, y + 1.12, hd + 0.03]], 0.018, 4, steelC, K.FURN, { aux: A.STEEL });
     tube(B, F, [[-0.5, y + 0.3, hd - 0.01], [-0.5, y + 0.09, hd + 0.19], [0.5, y + 0.09, hd + 0.19], [0.5, y + 0.3, hd - 0.01]], 0.02, 4, steelC, K.FURN, { aux: A.STEEL });
-    if (kind === 4) fbox(B, F, -0.3, 0.3, y + 1.3, y + 1.37, -0.2, 0.24, shade(lid, 0.82), A.PLASTIC); }           // orgànica: trampilla pequeña
+    if (kind === 4) fbox(B, F, -0.3, 0.3, y + 1.3, y + 1.37, -0.2, 0.24, shade(lid, 0.82), A.PAINT); }           // orgànica: trampilla pequeña
   // costados: cajeado oscuro y bulón de izado
   for (const su of [-1, 1]) {
     quad(B, F, su * (hl + 0.006), y + 0.76, -0.24, su * (hl + 0.006), y + 0.76, 0.24, su * (hl + 0.006), y + 0.99, 0.24, su * (hl + 0.006), y + 0.99, -0.24, shade(col, 0.5), K.FURN, A.MATTE);
