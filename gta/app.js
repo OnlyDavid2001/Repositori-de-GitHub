@@ -406,10 +406,65 @@ void main(){
     cw = mix(cw, 0.5, smoothstep(14.0, 45.0, px));
     float l = dot(alb, vec3(0.30, 0.60, 0.10));
     vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, 0.55 + 0.9*cw, mix(0.5, 1.0, mt));
-    alb = mix(alb, ol, vg*mix(0.55, 1.0, mt)); }
+    alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
+    // NAT: relieve de copas. La misma trama de claros y oscuros (cw) se usa como altura de las copas (~6 m) y tuerce la
+    // normal: las copas se leen como bultos con su lado al sol y su lado en sombra. Se apaga donde la trama ya no se
+    // resuelve (píxel grande), así que de lejos no centellea
+    float kv = vg*(1.0 - smoothstep(10.0, 40.0, px));
+    if (kv > 0.001) {
+      float e = clamp(px*0.7, 1.5, 8.0);
+      vec2 q = vPos.xz;
+      float fs = 1.0 - smoothstep(3.0, 12.0, px);
+      float cx = mix(vnoise((q + vec2(e, 0.0))*0.035 + 3.1), vnoise((q + vec2(e, 0.0))*0.11)*0.6 + vnoise((q + vec2(e, 0.0))*0.37)*0.4, fs);
+      float cz = mix(vnoise((q + vec2(0.0, e))*0.035 + 3.1), vnoise((q + vec2(0.0, e))*0.11)*0.6 + vnoise((q + vec2(0.0, e))*0.37)*0.4, fs);
+      float c0 = mix(vnoise(q*0.035 + 3.1), vnoise(q*0.11)*0.6 + vnoise(q*0.37)*0.4, fs);
+      float A = mix(9.0, 5.0, fs);
+      n = normalize(n + vec3(-(cx - c0), 0.0, -(cz - c0))*(A/e)*kv);
+    } }
+  // NAT: arena de playa. La ortofoto pinta las playas de un crema liso: de cerca, grano fino, ondulaciones del viento,
+  // pasadas del rastrillo de limpieza y huellas; junto al agua, franja mojada más oscura y con brillo. Cada escala se apaga
+  // cuando el píxel ya no la resuelve (sin moiré de lejos)
+  float sandM = 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv).rgb - vec3(0.882, 0.827, 0.655)));
+  float wet = 0.0, rough = 0.95;
+  if (sandM > 0.001) {
+    vec2 q = vPos.xz; float px = length(fwidth(q));
+    vec2 o = vec2(7.0)/uSize;
+    vec3 SEA = vec3(0.588, 0.592, 0.420);
+    float sea = 0.0;
+    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + vec2(o.x, 0.0)).rgb - SEA));
+    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv - vec2(o.x, 0.0)).rgb - SEA));
+    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + vec2(0.0, o.y)).rgb - SEA));
+    sea += 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv - vec2(0.0, o.y)).rgb - SEA));
+    wet = smoothstep(0.15, 1.2, sea + 0.8*(vnoise(q*0.08) - 0.5))*(1.0 - smoothstep(1.2, 2.6, vPos.y));
+    vec3 sa = mix(vec3(0.80, 0.71, 0.55), vec3(0.86, 0.78, 0.62), vnoise(q*0.03));
+    sa *= 0.93 + 0.1*vnoise(q*0.21) + 0.05*vnoise(q*1.3);
+    float g1 = 1.0 - smoothstep(0.015, 0.06, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
+    sa *= mix(1.0, 0.86 + 0.28*hash21(floor(q*60.0)), g1*0.6);
+    sa *= mix(1.0, 0.9 + 0.2*vnoise(q*11.0), g2);
+    // ondulaciones del viento y pasadas del rastrillo (en franjas, con dirección que cambia poco a poco)
+    float an = vnoise(q*0.012)*6.2832, ca = cos(an), sn = sin(an);
+    float w1 = dot(q, vec2(ca, sn)) + 1.5*vnoise(q*0.4);
+    float rip = sin(w1*10.5);
+    float rk = smoothstep(0.45, 0.6, vnoise(q*0.045 + 7.0))*(1.0 - wet);
+    float w2 = dot(q, vec2(-sn, ca));
+    float rake = sin(w2*25.1)*smoothstep(0.1, 0.4, abs(sin(w2*0.785)));
+    vec2 gdir = vec2(ca, sn)*rip*0.22*g3*(1.0 - rk)*(1.0 - wet) + vec2(-sn, ca)*rake*0.30*g2*rk;
+    sa *= 1.0 + 0.06*rip*g3*(1.0 - rk) + 0.08*rake*g2*rk;
+    // huellas: hoyos ovalados sueltos
+    vec2 fc = floor(q/0.8), ff = fract(q/0.8) - 0.5; float fh = hash21(fc);
+    float foot = step(0.86, fh)*(1.0 - smoothstep(0.12, 0.2, length(ff*vec2(1.0, 0.55) + (vec2(hash21(fc + 3.1), hash21(fc + 7.7)) - 0.5)*0.3)))*g2*(1.0 - wet);
+    sa *= 1.0 - 0.10*foot;
+    // franja mojada: más oscura y con brillo de agua
+    sa = mix(sa, sa*vec3(0.58, 0.58, 0.60), wet);
+    rough = mix(0.95, 0.30, wet);
+    alb = mix(alb, sa, sandM);
+    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM + vec3(0.0, 0.0, 0.0));
+  }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
-  vec3 c = lit(alb, n)*(1.0 - 0.55*uNight);         // de noche, montaña, parques y patios casi negros
+  vec3 c = lit(alb, n);
+  if (sandM*wet > 0.001) c = mix(c, shade(alb, n, normalize(uCam - vPos), rough, 0.0, 1.0), sandM*wet);
+  c *= 1.0 - 0.55*uNight;                           // de noche, montaña, parques y patios casi negros
   // aura nocturna: el suelo urbano (aceras, plazas) coge algo de la luz de las calles. Ni el verde ni el monte
   if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w*mix(0.15, 1.0, texture2D(uStreet, (vPos.xz - uStreetR.xy)*uStreetR.zw).r));
   FRAG(c);
@@ -535,8 +590,16 @@ void main(){
   float sp = pow(max(dot(r,uSunDir),0.0), mix(260.0, 40.0, rough));
   // el brillo del sol en el agua, muy por encima de 1 (HDR): es lo que florece
   c += uSunCol*sp*mix(7.0, 0.35, rough)*sunVis();
-  float foam = (1.0 - smoothstep(0.0, 0.04, cd))*inside*(0.35 + 0.65*vnoise(p*0.12 + vec2(t*0.25, -t*0.1)));
-  c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.6);
+  // NAT: orilla. Agua somera clara sobre la arena y espuma suave: una línea pegada a la arena y dos o tres frentes de ola
+  // que llegan a la playa, rotos por ruido (nada de bandas rectas). Se apaga con el tamaño del píxel (sin moiré de lejos)
+  float sh = (1.0 - smoothstep(0.0, 0.05, cd))*inside;
+  c = mix(c, mix(vec3(0.20, 0.42, 0.40), vec3(0.06, 0.12, 0.13), uNight)*(uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y, 0.0)), sh*0.45*(1.0 - fres));
+  float br = vnoise(p*0.09 + vec2(t*0.2, -t*0.08))*0.6 + vnoise(p*0.35 - vec2(t*0.3, t*0.1))*0.4;
+  float fr = fract(cd*26.0 - t*0.035 + 0.25*vnoise(p*0.02));
+  float waves = exp(-pow((fr - 0.5)*7.0, 2.0))*(1.0 - smoothstep(0.012, 0.055, cd))*(1.0 - smoothstep(4.0, 18.0, px));
+  float edge = 1.0 - smoothstep(0.0, 0.012, cd);
+  float foam = clamp(edge*(0.55 + 0.45*br) + waves*smoothstep(0.35, 0.75, br)*0.8, 0.0, 1.0)*inside;
+  c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.65);
   FRAG(c);
 }`;
 
@@ -1049,6 +1112,11 @@ const FXS = await addMod('fx', 'BCN_FACADES', 'fachadas de detalle');
 setMsg('Preparando calles: aceras, árboles y mobiliario…', 0.985);
 await tick();
 const STS = FXS ? await addMod('st', 'BCN_STREETS', 'calles de detalle') : null;
+// naturaleza: volumen en el monte, los parques grandes y el delta (necesita ctx.city de las fachadas para no invadir calles
+// ni edificios; sin él planta igual, solo por la máscara del suelo)
+setMsg('Plantando el monte…', 0.99);
+await tick();
+await addMod('nat', 'BCN_NATURE', 'vegetación de montaña');
 // iluminación: siempre el último
 const LIGHT = QS.get('nolight') === '1' ? null : await addMod('light', 'BCN_LIGHTING', 'módulo de iluminación');   // ?nolight=1: prueba del respaldo
 if (!LIGHT) setLDR();                                         // sin módulo de luz no hay postproceso: tono y gamma en los shaders
