@@ -368,7 +368,7 @@ add({ id: 'mistos', nombre: 'Mistos', nivel: 'B', x: 10168, z: 18482, rot: 0, al
     L.bar(B, [0, -1, 0], tip, 0.75, AM, K.LISO);
     L.esfera(B, tip[0] + 0.25, tip[1] + 0.6, tip[2], 1.4, { gajos: 10, anillos: 6, sy: 1.4, col: RO, k: K.LISO });
     L.aguja(B, tip[0] + 0.5, tip[2], tip[1] + 1.4, 4.6, 1.3, { lados: 8, pasos: 4, pot: 1, exp: 0.7, sz: 0.45, cols: [[0, '#2b5fa8'], [0.3, '#e8c547'], [1, '#d24b3a']], k: K.LISO });
-    for (const [x0, z0, x1, z1, c] of [[-8, -8, 4, -11, AZ], [-6, 6, 7, 10, AM], [2, 3, 12, -2, RO]]) {
+    for (const [x0, z0, x1, z1, c] of [[-2, -5, 8, -9, AZ], [-6, 6, 7, 10, AM], [2, 3, 12, -2, RO]]) {
       const y0 = yT(h, x0, z0) + 0.5, y1 = yT(h, x1, z1) + 0.5;
       L.bar(B, [x0, y0, z0], [x1, y1, z1], 0.5, c, K.LISO);
       L.esfera(B, x1 + (x1 - x0) * 0.04, y1 + 0.1, z1 + (z1 - z0) * 0.04, 0.8, { gajos: 8, anillos: 5, sy: 0.8, col: c === RO ? [40, 36, 34] : RO, k: K.LISO });
