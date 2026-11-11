@@ -651,7 +651,7 @@ luz hecha a mano, tres sitios de `app.js`: el brillo del asfalto en `FS_ROAD`, l
 
 ## 7. Carril LUZ
 
-Etapas LZ1 (HDR lineal y postproceso, §7.1–7.5), ciclo de 24 horas (§7.6, pulido en LZ3), LZ2 (sombras del sol, §7.7) y LZ3
+Etapas LZ1 (HDR lineal y postproceso, §7.1–7.5), ciclo de 24 horas (§7.6, pulido en LZ3 y en NOCHE: noche fiel a las fotos), LZ2 (sombras del sol, §7.7) y LZ3
 (oclusión ambiental, §7.8; calibración por horas, §7.9). Lo que aquí se dice **sustituye** a la columna «Hoy» de la tabla de §6.4 y al «hoy
 no hace nada» de §6.12; el contrato (nombres y firmas de `lit`, `shade`, `envRefl`, `emit`, `fog`, `FRAG*`) no cambia.
 Cambio mínimo en lo común: `index.html` gana la fila «Gráficos» (`gqLab`, `gqRow`, `gq0`…`gq3`, `gqV`).
@@ -770,32 +770,59 @@ reloj: 1 s real = 1 min de juego, un día cada 24 min, recalculando la luz una v
 | `uNight` | 0 → 1 noche cerrada | cielo (estrellas, nubes), adaptación |
 | `uLate` | 0 por la tarde-noche → 1 de madrugada (sube de 22:45 a 0:00 y baja de 5:30 a 6:30) | «la ciudad duerme» |
 | `shopOn()` | `uDusk·(1 − 0,94·uLate)` | comercios, rótulos y bajos comerciales: encendidos al anochecer, apagados de madrugada (queda una luz de vigilancia) |
-| `homeOn(h)` / `homeFrac()` | ¿encendida la ventana de azar `h`? Fracción: ~38 % al anochecer, 6 % de madrugada | ventanas de pisos (fachadas de detalle y volúmenes lejanos) |
+| `homeOn(h)` / `homeFrac()` | ¿encendida la ventana de azar `h`? Fracción: 30 % al anochecer, 27 % a las 23:00, 5 % de madrugada | ventanas de pisos (fachadas de detalle y volúmenes lejanos) |
 
-**Aura nocturna de la ciudad** (`uGlow`, uniforme global del preludio; color de farola `kAura`). De lejos —desde Collserola
-o desde el aire— lo que se ve de Barcelona es la trama de calles encendida, no las ventanas. `uGlow = (calzadas, bajos de
-fachada, halo, suelo urbano)` lo fija `setHour` a partir de `L.K.city` (ganancia general, 0 = sin aura) por `K.calle`,
-`K.bajos`, `K.halo` y `K.suelo`; sube con la segunda mitad de `uDusk`, dura toda la noche y vale 0 de día (a las 12:00 la
-imagen es idéntica píxel a píxel con `city` a 0 o a 1). Se ajusta en caliente: `BCN.light.set({ city: 0 })`.
-- `FS_ROAD` (`.x`): la calzada emite la luz de las farolas en charcos cada 24 m alternando de acera (el mismo `along(24, 5)`
-  con que `furniture.js` planta los postes); a partir de ~220–480 m pasa a su valor medio (no parpadea) y a menos de ~240 m
-  se atenúa hasta el 22 %, porque ahí están los charcos de verdad del mobiliario. Más luz cuanto más ancha la vía y en las
-  principales (`cls < 3.5`); por encima de 200–380 m de cota (carreteras de Collserola) casi nada.
-- `FS_BLD` (`.y`): luz de farola en la parte baja de los muros de los volúmenes lejanos, `exp(−h/6)`. Las cubiertas no.
-  Solo en los muros que dan a una calle: **máscara de calles** (`uStreet`, `uStreetR`, LZ3), una textura de una capa
-  hecha en `app.js` justo después de `SEG`, con celdas de 8 m (o más, hasta 2048 de lado) que valen 1 a menos de
-  «semiancho + 3 m» del eje de alguna calle; el muro mira 3 m por delante de sí. Los muros de los patios de manzana quedan al 8 %.
-- Halo (`.z`): de noche cerrada el color de la niebla pasa de azul a pardo cálido y la niebla se espesa un 50 %; en
-  `FS_SKY`, una banda anaranjada tenue sobre el horizonte (`exp(−7·d.y)`), más fuerte mirando hacia la ciudad cuando la
-  cámara está fuera de ella, que además apaga las estrellas bajas.
-- `FS_TER` (`.w`): el suelo no vegetal por debajo de 200–380 m de cota coge un poco de esa luz (al 15 % lejos de las calles,
-  con la misma máscara).
-- Las avenidas anchas (semiancho 12 m o más) llevan hasta ×1,75 de luz en la calzada, y las vías principales ×1,2.
-Los demás carriles pueden usar `uGlow` y `kAura` en sus shaders (pendiente: las copas de los árboles de calle, en
-`streets.js`, tapan la calzada encendida vista desde arriba y siguen oscuras; las aceras de detalle tampoco la reciben).
+**Noche fiel a las fotos (etapa NOCHE).** Referencia: dos fotos reales del usuario (desde los Bunkers del Carmel y desde un
+avión sobre el Eixample). De noche Barcelona es: **cielo azul marino casi negro y uniforme** (sRGB ≈ (0, 15, 31) justo encima
+del horizonte, sin franja de color), **masas negras** salpicadas de ventanas encendidas, **calles como cadenas de puntos** de
+sodio y avenidas de LED más blancas y brillantes, y un aura que es bloom y una bruma baja muy leve, nunca un color del cielo.
 
-No se enciende nunca: parques, cubiertas, el mar y la montaña (solo reciben la luna, y el mar el reflejo del halo). Pendiente: comercios de
-horario distinto (bares hasta más tarde, cruz de farmacia de guardia) y monumentos iluminados.
+- **Trampa: el pie del ACES de Babylon.** `RRTAndODTFit` resta 0,000090537: por debajo de ~0,0035 lineal ya expuesto (tras
+  `exposure`, ≈ 2,1 de noche) sale **negro puro**. El cenit de antes, (0,012, 0,018, 0,045), salía (0, 0, 0). Los colores
+  oscuros de noche se calibran con el modelo de la cadena (exposición → matriz de entrada ACES → RRT → matriz de salida →
+  gamma 1/2,2 → contraste), no a ojo: horizonte de noche `fg` = (0,069, 0,122, 0,193) → sRGB ≈ (2, 17, 34); cenit `zn` =
+  (0,050, 0,099, 0,165) → ≈ (0, 12, 26). Medido en la franja alta de las vistas: (1, 14, 28). De noche las nubes toman el
+  color del cielo (sin resplandor) y las estrellas bajan a la mitad con la ciudad encendida (`uGlow.z`).
+- **Bruma de la ciudad** (preludio: `kHaze`, `cityW`, `hazeI`). Capa baja de densidad `exp(−y/160 m)` solo sobre el llano
+  (`cityW`: elipse a lo largo de la costa, 1 dentro, 0 en Collserola y en el mar), gris cálida (`kHaze`), por `uGlow.z`. `fogL`
+  la **suma** (luz dispersada) según los metros de capa que cruza el rayo; `FS_SKY` igual hacia el cielo. Desde la calle se ve
+  como un velo gris azulado en el horizonte; desde Collserola o el avión la cámara está por encima y el cielo queda limpio.
+  Ya no hay banda anaranjada en el cielo ni niebla parda de noche (`fogD` no cambia con la hora).
+- **Calles** (`FS_ROAD`, `.x`). Charco de cada farola: gaussiana a lo largo de la vía que se ensancha con el tamaño del píxel
+  **conservando su energía** (sin dientes de sierra) y solo se funde en su valor medio cuando la separación entre farolas baja
+  de ~2 píxeles; más la **cabeza** de la farola, un punto de ~1 píxel que florece (desde 120–400 m). Color: sodio `kAura`
+  (1, 0,60, 0,24) en las calles y LED `kLed` (1, 0,86, 0,68) en las avenidas (semiancho de 8 a 12 m o más), que además llevan
+  hasta ×1,75 de luz y las vías principales ×1,2. Cerca (< 50–240 m) la calzada solo pone el 30 %: ahí mandan los charcos
+  del mobiliario. Por encima de 200–380 m de cota (pistas de Collserola), casi nada.
+- **Ventanas de lejos** (`FS_BLD`, de 260 a 1100 m en adelante). Chispas de ~1–2 píxeles: celdas de ventana (2,7 × 3,2 m) que
+  crecen ×2 con la distancia para no hacer dientes de sierra. Densidad media ½·`homeFrac()` (≈ 14 % a las 23:00, 2–3 % de
+  madrugada), **irregular**: azar por celda de 113 m (unas manzanas casi a oscuras, otras con muchas luces), por barrio
+  (`vnoise` de 700 m) y por edificio. Color: 55 % cálidas, 30 % blancas neutras y 15 % azuladas (LED, televisores).
+  `homeFrac()` (fachadas de detalle y volúmenes cercanos) queda en 30 % al anochecer, 27 % a las 23:00 y 5 % de madrugada.
+- **Masas oscuras.** De noche (`uNight`) `FS_BLD` multiplica su luz recibida (no lo que emite) por 1 − 0,6 y las cubiertas
+  además su albedo por 1 − 0,55 (casi negras); `FS_TER` y `FS_OUT` (montaña, parques, patios) por 1 − 0,55. **No** se toca el
+  ambiente global (`nAmb` 0, `moon` 0,8): la calle cercana, las fachadas de detalle y los charcos de `furniture.js` (que
+  multiplican lo que hay pintado) dependen de él; bajarlo hundía la calle a pie (medido: −30 % de media en `eix_acera`).
+- `FS_BLD` (`.y`): luz de farola en la parte baja de los muros de los volúmenes lejanos, `exp(−h/6)`, solo en los muros que
+  dan a una calle (**máscara de calles** `uStreet`/`uStreetR`, LZ3: celdas de 8 m que valen 1 a menos de «semiancho + 3 m» del
+  eje de una calle; el muro mira 3 m por delante de sí; los de patio quedan al 8 %). `FS_TER` (`.w`): el suelo urbano coge
+  algo de esa luz (al 15 % lejos de las calles). Ganancias: `L.K.city` (0 lo quita todo) × `K.calle`, `K.bajos`, `K.halo`,
+  `K.suelo`; sube con la segunda mitad de `uDusk` y vale 0 de día (a las 12:00 la imagen es idéntica píxel a píxel a la de antes
+  de esta etapa). En caliente: `BCN.light.set({ city: 0 })`.
+- Los demás carriles pueden usar `uGlow`, `kAura`, `kLed` y `kHaze` (las copas de los árboles y las aceras de detalle de
+  `streets.js` ya usan `uGlow.x` y `kAura`, §9.4).
+
+Vistas: `tools/views_noche.json` (`n_*`: 23:00 desde Collserola, aéreo alto, dron, Turó de la Rovira con objetivo de 0,40 rad
+como la foto de los Bunkers, `eix_acera` y `rambla_pie`; y 21:15, 3:00 y 12:00). Las aéreas llevan `BCN.st.maxDist=40000` y
+todas reponen `BCN.cam.fov=0.86` (la de la Rovira lo cambia).
+
+**Pendiente / flojo** (NOCHE): las fachadas de detalle (`facades.js`) no reciben el baño de sodio de las farolas (solo los
+charcos del suelo y la luz de los escaparates): en la foto, junto a cada farola la fachada se ve amarilla hasta 6–10 m; las
+copas de los árboles de calle se ven verde oliva desde el dron (algo fuertes); el mar no refleja las luces del puerto (es
+negro azulado); monumentos iluminados (Torre Glòries en azul y rojo, Sagrada Família en blanco frío, grúa con luces rojas) y
+comercios de horario distinto (bares, farmacia de guardia).
+
+No se enciende nunca: parques, cubiertas, el mar y la montaña (solo reciben la luna).
 
 ### 7.7 Sombras del sol (etapa LZ2)
 
@@ -901,12 +928,12 @@ actuales (`K` de §7.6):
 
 | hora | a pie | desde el aire |
 | --- | --- | --- |
-| 3:00 | calle oscura, azulada, farolas y charcos; comercios apagados (luz de vigilancia) | ciudad gris azulada bajo la luna, pocas ventanas, calles encendidas |
+| 3:00 | calle oscura, azulada, farolas y charcos; comercios apagados (luz de vigilancia) | masas negras, muy pocas ventanas, calles encendidas |
 | 7:00 | sol de 13° por el este: calle en sombra, ambiente frío; algo apagada | resplandor claro hacia el sol, ciudad nítida |
 | 8:00, 12:00, 13:00, 17:00 | sin cambios respecto a LZ2 (el día no se ha tocado) | ídem |
 | 20:15–20:30 | sol de 7–9°, luz anaranjada y rasante, sombras largas | horizonte naranja hacia el oeste, malva hacia el este |
 | 21:15 | hora azul: farolas y escaparates encendidos, suelo en penumbra | resplandor rojo hacia el oeste, ventanas encendidas |
-| 23:00 | luna (disco con mares), estrellas; calle de farolas | aura de calles, bruma cálida en el horizonte |
+| 23:00 | luna (disco con mares), estrellas; calle de farolas (igual que antes de NOCHE) | cielo azul marino sin franja, masas negras con ventanas irregulares, calles en cadenas de puntos, avenidas de LED |
 
 ## 8. Carril INTERIORES
 

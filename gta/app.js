@@ -106,13 +106,13 @@ uniform vec3 uFogCol; uniform vec3 uZenCol; uniform float uFogD; uniform float u
 //   homeOn(h)  ¿está encendida esta ventana de piso? h = azar estable por ventana. Muchas al anochecer, casi ninguna de madrugada.
 // No se encienden nunca: árboles y parques, cubiertas, el mar y la montaña (solo reciben la luna).
 float shopOn(){ return uDusk*(1.0 - 0.94*uLate); }
-float homeFrac(){ return mix(0.05 + 0.33*uDusk, 0.06, uLate); }
+float homeFrac(){ return mix(0.05 + 0.25*uDusk, 0.05, uLate); }
 float homeOn(float h){ return uDusk*step(h, homeFrac()); }
 // AURA NOCTURNA de la ciudad: lo que se ve de lejos (desde Collserola o desde el aire) es la trama de calles encendida.
 // uGlow = (calzadas, bajos de fachada, halo del cielo, suelo urbano): ganancias que fija setHour, 0 de día.
 // kAura: color de las farolas de sodio (ámbar saturado, 2000–2200 K), en espacio de pantalla · kLed: LED blanco cálido-neutro
 // (3000–4000 K) de las grandes avenidas · kHaze: la bruma baja que ilumina la ciudad (gris cálido, nunca naranja)
-const vec3 kAura = vec3(1.0, 0.56, 0.22);
+const vec3 kAura = vec3(1.0, 0.60, 0.24);
 const vec3 kLed = vec3(1.0, 0.86, 0.68);
 const vec3 kHaze = vec3(0.115, 0.105, 0.095);
 // BRUMA DE LA CIUDAD (de noche, con uGlow.z): una capa baja (densidad exp(−y/160 m)) solo sobre el llano de Barcelona.
@@ -282,14 +282,20 @@ void main(){
     float u = vInfo.z*0.1;
     // de lejos (y desde el aire), las ventanas encendidas son chispas: celdas de ventana de ~1 píxel (más grandes cuanto más
     // lejos, en escalones ×2, para no hacer dientes de sierra), encendidas con la misma fracción que los pisos de cerca
-    vec3 far = vec3(0.0);
+    vec3 farG = vec3(0.0);
     if (uDusk > 0.01 && fade < 0.999) {
       float px = max(length(vec2(dFdx(u), dFdy(u))), length(vec2(dFdx(h), dFdy(h))));
       float sc = exp2(clamp(floor(log2(max(px*0.45, 1.0))), 0.0, 4.0));
       vec2 cf = floor(vec2(u/(2.7*sc) + seed*3.7, h/(3.2*sc)));
       float hz = hash21(cf + vec2(seed*17.0, sc*3.1)), hc = fract(hz*53.7);
-      float onF = step(hz, 0.80*homeFrac())*uDusk*step(3.2, h)*step(h, Ht - 1.0);
-      far = mix(vec3(1.0, 0.70, 0.40), vec3(0.82, 0.90, 1.0), step(0.84, hc))*(onF*mix(0.75, 1.15, fract(hc*7.1)));
+      // irregular, como en las fotos: manzanas casi a oscuras y otras con muchas luces (azar por celda de ~113 m y por barrio)
+      // y lo mismo por edificio. De media, la mitad de homeFrac()
+      float kB = hash21(floor(vPos.xz/113.0) + 0.37), kR = vnoise(vPos.xz/700.0);
+      float dens = homeFrac()*0.62*(0.10 + 2.1*kB*kB*mix(0.5, 1.5, kR))*(0.25 + 1.5*hash21(vCol.rg*57.1 + seed*9.3));
+      float onF = step(hz, dens)*uDusk*step(3.2, h)*step(h, Ht - 1.0);
+      // ~55 % cálidas, ~30 % blancas neutras y ~15 % azuladas (LED, televisores)
+      vec3 wc = hc < 0.55 ? vec3(1.0, 0.70, 0.40) : (hc < 0.85 ? vec3(0.98, 0.94, 0.86) : vec3(0.72, 0.84, 1.0));
+      farG = wc*(onF*mix(0.65, 1.2, fract(hc*7.1)));
     }
     bool glassy = abs(style-3.0) < 0.5 || abs(style-12.0) < 0.5;
     bool plain = abs(style-1.0) < 0.5 || abs(style-4.0) < 0.5 || abs(style-5.0) < 0.5 || abs(style-8.0) < 0.5 || abs(style-11.0) < 0.5 || style > 12.5;
@@ -322,7 +328,7 @@ void main(){
     } else {
       base *= 0.96 + 0.08*vnoise(vec2(u*0.4, h*0.4));
     }
-    glow = mix(far, glow, fade);
+    glow = mix(farG, glow, fade);
     base *= mix(0.74, 1.0, smoothstep(-2.0, 8.0, h));
     base *= 1.0 - 0.10*smoothstep(Ht-0.9, Ht-0.5, h);
     // aura nocturna: las farolas bañan la parte baja de los muros (cae con la altura). Las cubiertas quedan oscuras
@@ -346,7 +352,8 @@ void main(){
     // peto / borde de cubierta
     base *= 1.0;
   }
-  vec3 c = lit(base, n);
+  // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
+  vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
@@ -371,7 +378,7 @@ void main(){
   alb *= 0.94 + 0.12*d2;
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
-  vec3 c = lit(alb, n);
+  vec3 c = lit(alb, n)*(1.0 - 0.55*uNight);         // de noche, montaña, parques y patios casi negros
   // aura nocturna: el suelo urbano (aceras, plazas) coge algo de la luz de las calles. Ni el verde ni el monte
   if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w*mix(0.15, 1.0, texture2D(uStreet, (vPos.xz - uStreetR.xy)*uStreetR.zw).r));
   FRAG(c);
@@ -392,7 +399,7 @@ void main(){
     vec4 t = texture2D(outTex, uv);
     alb = t.rgb*(0.92 + 0.16*nz);
   }
-  vec3 c = lit(alb, n);
+  vec3 c = lit(alb, n)*(1.0 - 0.55*uNight);
   FRAG(c);
 }`;
 
@@ -433,13 +440,24 @@ void main(){
   // aura nocturna: la calzada bajo las farolas. Un charco cada 24 m alternando de acera, donde furniture.js planta los postes
   // (along(24, 5)). De lejos, su valor medio (no parpadea) y muy cerca más suave: ahí ya están los charcos del mobiliario
   if (uGlow.x > 0.001 && (car || abs(cls-6.0) < 0.5)) {
+    // De lejos se ven CADENAS DE PUNTOS (la cabeza de cada farola y su charco), no tubos continuos: el charco es una
+    // gaussiana a lo largo que se ensancha con el tamaño del píxel conservando su energía (sin dientes de sierra), y solo
+    // cuando la separación entre farolas baja de ~2 píxeles se funde en su valor medio
+    float px = max(length(vec2(dFdx(v), dFdy(v))), 0.02);
     float nL = floor((v - 5.0)/24.0 + 0.5), dv = v - 5.0 - nL*24.0;
     float dxl = x - (mod(nL, 2.0) < 0.5 ? -0.7 : 0.7)*hw;
-    float gI = mix(0.25 + 1.45*exp(-dv*dv/90.0 - dxl*dxl/(2.0*hw*hw + 32.0)), 1.0, smoothstep(220.0, 480.0, dist));
-    gI *= mix(0.22, 1.0, smoothstep(50.0, 240.0, dist));
-    // las avenidas anchas y las vías principales, más luz. Las carreteras del monte, casi a oscuras
-    gI *= mix(0.75, 1.75, smoothstep(3.5, 12.0, hw))*(cls < 3.5 ? 1.2 : 1.0)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
-    c += emit(kAura*(alb*2.2 + 0.10), gI*uGlow.x);
+    float sa = max(5.5, 0.8*px), cr = mix(exp(-dxl*dxl/(2.0*hw*hw + 32.0)), 0.75, smoothstep(0.5*hw, 2.0*hw, px));
+    float gI = mix(0.06 + 2.0*exp(-0.5*dv*dv/(sa*sa))*(5.5/sa)*cr, 0.95, smoothstep(9.0, 16.0, px));
+    gI *= mix(0.30, 1.0, smoothstep(50.0, 240.0, dist));
+    // la cabeza de la farola: un punto brillante de ~1 píxel (sin conservar energía: se lee como una chispa, como en las fotos)
+    float sp = max(0.45, 0.55*px);
+    float head = exp(-0.5*(dv*dv + dxl*dxl)/(sp*sp))*smoothstep(120.0, 400.0, dist)*(1.0 - smoothstep(12.0, 26.0, px));
+    // las avenidas anchas (semiancho 9–12 m o más) y las vías principales, LED más blanco y más luz; las calles, sodio
+    float ave = smoothstep(8.0, 12.0, hw);
+    vec3 lc = mix(kAura, kLed, ave);
+    float k = mix(0.75, 1.75, smoothstep(3.5, 12.0, hw))*(cls < 3.5 ? 1.2 : 1.0)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    c += emit(lc*(alb*2.2 + 0.10), gI*k*uGlow.x);
+    c += emit(mix(lc, vec3(1.0, 0.92, 0.80), 0.35), head*1.6*mix(1.0, 1.4, ave)*uGlow.x);
   }
   FRAG(c);
 }`;
@@ -494,28 +512,29 @@ varying vec3 vDir;
 void main(){
   vec3 d = normalize(vDir); vec3 c = skyColor(d); float aur = 0.0;
   if (uGlow.z > 0.001) {
-    // aura nocturna: resplandor anaranjado sobre el horizonte que se apaga hacia el cenit. Desde fuera de la ciudad
-    // (el mar, la montaña) es más fuerte mirando hacia ella
-    vec2 tc = vec2(11900.0, 14500.0) - uCam.xz; float dc = length(tc);
-    float tw = 0.5 + 0.5*dot(normalize(d.xz + vec2(1e-5)), tc/max(dc, 1.0));
-    aur = exp(-max(d.y, 0.0)*7.0)*mix(0.30 + 0.90*tw*tw, 0.85, 1.0 - smoothstep(2500.0, 7000.0, dc))*min(uGlow.z, 1.5);
-    c += vec3(0.16, 0.092, 0.044)*(aur*(0.35 + 0.65*smoothstep(0.0, 0.04, d.y)));
+    // aura nocturna: el cielo NO se tiñe (en las fotos de Barcelona de noche es azul marino casi negro hasta el horizonte).
+    // Solo la bruma baja de la ciudad (la misma de fogL): vista desde dentro o desde poca altura, un velo gris cálido pegado
+    // al horizonte; desde Collserola o desde el aire la cámara está por encima de la capa y el cielo queda limpio
+    float dy = max(d.y, 0.012), L = min(160.0/dy, 9000.0);
+    float I = 160.0*exp(-max(uCam.y, 0.0)/160.0)/dy;
+    aur = (1.0 - exp(-1.0e-4*I*max(cityW(uCam.xz), cityW(uCam.xz + normalize(d.xz + vec2(1e-5))*L*0.5))))*min(uGlow.z, 1.5);
   }
   if (uNight > 0.01 && d.y > 0.0) {                       // estrellas: solo de noche cerrada
     vec2 g = d.xz/(d.y + 0.55)*64.0; vec2 id = floor(g); float hs = hash21(id);
     vec2 o = (vec2(hash21(id + 7.31), hash21(id + 3.17)) - 0.5)*0.7;
     float st = smoothstep(0.12, 0.02, length(fract(g) - 0.5 - o))*step(0.90, hs);
-    c += vec3(0.86, 0.92, 1.0)*st*(0.25 + 1.9*fract(hs*37.0)*fract(hs*37.0))*uNight*smoothstep(0.03, 0.25, d.y)*(1.0 - 0.8*min(aur, 1.0));
+    c += vec3(0.86, 0.92, 1.0)*st*(0.25 + 1.9*fract(hs*37.0)*fract(hs*37.0))*uNight*smoothstep(0.03, 0.25, d.y)*(1.0 - 0.5*uGlow.z)*(1.0 - 0.8*min(aur, 1.0));   // la luz de la ciudad apaga la mitad
   }
   if (d.y > 0.012 && uCam.y < 2400.0) {
     float tp = (2600.0 - uCam.y)/d.y;
     vec2 q = (uCam.xz + d.xz*tp)*0.00015 + vec2(uTime*0.003, 0.0);
     float n = vnoise(q)*0.5 + vnoise(q*2.03 + 7.1)*0.25 + vnoise(q*4.1 + 3.3)*0.125 + vnoise(q*8.3 + 1.7)*0.0625;
     float cov = smoothstep(0.50, 0.76, n)*smoothstep(0.012, 0.11, d.y);
-    vec3 cc = mix(uFogCol, vec3(0.80)*(1.0 - 0.93*uNight) + uSunCol*0.32, 0.8);
+    vec3 cc = mix(mix(uFogCol, vec3(0.80)*(1.0 - 0.93*uNight) + uSunCol*0.32, 0.8), uFogCol*0.9, uNight);   // de noche, nubes del color del cielo (sin resplandor)
     c = mix(c, cc, cov*0.85);
   }
   if (d.y < 0.0) { vec3 hc = horzCol(d); c = mix(hc, hc*0.8, clamp(-d.y*4.0, 0.0, 1.0)); }
+  if (aur > 0.0) c = toScr(toLin(c) + toLin(kHaze)*aur);
   FRAG_NOFOG(c);
 }`;
 
@@ -648,17 +667,17 @@ function setHour(hh) {
   const k = 0.55 + 0.45 * e, sc = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
   const sk = mix3(mix3([0.272, 0.256, 0.336], [0.32, 0.384, 0.48], e), [0.12, 0.145, 0.23], nt);
   const gn = mix3([0.33 * k + 0.04, 0.31 * k + 0.04, 0.28 * k + 0.04], [0.10, 0.105, 0.13], nt);
-  // aura nocturna: «on» sube con las farolas (segunda mitad de uDusk) y dura toda la noche. De noche cerrada la bruma del
-  // horizonte pasa de azul a pardo cálido (la luz de la ciudad en la calima) y se espesa un poco. De día todo queda como estaba
-  const on = L.K.city * sstep(0.45, 1, 1 - Math.min(1, Math.max(0, (Math.sin(elS * D) - 0.02) / 0.22))), hl = Math.min(1, on * L.K.halo);
+  // aura nocturna: «on» sube con las farolas (segunda mitad de uDusk) y dura toda la noche. De día todo queda como estaba
+  const on = L.K.city * sstep(0.45, 1, 1 - Math.min(1, Math.max(0, (Math.sin(elS * D) - 0.02) / 0.22)));
   // horizonte: con el sol bajo, la base es un gris malva (también el lado contrario al sol) y el naranja va solo hacia el sol
   // (uSunH, uHorzC: horzCol() en el preludio). sg: fuerza de ese resplandor, de 18° de altura del sol hasta 9° bajo el horizonte
-  const fg = mix3(mix3([0.76, 0.69, 0.68], [0.74, 0.83, 0.92], e), mix3([0.085, 0.095, 0.15], [0.155, 0.118, 0.098], hl), nt);
+  // De noche cerrada, azul marino oscuro y algo gris (en las fotos el horizonte apenas es más claro que el cenit): nada de pardo
+  const fg = mix3(mix3([0.76, 0.69, 0.68], [0.74, 0.83, 0.92], e), [0.069, 0.122, 0.193], nt);   // → sRGB ≈ (2, 17, 34): calibrado a través del pie del ACES
   const sg = (1 - sstep(3, 18, elS)) * sstep(-9, -1.5, elS), sw = mix3([1.04, 0.62, 0.34], [0.50, 0.24, 0.15], sstep(-1, -8, elS));
   const azS = (isDay ? 95 + (hh - 6.5) / 14 * 170 : 271 + nn * 178) * D;                       // acimut del sol de verdad
   L.sunH.set(Math.sin(azS), Math.cos(azS), sg, moon ? mf : 0); L.horzC.set(sw[0] - fg[0], sw[1] - fg[1], sw[2] - fg[2]);
-  L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 + 0.5 * hl * nt);
-  const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.012, 0.018, 0.045], nt);
+  L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032;
+  const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.050, 0.099, 0.165], nt);   // cenit de noche → sRGB ≈ (0, 12, 26). Por debajo de ~0,0035 lineal expuesto, el ACES da negro puro
   if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
   L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);
   L.fogCol.set(fg[0], fg[1], fg[2]); L.zenCol.set(zn[0], zn[1], zn[2]);

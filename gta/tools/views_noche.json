@@ -1,0 +1,14 @@
+[
+{"name": "n_col_23", "x": 6694, "y": 880, "z": 18152, "yaw": 2.234, "pitch": 0.2, "hour": 23, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;BCN.applyView(BCN.views.find(v=>v[0]==='Desde Collserola al mar')[1]);"},
+{"name": "n_aer_23", "x": 11500, "y": 900, "z": 13500, "yaw": 0.75, "pitch": 0.5, "hour": 23, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;"},
+{"name": "n_dron_23", "x": 13300, "y": 260, "z": 12700, "yaw": -0.6, "pitch": 0.35, "hour": 23, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;"},
+{"name": "n_rov_23", "x": 11546, "agl": 8, "z": 17644, "yaw": 2.475, "pitch": 0.05, "hour": 23, "eval": "BCN.st.maxDist=40000;BCN.cam.fov=0.40;"},
+{"name": "n_eixacera_23", "x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "hour": 23, "eval": "BCN.cam.fov=0.86;"},
+{"name": "n_ramblapie_23", "x": 12405.9, "z": 13505.8, "walk": true, "yaw": 2.584, "pitch": 0.0, "hour": 23, "eval": "BCN.cam.fov=0.86;"},
+{"name": "n_col_2115", "x": 6694, "y": 880, "z": 18152, "yaw": 2.234, "pitch": 0.2, "hour": 21.25, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;BCN.applyView(BCN.views.find(v=>v[0]==='Desde Collserola al mar')[1]);"},
+{"name": "n_rov_2115", "x": 11546, "agl": 8, "z": 17644, "yaw": 2.475, "pitch": 0.05, "hour": 21.25, "eval": "BCN.st.maxDist=40000;BCN.cam.fov=0.40;"},
+{"name": "n_aer_03", "x": 11500, "y": 900, "z": 13500, "yaw": 0.75, "pitch": 0.5, "hour": 3, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;"},
+{"name": "n_eixacera_03", "x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "hour": 3, "eval": "BCN.cam.fov=0.86;"},
+{"name": "n_aer_12", "x": 11500, "y": 900, "z": 13500, "yaw": 0.75, "pitch": 0.5, "hour": 12, "eval": "BCN.cam.fov=0.86;BCN.st.maxDist=40000;"},
+{"name": "n_eixacera_12", "x": 12069.6, "z": 14544.5, "walk": true, "yaw": -2.35, "pitch": 0.03, "hour": 12, "eval": "BCN.cam.fov=0.86;"}
+]
