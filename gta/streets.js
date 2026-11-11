@@ -137,6 +137,12 @@ void main(){
     alb = mix(soil, vec3(0.09, 0.09, 0.1), bar*0.85); N = vec3(0.0, 1.0, 0.0);
   }
   vec3 c = lit(alb, N);
+  // aura nocturna (uGlow.x): la luz de farola que ya recibe la calzada (FS_ROAD, app.js), sin charcos: más junto al bordillo,
+  // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
+  if (uGlow.x > 0.001) {
+    float gW = (0.55 + 0.45*exp(-dA/5.0))*mix(0.40, 1.0, smoothstep(40.0, 240.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    c += emit(kAura*(alb*0.95 + 0.05), gW*0.7*uGlow.x);
+  }
   FRAG(c);
 }`;
   const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade'], ['tField', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
@@ -144,15 +150,23 @@ void main(){
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>
 uniform mat4 viewProjection;
-varying vec3 vPos; varying vec3 vN; varying vec2 vUV; varying float vH;
+varying vec3 vPos; varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
 void main(){
 #include<instancesVertex>
-  vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vUV = uv;
+  vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
   vH = fract(sin(dot(finalWorld[3].xz, vec2(12.9898, 78.233)))*43758.5453);
   gl_Position = viewProjection*wp; }`;
   const FS_TREE = `
-varying vec3 vN; varying vec2 vUV; varying float vH;
+varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
 uniform float uKind; uniform vec4 uBand; uniform sampler2D tMap; uniform sampler2D tNrm;
+// aura nocturna (uGlow.x): las farolas iluminan el árbol desde abajo. vHl = altura local (tronco 0-5,4 m, copa ~5-12 m)
+// mucho en el tronco y la panza de la copa, casi nada arriba. De lejos, su valor medio (como la calzada)
+float treeGlow(float dist, float ny){
+  float s = 1.0 - smoothstep(2.5, 12.0, vHl);
+  float w = (0.10 + 0.90*s*s)*mix(1.15, 0.6, clamp(ny*0.5 + 0.5, 0.0, 1.0));
+  w = mix(w, 0.80, smoothstep(220.0, 650.0, dist));
+  return w*mix(0.55, 1.0, smoothstep(20.0, 160.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y))*uGlow.x;
+}
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   float d = dith();
@@ -164,6 +178,7 @@ void main(){
     vec3 n = normalize(vN); vec3 tn = texture2D(tNrm, vUV*vec2(1.0, 0.5)).xyz*2.0 - 1.0;
     n = normalize(n + vec3(tn.x, tn.y*0.3, tn.x)*0.45);
     vec3 c = lit(tx*1.35, n);
+    if (uGlow.x > 0.001) c += emit(kAura*(tx*0.55 + 0.015), treeGlow(dist, n.y));
     FRAG(c); return;
   }
   vec4 tx = texture2D(tMap, vUV);
@@ -174,6 +189,7 @@ void main(){
   vec3 c = lit(alb, normalize(n + vec3(0.0, 0.35, 0.0)));
   float bt = pow(max(dot(-V, uSunDir), 0.0), 3.0)*0.85 + max(dot(-n, uSunDir), 0.0)*0.26;
   c += alb*vec3(1.05, 1.2, 0.55)*uSunCol*bt*0.3;
+  if (uGlow.x > 0.001) c += emit(kAura*(alb*2.4 + 0.06), treeGlow(dist, uKind > 1.5 ? 0.0 : n.y));
   FRAG(c);
 }`;
   const mkTreeMat = (name, kind, map, nrm) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand'], ['tMap', 'tNrm']);

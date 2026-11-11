@@ -347,8 +347,11 @@ function signal(B, A, F, y, go) {
 
 // bolardo (pilona) de fundición con collarín
 function bollard(B, A, F, y) {
-  if (A.lod < 2) { rev(B, F, 0, 0, [[0.06, y], [0.055, y + 0.9]], 4, ironC, K.FURN, { aux: A.CAST, cap: 1 }); return; }
-  rev(B, F, 0, 0, [[0.082, y], [0.056, y + 0.05], [0.054, y + 0.72], [0.072, y + 0.75], [0.072, y + 0.8], [0.05, y + 0.84], [0, y + 0.93]], 6, ironC, K.FURN, { aux: A.CAST });
+  // gris de fundición claro y 17 cm de grueso, con una franja reflectante bajo el collarín: se lee a 10-15 m, también de noche
+  const bc = [84, 86, 90], band = [196, 196, 190];
+  if (A.lod < 2) { rev(B, F, 0, 0, [[0.09, y], [0.085, y + 0.62], [0.085, y + 0.62, band], [0.085, y + 0.7, band], [0.085, y + 0.7], [0.08, y + 0.92]], 5, bc, K.FURN, { aux: A.CAST, cap: 1 }); return; }
+  rev(B, F, 0, 0, [[0.11, y], [0.088, y + 0.06], [0.085, y + 0.6], [0.0855, y + 0.6, band], [0.0855, y + 0.68, band], [0.085, y + 0.68], [0.084, y + 0.72],
+    [0.102, y + 0.75], [0.102, y + 0.8], [0.075, y + 0.85], [0, y + 0.94]], 8, bc, K.FURN, { aux: A.CAST });
 }
 
 // buzón amarillo genérico: F con +d hacia la boca (la acera)
