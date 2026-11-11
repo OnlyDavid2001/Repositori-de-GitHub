@@ -156,9 +156,21 @@ void main(){
   vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
   vH = fract(sin(dot(finalWorld[3].xz, vec2(12.9898, 78.233)))*43758.5453);
   gl_Position = viewProjection*wp; }`;
+  // farolas de una celda a partir de sus charcos (cc.pools, furniture.js): cada charco son 1–3 quads con uv = (du, q − lo)/Rp,
+  // así que el punto uv (0, 0) de cada quad es el pie de la luminaria. Se quedan la cota más alta (la acera) y una por farola
+  const LG = ctx.detail.lamps;
+  function poolLamps(Q, ox, oz) { const out = [];
+    for (let k = 0; k + 20 <= Q.length; k += 20) {
+      const P = i => Q.slice(k + i * 5, k + i * 5 + 5), a = P(0), b = P(1), d = P(3);
+      const tu = (0 - a[3]) / (b[3] - a[3]), tv = (0 - a[4]) / (d[4] - a[4]);
+      const x = a[0] + (b[0] - a[0]) * tu + (d[0] - a[0]) * tv + ox, z = a[2] + (b[2] - a[2]) * tu + (d[2] - a[2]) * tv + oz, y = Math.max(a[1], d[1]);
+      const l = out[out.length - 1];
+      if (l && Math.abs(l[0] - x) + Math.abs(l[2] - z) < 0.5) l[1] = Math.max(l[1], y); else out.push([x, y, z]); }
+    return out; }
   const FS_TREE = `
 varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
 uniform float uKind; uniform vec4 uBand; uniform sampler2D tMap; uniform sampler2D tNrm;
+` + LG.glsl + `
 // aura nocturna (uGlow.x): las farolas iluminan el árbol desde abajo. vHl = altura local (tronco 0-5,4 m, copa ~5-12 m)
 // mucho en el tronco y la panza de la copa, casi nada arriba. De lejos, su valor medio (como la calzada)
 float treeGlow(float dist, float ny){
@@ -189,11 +201,19 @@ void main(){
   vec3 c = lit(alb, normalize(n + vec3(0.0, 0.35, 0.0)));
   float bt = pow(max(dot(-V, uSunDir), 0.0), 3.0)*0.85 + max(dot(-n, uSunDir), 0.0)*0.26;
   c += alb*vec3(1.05, 1.2, 0.55)*uSunCol*bt*0.3;
-  if (uGlow.x > 0.001) c += emit(kAura*(mix(alb, vec3(dot(alb, vec3(0.3, 0.6, 0.1))), 0.6)*2.2 + 0.05), treeGlow(dist, uKind > 1.5 ? 0.0 : n.y));
+  if (uGlow.x > 0.001) {
+    // de noche, vista desde arriba (cámara por encima de la hoja), la copa es una masa casi negra: la farola solo alumbra la cara
+    // de abajo (normal hacia abajo) y deja un borde cálido justo encima de cada luminaria (rejilla de farolas). Desde abajo, como antes
+    float ab = smoothstep(0.0, 0.12, V.y), ny = uKind > 1.5 ? 0.0 : n.y;
+    c *= 1.0 - 0.6*uNight*ab;
+    float g = treeGlow(dist, ny)*mix(1.0, 0.06 + 0.5*smoothstep(0.1, -0.6, ny), ab);
+    g += ab*min(4.0*lampBath(vPos - vec3(0.0, 9.0, 0.0), vec3(0.0), 1.0/24.5), 1.0)*0.6*uGlow.x;
+    c += emit(kAura*(mix(alb, vec3(dot(alb, vec3(0.3, 0.6, 0.1))), 0.6)*2.2 + 0.05), g);
+  }
   FRAG(c);
 }`;
-  const mkTreeMat = (name, kind, map, nrm) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand'], ['tMap', 'tNrm']);
-    m.setFloat('uKind', kind); m.setTexture('tMap', map); m.setTexture('tNrm', nrm || map); m.setVector4('uBand', new BABYLON.Vector4(0, 0, 1e9, 1e9)); return m; };
+  const mkTreeMat = (name, kind, map, nrm) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand'], ['tMap', 'tNrm', 'tLamp']);
+    m.setTexture('tLamp', LG.tex); m.setFloat('uKind', kind); m.setTexture('tMap', map); m.setTexture('tNrm', nrm || map); m.setVector4('uBand', new BABYLON.Vector4(0, 0, 1e9, 1e9)); return m; };
   const mBarkN = mkTreeMat('barkN', 0, tBkD, tBkN), mLeafN = mkTreeMat('leafN', 1, tLeafN), mBarkF = mkTreeMat('barkF', 0, tBkD, tBkN), mLeafF = mkTreeMat('leafF', 1, tLeafF), mImp = mkTreeMat('imp', 2, tImp);
 
   // ---------------------------------------------------------------- geometría del plátano (como en Transeúnte)
@@ -431,6 +451,7 @@ void main(){
       poolMesh.material = FU.poolMat; poolMesh.isPickable = false; poolMesh.renderingGroupId = 1; poolMesh.position.set(ox, 0, oz); poolMesh.freezeWorldMatrix(); poolMesh.doNotSyncBoundingInfo = true;
       reg(poolMesh, { cast: false, layer: 'fx' }); }
     cell.pool = poolMesh;
+    if (LG) LG.set(ci, poolLamps(cc.pools, ox, oz));    // baño de sodio en fachadas y copas (rejilla de facades.js)
     engine.updateTextureData(atlas.getInternalTexture(), F, sx, sy, NT, NT);
     let walkMesh = null;
     if (I.length) {
@@ -521,6 +542,7 @@ void main(){
     const c = cells.get(ci); if (!c) return;
     dropHi(c);
     if (c.walk) c.walk.dispose(false, false); if (c.furn) c.furn.dispose(false, false); if (c.pool) c.pool.dispose(false, false);
+    if (LG) LG.drop(ci);
     if (c.slot !== undefined) freeSlots.push(c.slot);
     tris -= c.tris || 0; furnTris[0] -= c.fTris || 0; cells.delete(ci);
   }
