@@ -762,6 +762,33 @@ reloj: 1 s real = 1 min de juego, un día cada 24 min, recalculando la luz una v
   acera clara al sol queda ≈ +15 % sobre su color de autor y una pared blanca por debajo de 0,85) y la sombra queda hacia
   la mitad de lo soleado. Se calibra en caliente con `BCN.light.set({...})`.
 
+**Día fiel a las fotos (etapa DIA).** Referencia: dos fotos reales de la mañana del usuario (avión sobre la Torre de
+Collserola hacia el mar con el sol bajo, y desde el Observatori Fabra a media mañana). Encima de los `K` de arriba (que no
+cambian) hay un «modo día» que vale 1 a pleno día y se desvanece al ponerse el sol y de noche (`dd = e·(1 − nt)` en
+`setHour`); los shaders usan `(1 − uNight)`. Resultado: **a las 23:00 la imagen es idéntica píxel a píxel** a la de antes
+(medido en las 6 vistas de `noche_fiel/v23.json`) y el atardecer apenas cambia.
+
+| Qué | Dónde | Valor |
+| --- | --- | --- |
+| Sol de mañana cálido aunque ya esté alto | `setHour` (`wm`) | G ×(1 − 0,12·wm), B ×(1 − 0,30·wm); wm = 1 − sstep(8°, 70°) del sol: 8:30 (32°) dorado, 10:30 algo cálido, mediodía neutro |
+| Sol algo más fuerte de día | `K.sunD` | 1,08 |
+| Sombras frescas, azuladas | `K.desD` (desaturación del cielo como ambiente de día; de noche sigue `des` 0,55) · `K.skyD` · `K.gndD` | 0,14 · 0,92 · 0,72 (menos rebote cálido del suelo, que agrisaba la sombra) |
+| Exposición de día | `K.expD` | 1,12 (sin quemar: p99 de luminancia a pie a las 13:00 ≈ 185/255, igual que antes) |
+| Bruma y horizonte azulados | `K.fogDay` · `K.fogDD` | (0,58, 0,71, 0,86) en vez del blanco lechoso (0,74, 0,83, 0,92) · densidad ×0,7 de día |
+| Mar azul intenso | `FS_SEA` | fondo (0,03, 0,20, 0,42), somero (0,08, 0,40, 0,50), reflejo del cielo ×0,62 (de noche, lo de siempre) |
+| Mosaico de fachadas | `FS_BLD` (estilos 0, 2 y 6) | tinte por edificio: crema 30 %, ocre 20 %, blanco roto 18 %, arena 19 %, ladrillo 13 % |
+| Cubiertas | `FS_BLD` (estilo 0) | teja terracota 30 %, azoteas claras 56 %, gris 14 % |
+| Bosque y parques | `FS_TER` (`vg`, `mt`, `cw`) y `FS_OUT` | lo verde de la ortofoto pasa a oliva oscuro con textura de copas (tres octavas, que se apagan con el tamaño del píxel) por encima de 60–200 m de cota; en el llano (parques) solo la mitad del cambio |
+| Calles lejanas como surcos en sombra | preludio `shOut()`, `sunTan()`; `FS_ROAD`, `FS_BLD` | más allá de la cascada lejana (o sin sombras, a partir de 150–400 m) la calzada recibe la fracción de sol de un cañón de ~20 m de alto (`1 − 13/(tan·(2·semiancho + 10))`, mín. 0,10) y los muros lejanos quedan en sombra por debajo de `19 − 14·tan` m. Toca `gSunVis` antes de `lit()` (también el brillo). Solo en el llano y nunca de noche |
+
+Medido (640×360, vistas de `<scratchpad>/dia_fiel/vdia.json`): ladera de Collserola a contraluz ≈ (87, 93, 77), en sombra
+≈ (49, 61, 41) frente a (98, 94, 53) / (52, 66, 58) de las fotos; franja alta del cielo (109, 143, 181); a pie, sin
+cambio de brillo apreciable y sin quemados. Hoja ANTES/DESPUÉS/REFERENCIA: `<scratchpad>/dia_fiel/hoja.jpg`.
+**Flojo:** la ciudad vista desde Fabra sigue algo más gris y oscura que la foto (≈ (120, 120, 118) frente a (171, 151, 135));
+las laderas no proyectan sombra más allá de la cascada lejana (400 m), así que Collserola no tiene las grandes sombras de
+colina de la foto; la textura de copas de lejos parece más musgo que bosque; las copas de los árboles de calle
+(`streets.js`) siguen siendo verde medio y oscuro uniforme.
+
 **Qué se enciende de noche** (uniformes globales del preludio, en todos los materiales):
 
 | Uniforme / función | Valor | Quién lo usa |
@@ -930,7 +957,10 @@ actuales (`K` de §7.6):
 | --- | --- | --- |
 | 3:00 | calle oscura, azulada, farolas y charcos; comercios apagados (luz de vigilancia) | masas negras, muy pocas ventanas, calles encendidas |
 | 7:00 | sol de 13° por el este: calle en sombra, ambiente frío; algo apagada | resplandor claro hacia el sol, ciudad nítida |
-| 8:00, 12:00, 13:00, 17:00 | sin cambios respecto a LZ2 (el día no se ha tocado) | ídem |
+| 8:30 | (DIA) sol de 32°, cálido; sombras azuladas | sol dorado, bosque oliva oscuro, calles lejanas como surcos en sombra, bruma azulada, mar azul intenso |
+| 10:30 | (DIA) sol de 52°, apenas cálido; contraste alto sol/sombra | mosaico de fachadas y cubiertas (crema, ocre, blanco, terracota), surcos más estrechos |
+| 12:00–13:00 | (DIA) sol de 62–64°, neutro, sin quemar (p99 ≈ 185/255 a pie) | calles casi al sol, mar azul |
+| 17:00 | como 10:30 por la tarde (simétrico) | ídem |
 | 20:15–20:30 | sol de 7–9°, luz anaranjada y rasante, sombras largas | horizonte naranja hacia el oeste, malva hacia el este |
 | 21:15 | hora azul: farolas y escaparates encendidos, suelo en penumbra | resplandor rojo hacia el oeste, ventanas encendidas |
 | 23:00 | luna (disco con mares), estrellas; calle de farolas (igual que antes de NOCHE) | cielo azul marino sin franja, masas negras con ventanas irregulares, calles en cadenas de puntos, avenidas de LED |
