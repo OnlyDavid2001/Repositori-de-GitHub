@@ -144,7 +144,8 @@ código anterior). Esta sección es el contrato entre módulos: **si cambias una
   detalle); sin `BCN_INTERIORS` la planta baja sale como un paño liso; sin `BCN_DETAILS`, los pisos y la coronación
   lisos; sin `BCN_FURNITURE`, sin mobiliario; sin `BCN_GROUND`, sin pasos de cebra y con el asfalto liso. Cada caso
   deja un aviso «Sin …» en la consola. Un error dentro de `update()` de un módulo se registra como error de consola
-  (las tres primeras veces) y no para ni el fotograma ni a los demás módulos.
+  (las tres primeras veces) y no para ni el fotograma ni a los demás módulos; en `BCN.fxFlush()` no se captura, así
+  que el arnés de capturas falla en el acto y enseña la traza.
 
 ### 6.2 El contexto `ctx`
 
