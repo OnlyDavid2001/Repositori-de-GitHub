@@ -172,7 +172,7 @@ void main(){
       if (uSp.y < 1.5) {                                // pino piñonero: placas rojizas separadas por grietas oscuras
         vec2 g = vec2(vUV.x*16.0, vUV.y*3.6); float row = floor(g.y); g.x += hash21(vec2(row, 3.0))*7.0 + vnoise(g*0.7)*0.7;
         vec2 f = fract(g); float h = hash21(floor(g)), e = min(min(f.x, 1.0 - f.x)*1.5, min(f.y, 1.0 - f.y)) + (vnoise(g*3.0) - 0.5)*0.14;
-        bc = mix(vec3(0.15, 0.11, 0.09), mix(vec3(0.50, 0.25, 0.15), vec3(0.66, 0.38, 0.24), h)*(0.82 + 0.34*vnoise(g*5.0)), smoothstep(0.03, 0.14, e));
+        bc = mix(vec3(0.16, 0.14, 0.13), mix(vec3(0.36, 0.24, 0.18), vec3(0.50, 0.32, 0.23), h)*(0.84 + 0.3*vnoise(g*5.0)), smoothstep(0.04, 0.16, e));
       } else if (uSp.y < 2.5) {                         // Washingtonia: fibra vertical gris parda con anillos tenues
         float sF = vnoise(vec2(vUV.x*90.0, vUV.y*1.5))*0.6 + vnoise(vec2(vUV.x*30.0, vUV.y*0.6))*0.4;
         float ring = smoothstep(0.8, 1.0, abs(sin(vUV.y*8.0 + vnoise(vUV*vec2(8.0, 2.0))*2.0)));
@@ -180,7 +180,7 @@ void main(){
       } else {                                          // Phoenix: rombos de las bases de hoja cortadas
         vec2 g = vec2(vUV.x*13.0, vUV.y*3.0), dd = vec2(g.x + g.y, g.x - g.y), f = fract(dd) - 0.5;
         float e = max(abs(f.x), abs(f.y)), h = hash21(floor(dd));
-        bc = mix(vec3(0.56, 0.45, 0.31)*(0.82 + 0.3*h), vec3(0.2, 0.15, 0.11), smoothstep(0.34, 0.47, e))*(0.85 + 0.3*vnoise(g*4.0));
+        bc = mix(vec3(0.50, 0.42, 0.31)*(0.84 + 0.26*h)*mix(0.8, 1.05, f.y + 0.5), vec3(0.3, 0.24, 0.18), smoothstep(0.42, 0.49, e))*(0.86 + 0.28*vnoise(g*4.0));
       }
       tx = bc*mix(0.9, 1.1, vH);
     }
