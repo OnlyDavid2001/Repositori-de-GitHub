@@ -101,7 +101,9 @@ function pick(s, ax, az, bx, bz, hw, rambla) {
   const w = (B && SEA.has(B.n) ? [0.12, 0.12, 0.08, 0.42, 0.08, 0.13, 0.05] : W[f]).slice();
   if (rambla) { w.fill(0); w[0] = 0.85; w[3] = 0.1; w[1] = 0.05; }
   else if (hw >= 8) { w[0] *= 1.5; w[5] *= 2.2; w[3] *= 1.3; w[2] *= 0.15; w[1] *= 0.6; }
-  else if (hw < 3.6) { w[2] *= 1.8; w[1] *= 1.3; w[5] *= 0.3; w[6] *= 0.4; w[0] *= 0.7; }
+  // REV: en el Eixample las calles de 20 m tienen calzada estrecha en los datos (hw ≈ 3) pero aceras anchas con plátanos: sin el
+  // ajuste de calle estrecha (que llenaba calles enteras de naranjos y, desde el aire, las dejaba peladas y, de noche, en franjas de luz)
+  else if (hw < 3.6 && f !== 'eixample') { w[2] *= 1.8; w[1] *= 1.3; w[5] *= 0.3; w[6] *= 0.4; w[0] *= 0.7; }
   seed(Math.round(th / 0.05) & 0xffff, Math.round(c / 18) | 0, Math.floor(al / 320) | 0, 71);
   let r = R() * w.reduce((a, b) => a + b, 0); v = 0;
   for (; v < 6; v++) { r -= w[v]; if (r < 0) break; }

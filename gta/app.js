@@ -406,6 +406,11 @@ void main(){
       }
       // manchas de uso y de humedad (escala de metros), también de media cero
       tx += 0.07*(vnoise(q*0.21) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/3.0));
+      // REV: rodales de piezas cambiadas, sol y humedad (de 0,6 a 2 m): el «granulado» que se ve de cerca a 50–150 m, cuando la
+      // pieza ya no se resuelve. También de media cero y apagado con el píxel: de lejos, el color de la tabla
+      float rk = hash21(floor(q/vec2(1.1, 0.9)) + seed*3.0) - 0.5;
+      tx += (0.09*(vnoise(q*0.95) - 0.5) + 0.07*rk)*(1.0 - smoothstep(0.35, 0.8, pw/0.6))
+          + 0.08*(vnoise(q*0.42 + 3.0) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/1.4));
     }
     base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
     // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
@@ -527,7 +532,7 @@ void main(){
   // NAT: campos del delta y del Baix Llobregat. La ortofoto los pinta de un oliva liso: mosaico de parcelas (cada una con
   // su tono y su cultivo) y, de cerca, surcos. De lejos solo queda el mosaico (los surcos se apagan con el píxel)
   { vec3 a0 = texture2D(groundTex, uv).rgb;
-    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y));
+    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.72, 0.78, a0.r))*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y));
     if (farm > 0.01) {
       vec2 q = vPos.xz; float px = length(fwidth(q));
       // NAT2: la misma parcelación que usa nature.js para poner cañas y matas en las lindes (franjas de 70 m giradas
@@ -546,6 +551,9 @@ void main(){
     } }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
+  // REV: de día, el hormigón casi blanco de la ortofoto (explanadas, pistas, plazas duras) salía quemado a pie: rodilla suave
+  // sobre lo muy claro (la arena ya trae su propio color y no se toca)
+  alb *= 1.0 - 0.22*(1.0 - sandM)*smoothstep(0.62, 0.92, max(alb.r, max(alb.g, alb.b)));
   vec3 c = lit(alb, n);
   if (sandM*wet > 0.001) c = mix(c, shade(alb, n, normalize(uCam - vPos), rough, 0.0, 1.0), sandM*wet*0.22);
   // NAT2: espuma de la última ola sobre la propia arena, en la línea de agua (el relieve tapa el borde del mar: así la espuma

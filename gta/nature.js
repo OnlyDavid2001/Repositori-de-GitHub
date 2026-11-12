@@ -73,9 +73,17 @@ function blades(g, n, h0, h1, w, lean, part) {
 function rock(g, sx, sy, sz) {
   const t = (1 + Math.sqrt(5)) / 2, V = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]];
   const F = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  // REV: una subdivisión (80 caras en vez de 20) con abolladuras que dependen de la dirección: sigue siendo facetada, pero
+  // ya no se lee como una pirámide de cuatro caras
+  const dent = v => 1 + 0.22 * Math.sin(v[0] * 5.1 + 1.3) * Math.cos(v[2] * 4.3 - 0.7) + 0.12 * Math.sin(v[1] * 6.7 + v[0] * 2.9);
+  const put = v => { const l = Math.hypot(...v), k = dent([v[0] / l, v[1] / l, v[2] / l]); return [v[0] / l * sx * k, Math.max(-0.3, v[1] / l * sy * k + sy * 0.35), v[2] / l * sz * k]; };
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  const F4 = [];
+  for (const f of F) { const a = V[f[0]], b = V[f[1]], c = V[f[2]], ab = mid(a, b), bc = mid(b, c), ca = mid(c, a);
+    F4.push([a, ab, ca], [ab, b, bc], [ca, bc, c], [ab, bc, ca]); }
   // caras planas (vértices duplicados): roca facetada
-  for (const f of F) {
-    const p = f.map(i => { const v = V[i], l = Math.hypot(...v), k = 1 + 0.25 * Math.sin(i * 7.1 + 1.3); return [v[0] / l * sx * k, Math.max(-0.3, v[1] / l * sy * k + sy * 0.35), v[2] / l * sz * k]; });
+  for (const f of F4) {
+    const p = f.map(put);
     const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
     if (nx * p[0][0] + ny * p[0][1] + nz * p[0][2] < 0) { nx = -nx; ny = -ny; nz = -nz; }
@@ -309,7 +317,7 @@ window.BCN_NATURE = { async init(ctx) {
         else if (V >= 22 && g < 132) k = C_FOREST;
         else if (V >= 18) k = C_PARK;
         else if (V >= 6) k = C_GRASS;
-        else if (r > 135 && Math.abs(r - g) < 14 && r - b > 35) k = C_FARM;
+        else if (r > 135 && r < 186 && Math.abs(r - g) < 14 && r - b > 35) k = C_FARM;
         else if (r >= 120 && r <= 185 && r - b >= 12 && r - b <= 50 && r - g >= 2 && r - g <= 22) k = C_SCRUB;
         CLS[(y0 + y) * MW + x] = k;
         if (!(x & 1) && !((y0 + y) & 1)) { const c = (((y0 + y) >> 1) * CW + (x >> 1)) * 3; COL[c] = r; COL[c + 1] = g; COL[c + 2] = b; }
