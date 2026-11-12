@@ -67,8 +67,12 @@ void main(){
     vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cK) : (da > 0.0 ? cR : cY);
     // fondo por anillos: disco gris, anillos negro, blanco y rojo, campo de sectores claros con líneas rojas, cenefa exterior negra
     float s16 = mod(floor(th/(PI4*0.5) + 8.0), 2.0);
-    vec3 bg = r < 16.4 ? cG : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 45.0 ? mix(cL, cW, s16*0.55) : r < 45.8 ? cK : cR;
-    if (r > 18.5 && r < 45.0 && abs(fract((r - 18.5)/6.6 + 0.5) - 0.5)*6.6 < 0.18) bg = cR;
+    vec3 bg = r < 16.4 ? cG : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 43.6 ? (s16 > 0.5 ? cW : mix(cL, cG, 0.4)) : r < 44.2 ? cW : r < 45.0 ? cR : r < 45.8 ? cK : cR;
+    // P4: campo con incrustaciones: anillos rojos ribeteados de negro, líneas radiales negras entre sectores y greca roja y blanca
+    if (r > 18.5 && r < 43.6) { float rl = abs(fract((r - 18.5)/6.3 + 0.5) - 0.5)*6.3; if (rl < 0.24) bg = cR; else if (rl < 0.36) bg = cK;
+      float la = abs(fract(th/(PI4*0.5) + 0.5) - 0.5)*PI4*0.5*r; if (la < 0.1 + 0.002*r) bg = cK;
+      if (r > 27.2 && r < 28.8) { float ck = mod(floor((th/6.2832 + 0.5)*220.0) + floor((r - 27.2)/0.8), 2.0); bg = r < 27.4 || r > 28.6 ? cK : (ck > 0.5 ? cR : cW); }
+      if (r > 36.0 && r < 37.0) bg = mix(cG, cK, 0.35); }
     vec3 c = mix(bg, star, inS*step(r, Rp));
     if (r < 1.3) c = r < 0.9 ? cY : cK;
     // juntas: losas de ~0,8 m en anillos de 0,75 m
@@ -214,11 +218,19 @@ function pond(B, F, y, r) {
 }
 // monumento a Macià (Plaça de Catalunya): escalera invertida de piedra, cada peldaño más ancho que el de abajo, y busto
 function macia(B, F, y) {
-  box(B, F, -3.2, 3.2, y - 0.4, y + 0.35, -3.2, 3.2, [150, 144, 132], K.FURN, 7, A0.STONE);
-  for (let k = 0; k < 14; k++) { const w = 0.7 + k * 0.17, u0 = -1.6 + k * 0.08;
-    box(B, F, u0, u0 + w, y + 0.35 + k * 0.42, y + 0.77 + k * 0.42, -0.9, 0.9, shade([196, 184, 160], 0.94 + 0.012 * k), K.FURN, 7, A0.STONE); }
-  box(B, F, 1.6, 2.1, y + 0.35, y + 1.9, -0.25, 0.25, [120, 116, 108], K.FURN, 7, A0.STONE);
-  sphere(B, F, 1.85, y + 2.15, 0, 0.26, 7, 5, C.bronze, K.FURN, A0.BRONZE, 1.2);
+  const st = [182, 174, 160];
+  box(B, F, -4.4, 4.4, y - 0.4, y + 0.18, -3.6, 3.6, shade(st, 0.84), K.FURN, 7, A0.STONE);
+  box(B, F, -3.8, 3.8, y + 0.18, y + 0.36, -3.0, 3.0, shade(st, 0.9), K.FURN, 7, A0.STONE);
+  box(B, F, -2.7, 2.7, y + 0.36, y + 1.4, -1.5, 1.5, shade(st, 0.95), K.FURN, 7, A0.STONE);
+  box(B, F, -0.7, 0.7, y + 0.7, y + 1.12, 1.5, 1.53, [132, 108, 62], K.FURN, 7, A0.BRONZE);
+  // escalera invertida: 16 peldaños que se ensanchan hacia arriba y vuelan sobre un lado (Subirachs)
+  for (let k = 0; k < 16; k++) { const w = 1.0 + k * 0.28, u0 = -2.4 + k * 0.03;
+    box(B, F, u0, u0 + w, y + 1.4 + k * 0.4, y + 1.8 + k * 0.4, -1.0, 1.0, shade(st, 0.9 + 0.013 * k), K.FURN, 7, A0.STONE);
+    box(B, F, u0 + w - 0.03, u0 + w + 0.01, y + 1.4 + k * 0.4, y + 1.8 + k * 0.4, -1.01, 1.01, shade(st, 0.72), K.FURN, 7, A0.STONE); }
+  // busto de bronce sobre su pilar, delante de la base (mirando a la explanada)
+  box(B, F, -0.3, 0.3, y + 0.36, y + 2.1, 2.2, 2.8, shade(st, 0.8), K.FURN, 7, A0.STONE);
+  rev(B, F, 0, 2.5, [[0.32, y + 2.1], [0.3, y + 2.35], [0.12, y + 2.5], [0.1, y + 2.56]], 7, C.bronze, K.FURN, { aux: A0.BRONZE, cap: 0 });
+  sphere(B, F, 0, y + 2.76, 2.52, 0.2, 7, 5, C.bronze, K.FURN, A0.BRONZE, 1.2);
 }
 // fuente rectangular con vaso de piedra, lámina de agua, chorros y grupo escultórico (Plaça de Catalunya)
 function fountainRect(B, F, y, L, Wd) {
@@ -240,8 +252,10 @@ function fountainRect(B, F, y, L, Wd) {
 function figure(B, F, y, col, ac, pose, sc, ph) {
   ph = ph === undefined ? 1.7 : ph; sc = sc || 1; const S = v => v * sc, st = [192, 186, 172];
   if (ph > 0) { box(B, F, -0.85, 0.85, y - 0.2, y + 0.25, -0.85, 0.85, shade(st, 0.9), K.FURN, 7, A0.STONE); box(B, F, -0.6, 0.6, y + 0.25, y + ph, -0.6, 0.6, st, K.FURN, 7, A0.STONE);
-    box(B, F, -0.72, 0.72, y + ph, y + ph + 0.14, -0.72, 0.72, shade(st, 1.05), K.FURN, 7, A0.STONE); }
+    box(B, F, -0.72, 0.72, y + ph, y + ph + 0.14, -0.72, 0.72, shade(st, 1.05), K.FURN, 7, A0.STONE);
+    box(B, F, -0.3, 0.3, y + ph * 0.45, y + ph * 0.45 + 0.34, 0.6, 0.63, [132, 108, 62], K.FURN, 7, A0.BRONZE); }   // P4: placa de bronce
   const b = y + ph + (ph > 0 ? 0.14 : 0), o = { aux: ac };
+  if (pose >= 5) return figX(B, F, b, col, ac, pose, S);
   if (pose === 3) { box(B, F, -S(0.35), S(0.35), b, b + S(0.5), -S(0.3), S(0.3), shade(st, 0.95), K.FURN, 7, A0.STONE);            // sedente: banco de piedra
     for (const s of [-1, 1]) tube(B, F, [[S(0.1 * s), b + S(0.05), S(0.42)], [S(0.1 * s), b + S(0.48), S(0.4)], [S(0.1 * s), b + S(0.55), 0]], S(0.08), 5, col, K.FURN, o);
     rev(B, F, 0, 0, [[S(0.18), b + S(0.52)], [S(0.15), b + S(0.8)], [S(0.2), b + S(1.08)], [S(0.07), b + S(1.15)]], 7, col, K.FURN, o);
@@ -257,10 +271,34 @@ function figure(B, F, y, col, ac, pose, sc, ph) {
   for (let q = 0; q < 2; q++) { const s = q ? -1 : 1, hd = hand[q], e2 = pose === 1 && q ? [-0.27, 1.2, 0] : [elb[0] * s, elb[1], elb[2]];
     tube(B, F, [sh(s), [S(e2[0]), b + S(e2[1]), S(e2[2])], [S(hd[0]), b + S(hd[1]), S(hd[2])]], S(0.055), 4, col, K.FURN, o); }
 }
+// P4: actitudes propias de las esculturas más conocidas de la plaza
+function figX(B, F, b, col, ac, pose, S) { const o = { aux: ac };
+  const torso = bb => { rev(B, F, 0, 0, [[S(0.18), bb + S(0.92)], [S(0.15), bb + S(1.18)], [S(0.21), bb + S(1.48)], [S(0.08), bb + S(1.56)], [S(0.06), bb + S(1.62)]], 7, col, K.FURN, o);
+    sphere(B, F, 0, bb + S(1.74), S(0.01), S(0.12), 6, 4, col, K.FURN, ac, 1.15); };
+  const arm = (bb, s, e, h) => tube(B, F, [[S(0.22 * s), bb + S(1.46), 0], [S(e[0]), bb + S(e[1]), S(e[2])], [S(h[0]), bb + S(h[1]), S(h[2])]], S(0.055), 4, col, K.FURN, o);
+  if (pose === 5) {   // recostada (la Deessa): apoyada en un codo, una pierna estirada y otra doblada, el otro brazo sobre la cabeza
+    tube(B, F, [[S(-0.05), b + S(0.2), 0], [S(0.35), b + S(0.3), 0], [S(0.72), b + S(0.5), 0]], S(0.17), 7, col, K.FURN, o);
+    tube(B, F, [[S(0.8), b + S(0.58), 0], [S(0.9), b + S(0.66), 0]], S(0.06), 5, col, K.FURN, o);
+    sphere(B, F, S(0.98), b + S(0.74), S(0.02), S(0.12), 6, 4, col, K.FURN, ac, 1.15);
+    tube(B, F, [[0, b + S(0.2), S(0.08)], [S(-0.5), b + S(0.17), S(0.1)], [S(-1.0), b + S(0.1), S(0.12)]], S(0.09), 5, col, K.FURN, o);
+    tube(B, F, [[0, b + S(0.22), S(-0.08)], [S(-0.4), b + S(0.5), S(-0.14)], [S(-0.85), b + S(0.12), S(-0.16)]], S(0.09), 5, col, K.FURN, o);
+    tube(B, F, [[S(0.7), b + S(0.52), S(-0.15)], [S(0.6), b + S(0.22), S(-0.28)], [S(0.86), b + S(0.06), S(-0.3)]], S(0.055), 4, col, K.FURN, o);
+    tube(B, F, [[S(0.7), b + S(0.55), S(0.15)], [S(0.95), b + S(0.98), S(0.1)], [S(1.06), b + S(0.84), 0]], S(0.055), 4, col, K.FURN, o); return; }
+  const bb = pose === 8 ? b - S(0.45) : b;
+  if (pose === 8) for (const s of [-1, 1]) tube(B, F, [[S(0.12 * s), bb + S(0.95), 0], [S(0.12 * s), b + S(0.12), S(s > 0 ? 0.42 : 0.1)], [S(0.12 * s), b + S(0.06), S(s > 0 ? -0.05 : -0.4)]], S(0.085), 5, col, K.FURN, o);
+  else if (pose === 6) rev(B, F, 0, 0, [[S(0.32), b], [S(0.28), b + S(0.5)], [S(0.2), b + S(0.98)]], 8, col, K.FURN, o);
+  else for (const s of [-1, 1]) tube(B, F, [[S(0.12 * s), b, S(s * 0.12)], [S(0.1 * s), b + S(0.5), S(0.04)], [S(0.11 * s), b + S(0.98), 0]], S(0.085), 5, col, K.FURN, o);
+  torso(bb);
+  if (pose === 6) { arm(bb, 1, [0.32, 1.85, 0.05], [0.14, 2.2, 0.05]); arm(bb, -1, [-0.32, 1.85, 0.05], [-0.14, 2.2, 0.05]);   // la barca en alto
+    box(B, F, -S(0.55), S(0.55), bb + S(2.2), bb + S(2.4), -S(0.15), S(0.15), col, K.FURN, 7, ac); box(B, F, -S(0.03), S(0.03), bb + S(2.4), bb + S(2.95), -S(0.02), S(0.02), col, K.FURN, 7, ac); return; }
+  if (pose === 7) { arm(bb, 1, [0.3, 1.25, 0.2], [0.06, 1.6, 0.3]); arm(bb, -1, [-0.3, 1.3, 0.2], [-0.02, 1.55, 0.42]);   // flautista
+    tube(B, F, [[0, bb + S(1.66), S(0.12)], [0, bb + S(1.42), S(0.62)]], S(0.022), 4, col, K.FURN, o); return; }
+  arm(bb, 1, [0.3, 1.2, 0.15], [0.15, 0.95, 0.35]); arm(bb, -1, [-0.3, 1.2, 0.15], [-0.15, 0.95, 0.35]);
+}
 const P3PIECE = {
-  figure(B, F, y, h, ex) { figure(B, F, y, ex.bronze ? [88, 72, 52] : [214, 206, 190], ex.bronze ? A0.BRONZE : A0.STONE, ex.pose || 0, 1.05, 1.5 + h * 0.5); },
+  figure(B, F, y, h, ex) { figure(B, F, y, ex.bronze ? [88, 72, 52] : [214, 206, 190], ex.bronze ? A0.BRONZE : A0.STONE, ex.pose || 0, ex.sc || 1.05, (ex.pose === 5 ? 0.9 : 1.5) + h * 0.5); },
   // fuente de la plaza: vaso de piedra moldurado, lámina de agua, grupo escultórico central, chorros en arco desde los lados y surtidores
-  fontC(B, F, y, h, ex) { const L = ex.L, Wd = ex.W, rim = [196, 190, 176], wa = [0, 150, 0, 0], w4 = wa.concat(wa, wa, wa), jc = [214, 230, 238];
+  fontC(B, F, y, h, ex) { const L = ex.L, Wd = ex.W, rim = [196, 190, 176], wa = [0, 255, 0, 0], w4 = wa.concat(wa, wa, wa), jc = [214, 230, 238];
     for (const [u0, u1, d0, d1] of [[-L / 2 - 0.6, L / 2 + 0.6, -Wd / 2 - 0.6, -Wd / 2], [-L / 2 - 0.6, L / 2 + 0.6, Wd / 2, Wd / 2 + 0.6], [-L / 2 - 0.6, -L / 2, -Wd / 2, Wd / 2], [L / 2, L / 2 + 0.6, -Wd / 2, Wd / 2]]) {
       box(B, F, u0, u1, y - 0.2, y + 0.5, d0, d1, rim, K.FURN, 7, A0.STONE); box(B, F, u0 - 0.06, u1 + 0.06, y + 0.5, y + 0.62, d0 - 0.06, d1 + 0.06, shade(rim, 1.06), K.FURN, 7, A0.STONE); }
     box(B, F, -L / 2, L / 2, y - 0.2, y + 0.05, -Wd / 2, Wd / 2, [70, 92, 98], K.FURN, 1, A0.STONE);
@@ -268,23 +306,51 @@ const P3PIECE = {
     const nj = Math.max(4, Math.round(L / 1.6));
     for (let k = 0; k < nj; k++) { const u = -L / 2 + 0.8 + k * (L - 1.6) / (nj - 1);
       for (const s of [-1, 1]) { const pts = []; for (let q = 0; q <= 5; q++) { const t = q / 5; pts.push([u, y + 0.55 + 1.5 * t * (1 - t) * 2.2 - 0.15 * t, s * (Wd / 2 - 0.1 - t * Math.min(2.4, Wd / 2 - 1.4))]); }
-        tube(B, F, pts, 0.035, 4, jc, K.PLZ_WATER, { aux: wa }); } }
+        tube(B, F, pts, 0.055, 4, jc, K.PLZ_WATER, { aux: wa }); const e = pts[5];   // P4: corona de espuma donde cae el chorro
+        rev(B, F, e[0], e[2], [[0.32, y + 0.42], [0.2, y + 0.62], [0.06, y + 0.8], [0, y + 0.84]], 5, [236, 242, 244], K.PLZ_WATER, { aux: wa, cap: 0 }); } }
+    for (let k = 0; k < 12; k++) { const s = k % 2 ? 1 : -1, u = (hash2(k, 31 + L) - 0.5) * (L + 0.6), cg = 100 + 34 * hash2(k, 9);   // palomas en el borde
+      sphere(B, F, u, y + 0.72, s * (Wd / 2 + 0.3), 0.1, 4, 3, [cg, cg, cg + 8], K.FURN, A0.MATTE, 0.75); sphere(B, F, u + 0.11, y + 0.82, s * (Wd / 2 + 0.3), 0.045, 3, 2, [cg - 30, cg - 26, cg - 20], K.FURN, A0.MATTE); }
     box(B, F, -1.6, 1.6, y + 0.2, y + 1.1, -1.1, 1.1, rim, K.FURN, 7, A0.STONE);
     figure(B, F, y + 1.1, [214, 206, 190], A0.STONE, 2, 1.1, 0); for (const s of [-1, 1]) { const F2 = Object.assign({}, F, { x: F.x + F.tx * s * 1.0, z: F.z + F.tz * s * 1.0 }); figure(B, F2, y + 1.1, [214, 206, 190], A0.STONE, 3, 0.95, 0); }
-    for (const s of [-1, 1]) rev(B, F, s * (L / 2 - 2.2), 0, [[0.09, y + 0.42], [0.05, y + 2.6], [0.0, y + 3.0]], 5, jc, K.PLZ_WATER, { aux: wa, cap: 0 });
+    for (const s of [-1, 1]) { rev(B, F, s * (L / 2 - 2.2), 0, [[0.14, y + 0.42], [0.07, y + 3.4], [0.0, y + 3.9]], 6, jc, K.PLZ_WATER, { aux: wa, cap: 0 });
+      rev(B, F, s * (L / 2 - 2.2), 0, [[0.7, y + 0.42], [0.45, y + 0.7], [0.15, y + 1.0], [0, y + 1.05]], 7, [236, 242, 244], K.PLZ_WATER, { aux: wa, cap: 0 }); }
     return 1.4; },
   // la Deessa (Clarà) en su estanque redondo: borde de piedra, agua, roca y figura; surtidores alrededor
-  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 150, 0, 0];
+  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 255, 0, 0];
     rev(B, F, 0, 0, [[r + 0.55, y - 0.2], [r + 0.55, y + 0.45], [r + 0.7, y + 0.55], [r + 0.2, y + 0.6]], 32, [196, 190, 176], K.FURN, { aux: A0.STONE, cap: 0 });
     rev(B, F, 0, 0, [[0, y + 0.4], [r + 0.2, y + 0.4]], 32, C.water, K.PLZ_WATER, { aux: wa });
-    rev(B, F, 0, 0, [[1.3, y + 0.3], [1.1, y + 0.9], [0.8, y + 1.2]], 9, [150, 144, 132], K.FURN, { aux: A0.STONE, cap: 1 });
-    figure(B, F, y + 1.2, [226, 218, 204], A0.STONE, 4, 1.15, 0);
+    box(B, F, -1.9, 1.9, y + 0.3, y + 1.15, -0.9, 0.9, [150, 144, 132], K.FURN, 7, A0.STONE); box(B, F, -2.0, 2.0, y + 1.15, y + 1.25, -1.0, 1.0, [170, 164, 152], K.FURN, 7, A0.STONE);
+    figure(B, F, y + 1.25, [228, 220, 206], A0.STONE, 5, 1.55, 0);
+    for (let k = 0; k < 10; k++) { const a = hash2(k, 77) * 6.28, cg = 100 + 34 * hash2(k, 8);   // palomas en el borde
+      sphere(B, F, Math.cos(a) * (r + 0.45), y + 0.7, Math.sin(a) * (r + 0.45), 0.1, 4, 3, [cg, cg, cg + 8], K.FURN, A0.MATTE, 0.75); }
     for (let k = 0; k < 8; k++) { const a = k / 8 * 2 * Math.PI, pts = []; for (let q = 0; q <= 4; q++) { const t = q / 4; pts.push([Math.cos(a) * (r - 0.3 - t * 2.4), y + 0.42 + 1.4 * t * (1 - t) * 2, Math.sin(a) * (r - 0.3 - t * 2.4)]); }
-      tube(B, F, pts, 0.03, 4, [214, 230, 238], K.PLZ_WATER, { aux: wa }); }
+      tube(B, F, pts, 0.045, 4, [214, 230, 238], K.PLZ_WATER, { aux: wa }); const e = pts[4];
+      rev(B, F, e[0], e[2], [[0.28, y + 0.4], [0.16, y + 0.58], [0, y + 0.74]], 5, [236, 242, 244], K.PLZ_WATER, { aux: wa, cap: 0 }); }
     return 1.2; },
-  hedge(B, F, y, h, ex) { const l = ex.len || 6; box(B, F, -l / 2, l / 2, y - 0.1, y + 0.78, -0.38, 0.38, shade([46, 80, 48], 0.9 + 0.2 * h), K.PLZ_LEAF, 7, null); },
-  pigeons(B, F, y, h) { for (let k = 0; k < 24; k++) { const a = hash2(k, 11) * 6.28, r = Math.sqrt(hash2(k, 5)) * 4.5, u = Math.cos(a) * r, d = Math.sin(a) * r, dir = hash2(k, 3) * 6.28, cg = [104 + 30 * hash2(k, 7), 104 + 30 * hash2(k, 7), 112 + 30 * hash2(k, 7)];
-    sphere(B, F, u, y + 0.13, d, 0.11, 5, 3, cg, K.FURN, A0.MATTE, 0.75); sphere(B, F, u + Math.cos(dir) * 0.12, y + 0.24, d + Math.sin(dir) * 0.12, 0.05, 4, 3, shade(cg, 0.8), K.FURN, A0.MATTE); } },
+  hedge(B, F, y, h, ex) { const l = ex.len || 6, hh = ex.hh || 0.78, w = ex.w || 0.38; box(B, F, -l / 2, l / 2, y - 0.1, y + hh, -w, w, shade([46, 80, 48], 0.9 + 0.2 * h), K.PLZ_LEAF, 7, null); },
+  pigeons(B, F, y, h, ex) { const n = ex.n || 24, R0 = ex.r || 4.5, s0 = Math.round(h * 997); for (let k0 = 0; k0 < n; k0++) { const k = k0 + s0, a = hash2(k, 11) * 6.28, r = Math.sqrt(hash2(k, 5)) * R0, u = Math.cos(a) * r, d = Math.sin(a) * r, dir = hash2(k, 3) * 6.28, cg = [104 + 30 * hash2(k, 7), 104 + 30 * hash2(k, 7), 112 + 30 * hash2(k, 7)];
+    sphere(B, F, u, y + 0.12, d, 0.1, 4, 3, cg, K.FURN, A0.MATTE, 0.75); sphere(B, F, u + Math.cos(dir) * 0.11, y + 0.22, d + Math.sin(dir) * 0.11, 0.045, 3, 2, shade(cg, 0.75), K.FURN, A0.MATTE); } },
+  // P4: bandada que levanta el vuelo (quieta: cuerpo y alas en V)
+  flock(B, F, y, h, ex) { const n = ex.n || 26; for (let k = 0; k < n; k++) { const u = (hash2(k, 41) - 0.5) * 18, d = (hash2(k, 43) - 0.5) * 10, yy = y + 3 + k * 0.32 + hash2(k, 47) * 2.5, dir = 0.4 + (hash2(k, 49) - 0.5) * 0.6, cs = Math.cos(dir), sn = Math.sin(dir), cg = [96, 98, 106], fl = hash2(k, 51);
+    sphere(B, F, u, yy, d, 0.12, 4, 3, cg, K.FURN, A0.MATTE, 0.6);
+    for (const s of [-1, 1]) { const tu = u - s * sn * 0.4, td = d + s * cs * 0.4, ty = yy + 0.08 + 0.2 * fl;
+      quad(B, F, u + cs * 0.08, yy, d + sn * 0.08, u - cs * 0.08, yy, d - sn * 0.08, tu - cs * 0.06, ty, td - sn * 0.06, tu + cs * 0.08, ty, td + sn * 0.08, cg, K.FURN, A0.MATTE); } } },
+  // P4: carrito de venta (helados, castañas…) con sombrilla
+  cart(B, F, y, h) { const col = h < 0.5 ? [196, 64, 52] : [58, 118, 160];
+    box(B, F, -0.8, 0.8, y + 0.35, y + 1.15, -0.45, 0.45, col, K.FURN, 7, A0.PAINT); box(B, F, -0.86, 0.86, y + 1.15, y + 1.22, -0.5, 0.5, [200, 200, 196], K.FURN, 7, A0.STEEL);
+    for (const s of [-1, 1]) box(B, F, s * 0.5 - 0.25, s * 0.5 + 0.25, y, y + 0.5, -0.5, -0.44, [30, 30, 32], K.FURN, 7, A0.PLASTIC);
+    tube(B, F, [[0, y + 1.22, 0], [0, y + 2.3, 0]], 0.025, 4, [200, 200, 196], K.FURN, { aux: A0.STEEL });
+    rev(B, F, 0, 0, [[1.15, y + 2.05], [0.6, y + 2.3], [0, y + 2.45]], 8, h < 0.5 ? [236, 226, 200] : [226, 210, 120], K.FURN, { aux: A0.PLASTIC, cap: 0 }); },
+  // P4: anillos de piedra en relieve sobre la explanada y banco corrido en su borde (por segmentos: siguen el plano de la plataforma)
+  cring(B, F, y, h, ex, X) { const cx = X.x, cz = X.z, Y = (r, t) => X.hAt(cx + Math.cos(t) * r, cz + Math.sin(t) * r) + 0.02, skip = ex.skip || [];
+    for (const [r0, r1, hh, col, n, gap] of ex.rings) for (let k = 0; k < n; k++) { const t0 = k / n * 2 * Math.PI, t1 = (k + 1) / n * 2 * Math.PI, tm = (t0 + t1) / 2;
+      if (gap && skip.some(a => Math.abs(Math.atan2(Math.sin(tm - a), Math.cos(tm - a))) < gap)) continue;
+      const c0 = Math.cos(t0), s0 = Math.sin(t0), c1 = Math.cos(t1), s1 = Math.sin(t1), yi0 = Y(r0, t0), yi1 = Y(r0, t1), yo0 = Y(r1, t0), yo1 = Y(r1, t1), sd = shade(col, 0.82);
+      quad(B, F, c0 * r0, yi0 + hh, s0 * r0, c1 * r0, yi1 + hh, s1 * r0, c1 * r1, yo1 + hh, s1 * r1, c0 * r1, yo0 + hh, s0 * r1, col, K.FURN, A0.STONE);
+      quad(B, F, c0 * r1, yo0 + hh, s0 * r1, c1 * r1, yo1 + hh, s1 * r1, c1 * r1, yo1 - 0.06, s1 * r1, c0 * r1, yo0 - 0.06, s0 * r1, sd, K.FURN, A0.STONE);
+      quad(B, F, c0 * r0, yi0 + hh, s0 * r0, c1 * r0, yi1 + hh, s1 * r0, c1 * r0, yi1 - 0.06, s1 * r0, c0 * r0, yi0 - 0.06, s0 * r0, sd, K.FURN, A0.STONE);
+      if (gap) for (const [t, cc, ss, yi, yo] of [[t0, c0, s0, yi0, yo0], [t1, c1, s1, yi1, yo1]]) { const tq = t === t0 ? tm - (t1 - t0) : tm + (t1 - t0);
+        if (skip.some(a => Math.abs(Math.atan2(Math.sin(tq - a), Math.cos(tq - a))) < gap)) quad(B, F, cc * r0, yi + hh, ss * r0, cc * r1, yo + hh, ss * r1, cc * r1, yo - 0.06, ss * r1, cc * r0, yi - 0.06, ss * r0, sd, K.FURN, A0.STONE); } } },
   // escalinata de la plataforma a la acera (si hay desnivel): peldaños de 16 cm con huella de 36 cm, hacia fuera, y pedestales a los lados
   stairs(B, F, y, h, ex, X) { const w = ex.w || 8, g = X.gAt(X.x + Math.cos(X.a) * 3.5, X.z + Math.sin(X.a) * 3.5), drop = y - g; if (drop < 0.22) return;
     const n = Math.round(drop / 0.16), ri = drop / n, tr = 0.36, st = [176, 170, 158];
@@ -367,14 +433,23 @@ const CAT = { c: [12207.5, 14056.0], deessa: [12212.5, 13989.6], macia: [12212.3
   corners: [[12206.6, 14146.2], [12293.7, 14050.0], [12212.3, 13933.1], [12105.8, 14097.6]] };
 const segD = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz; let t = ((x - a[0]) * dx + (z - a[1]) * dz) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
 const FLW = [[178, 50, 46], [200, 164, 50], [124, 70, 146], [206, 200, 186], [196, 96, 128]];
-SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
+SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4, lampGrid: true,
   zone(u, v, x, z, e) { const r = Math.hypot(x - CAT.c[0], z - CAT.c[1]);
     if (r < 46) return [9, C.graniteL, 0.06];                      // explanada: rosa de los vientos (dibujo 9 del sombreador)
     if (r < 47.2) return [6, C.curb, 0.12];                        // cenefa de piedra
-    if (r < 63 || e < 3.5) return [1, C.granite, 0.22];
+    if (e < 3.5) return [1, C.granite, 0.22];
     let dc = 1e9; for (const k of CAT.corners) dc = Math.min(dc, segD(x, z, CAT.c, k));
-    if (dc < 6) return [1, C.granite, 0.28];
+    if (dc < 6 || r < 50.2) return [1, C.granite, dc < 6 ? 0.28 : 0.2];   // paseos a las esquinas y paseo anular
     if (Math.hypot(x - CAT.deessa[0], z - CAT.deessa[1]) < 12 || Math.hypot(x - CAT.macia[0], z - CAT.macia[1]) < 9) return [1, C.granite, 0.22];
+    // P4: parterres entre el paseo anular y el anillo exterior (antes, todo granito): césped con macizos de flores en dibujo,
+    // con explanadas de granito alrededor de las fuentes y de cada escultura
+    if (r < 63) { for (const f of CAT.fonts) if (Math.hypot(x - f[0], z - f[1]) < 14.5) return [1, C.graniteL, 0.2];
+      for (const q of CAT.art) if (Math.hypot(x - q[0], z - q[1]) < 3.2) return [1, C.granite, 0.2];
+      if (r < 51 || r > 62.2 || dc < 6.8) return [6, C.curb, 0.16];
+      const t = (Math.atan2(z - CAT.c[1], x - CAT.c[0]) + Math.PI) / (2 * Math.PI), sk = Math.floor(t * 96);
+      if (r > 52.4 && r < 55.6) { const w = Math.abs(((t * 96) % 1) - 0.5) * 2, rr = Math.abs(r - 54) / 1.6; return [10, w + rr < 0.9 ? FLW[sk % 2 ? 0 : 3] : FLW[1 + 3 * (sk % 2)], 0]; }   // rombos
+      if (r > 59.4 && r < 60.8) return [10, FLW[2 + 2 * (Math.floor(t * 48) % 2)], 0];
+      return [5, C.grass, 0]; }
     if (r < 64 || e < 4.3 || dc < 6.8) return [6, C.curb, 0.18];
     if (r < 66.6 || dc < 9.2 || e < 6.4) { const s = Math.floor((Math.atan2(z - CAT.c[1], x - CAT.c[0]) + Math.PI) / (2 * Math.PI) * 20); return [10, FLW[s % FLW.length], 0]; }   // macizos de flores junto a los paseos
     return [5, C.grass, 0]; },
@@ -382,7 +457,8 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
     for (const [x, z, twin] of CAT.fonts) { const a = Math.atan2(z - c[1], x - c[0]) + Math.PI / 2;
       if (twin) for (const s of [-1, 1]) W('fontC', x + Math.cos(a) * s * 8, z + Math.sin(a) * s * 8, a, { L: 13, W: 6.5 });
       else W('fontC', x, z, a, { L: 22, W: 7.5 }); }
-    CAT.art.forEach(([x, z], k) => W('figure', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2, { pose: k % 5, bronze: k % 3 !== 0 }));
+    const POSE = [0, 7, 6, 3, 1, 8, 2, 4, 5, 6, 3, 7, 2, 1, 8, 0, 4, 3, 6, 2];
+    CAT.art.forEach(([x, z], k) => W('figure', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2, { pose: POSE[k], bronze: k % 3 !== 0, sc: 1 + 0.25 * hash2(k, 71) }));
     W('pondC', CAT.deessa[0], CAT.deessa[1], 0, { r: 6 });
     W('macia', CAT.macia[0], CAT.macia[1], Math.atan2(c[1] - CAT.macia[1], c[0] - CAT.macia[0]) - Math.PI / 2);
     W('kiosk', 12250, 14112, 0.8); W('kiosk', 12160, 14000, -0.7);
@@ -390,14 +466,30 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
     // escalinatas en las esquinas (bajan de la plataforma a la acera cuando hay desnivel)
     for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), dl = Math.hypot(k[0] - c[0], k[1] - c[1]) - 1.5; W('stairs', c[0] + Math.cos(a) * dl, c[1] + Math.sin(a) * dl, a, { w: 10 }); }
     for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 48.5, c[1] + Math.sin(a) * 48.5, a); }
-    for (let k = 0; k < 8; k++) { const a = (k + 0.25) / 8 * 2 * Math.PI; W('lamp', c[0] + Math.cos(a) * 31, c[1] + Math.sin(a) * 31, a, { H: 7.5 }); }   // farolas altas sobre la explanada: luz cálida de noche en la rosa
-    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 49.5, c[1] + Math.sin(a) * 49.5, a + Math.PI); }
-    for (let k = 0; k < 4; k++) { const a = k * 1.7 + 0.4, r = 14 + k * 7; W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a); }
+    for (let k = 0; k < 12; k++) { const a = (k + 0.25) / 12 * 2 * Math.PI; W('lamp', c[0] + Math.cos(a) * 34, c[1] + Math.sin(a) * 34, a, { H: 8 }); }   // farolas altas sobre la explanada: luz cálida de noche en la rosa
+    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 49.5, c[1] + Math.sin(a) * 49.5, a + Math.PI);
+      if (k % 2) W('bin', c[0] + Math.cos(a + 0.035) * 49.6, c[1] + Math.sin(a + 0.035) * 49.6, a + Math.PI); }
+    // P4: anillos de piedra en relieve (rojo, blanco y negro) y banco corrido de piedra en el borde de la explanada, abierto en los paseos
+    const gaps = CAT.corners.map(k => Math.atan2(k[1] - c[1], k[0] - c[0])).concat([Math.atan2(CAT.deessa[1] - c[1], CAT.deessa[0] - c[0])]);
+    W('cring', c[0], c[1], 0, { skip: gaps, rings: [[16.2, 16.6, 0.05, [56, 56, 60], 64], [17.2, 17.9, 0.03, [214, 208, 196], 64], [17.9, 18.6, 0.05, [150, 80, 62], 64],
+      [43.6, 44.2, 0.03, [214, 208, 196], 128], [44.2, 45.0, 0.05, [150, 80, 62], 128], [45.0, 45.7, 0.06, [56, 56, 60], 128],
+      [46.2, 46.9, 0.46, [168, 162, 150], 128, 0.15], [46.15, 46.95, 0.52, [190, 184, 172], 128, 0.15]] });
+    // palomas: grupos pequeños por toda la explanada y en el paseo anular; una bandada que levanta el vuelo
+    for (let k = 0; k < 30; k++) { const a = hash2(k, 61) * 6.28, r = k < 24 ? 4 + Math.sqrt(hash2(k, 63)) * 40 : 47.8 + hash2(k, 65) * 2;
+      W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a, { n: 6 + Math.floor(hash2(k, 67) * 12), r: 1.2 + hash2(k, 69) * 2.4 }); }
+    W('flock', c[0] - 12, c[1] - 18, 0.6, { n: 28 });
+    for (const [a, r] of [[0.5, 48.3], [2.3, 48.3], [3.9, 48.3]]) W('cart', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a + Math.PI / 2);
+    // farolas a lo largo de los paseos de las esquinas (alumbran las copas por debajo)
+    for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), L = Math.hypot(k[0] - c[0], k[1] - c[1]);
+      for (let dl = 58; dl < L - 8; dl += 12) for (const s of [-1, 1]) W('lampC', c[0] + Math.cos(a) * dl - Math.sin(a) * s * 4.6, c[1] + Math.sin(a) * dl + Math.cos(a) * s * 4.6, a); }
     // setos: anillo de boj tras los macizos de flores, cortado en los paseos
     for (let k = 0; k < 56; k++) { const a = (k + 0.5) / 56 * 2 * Math.PI, x = c[0] + Math.cos(a) * 67.6, z = c[1] + Math.sin(a) * 67.6, zz = S.zone(x, z);
       if (zz && zz[0] === 5) W('hedge', x, z, a + Math.PI / 2, { len: 6.6 }); }
+    // P4: setos bajos recortados que cierran los parterres nuevos
+    for (const [rr, n] of [[51.6, 120], [61.6, 140]]) for (let k = 0; k < n; k++) { const a = (k + 0.5) / n * 2 * Math.PI, x = c[0] + Math.cos(a) * rr, z = c[1] + Math.sin(a) * rr, zz = S.zone(x, z);
+      if (zz && zz[0] === 5) W('hedge', x, z, a + Math.PI / 2, { len: 2 * Math.PI * rr / n - 0.15, hh: 0.42, w: 0.3 }); }
     // árboles: hileras de plátanos en el perímetro y grupos sueltos en los parterres (no en retícula)
-    S.grid(8.5, 3, (u, v, x, z, e, zz) => { if (!zz || zz[0] !== 5 || zz[1] !== C.grass || e < 5) return; const h = hash2(Math.round(x), Math.round(z));
+    S.grid(8.5, 3, (u, v, x, z, e, zz) => { if (!zz || zz[0] !== 5 || zz[1] !== C.grass || e < 5 || Math.hypot(x - c[0], z - c[1]) < 64) return; const h = hash2(Math.round(x), Math.round(z));
       if (e < 11 || h < 0.3) S.put('tree', u + (h - 0.5) * 2, v, 0, { sp: e < 11 ? 'platan' : h < 0.12 ? 'pi' : h < 0.22 ? 'lledoner' : 'platan' }); });
     S.grid(18, 5, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && S.put('lampC', u, v, 0));
     S.grid(13, 2, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && hash2(Math.round(x), Math.round(z)) < 0.5 && S.put('bench', u, v, hash2(Math.round(z), 3) * 6.28));
@@ -864,11 +956,11 @@ window.BCN_PLAZAS = { async init(ctx) {
   function* buildPlaza(o) {
     const ox = Math.round(o.c[0]), oz = Math.round(o.c[1]), Wp = new GB(ox, oz), Wo = new GB(ox, oz), Wh = new GB(ox, oz);
     seed(4100, o.id);
-    const lamps = [], items = [], occ = [];
+    const lamps = [], items = [], occ = [], lampPts = [];
     const U2W = (u, v) => [o.c[0] + u * o.cu - v * o.su, o.c[1] + u * o.su + v * o.cu];
     const fits = (x, z, r) => { if (!free(o, x, z)) return false; for (const [a, b] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!free(o, x + a, z + b)) return false;
       for (const q of occ) if (Math.hypot(q[0] - x, q[1] - z) < q[2] + r) return false; return true; };
-    const RAD = { hedge: 0, figure: 1.0, fontC: 0, pondC: 0, stairs: 0, pigeons: 0, bin: 0.5, pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
+    const RAD = { cring: 0.1, flock: 0.1, cart: 1.2, hedge: 0, figure: 1.0, fontC: 0, pondC: 0, stairs: 0, pigeons: 0, bin: 0.5, pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
     const put = (t, u, v, a, x) => { const [wx, wz] = U2W(u, v), r = t in P2RAD ? P2RAD[t] : RAD[t] || 1; if (r > 0 && !fits(wx, wz, r)) return false; occ.push([wx, wz, r]); items.push([t, wx, wz, a + o.ang, x || {}, u, v]); return true; };
     // zona de juegos genérica (se decide antes del pavimento: lleva caucho)
     if (!o.sg && (o.t === 'gran' || o.t === 'mitjana')) {
@@ -950,7 +1042,7 @@ window.BCN_PLAZAS = { async init(ctx) {
         else tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc);
         if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
       else if (P3PIECE[t]) { const L = P3PIECE[t](Wo, F, y, h, ex, { o, gAt, hAt, x, z, a, Wh }); if (L) lamps.push([x, z, L]); }
-      else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); }
+      else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); lampPts.push([x, y, z]); }
       else if (t === 'bench') { if (FUR) { FUR.bench(Wo, AS, F, y); FUR.bench(Wh, AH, F, y); } else stoneBench(Wo, F, y, 1.8, true); }
       else if (t === 'bin') { if (FUR) { FUR.bin(Wo, AS, F, y, [40, 96, 70]); FUR.bin(Wh, AH, F, y, [40, 96, 70]); } }
       else if (t === 'sbench') stoneBench(Wo, F, y, ex.len || 2.4, ex.wood);
@@ -994,7 +1086,7 @@ window.BCN_PLAZAS = { async init(ctx) {
         quad(Wp, F0, A[0] - ox, ys[i0], A[1] - oz, Bq[0] - ox, ys[i1], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35)); }
       if (++nq % 300 === 0) yield;
     }
-    return { Wp, Wo, Wh, lamps: lamps.length, nItems: items.length, nQuads: quads.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
+    return { Wp, Wo, Wh, lampPts, lamps: lamps.length, nItems: items.length, nQuads: quads.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
   }
   function* runJob(o) {
     const r = yield* buildPlaza(o);
@@ -1003,10 +1095,11 @@ window.BCN_PLAZAS = { async init(ctx) {
     const mo = reg(mkMesh(r.Wo, matB, 'plo' + o.i), { cast: true, layer: 'furn', cell: pc });
     if (mo) mo.setEnabled(false);
     if (r.trees) treeDirty = true;
+    if (o.sg && o.sg.lampGrid && ctx.detail && ctx.detail.lamps) { ctx.detail.lamps.set('plz' + o.i, r.lampPts); o.lg = true; }   // P4
     o.st = { trees: r.trees, pc, mp, mo, on: false, triO: r.Wo.ni / 3, triP: r.Wp.ni / 3, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
     tris += o.st.tris; built++;
   }
-  function drop(o) { const s = o.st; if (!s) return; if (s.trees) treeDirty = true; if (s.on) trisOn -= s.triO; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
+  function drop(o) { const s = o.st; if (!s) return; if (o.lg) { ctx.detail.lamps.drop('plz' + o.i); o.lg = false; } if (s.trees) treeDirty = true; if (s.on) trisOn -= s.triO; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
   function dropHi(o) { const s = o.st; if (s && s.mh) { s.mh.dispose(); s.mh = null; s.pc.hi = null; trisHi -= s.triH; } }
   function step(P, budget) {
     const t0 = performance.now();
