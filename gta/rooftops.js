@@ -216,7 +216,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // planta baja (BREC.mzk 2 taller → azotea de nave; 3 terraza del piso principal → plan propio) y los cortes entre fincas.
   // Su mobiliario de patio cuelga del plan de la PRIMERA finca (el ancla), con azar del ámbito de la manzana: seed(src, 95, k).
   const MZB = (BREC.mz && BREC.mz.blocks) || [], anchorOf = new Map();
-  for (const blk of MZB) if (blk.fincas.length && blk.fincas[0].bi !== undefined) anchorOf.set(blk.fincas[0].bi, blk);
+  for (const blk of MZB) if (blk.fincas.length && blk.sp.inner && blk.fincas[0].bi !== undefined) anchorOf.set(blk.fincas[0].bi, blk);
   const takeS = (src, k, n) => { seed(src, 95, k); const a = new Array(n); for (let i = 0; i < n; i++) a[i] = R(); return a; };
   const inPoly = (P, x, z) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) ins = !ins; } return ins; };
   const edgeDist = (P, x, z) => { let m = 1e9; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1;

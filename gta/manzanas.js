@@ -195,6 +195,151 @@ function split(P0, seed, H) {
   return { outer: P, inner, d, fincas, parcels, rad, C, tipo, seed, A, free, rA: rA && rA.Q, rB: rB && rB.Q };
 }
 
+
+// ---------------------------------------------------------------- n3 E3 · manzanas que no son un octógono convexo
+// Las no convexas, las hechas de 2–6 volúmenes grandes y las que ya traían un patio de otra forma: se trabaja sobre una
+// trama de 1 m girada con la manzana. Dentro = los volúmenes del grupo; calle = ni grupo ni vecinos. El fondo de cada píxel
+// es su distancia a la calle (chaflán 3-4): lo que pasa de d (20–25 m) es patio, lo demás son fincas (Voronoi de semillas
+// puestas cada 13–21 m a lo largo de la fachada real). Los contornos se trazan sobre la trama, se simplifican y se pegan a
+// las aristas originales (< 1,1 m): fachada y medianeras caen donde estaban. Devuelve un plan con la forma del de split().
+function trace(Wd, Hd, inside) {                            // contorno exterior mayor de la máscara (vértices de la trama)
+  const out = new Map(), key = (x, y) => y * (Wd + 1) + x;
+  const add = (x0, y0, x1, y1) => { const k = key(x0, y0); let l = out.get(k); if (!l) out.set(k, l = []); l.push([x1, y1]); };
+  const I = (x, y) => x >= 0 && y >= 0 && x < Wd && y < Hd && inside(y * Wd + x);
+  for (let y = 0; y < Hd; y++) for (let x = 0; x < Wd; x++) { if (!I(x, y)) continue;   // aristas con el dentro a la izquierda
+    if (!I(x, y - 1)) add(x + 1, y, x, y); if (!I(x - 1, y)) add(x, y, x, y + 1); if (!I(x, y + 1)) add(x, y + 1, x + 1, y + 1); if (!I(x + 1, y)) add(x + 1, y + 1, x + 1, y); }
+  let best = null, ba = 0;
+  for (const [k0, l0] of out) while (l0.length) {
+    const sx = k0 % (Wd + 1), sy = Math.floor(k0 / (Wd + 1)), L = [[sx, sy]]; let cur = l0.pop(), px = sx, py = sy, g = 0;
+    while (g++ < 200000) { const [cx, cy] = cur; if (cx === sx && cy === sy) break; L.push([cx, cy]);
+      const l = out.get(key(cx, cy)); if (!l || !l.length) break;
+      let j = 0; if (l.length > 1) { const dx = cx - px, dy = cy - py; for (let q = 0; q < l.length; q++) if ((l[q][0] - cx) === -dy && (l[q][1] - cy) === dx) j = q; }
+      px = cx; py = cy; cur = l.splice(j, 1)[0]; }
+    const a = Math.abs(sarea(L)); if (a > ba) { ba = a; best = L; } }
+  return best;
+}
+function dp(P, eps) {                                       // Douglas-Peucker en un anillo cerrado
+  if (P.length < 5) return P;
+  let i0 = 0, i1 = 0, m = -1; for (let i = 0; i < P.length; i++) { const e = Math.hypot(P[i][0] - P[0][0], P[i][1] - P[0][1]); if (e > m) { m = e; i1 = i; } }
+  const keep = new Uint8Array(P.length); keep[i0] = keep[i1] = 1;
+  const rec = (a, b) => { const n = P.length, A = P[a], B = P[b % n], dx = B[0] - A[0], dz = B[1] - A[1], L = Math.hypot(dx, dz) || 1; let bi = -1, bd = eps;
+    for (let i = a + 1; i < b; i++) { const p = P[i % n], e = Math.abs((p[0] - A[0]) * dz - (p[1] - A[1]) * dx) / L; if (e > bd) { bd = e; bi = i; } }
+    if (bi >= 0) { keep[bi % n] = 1; rec(a, bi); rec(bi, b); } };
+  rec(i0, i1); rec(i1, P.length);
+  return P.filter((p, i) => keep[i]);
+}
+function splitR(mem, others, seed) {
+  const R = rng(seed * 2654435761 + 777);
+  let ang = 0, bl = 0; for (const m of mem) for (let i = 0; i < m.P.length; i++) { const a = m.P[i], b = m.P[(i + 1) % m.P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; ang = Math.atan2(b[1] - a[1], b[0] - a[0]); } }
+  const ca = Math.cos(ang), sa = Math.sin(ang), o = mem[0].P[0];
+  const toL = p => [(p[0] - o[0]) * ca + (p[1] - o[1]) * sa, -(p[0] - o[0]) * sa + (p[1] - o[1]) * ca];
+  const toW = q => [o[0] + q[0] * ca - q[1] * sa, o[1] + q[0] * sa + q[1] * ca];
+  const ML = mem.map(m => ({ P: m.P.map(toL), holes: (m.holes || []).map(h => h.map(toL)), H: m.H }));
+  let u0 = 1e9, v0 = 1e9, u1 = -1e9, v1 = -1e9; for (const m of ML) for (const q of m.P) { u0 = Math.min(u0, q[0]); u1 = Math.max(u1, q[0]); v0 = Math.min(v0, q[1]); v1 = Math.max(v1, q[1]); }
+  u0 = Math.floor(u0) - 3; v0 = Math.floor(v0) - 3; const Wd = Math.ceil(u1 - u0) + 4, Hd = Math.ceil(v1 - v0) + 4, N = Wd * Hd;
+  if (Wd > 260 || Hd > 260) return null;
+  const own = new Int8Array(N), occ = new Uint8Array(N), hole = new Uint8Array(N);
+  const fillP = (P, fn) => {                                // píxeles con el centro dentro de P (local)
+    let a0 = 1e9, a1 = -1e9; for (const q of P) { a0 = Math.min(a0, q[1]); a1 = Math.max(a1, q[1]); }
+    for (let y = Math.max(0, Math.floor(a0 - v0)); y < Math.min(Hd, Math.ceil(a1 - v0) + 1); y++) { const vz = v0 + y + 0.5, xs = [];
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > vz) !== (b[1] > vz)) xs.push(a[0] + (vz - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); }
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.max(0, Math.ceil(xs[k] - u0 - 0.5)); x <= Math.min(Wd - 1, Math.floor(xs[k + 1] - u0 - 0.5)); x++) fn(y * Wd + x); } };
+  for (const P of others) fillP(P.map(toL), i => { occ[i] = 1; });
+  ML.forEach((m, k) => { fillP(m.P, i => { own[i] = k + 1; occ[i] = 0; }); for (const h of m.holes) fillP(h, i => { own[i] = 0; hole[i] = 1; }); });
+  let nOwn = 0; for (let i = 0; i < N; i++) if (own[i]) nOwn++;
+  if (nOwn < 2000) return null;
+  // fondo: distancia a la calle (chaflán 3-4, en décimas de metro aprox.)
+  const D = new Float32Array(N); for (let i = 0; i < N; i++) D[i] = own[i] || occ[i] || hole[i] ? 1e9 : 0;
+  const ch = (pass) => { for (let yy = 0; yy < Hd; yy++) { const y = pass ? Hd - 1 - yy : yy; for (let xx = 0; xx < Wd; xx++) { const x = pass ? Wd - 1 - xx : xx, i = y * Wd + x; if (!D[i]) continue;
+    const s = pass ? 1 : -1; let m = D[i]; const t = (xa, ya, w) => { if (xa >= 0 && ya >= 0 && xa < Wd && ya < Hd) { const v = D[ya * Wd + xa] + w; if (v < m) m = v; } else if (w < m) m = w; };
+    t(x + s, y, 1); t(x, y + s, 1); t(x + s, y + s, 1.414); t(x - s, y + s, 1.414); D[i] = m; } } };
+  ch(0); ch(1);
+  let d = 20 + R() * 5, pat = null, nP = 0;
+  for (let tr = 0; tr < 4 && d >= 12; tr++, d *= 0.85) { pat = new Uint8Array(N); nP = 0;
+    for (let i = 0; i < N; i++) if ((own[i] && D[i] > d) || hole[i]) { pat[i] = 1; nP++; }
+    if (nP >= Math.max(160, 0.08 * nOwn)) break; }
+  if (nP < 120) { pat = new Uint8Array(N); nP = 0; for (let i = 0; i < N; i++) if (hole[i]) { pat[i] = 1; nP++; } }
+  // semillas a lo largo de la fachada real (aristas exteriores que dan a la calle)
+  const seeds = []; let acc = R() * 8, wN = 13 + R() * 8;
+  const street = (q) => { const x = Math.floor(q[0] - u0), y = Math.floor(q[1] - v0); return x < 0 || y < 0 || x >= Wd || y >= Hd || (!own[y * Wd + x] && !occ[y * Wd + x] && !hole[y * Wd + x]); };
+  ML.forEach((m, k) => { const P = m.P; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 0.3) continue;
+    const tx = (b[0] - a[0]) / L, tz = (b[1] - a[1]) / L;
+    for (let s = 0.25; s < L; s += 0.5) { const p = [a[0] + tx * s, a[1] + tz * s], q1 = [p[0] - tz * 1.3, p[1] + tx * 1.3], q2 = [p[0] + tz * 1.3, p[1] - tx * 1.3];
+      if (!street(q1) && !street(q2)) continue; acc += 0.5;
+      if (acc >= wN) { const inw = street(q1) ? [tz, -tx] : [-tz, tx]; seeds.push({ u: p[0] + inw[0] * 2, v: p[1] + inw[1] * 2, k }); acc = 0; wN = R() < 0.78 ? 13 + R() * 8 : 20 + R() * 6; } } } });
+  if (seeds.length < 3) return null;
+  // fincas: cada píxel del anillo, a su semilla más cercana; el patio, a la finca más cercana (para las cubiertas)
+  const lab = new Int16Array(N).fill(-1);
+  for (let y = 0; y < Hd; y++) for (let x = 0; x < Wd; x++) { const i = y * Wd + x; if (!own[i] || pat[i]) continue; const U = u0 + x + 0.5, V = v0 + y + 0.5; let bj = 0, bd = 1e18;
+    for (let j = 0; j < seeds.length; j++) { const e = (seeds[j].u - U) ** 2 + (seeds[j].v - V) ** 2; if (e < bd) { bd = e; bj = j; } } lab[i] = bj; }
+  const PD = new Float32Array(N), PL = new Int16Array(N).fill(-1);
+  for (let i = 0; i < N; i++) { PD[i] = pat[i] ? 1e9 : 0; if (lab[i] >= 0) PL[i] = lab[i]; }
+  for (let pass = 0; pass < 2; pass++) for (let yy = 0; yy < Hd; yy++) { const y = pass ? Hd - 1 - yy : yy; for (let xx = 0; xx < Wd; xx++) { const x = pass ? Wd - 1 - xx : xx, i = y * Wd + x; if (!pat[i]) continue;
+    const s = pass ? 1 : -1; for (const [dx, dy, w] of [[s, 0, 1], [0, s, 1], [s, s, 1.414], [-s, s, 1.414]]) { const xa = x + dx, ya = y + dy; if (xa < 0 || ya < 0 || xa >= Wd || ya >= Hd) continue; const j = ya * Wd + xa;
+      if (PD[j] + w < PD[i] && (PL[j] >= 0)) { PD[i] = PD[j] + w; PL[i] = PL[j]; } } } }
+  const rt = R(), tipo = rt < 0.28 ? TIPOS[0] : rt < 0.6 ? TIPOS[1] : rt < 0.8 ? TIPOS[2] : rt < 0.92 ? TIPOS[3] : TIPOS[4];
+  let pdMax = 0; for (let i = 0; i < N; i++) if (pat[i] && PD[i] < 1e8) pdMax = Math.max(pdMax, PD[i]);
+  const eA = Math.min(4.5 + R() * 4, pdMax * 0.45), eB = Math.min(pdMax * (0.6 + R() * 0.25), 22), mixA = R() * 6.2832;
+  // contorno de cada región, a mundo, pegado a las aristas originales
+  const edges = []; for (const m of ML) for (const r of [m.P].concat(m.holes)) for (let i = 0; i < r.length; i++) edges.push([r[i], r[(i + 1) % r.length]]);
+  const snap = q => { let bd = 1.1, bq = q; for (const [a, b] of edges) { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dz) / L2));
+    const px = a[0] + dx * t, pz = a[1] + dz * t, e = Math.hypot(px - q[0], pz - q[1]); if (e < bd) { bd = e; bq = [px, pz]; } } return bq; };
+  const poly = (fn, snp) => { const L = trace(Wd, Hd, fn); if (!L || L.length < 4) return null; let Q = dp(L.map(q => [q[0] + u0, q[1] + v0]), 0.75);
+    if (snp) Q = Q.map(snap); Q = simplifyG(Q); if (Q.length < 3 || Math.abs(sarea(Q)) < 12) return null; return Q.map(toW); };
+  const fincas = [], parcels = [], fk = [];
+  const dH = [0, 0, 0, 0, 0, 3, 3, -3, 0, 3];
+  for (let j = 0; j < seeds.length; j++) { const P = poly(i => lab[i] === j, true); if (!P) { fk.push(-1); continue; }
+    const H0 = ML[seeds[j].k].H; let h = H0 + dH[Math.floor(R() * dH.length)]; h = Math.max(9, Math.min(H0 + 6, h));
+    fk.push(fincas.length); fincas.push({ poly: P, H: h, corner: false }); }
+  if (fincas.length < 3) return null;
+  let inner = null, free = null, C = null; const rad = [];
+  if (nP >= 120) {
+    inner = poly(i => pat[i] === 1, true);
+    if (inner) { let cx = 0, cz = 0; for (const p of inner) { cx += p[0]; cz += p[1]; } C = [cx / inner.length, cz / inner.length];
+      const Cl = toL(C), eK = [], kK = [];
+      for (let j = 0; j < seeds.length; j++) { const r = R(), r2 = R(), r3 = R(), side = Math.cos(Math.atan2(seeds[j].v - Cl[1], seeds[j].u - Cl[0]) + ang - mixA) > 0; let e = 0, kind = 'taller';
+        switch (tipo) { case 'talleres': if (r < 0.85) { e = r2 < 0.7 ? eB : eA; kind = r3 < 0.3 ? 'terraza' : 'taller'; } break;
+          case 'jardines': if (r < 0.6) { e = r2 < 0.85 ? eA : eB; kind = r3 < 0.75 ? 'terraza' : 'taller'; } break;
+          case 'mixto': if (side) e = eB; else if (r < 0.5) { e = eA; kind = 'terraza'; } break;
+          case 'publico': case 'aparcamiento': if (r < 0.4) { e = eA; kind = 'terraza'; } break; }
+        eK.push(e > 3 ? e : 0); kK.push(kind); }
+      const inPar = i => pat[i] && !hole[i] && PL[i] >= 0 && eK[PL[i]] > 0 && PD[i] <= eK[PL[i]];
+      for (let j = 0; j < seeds.length; j++) if (eK[j] > 0 && fk[j] >= 0) { const P = poly(i => inPar(i) && PL[i] === j, false); if (P && Math.abs(sarea(P)) > 20) parcels.push({ poly: P, h: 3.4 + R() * 1.6, kind: kK[j], finca: fk[j], deep: eK[j] === eB }); }
+      free = poly(i => pat[i] && !inPar(i), false) || inner;
+      // tapias: donde dos fincas se tocan junto al patio
+      const seen = new Set();
+      for (let y = 1; y < Hd - 1; y++) for (let x = 1; x < Wd - 1; x++) { const i = y * Wd + x; if (lab[i] < 0) continue;
+        if (!(pat[i - 1] || pat[i + 1] || pat[i - Wd] || pat[i + Wd])) continue;
+        for (const j of [i + 1, i + Wd]) if (lab[j] >= 0 && lab[j] !== lab[i]) { const k = Math.min(lab[i], lab[j]) * 1000 + Math.max(lab[i], lab[j]); if (seen.has(k)) continue; seen.add(k); rad.push(toW([u0 + x + 0.5, v0 + y + 0.5])); } } }
+  }
+  const outer = []; for (const m of mem) for (const p of m.P) outer.push(p);
+  return { outer: hull(outer), inner, d, fincas, parcels, rad, C, tipo, seed, A: nOwn, free, raster: true };
+}
+
+// grupos de volúmenes que se tocan (< 1,2 m): V = [{ P, bb: [x0, z0, x1, z1] }] → [[índices]]
+function group(V) {
+  const par = V.map((v, i) => i), f = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; }, G2 = new Map();
+  V.forEach((v, i) => { for (let gx = Math.floor(v.bb[0] / 100); gx <= Math.floor(v.bb[2] / 100); gx++) for (let gz = Math.floor(v.bb[1] / 100); gz <= Math.floor(v.bb[3] / 100); gz++) { const k = gx * 100003 + gz; let l = G2.get(k); if (!l) G2.set(k, l = []); l.push(i); } });
+  const near = (A, B) => { for (const q of A) for (let i = 0; i < B.length; i++) { const a = B[i], b = B[(i + 1) % B.length], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dz) / L2));
+    if (Math.hypot(a[0] + dx * t - q[0], a[1] + dz * t - q[1]) < 1.2) return true; } return false; };
+  const done = new Set();
+  for (const l of G2.values()) for (let x = 0; x < l.length; x++) for (let y = x + 1; y < l.length; y++) { const i = l[x], j = l[y], k = Math.min(i, j) * 1e6 + Math.max(i, j); if (done.has(k)) continue; done.add(k);
+    const a = V[i].bb, b = V[j].bb; if (a[0] > b[2] + 1.2 || b[0] > a[2] + 1.2 || a[1] > b[3] + 1.2 || b[1] > a[3] + 1.2) continue;
+    if (f(i) !== f(j) && (near(V[i].P, V[j].P) || near(V[j].P, V[i].P))) par[f(i)] = f(j); }
+  const out = new Map(); V.forEach((v, i) => { const r = f(i); let l = out.get(r); if (!l) out.set(r, l = []); l.push(i); });
+  return [...out.values()];
+}
+// quita vértices alineados (< 4°) y aristas de menos de 0,6 m (cualquier anillo)
+function simplifyG(P) {
+  let Q = P.slice(), ch = true;
+  while (ch && Q.length > 3) { ch = false;
+    for (let i = 0; i < Q.length && Q.length > 3; i++) { const a = Q[(i + Q.length - 1) % Q.length], b = Q[i], c = Q[(i + 1) % Q.length];
+      const ux = b[0] - a[0], uz = b[1] - a[1], vx = c[0] - b[0], vz = c[1] - b[1], lu = Math.hypot(ux, uz);
+      if (lu < 0.6 || Math.abs(Math.atan2(ux * vz - uz * vx, ux * vx + uz * vz)) < 0.07) { Q.splice(i, 1); ch = true; i--; } } }
+  return Q;
+}
+
 // ---------------------------------------------------------------- contenedor sintético con el formato de buildings*.png
 // recs: [{ cls, seed, yb, ybot, H, poly (mundo) }] → { meta: { chunks }, view() } (DataView), en trozos de CH m
 function encode(recs, CH) {
@@ -218,5 +363,5 @@ function encode(recs, CH) {
   return { meta: { chunks }, view: () => dv, synthetic: true, order };
 }
 
-G.BCN_MZ = { cand, split, encode, sarea, hull, rng };
+G.BCN_MZ = { cand, split, splitR, group, encode, sarea, hull, rng };
 })();
