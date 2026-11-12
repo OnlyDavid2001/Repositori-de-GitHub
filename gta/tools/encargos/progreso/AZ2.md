@@ -25,7 +25,7 @@ especialmente esos rombos extraños en vez de ceñirse a las cuadrículas».
   rejilla, barandilla y escalera de gato, terrazas con pérgola (madera o metal), toldo, mesa, sillas y jardineras,
   chimeneas de ventilación (de obra con sombrerete o metálicas), jardineras sueltas, trasteros, claraboyas a dos aguas,
   más antenas (con dado), tendederos con más ropa, placas solares en filas solo en edificios modernos. De 3 a 16 elementos
-  por azotea según el área. Tres niveles: completo ≤ 300 m, cajas + peto + manchas de ropa ≤ 650 m, casetas/depósitos/
+  por azotea según el área. Tres niveles: completo ≤ 260 m, cajas + peto (solo cara interior) + manchas de ropa ≤ 650 m, casetas/depósitos/
   pérgolas ≤ 1100 m. La distancia usa la altura sobre el SUELO (antes sobre el mar: en Gràcia se recortaba).
 
 ## Coste (BCN.detailStats().roof, vistas de prueba)
