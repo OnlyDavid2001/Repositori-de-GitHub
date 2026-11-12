@@ -5,8 +5,13 @@ principal `gta-barcelona-fachadas-detalle`). Identidad y pie de los commits: los
 revisor» de abajo: cada etapa tiene las suyas, y son obligatorias para esa etapa.
 
 ## INT (etapa INT3)
-Fusiona, por este orden: `wt-n3-edif`, `wt-n3-suelos`, `wt-n3-arb`, `wt-n3-transp`, `wt-n3-plazas`, `wt-n3-puerto` y
-`wt-n3-aero` (`git merge --no-edit`). Cada rama trae también lo que hicieron sus repasos: E3 y E4 (edificios), S2 y S3
+Fusiona, por este orden: `wt-n3-edif`, `wt-n3-suelos`, `wt-n3-arb`, `wt-n3-transp`, `wt-n3-puerto`, `wt-n3-aero` y, la
+última, `wt-n3-plazas` (`git merge --no-edit`). **Antes de fusionar `wt-n3-plazas` espera a que exista el fichero
+`/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/p3.done`**: la etapa P3 está rehaciendo a
+petición del usuario la Plaça de Catalunya (y retocando Lesseps y Glòries) en esa rama. Mientras tanto haz todo lo demás
+(las otras seis fusiones, sus conflictos y sus pruebas). Si al acabarlo el fichero no existe, espera en tandas de 9
+minutos como máximo, hasta 75 minutos; si sigue sin existir, fusiona la rama como esté y dilo. Después de fusionar
+plazas, lee `gta/tools/encargos/progreso/P3.md` y haz las pruebas de las plazas. Cada rama trae también lo que hicieron sus repasos: E3 y E4 (edificios), S2 y S3
 (suelos), ARB4 (árboles), T2 (transporte), PU3 (puerto), AE3 y AE4 (aeropuerto). Resuelve los conflictos conservando
 la intención de las dos partes (los informes de las etapas están en tu encargo). Haz las peticiones pequeñas de los
 carriles que sean de fusión. Prueba: `node --check`; arnés a las 10:30 y a las 23:00 en Plaça de Catalunya, una calle
@@ -54,7 +59,8 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
    sin edificios. En Ciutat Vella, ancho solo si hay edificios a los dos lados a más de 36 m o calzada de semiancho ≥ 5 m
    (sus ramblas y paseos siguen la regla de media densidad). Fuera de Ciutat Vella, que un solar o una plaza a un lado no
    haga «ancha» una calle normal.
-2. **Árboles de las plazas**: plazas.js planta copas de elipsoide facetado («piruletas») y demasiados árboles (Sol,
+2. **Árboles de las plazas** (si P3 ya pasó todos los árboles de plaza a las especies de trees.js, compruébalo y céntrate en
+   los duplicados de los paseos): plazas.js plantaba copas de elipsoide facetado («piruletas») y demasiados árboles (Sol,
    Diamant, Virreina, Revolució, Lesseps, Joanic, Sants…). Añade en streets.js un punto de entrada para árboles por celda
    desde otro módulo (p. ej. `ctx.extraTrees(ci)` concatenado en `treesOf`) y que plazas.js plante ahí las especies de
    trees.js, con muchos menos árboles: las plazas duras casi sin árboles (alguno en el borde), las de parque con los
