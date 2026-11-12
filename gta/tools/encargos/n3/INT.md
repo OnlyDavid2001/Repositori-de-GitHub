@@ -32,3 +32,13 @@ final para el usuario con lo mejor del día (de día y de noche) en
   como cajas pintadas. Un muro cortina sencillo y lucernarios o placas en las cubiertas grandes valen.
 - **Aeropuerto**: las notas para AE2 están en AERO.md. Comprueba que se hicieron (T1 a pie, procesador con su cubierta
   ondulada desde el aire, nada de fachadas de vivienda en el aeropuerto).
+- **Calles de rodaje con farolas** (`ae2/hoja_antes_despues.jpg`, `aereo_noche` y `t1_dron_noche`): el resplandor naranja
+  de calzada de app.js y streets.js pinta las calles de rodaje y los viales de servicio del aeropuerto como calles con
+  farolas, y choca con las balizas azules. Dentro del campo de vuelo (`aero_campo`, el rectángulo girado 66°, centro
+  5089,3984, 2100 × 3740 m, que ya respeta nature.js) y en las plataformas, esas calles no llevan farolas ni resplandor.
+- **Presupuesto de hitos**: puerto (unos 345 k triángulos) y aeropuerto (unos 230 k) llegan cada uno por su lado cerca del
+  tope de 400 k del §10.9. Juntos lo pasan de largo. Las etapas de repaso PU3 y AE3 ocultan lo pequeño a distancia; mide
+  el total integrado (desde el aire y a pie) y, si hace falta, sube el tope con criterio o añade un nivel de detalle por
+  ficha en landmarks.js, y dilo.
+- **Etapas de repaso**: además de las 12 etapas, hay PU3 (puerto) y AE3 (aeropuerto), en las mismas ramas `wt-n3-puerto` y
+  `wt-n3-aero`. Sus informes van también en int_args.json.
