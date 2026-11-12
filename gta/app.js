@@ -36,14 +36,14 @@ async function loadContainer(url) {
 }
 
 setMsg('Descargando relieve…', 0.03);
-const [terr, metaRes] = await Promise.all([loadContainer('data/terrain.png'), fetch('data/meta.json').then(r => r.json())]);
+const [terr, metaRes, roadsC] = await Promise.all([loadContainer('data/terrain.png'), fetch('data/meta.json').then(r => r.json()), loadContainer('data/roads.png')]);
 const M = terr.meta, META = metaRes;
 const WX = M.WX, WZ = M.WZ, CELL = M.CELL, CH = M.CH, NCX = M.NCX, NCZ = M.NCZ, CPC = M.CPC, GW = M.GW, GH = M.GH;
 const Hraw = new Int16Array(terr.sec('H')), S = new Uint8Array(terr.sec('S'));
 const H = new Float32Array(Hraw.length);
 for (let i = 0; i < H.length; i++) H[i] = Hraw[i] / 10;
 
-function heightAt(x, z) {
+function heightAt0(x, z) {
   if (x < 0) x = 0; else if (x > WX - 1e-3) x = WX - 1e-3;
   if (z < 0) z = 0; else if (z > WZ - 1e-3) z = WZ - 1e-3;
   const cx = (x / CH) | 0, cz = (z / CH) | 0, s = S[cz * NCX + cx], cs = CELL * s, n = CPC / s;
@@ -53,6 +53,20 @@ function heightAt(x, z) {
   const h00 = H[o], h10 = H[o + s], h01 = H[o + s * GW], h11 = H[o + s * GW + s];
   return fx >= fz ? h00 + (h10 - h00) * fx + (h11 - h10) * fz : h00 + (h11 - h01) * fx + (h01 - h00) * fz;
 }
+// S2 (suelos): calles planas. BCN_SUELOS.allanar rehace la cota bajo las calles (relieve suavizado solo con el suelo de las
+// calzadas, rejilla de 5 m) y heightAt la devuelve: calzada, aceras, bordillos, árboles, mobiliario y vistas a pie la siguen.
+// La malla del terreno se hunde lo justo (FLAT.low) para no asomar por encima de las calles. Sin suelos.js, el relieve tal cual.
+let FLAT = null;
+if (window.BCN_SUELOS && window.BCN_SUELOS.allanar) try {
+  const t0 = performance.now(), dv = roadsC.view('data'), polys = [];
+  for (const bk of roadsC.meta.buckets) { let p = bk[2]; const end = bk[2] + bk[3];
+    while (p < end) { const cls = dv.getUint8(p), w = dv.getUint8(p + 1) / 4, n = dv.getUint16(p + 2, true); let x = dv.getInt32(p + 4, true) / 10, z = dv.getInt32(p + 8, true) / 10; p += 12;
+      const xs = [x], zs = [z]; for (let k = 1; k < n; k++, p += 4) { x += dv.getInt16(p, true) / 10; z += dv.getInt16(p + 2, true) / 10; xs.push(x); zs.push(z); }
+      polys.push({ cls, hw: w / 2, xs, zs }); } }
+  FLAT = window.BCN_SUELOS.allanar(heightAt0, polys, WX, WZ, GW, GH, CELL);
+  console.log('calles planas (S2):', Math.round(performance.now() - t0), 'ms', JSON.stringify(FLAT.stats));
+} catch (e) { FLAT = null; console.log('calles planas (S2) desactivadas:', e && e.message); }
+function heightAt(x, z) { return FLAT ? FLAT.h(x, z) : heightAt0(x, z); }
 
 // ------------------------------------------------------------------ motor
 const canvas = $('c');
@@ -646,8 +660,79 @@ void main(){
   vec3 N = vec3(0.0, 1.0, 0.0);
   float near = (1.0 - smoothstep(140.0, 480.0, dist))*uAsph;
   bool car = cls < 6.5 || abs(cls-8.0) < 0.5 || abs(cls-10.0) < 0.5 || abs(cls-11.0) < 0.5;
-  if (near > 0.0 && car) {` + ROAD_NEAR + `  }
-  alb = mix(alb, vec3(0.86,0.86,0.82), mk*fade*0.8);
+  // SUELOS (día 3): estado del asfalto por polilínea, de suelos.js (vInfo.w: 0 nuevo · 1 seminuevo · 2 gastado · 3 bastante
+  // gastado · 4 muy gastado, continuo). De lejos, solo el tono: nuevo casi negro y uniforme, gastado más claro, gris y a rodales
+  float wr = clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;
+  if (car) {
+    alb *= (0.80 + 0.085*wr)*(1.0 + (vnoise(P*0.045 + 7.3) - 0.5)*0.30*smoothstep(1.5, 4.5, wr));
+    alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.02, 1.0, 0.97), smoothstep(2.0, 4.8, wr)*0.5);
+  }
+  if (near > 0.0 && car) {` + ROAD_NEAR + `
+    // SUELOS: detalle por estado, en coordenadas de calle (x de través, v a lo largo). Todo se apaga con el tamaño del píxel
+    float pxs = length(fwidth(P)), aa = max(pxs, 0.004), lod = 1.0 - smoothstep(0.03, 0.12, pxs);
+    float nw = 1.0 - smoothstep(0.4, 1.6, wr);
+    // nuevo: tono uniforme (tapa las manchas del asfalto fotografiado) y algo más oscuro
+    alb = mix(alb, vCol.rgb*0.66*(0.96 + 0.08*vnoise(P*0.8)), nw*0.55*near);
+    // parches de reparación por carril (más con el desgaste): unos más nuevos (oscuros), otros más viejos, con su junta sellada
+    float pw = smoothstep(1.3, 4.6, wr);
+    if (pw > 0.0) {
+      vec2 g = vec2((x + hw)/3.3, v/(5.0 + 4.0*hash21(vec2(floor((x + hw)/3.3), 3.7))));
+      vec2 id = floor(g), f = fract(g); float h = hash21(id + 11.3), h2 = hash21(id + 4.1);
+      vec2 lo = vec2(0.08 + 0.25*h2, 0.05 + 0.3*fract(h*7.0)), hi = vec2(0.92 - 0.25*fract(h2*5.0), 0.95 - 0.3*fract(h*13.0));
+      vec2 sz = vec2(3.3, 7.0);
+      float ins = smoothstep(-aa, aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y));
+      float on = step(h, 0.10 + 0.40*pw)*ins*step(abs(x), hw - 0.25);
+      float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y)));
+      alb = mix(alb, alb*(h2 > 0.45 ? 0.86 : 1.06)*(0.95 + 0.1*vnoise(P*1.7)), on*near);
+      crk = max(crk, edge*0.35*lod);
+    }
+    // grietas selladas con betún (gastado normal y bastante gastado): longitudinales en las juntas de carril y alguna transversal
+    float cw = smoothstep(1.4, 2.6, wr);
+    if (cw > 0.0 && lod > 0.0) {
+      float xl = floor((x + hw)/3.3 + 0.5)*3.3 - hw;
+      float dl = abs(x - xl + (vnoise(vec2(v*0.18, xl*3.0)) - 0.5)*0.9 + (vnoise(vec2(v*1.3, xl)) - 0.5)*0.12);
+      float on = step(0.52 - 0.12*pw, vnoise(vec2(v*0.035, xl*1.7 + 2.0)))*step(abs(xl), hw - 0.6);
+      float tv = v + (vnoise(vec2(x*0.5, floor(v/13.0)))-0.5)*1.4, dt = abs(fract(tv/13.0) - 0.5)*13.0;
+      float ont = step(0.6, hash21(vec2(floor(tv/13.0), 5.0)))*step(abs(x), hw - 0.3);
+      float sl = max(on*(1.0 - smoothstep(0.05, 0.05 + 1.5*aa, dl)), ont*(1.0 - smoothstep(0.04, 0.04 + 1.5*aa, dt)));
+      crk = max(crk, sl*cw*0.78*lod);
+    }
+    // muy gastado: piel de cocodrilo en las rodadas, árido suelto y baches
+    float aw = smoothstep(2.7, 4.3, wr);
+    if (aw > 0.0 && lod > 0.0) {
+      float zone = smoothstep(0.45, 0.70, vnoise(P*0.22 + 3.0)*0.7 + (1.0 - smoothstep(0.1, 0.45, abs(fract((x + hw)/3.3) - 0.5)))*0.45);
+      if (zone > 0.0) {
+        vec2 q = P*2.6 + vec2(vnoise(P*3.0), vnoise(P*3.0 + 9.0))*0.35, iq = floor(q), fq = fract(q); float d1 = 8.0, d2 = 8.0;
+        for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+          vec2 o = vec2(float(i), float(j)), r = o + vec2(hash21(iq + o), hash21(iq + o + 5.7))*0.8 + 0.1 - fq; float d = dot(r, r);
+          if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        float e = sqrt(d2) - sqrt(d1);
+        crk = max(crk, (1.0 - smoothstep(0.03, 0.03 + 3.0*aa*2.6, e))*zone*aw*0.85*(1.0 - smoothstep(0.02, 0.06, pxs)));
+        alb *= 1.0 + zone*aw*0.12;
+      }
+      // árido descarnado: puntos claros
+      float ag = step(0.86, hash21(floor(P*22.0)))*(1.0 - smoothstep(0.012, 0.03, pxs));
+      alb = mix(alb, vec3(0.42, 0.41, 0.39), ag*aw*0.55*near);
+      // baches (solo muy gastado): elipses irregulares, oscuras, con el borde roto y la normal hundida
+      float bw = smoothstep(3.5, 4.6, wr);
+      if (bw > 0.0) {
+        vec2 g = vec2((x + hw)/2.6, v/9.0), id = floor(g), c0 = (vec2(0.5) + (vec2(hash21(id + 1.3), hash21(id + 2.9)) - 0.5)*0.5)*vec2(2.6, 9.0);
+        vec2 dq = (fract(g)*vec2(2.6, 9.0) - c0)/vec2(1.0, 1.4); float rr = (0.25 + 0.4*hash21(id + 8.1))*(0.85 + 0.3*vnoise(dq*5.0 + id));
+        float ph = step(hash21(id + 6.6), 0.16*bw)*step(abs(x), hw - 0.5), dd = length(dq);
+        float pin = (1.0 - smoothstep(rr - 0.02, rr + 0.02, dd))*ph;
+        alb = mix(alb, vec3(0.13, 0.125, 0.12)*(0.7 + 0.6*vnoise(P*14.0)), pin*near);
+        float rim = (1.0 - smoothstep(0.0, 0.10, abs(dd - rr)))*ph;
+        alb = mix(alb, alb*1.25, rim*0.6*near);
+        N = normalize(N + vec3(dq.x, 0.0, dq.y)/max(dd, 0.01)*pin*0.5*near);
+      }
+    }
+    // pintura: nítida en lo nuevo, casi borrada en lo muy gastado
+    mk = mix(mk0, mk, smoothstep(0.5, 1.8, wr));
+    mk *= 1.0 - smoothstep(2.2, 4.9, wr)*smoothstep(0.35, 0.75, vnoise(P*0.7 + 1.0)*0.7 + vnoise(P*3.1)*0.3)*near;
+  }
+  if (car) mk *= 1.08 - 0.09*wr;                 // de lejos: la pintura se apaga con el desgaste
+  alb = mix(alb, vec3(0.86,0.86,0.82), clamp(mk, 0.0, 1.0)*fade*0.8);
+  alb *= 1.0 - crk*near;
   // DIA: de lejos no hay mapa de sombras: fracción de calzada al sol en un cañón de calle (edificios de ~20 m, aceras de 5 m),
   // para que las calles se lean como surcos en sombra entre manzanas soleadas. Solo en el llano y nunca de noche
   { float so = shOut()*(1.0 - uNight)*(1.0 - smoothstep(150.0, 300.0, vPos.y));
@@ -985,6 +1070,12 @@ await tick();
     const cx = dv.getUint8(p), cz = dv.getUint8(p + 1), nV = dv.getUint32(p + 4, true), nI = dv.getUint32(p + 8, true); p += 12;
     const pos = new Float32Array(nV * 3);
     for (let v = 0; v < nV; v++, p += 6) { pos[v * 3] = dv.getUint16(p, true) / 10; pos[v * 3 + 1] = dv.getInt16(p + 2, true) / 10; pos[v * 3 + 2] = dv.getUint16(p + 4, true) / 10; }
+    // S2: hunde los nudos bajo los que alguna calle quedó más baja que el relieve (FLAT.low, nudos de 20 m; en los trozos
+    // simplificados, el mínimo en todo el triángulo que cubre el vértice), y 5 cm más, para que el terreno no asome
+    if (FLAT) { const sc = S[cz * NCX + cx] || 1, ox = cx * CH, oz = cz * CH;
+      for (let v = 0; v < nV; v++) { const gi = Math.round((pos[v * 3] + ox) / CELL), gj = Math.round((pos[v * 3 + 2] + oz) / CELL); let lo = 0;
+        for (let b = gj - sc + 1; b <= gj + sc - 1; b++) for (let a = gi - sc + 1; a <= gi + sc - 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH) { const l = FLAT.low[b * GW + a]; if (l < lo) lo = l; }
+        if (lo < 0) pos[v * 3 + 1] += lo - 0.05; } }
     if ((nV * 6) % 4) p += 2;
     const idx = new Uint16Array(nI);
     for (let v = 0; v < nI; v++, p += 2) idx[v] = dv.getUint16(p, true);
@@ -1067,9 +1158,10 @@ const RCOL = [[66, 66, 72], [70, 70, 76], [78, 78, 84], [82, 82, 88], [86, 86, 9
               [168, 150, 118], [72, 72, 78], [96, 88, 82], [104, 112, 98], [52, 52, 58], [92, 92, 97], [150, 140, 124], [212, 203, 186], [100, 146, 82]];
 const ROFF = [0.30, 0.28, 0.24, 0.22, 0.20, 0.18, 0.16, 0.14, 0.12, 0.10, 0.26, 0.13, 0.25, 0.22, 0.17, 0.30, 0.12, 0.20];
 let roadTris = 0;
+const SUELOS = window.BCN_SUELOS || null; if (SUELOS) SUELOS._barris = META.barris;   // suelos.js: aún no hay BCN_BARRI
 const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fachadas, aceras, árboles y mobiliario
 {
-  const rd = await loadContainer('data/roads.png');
+  const rd = roadsC;   // cargado al principio (S2: calles planas)
   const dv = rd.view('data');
   const xs = [], zs = [];
   function sub(x0, z0, h0, x1, z1, h1, depth) {
@@ -1096,6 +1188,7 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
         sub(x, z, hp, nx, nz, hn, 0); xs.push(nx); zs.push(nz); x = nx; z = nz; hp = hn;
       }
       const m = xs.length, hw = w / 2, c = RCOL[cls] || RCOL[5], off = ROFF[cls] || 0.15, v0 = pos.length / 3;
+      const wr = SUELOS ? SUELOS.asfalto(cls, hw, xs[0], zs[0], xs[m - 1], zs[m - 1]) : 2;   // estado del asfalto (suelos.js): uv.w
       let along = 0;
       for (let k = 0; k < m; k++) {
         const ka = k > 0 ? k - 1 : k, kb = k < m - 1 ? k + 1 : k;
@@ -1106,7 +1199,7 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
         if (hw > 2.5) { const yc = heightAt(xs[k], zs[k]); yl = Math.max(yl, yc - hw * 0.08); yr = Math.max(yr, yc - hw * 0.08); if (hw > 9) { yl = Math.max(yl, yc); yr = Math.max(yr, yc); } }
         pos.push(lx, yl + off, lz, rx, yr + off, rz);
         col.push(c[0], c[1], c[2], cls, c[0], c[1], c[2], cls);
-        uvs.push(-1, along, hw, 0, 1, along, hw, 0);
+        uvs.push(-1, along, hw, wr, 1, along, hw, wr);
         if (k > 0) { const a = v0 + 2 * k - 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
       }
     }
