@@ -21,6 +21,8 @@ const cesP = fetch('data/aero_cesped.json').then(r => { if (!r.ok) throw new Err
   .catch(e => { console.warn('Aeropuerto: sin césped (data/aero_cesped.json)', e); return null; });
 const dataT = fetch('data/aero_lado_tierra.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(d => (DATA.t = d)).catch(e => { console.warn('Aeropuerto: sin datos del lado tierra (data/aero_lado_tierra.json)', e); return null; });
+const cargaP = fetch('data/aero_carga.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .catch(e => { console.warn('Aeropuerto: sin carga ni combustible (data/aero_carga.json)', e); return null; });
 
 // ------------------------------------------------------------------ utilidades
 const D2R = Math.PI / 180;
@@ -157,7 +159,7 @@ else {
   const { K } = LM;
   const WH = [236, 238, 240], GR = [178, 182, 188], GRO = [92, 96, 102], NEG = [34, 36, 40];
   // ---- un avión de librea genérica en B (morro en el origen, mirando a +Z), luego se coloca con xf
-  function avion(B, L, tipo, x, z, ang, yb, R) {
+  function avion(B, L, tipo, x, z, ang, yb, R, carga) {
     const A = AV[tipo], v0 = B.nv, Lg = A.L, Rf = A.R, yc = Rf + (tipo === 'w' ? 1.7 : 1.25);
     const libre = [[40, 84, 150], [120, 128, 138], [36, 110, 160], [70, 74, 84]][Math.floor(R(4))], VI = [30, 34, 40];
     // fuselaje: morro redondeado, tramo recto y cono de cola que sube
@@ -169,7 +171,8 @@ else {
     L.tube(B, L.F0, pts, rf, 10, WH, K.LISO, { caps: true });
     // ventanillas (franja oscura), puertas y cabina
     for (const s of [-1, 1]) {
-      L.caja(B, s * (Rf - 0.05), -Lg * 0.43, yc + Rf * 0.22, 0.16, Lg * 0.56, 0.32, 0, VI, K.LISO);
+      if (!carga) L.caja(B, s * (Rf - 0.05), -Lg * 0.43, yc + Rf * 0.22, 0.16, Lg * 0.56, 0.32, 0, VI, K.LISO);
+      else if (s < 0) L.caja(B, s * (Rf - 0.04), -Lg * 0.2, yc - Rf * 0.05, 0.12, 5.2, 3.2, 0, [200, 204, 210], K.METAL, { aux: L.aux.panel(1.0, 0.04, 0) });   // puerta de carga
       L.caja(B, s * (Rf - 0.08), -A.door + 0.4, yc - Rf * 0.25, 0.18, 0.9, 1.85, 0, [200, 204, 210], K.LISO);
       L.q4(B, [s * Rf * 0.42, yc + Rf * 0.5, -Lg * 0.045], [s * Rf * 0.88, yc + Rf * 0.12, -Lg * 0.07], [s * Rf * 0.92, yc + Rf * 0.18, -Lg * 0.1], [s * Rf * 0.5, yc + Rf * 0.66, -Lg * 0.085], VI, K.LISO);
     }
@@ -309,26 +312,46 @@ else {
       for (let u = 14; u < Ld - 10; u += 18) { q = at(u, 15.2); L.caja(B, q[0], q[1], 8.6, 0.3, 0.3, 4.9, 0, [140, 144, 150], K.METAL); }   // pilares de la marquesina
       // accesos: vestíbulos cortavientos de vidrio con marco oscuro, abajo (llegadas) y arriba (salidas)
       for (let u = 30; u < Ld - 20; u += 40) for (const y0 of [0.18, 8.85]) { q = at(u, 1.3);
-        L.caja(B, q[0], q[1], y0, 2.5, 6.2, 2.9, ang, [150, 176, 190], K.CORTINA, { aux: L.aux.cortina(2.9, 1.2, 0.04), techo: [70, 74, 80], kTecho: K.METAL });
+        // AE4: vidrio claro reflectante (antes se leía como caja negra), montantes de aluminio y puerta corredera de dos hojas
+        L.caja(B, q[0], q[1], y0, 2.5, 6.2, 2.9, ang, [214, 230, 238], K.CORTINA, { aux: L.aux.cortina(2.9, 1.24, 0.03), techo: [168, 172, 176], kTecho: K.METAL });
+        for (let e = -3.1; e <= 3.11; e += 1.24) { if (Math.abs(e) < 1) continue; q = at(u + e, 2.56); L.caja(B, q[0], q[1], y0, 0.07, 0.07, 2.9, ang, [176, 180, 186], K.METAL); }   // montantes del frente
+        for (const e of [-3.12, 3.12]) for (const o of [0.65, 1.3, 1.95]) { q = at(u + e, o); L.caja(B, q[0], q[1], y0, 0.07, 0.07, 2.9, ang, [176, 180, 186], K.METAL); }   // y de los costados
+        for (const yy of [0, 2.3]) { q = at(u, 2.56); L.caja(B, q[0], q[1], y0 + yy, 0.08, 6.2, 0.08, ang, [176, 180, 186], K.METAL); }
+        q = at(u, 1.3);
         q = at(u, 1.3); L.caja(B, q[0], q[1], y0 + 2.9, 2.7, 6.4, 0.3, ang, [62, 66, 72], K.METAL);                             // dintel
         for (const e of [-3.1, 3.1]) { q = at(u + e, 1.3); L.caja(B, q[0], q[1], y0, 2.5, 0.12, 2.9, ang, [62, 66, 72], K.METAL); }   // jambas
-        q = at(u, 2.56); L.caja(B, q[0], q[1], y0, 0.04, 1.8, 2.3, ang, [40, 46, 54], K.CORTINA, { aux: L.aux.cortina(2.3, 0.9, 0.02) }); }   // puerta corredera
+        for (const e of [-0.48, 0.48]) { q = at(u + e, 2.6); L.caja(B, q[0], q[1], y0, 0.05, 0.92, 2.3, ang, [196, 216, 226], K.CORTINA, { aux: L.aux.cortina(2.3, 0.92, 0.02) });   // hojas de la puerta
+          for (const f of [-0.44, 0.44]) { q = at(u + e + f, 2.62); L.caja(B, q[0], q[1], y0, 0.06, 0.06, 2.3, ang, [90, 94, 100], K.METAL); } }
+        q = at(u, 2.63); L.caja(B, q[0], q[1], y0 + 2.3, 0.1, 2.0, 0.22, ang, [90, 94, 100], K.METAL);              // carril de la puerta
+        q = at(u, 2.62); L.caja(B, q[0], q[1], y0 + 1.95, 0.02, 1.6, 0.1, ang, [60, 130, 70], K.EMISIVO, { aux: L.aux.emisivo(0.8, false) }); }   // franja verde «entrada»
     }
     for (const s of stands()) if (s.pas && inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.4);
   };
   // AE3: lo menudo del bordillo de la T1 (coches, taxis, gente, bancos, carros): malla aparte que se oculta a más de 700 m
   const PIEL = [[232, 196, 170], [196, 150, 116], [150, 104, 74], [96, 66, 48]], ROPA = [[40, 44, 52], [70, 74, 82], [150, 40, 40], [36, 60, 110], [210, 206, 196], [120, 96, 70], [60, 90, 70], [180, 150, 60], [24, 24, 28]];
-  function persona(B, L, x, z, y, a, R) { const v0 = B.nv, alto = 0.92 + R(0.12), ropa = ROPA[Math.floor(R(ROPA.length))];
-    L.caja(B, 0, 0, 0, 0.34, 0.22, 0.82 * alto, 0, R() < 0.5 ? [40, 44, 56] : ROPA[Math.floor(R(ROPA.length))], K.LISO);
-    L.caja(B, 0, 0, 0.82 * alto, 0.44, 0.26, 0.62 * alto, 0, ropa, K.LISO);
-    L.caja(B, 0, 0, 1.46 * alto, 0.2, 0.22, 0.24, 0, PIEL[Math.floor(R(4))], K.LISO);
-    if (R() < 0.45) L.caja(B, 0.38, -0.1, 0, 0.26, 0.42, 0.62, 0, [[30, 30, 34], [110, 30, 40], [40, 70, 120], [140, 140, 146]][Math.floor(R(4))], K.LISO);   // maleta
+  // AE4: silueta con piernas separadas, brazos, cabeza y pelo (7 cajas, ~70 triángulos), en vez de tres cajas
+  const PELO = [[30, 24, 20], [70, 50, 32], [120, 96, 60], [180, 176, 170], [20, 20, 22]];
+  function persona(B, L, x, z, y, a, R) { const v0 = B.nv, alto = 0.92 + R(0.12), ropa = ROPA[Math.floor(R(ROPA.length))],
+      pant = R() < 0.5 ? [40, 44, 56] : ROPA[Math.floor(R(ROPA.length))], piel = PIEL[Math.floor(R(4))], hp = 0.84 * alto, ht = 0.6 * alto;
+    for (const e of [-0.095, 0.095]) L.caja(B, 0, e, 0, 0.16, 0.14, hp, 0, pant, K.LISO);                 // piernas
+    L.caja(B, 0, 0, hp, 0.24, 0.4, ht, 0, ropa, K.LISO);                                                    // torso
+    for (const e of [-0.25, 0.25]) L.caja(B, 0, e, hp + 0.05 * alto, 0.12, 0.1, ht - 0.04, 0, ropa, K.LISO);   // brazos
+    L.caja(B, 0, 0, hp + ht, 0.1, 0.1, 0.06, 0, piel, K.LISO);                                               // cuello
+    L.caja(B, 0, 0, hp + ht + 0.06, 0.2, 0.18, 0.22, 0, piel, K.LISO);                                       // cabeza
+    L.caja(B, -0.02, 0, hp + ht + 0.2, 0.22, 0.2, 0.07, 0, PELO[Math.floor(R(PELO.length))], K.LISO);         // pelo
+    if (R() < 0.45) L.caja(B, 0.4, -0.12, 0, 0.26, 0.42, 0.62, 0, [[30, 30, 34], [110, 30, 40], [40, 70, 120], [140, 140, 146]][Math.floor(R(4))], K.LISO);   // maleta
     L.xf(B, v0, x, z, a, 1, 1, y); }
   // coche de perfil (capó, parabrisas, techo, maletero) con ruedas; taxi: negro con puertas amarillas y luz verde
   function turismo(B, L, x, z, y, a, col, taxi) { const v0 = B.nv, w = 1.76;
     L.extruir(B, [[-2.25, 0.32], [2.25, 0.32], [2.28, 0.64], [2.18, 0.8], [0.95, 0.92], [0.32, 1.38], [-1.25, 1.42], [-2.05, 1.0], [-2.27, 0.9]], -w / 2, w / 2, col, K.LISO);
     L.extruir(B, [[0.98, 0.9], [0.36, 1.33], [-1.22, 1.37], [-2.0, 0.99]], -w / 2 - 0.02, w / 2 + 0.02, [30, 34, 40], K.LISO);
     for (const sx of [-1.45, 1.45]) for (const sz of [-1, 1]) L.caja(B, sx, sz * (w / 2 - 0.12), 0, 0.64, 0.26, 0.64, 0, [20, 20, 22], K.LISO);
+    // AE4: pilares B (color de carrocería sobre las lunas), paragolpes oscuros, faros, pilotos y retrovisores
+    L.caja(B, -0.32, 0, 0.9, 0.14, w + 0.06, 0.44, 0, col, K.LISO);
+    for (const sx of [-2.27, 2.27]) L.caja(B, sx, 0, 0.36, 0.1, w - 0.04, 0.2, 0, [44, 46, 50], K.LISO);
+    for (const sz of [-0.62, 0.62]) { L.caja(B, 2.27, sz, 0.62, 0.06, 0.34, 0.12, 0, [236, 238, 230], K.EMISIVO, { aux: L.aux.emisivo(0.6, true) });
+      L.caja(B, -2.28, sz, 0.74, 0.06, 0.3, 0.12, 0, [180, 24, 24], K.EMISIVO, { aux: L.aux.emisivo(0.5, true) });
+      L.caja(B, 0.82, Math.sign(sz) * (w / 2 + 0.08), 0.92, 0.16, 0.14, 0.1, 0, col, K.LISO); }
     if (taxi) { for (const sz of [-1, 1]) L.caja(B, -0.2, sz * (w / 2 + 0.01), 0.36, 2.3, 0.02, 0.5, 0, [226, 180, 26], K.LISO);
       L.caja(B, -0.4, 0, 1.42, 0.18, 0.5, 0.14, 0, [70, 230, 110], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) }); }
     L.xf(B, v0, 0, 0, 90, 1, 1, 0); L.xf(B, v0, x, z, a, 1, 1, y); }
@@ -569,6 +592,14 @@ else {
       let cx = 0, cz = 0; for (const p of P) { cx += p[0]; cz += p[1]; } cx /= P.length; cz /= P.length;
       const A = Math.abs(areaS(P)), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
       if (e.y0 > 2.5) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
+      // AE4: el bloque blanco de ventanas al este del P1 es el parque de bomberos del sur (C. I. Sur, data/aero_carga.json)
+      if (DATA.c && DATA.c.bomberosSur && Math.hypot(cx + h.x - 3866, cz + h.z - 2826) < 70) { bomberos(B, L, P, y0, Math.max(top, y0 + 9), h); continue; }
+      if (A > 1500 && H >= 10) {                                                                    // AE4: oficinas de hormigón con huecos
+        L.prisma(B, P, y0, top, [214, 208, 196], K.VENTANAS, { aux: L.aux.ventanas(3.6, 2.4, 0.55, 0.42), techo: [150, 150, 148] });
+        L.prisma(B, offs(P, 0.25), y0, y0 + 1.0, [150, 148, 142], K.LISO, { sinTecho: true });
+        L.prisma(B, offs(P, 0.15), top, top + 1.1, [196, 192, 182], K.LISO, { sinTecho: true });
+        for (const o of [[-6, -4], [5, 3]]) L.caja(B, cx + o[0], cz + o[1], top, 5, 3, 2.0, 0, [150, 154, 158], K.METAL, { aux: L.aux.panel(0.6, 0.05, 0) });
+        continue; }
       if (A > 1500 && H < 18) {                                                                    // nave
         L.prisma(B, P, y0, top, [190, 194, 198], K.METAL, { aux: L.aux.panel(0.9, 0.06, 0), techo: [168, 172, 176], kTecho: K.METAL, auxTecho: L.aux.panel(4, 0.1, 0) });
         L.prisma(B, offs(P, 0.05), y0 + 1.2 + 3.2, y0 + 1.2 + 4.0, [96, 112, 124], K.CORTINA, { aux: L.aux.cortina(0.8, 1.6, 0.05), sinTecho: true });
@@ -580,6 +611,97 @@ else {
         L.prisma(B, P, y0, top, [214, 210, 200], K.LISO, { aux: L.aux.panel(1.4, 0.08, 0.25), techo: [150, 150, 148] });
         L.caja(B, cx, cz, top, 2, 2.5, 1.3, 0, [170, 172, 174], K.METAL);
       } }
+  };
+  // AE4: utilidades de planta: lado más largo (o el que mira a un punto) con su normal hacia fuera
+  function lados(P) { const sg = areaS(P) > 0 ? 1 : -1, out = [];
+    for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz);
+      if (l < 1) continue; out.push({ a, b, l, t: [dx / l, dz / l], n: [sg * dz / l, -sg * dx / l], m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }); }
+    // la normal hacia fuera: comprobar con un punto desplazado
+    for (const e of out) { if (inPoly(P, e.m[0] + e.n[0] * 0.5, e.m[1] + e.n[1] * 0.5)) { e.n = [-e.n[0], -e.n[1]]; } }
+    return out; }
+  const sobre = (e, u, o) => [e.a[0] + e.t[0] * u + e.n[0] * o, e.a[1] + e.t[1] * u + e.n[1] * o];
+  // camión articulado (tractora y semirremolque), morro hacia +Z local; se coloca con xf
+  function camion(B, L, x, z, ang, y, R) { const v0 = B.nv, cab = [[236, 236, 232], [40, 70, 130], [150, 30, 30], [60, 64, 70]][Math.floor(R(4))];
+    L.caja(B, 0, -7.4, 1.15, 2.5, 13.4, 2.75, 0, [222, 222, 218], K.METAL, { aux: L.aux.panel(1.2, 0.04, 0) });   // caja del semirremolque
+    L.caja(B, 0, -7.4, 0.35, 2.3, 13.0, 0.8, 0, [50, 52, 56], K.LISO);
+    L.caja(B, 0, 0.9, 0.5, 2.45, 2.3, 2.6, 0, cab, K.LISO); L.caja(B, 0, 2.06, 1.7, 2.3, 0.04, 1.0, 0, [30, 34, 40], K.LISO);   // tractora y parabrisas
+    for (const w of [1.6, -2.4, -11.5, -12.8, -14.1].slice(0, 5)) for (const sx of [-1, 1]) L.caja(B, sx * 1.1, w, 0, 0.4, 1.0, 1.0, 0, [24, 24, 26], K.LISO);
+    L.xf(B, v0, x, z, ang, 1, 1, y); }
+  function bomberos(B, L, P, y0, top, h) {                                                         // parque de bomberos de pista
+    L.prisma(B, P, y0, top, [226, 222, 214], K.VENTANAS, { aux: L.aux.ventanas(4.5, 3.2, 0.5, 0.3), techo: [160, 160, 158] });
+    const E = lados(P).sort((p, q) => q.l - p.l)[0], nb = Math.max(2, Math.floor((E.l - 6) / 7.5));
+    for (let k = 0; k < nb; k++) { const u = 3 + (k + 0.5) * (E.l - 6) / nb, q = sobre(E, u, 0.12), a = hdg(E.n[0], E.n[1]);
+      L.caja(B, q[0], q[1], y0 + 1, 0.2, 5.6, 4.6, a + 90, [196, 36, 30], K.METAL, { aux: L.aux.panel(0.55, 0.06, 0) });   // portones
+      if (k % 2 === 0) { const t = sobre(E, u, 9); const v0 = B.nv; L.caja(B, 0, 0, 0.3, 3.0, 10.5, 3.2, 0, [206, 30, 28], K.LISO); L.caja(B, 0, 3.6, 1.6, 2.6, 0.05, 1.2, 0, [30, 34, 40], K.LISO);
+        L.caja(B, 0, -1, 3.5, 2.2, 6, 0.3, 0, [220, 220, 220], K.METAL); L.xf(B, v0, t[0], t[1], a, 1, 1, h.y(t[0], t[1])); } }   // autobombas
+    const c = sobre(E, E.l - 3, -3); L.caja(B, c[0], c[1], y0, 4, 4, top - y0 + 7, hdg(E.t[0], E.t[1]), [210, 70, 56], K.LISO);   // torre de mangueras
+    }
+  const cargaBuild = dc => (B, h, L) => { const R = rng(4411), pc = [dc.plataformaCarga[0] - h.x, dc.plataformaCarga[1] - h.z];
+    for (const e of h.edif) { const P = e.plantas[0]; if (!P || P.length < 3) continue;
+      let cx = 0, cz = 0; for (const p of P) { cx += p[0]; cz += p[1]; } cx /= P.length; cz /= P.length;
+      const A = Math.abs(areaS(P)), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
+      if (A < 900 || H > 22) { L.prisma(B, P, y0, Math.max(top, y0 + 8), [112, 136, 152], K.CORTINA, { aux: L.aux.cortina(3.6, 1.5, 0.15), techo: [184, 186, 188] }); continue; }
+      const t2 = Math.max(top, y0 + 12);                                                          // nave de carga: chapa, zócalo, banda de luz
+      L.prisma(B, P, y0, t2, [196, 200, 204], K.METAL, { aux: L.aux.panel(0.9, 0.05, 0), techo: [170, 174, 178], kTecho: K.METAL, auxTecho: L.aux.panel(4, 0.1, 0) });
+      L.prisma(B, offs(P, 0.06), y0, y0 + 2.2, [150, 152, 150], K.LISO, { sinTecho: true });
+      L.prisma(B, offs(P, 0.06), t2 - 2.4, t2 - 1.6, [96, 112, 124], K.CORTINA, { aux: L.aux.cortina(0.8, 1.6, 0.05), sinTecho: true });
+      const E = lados(P).filter(q => q.l > 20).sort((p, q) => q.l - p.l).slice(0, 2);
+      for (const ed of E) { const aire = (pc[0] - ed.m[0]) * ed.n[0] + (pc[1] - ed.m[1]) * ed.n[1] > 0, a = hdg(ed.n[0], ed.n[1]);
+        if (aire) {                                                                                 // lado aire: portones grandes
+          const nd = Math.max(1, Math.floor(ed.l / 30));
+          for (let k = 0; k < nd; k++) { const q = sobre(ed, (k + 0.5) * ed.l / nd, 0.12); L.caja(B, q[0], q[1], y0 + 1, 0.25, 9, 6.5, a + 90, [120, 128, 138], K.METAL, { aux: L.aux.panel(0.5, 0.04, 0) }); }
+        } else {                                                                                    // lado tierra: muelles con abrigos y camiones
+          const q0 = sobre(ed, ed.l / 2, 2.0); L.caja(B, q0[0], q0[1], y0, 4, ed.l - 4, 2.2, a + 90, [168, 166, 160], K.LISO);   // andén de carga
+          const qc = sobre(ed, ed.l / 2, 2.5); L.caja(B, qc[0], qc[1], y0 + 6.2, 5, ed.l - 2, 0.35, a + 90, [210, 212, 214], K.METAL, { suelo: true });   // marquesina
+          for (let u = 4; u < ed.l - 3; u += 4.6) { const q = sobre(ed, u, 0.1);
+            L.caja(B, q[0], q[1], y0 + 2.2, 0.3, 3.4, 3.6, a + 90, [30, 30, 32], K.LISO);                // abrigo de muelle
+            const q2 = sobre(ed, u, 0.22); L.caja(B, q2[0], q2[1], y0 + 2.4, 0.1, 2.8, 3.0, a + 90, [96, 104, 112], K.METAL, { aux: L.aux.panel(0.3, 0.03, 0) });   // puerta seccional
+            if (R() < 0.45) { const t = sobre(ed, u, 14.8); camion(B, L, t[0], t[1], a, h.y(t[0], t[1]), R); } } } } }
+    // plataforma de carga: cargueros sin ventanillas, contenedores en sus carros y algún tractor
+    for (const [x, z, r] of dc.cargueros) { if (stands().some(s => Math.hypot(s.x - x, s.z - z) < 70)) continue;
+      const lx = x - h.x, lz = z - h.z, yb = h.y(lx, lz) + 0.45; avion(B, L, 'w', lx, lz, r, yb, R, true);
+      for (let k = 0; k < 7; k++) { const v0 = B.nv;
+        L.caja(B, 0, 0, 0.3, 1.6, 3.4, 0.3, 0, [70, 74, 80], K.METAL); L.caja(B, 0, 0, 0.6, 1.5, 3.1, 1.6, 0, [176, 180, 184], K.METAL, { aux: L.aux.panel(0.4, 0.05, 0) });
+        for (const sx of [-0.6, 0.6]) for (const sz of [-1.2, 1.2]) L.caja(B, sx, sz, 0, 0.18, 0.4, 0.4, 0, [24, 24, 26], K.LISO);
+        L.xf(B, v0, lx + 14 + k * 4.0 * 0, lz - 26 + k * 4.0, 0, 1, 1, h.y(lx + 14, lz - 26 + k * 4) + 0.2); } }
+  };
+  const fuelBuild = dc => (B, h, L) => {                                                            // parque de combustible
+    const F = dc.combustible.map(p => [p[0] - h.x, p[1] - h.z]), E = lados(F).sort((p, q) => q.l - p.l)[0], t = E.t, n = [-t[1], t[0]];
+    let cx = 0, cz = 0; for (const p of F) { cx += p[0]; cz += p[1]; } cx /= F.length; cz /= F.length;
+    let u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9; for (const p of F) { const u = (p[0] - cx) * t[0] + (p[1] - cz) * t[1], w = (p[0] - cx) * n[0] + (p[1] - cz) * n[1];
+      u0 = Math.min(u0, u); u1 = Math.max(u1, u); w0 = Math.min(w0, w); w1 = Math.max(w1, w); }
+    const uc = (u0 + u1) / 2, wc = (w0 + w1) / 2, Lu = (u1 - u0) * 0.8, Lw = (w1 - w0) * 0.62, at = (u, w) => [cx + t[0] * (uc + u) + n[0] * (wc + w), cz + t[1] * (uc + u) + n[1] * (wc + w)];
+    const a = hdg(t[0], t[1]), r = Math.min(10, Lw / 4 - 2.5), y = h.y(cx, cz);
+    for (const sgn of [-1, 1]) { const um = sgn * Lu / 4, uL = Lu / 2 - 8;                     // dos cubetos con muro de hormigón
+      for (const [u, w, lu, lw] of [[um, -Lw / 2, uL, 0.4], [um, Lw / 2, uL, 0.4], [um - uL / 2, 0, 0.4, Lw], [um + uL / 2, 0, 0.4, Lw]]) { const q = at(u, w);
+        L.caja(B, q[0], q[1], y - 0.5, lw, lu, 2.3, a, [182, 178, 168], K.LISO); }
+      const qf = at(um, 0); L.caja(B, qf[0], qf[1], y - 0.5, Lw - 0.4, uL - 0.4, 0.62, a, [150, 140, 120], K.LISO);   // suelo del cubeto
+      for (const du of [-uL / 4, uL / 4]) for (const w of [-Lw / 4, Lw / 4]) { const q = at(um + du, w);   // tanques de techo flotante
+        L.tambor(B, q[0], q[1], y, y + 15, r, { lados: 22, col: [230, 230, 226], k: K.METAL, aux: L.aux.panel(2.2, 0.03, 0) });
+        L.tambor(B, q[0], q[1], y + 14.4, y + 15.1, r + 0.35, { lados: 22, col: [190, 192, 194], k: K.METAL });
+        const e2 = [q[0] + n[0] * r * Math.sign(w), q[1] + n[1] * r * Math.sign(w)];
+        L.caja(B, e2[0], e2[1], y, 1.0, 1.0, 15.6, a, [200, 60, 40], K.METAL); } }   // escalera
+    for (const w of [-1.5, 0, 1.5]) { const q = at(0, w); L.caja(B, q[0], q[1], y + 2.2, 0.5, Lu - 10, 0.5, a, [150, 120, 60], K.METAL); }   // tuberías
+    for (let u = -Lu / 2 + 6; u < Lu / 2 - 5; u += 9) { const q = at(u, 0); L.caja(B, q[0], q[1], y, 4.6, 0.4, 2.2, a, [120, 122, 124], K.METAL); }
+    let q = at(0, Lw / 2 + 9); L.caja(B, q[0], q[1], y, 10, 18, 5, a, [214, 210, 200], K.LISO, { aux: L.aux.panel(1.4, 0.06, 0.2), techo: [150, 150, 148] });   // bombas y control
+    q = at(0, -Lw / 2 - 10); L.caja(B, q[0], q[1], y + 6, 14, 22, 0.5, a, [216, 216, 214], K.METAL, { suelo: true });   // cargadero de cisternas
+    for (const u of [-7, 0, 7]) { const p = at(u, -Lw / 2 - 10); L.caja(B, p[0], p[1], y, 0.4, 0.4, 6, 0, [140, 144, 150], K.METAL); }
+    const R = rng(91); for (const u of [-5, 5]) { const p = at(u, -Lw / 2 - 10); camion(B, L, p[0], p[1], a, y, R); }
+  };
+  const hangarBuild = (B, h, L) => {                                                               // hangares de mantenimiento con portones
+    const ctr = [5089 - h.x, 3984 - h.z];
+    for (const e of h.edif) { const P = e.plantas[0]; if (!P || P.length < 3) continue;
+      let cx = 0, cz = 0; for (const p of P) { cx += p[0]; cz += p[1]; } cx /= P.length; cz /= P.length;
+      const A = Math.abs(areaS(P)), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4);
+      if (A < 1500) { L.prisma(B, P, y0, top, [214, 210, 200], K.LISO, { aux: L.aux.panel(1.4, 0.08, 0.25), techo: [150, 150, 148] }); continue; }
+      const t2 = Math.max(top, y0 + 20);
+      L.prisma(B, P, y0, t2, [206, 208, 210], K.METAL, { aux: L.aux.panel(1.0, 0.05, 0), techo: [176, 178, 180], kTecho: K.METAL, auxTecho: L.aux.panel(5, 0.08, 0) });
+      L.prisma(B, offs(P, -3), t2, t2 + 2.6, [176, 178, 180], K.METAL, { aux: L.aux.panel(5, 0.08, 0) });   // cubierta de cerchas
+      const ed = lados(P).filter(q => q.l > 30).sort((p, q) => ((ctr[0] - q.m[0]) * q.n[0] + (ctr[1] - q.m[1]) * q.n[1]) / Math.hypot(ctr[0] - q.m[0], ctr[1] - q.m[1]) * q.l - ((ctr[0] - p.m[0]) * p.n[0] + (ctr[1] - p.m[1]) * p.n[1]) / Math.hypot(ctr[0] - p.m[0], ctr[1] - p.m[1]) * p.l)[0];
+      if (!ed) continue; const a = hdg(ed.n[0], ed.n[1]), dw = ed.l * 0.84, dh = (t2 - y0) * 0.78, q = sobre(ed, ed.l / 2, 0.2);
+      L.caja(B, q[0], q[1], y0 + 1, 0.4, dw, dh - 1, a + 90, [150, 158, 168], K.METAL, { aux: L.aux.panel(0.5, 0.05, 0) });   // portón de hojas
+      const q2 = sobre(ed, ed.l / 2, 0.6); L.caja(B, q2[0], q2[1], y0 + dh, 1.2, dw + 2, 1.6, a + 90, [96, 100, 108], K.METAL);   // dintel y carriles
+      for (let k = 1; k < 6; k++) { const q3 = sobre(ed, ed.l * 0.08 + k * dw / 6, 0.45); L.caja(B, q3[0], q3[1], y0 + 1, 0.2, 0.25, dh - 1, a + 90, [96, 100, 108], K.METAL); } }
   };
   // distancia (m) a la que se ocultan las mallas de lo pequeño
   const LODD = [[/^aero_t1_menudo$/, 700], [/^aero_veh_/, 800], [/^aero_parking_/, 850], [/^aero_p1_coches$/, 850], [/^aero_focos_/, 900]];
@@ -615,6 +737,20 @@ else {
           ed.push(b); }
         LM.add({ id: 'aero_edificis', nombre: 'Edificis de serveis', etiqueta: false, nivel: 'B', x: 4250, z: 2850, alto: 20, noche: 'ventanas', edificios: ed, build: edifBuild });
         AERO_LOD.edificis = ed.length;
+        // AE4: terminal de carga, parque de combustible y hangares (data/aero_carga.json): volúmenes del registro de cada recinto
+        const dc = await cargaP; DATA.c = dc;
+        if (dc) { for (const b of ed) used.add(b);
+          const zona = (P, ex) => { const out = []; let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
+            for (const p of P) { x0 = Math.min(x0, p[0]); z0 = Math.min(z0, p[1]); x1 = Math.max(x1, p[0]); z1 = Math.max(z1, p[1]); }
+            for (let b = 0; b < BR.n; b++) { const k = b * 4, cx = (bb[k] + bb[k + 2]) / 2, cz = (bb[k + 1] + bb[k + 3]) / 2;
+              if (cx < x0 || cx > x1 || cz < z0 || cz > z1 || used.has(b) || !inPoly(P, cx, cz) || (ex && inPoly(ex, cx, cz))) continue;
+              used.add(b); out.push(b); } return out; };
+          const ctr = P => { let x = 0, z = 0; for (const p of P) { x += p[0]; z += p[1]; } return [x / P.length, z / P.length]; };
+          const zf = zona(dc.combustible), zc = zona(dc.carga, dc.combustible), zh = zona(dc.mantenimiento), cc = ctr(dc.carga), cf2 = ctr(dc.combustible), ch = ctr(dc.mantenimiento);
+          LM.add({ id: 'aero_carga', nombre: 'Terminal de càrrega', nivel: 'B', x: cc[0], z: cc[1], alto: 16, noche: 'ventanas', edificios: zc, build: cargaBuild(dc) });
+          LM.add({ id: 'aero_combustible', nombre: 'Parc de combustible', nivel: 'B', x: cf2[0], z: cf2[1], alto: 16, noche: 'focos', edificios: zf, build: fuelBuild(dc) });
+          LM.add({ id: 'aero_hangars', nombre: 'Hangars de manteniment', nivel: 'B', x: ch[0], z: ch[1], alto: 24, noche: 'focos', edificios: zh, build: hangarBuild });
+          AERO_LOD.zonas = { carga: zc.length, combustible: zf.length, hangars: zh.length }; window.BCN_AERO_ZONAS = AERO_LOD.zonas; }
       } catch (e) { console.warn('Aeropuerto: no se han podido asignar los volúmenes sustituidos', e); }
       else for (const f of LM.fichas) if (/^aero_/.test(f.id)) f.build = undefined;
       if (d) { porCeldas(stands().filter(s => s.pas).map(s => [s.x, s.z]), 'aero_veh_', vehBuild);
@@ -641,7 +777,7 @@ varying vec3 vPos; varying vec2 vST; varying vec4 vC; varying vec4 vRw;
 void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vST = uv; vC = color; vRw = rw; gl_Position = viewProjection*wp; }`;
 const FS = `
 varying vec2 vST; varying vec4 vC; varying vec4 vRw;
-uniform sampler2D tDes;
+uniform sampler2D tDes; uniform sampler2D tCes;
 float cov(float x, float a, float b, float w){ return clamp((min(x + 0.5*w, b) - max(x - 0.5*w, a))/w, 0.0, 1.0); }
 float bars(float x, float x0, float pitch, float on, float n, float w){
   float u = (x - x0)/pitch, k = floor(u);
@@ -688,6 +824,10 @@ void main(){
     // más corta y clara, y matojos secos en el campo abierto). vST = (s, t) en metros en el marco de las pistas 07/25;
     // vRw.x = distancia al borde de la pista más cercana, vRw.y = a la calle de rodaje más cercana
     float s = vST.x, t = vST.y, dR = vRw.x, dT = vRw.y;
+    // AE4: borde real del césped: distancia con signo al borde (data/aero_cesped.json, celdas de 2 m, 128 + 16·m), con
+    // fundido tramado de 2,5 m; así el borde sigue el pavimento sin escalones aunque la malla sean celdas de 6 m
+    float sdC = (texture2D(tCes, vec2((s + 2000.0)/4000.0, (t + 1300.0)/2600.0)).r*255.0 - 128.0)/16.0;
+    if (dith() > smoothstep(-0.3, 2.2, sdC)) discard;
     float n1 = vnoise(vPos.xz*0.006), n2 = vnoise(vPos.xz*0.031 + 3.1), n3 = vnoise(vPos.xz*0.17 + 9.7), n4 = vnoise(vPos.xz*1.3);
     vec3 g0 = mix(vec3(0.330, 0.410, 0.190), vec3(0.430, 0.470, 0.235), n1);
     g0 = mix(g0, vec3(0.540, 0.520, 0.330), smoothstep(0.5, 0.85, n2)*0.6);                  // manchas secas
@@ -971,9 +1111,9 @@ window.BCN_AERO = { async init(ctx) {
       if (Math.abs(x - a[0]) > 400 && Math.abs(x - b[0]) > 400) continue; m = Math.min(m, segDist([x, z], a, b) - 11.5); } return Math.max(m, 0); };
     const W = (uu, vv) => [O[0] + U[0] * uu + Vv[0] * vv, O[1] + U[1] * uu + Vv[1] * vv];
     // fuera del césped: el lado tierra de la T1 (bordillos, viaducto) y los aparcamientos (el verde del mapa bajo el viaducto)
-    const cf = curbFrame(d), lots = ((DATA.t && DATA.t.aparcamientos) || []).map(l => l.p).concat(DATA.t && DATA.t.p1 ? [DATA.t.p1] : []);
+    const cf = curbFrame(d);
     const excl = (x, z) => { const o = x * cf.n[0] + z * cf.n[1] - cf.f, u = x * cf.t[0] + z * cf.t[1]; if (o > -10 && o < 60 && u > cf.u0 - 60 && u < cf.u1 + 60) return true;
-      for (const P of lots) if (inPoly(P, x, z)) return true; return false; };
+      return false; };   // AE4: los aparcamientos ya van recortados en el campo de distancia
     const filas = [];
     for (const row of ces.filas) { const j = row[0], vm = ces.v0 + (j + 0.5) * C, out = [j];
       for (let r = 1; r + 1 < row.length; r += 2) { let a = -1;
@@ -994,8 +1134,13 @@ window.BCN_AERO = { async init(ctx) {
     g.font = 'bold 118px sans-serif'; g.save(); g.translate(i * 128 + 64, let_ ? 64 : 128); g.scale(0.55, 1.0); g.fillText(num, 0, 0); g.restore();
     if (let_) { g.save(); g.translate(i * 128 + 64, 192); g.scale(0.62, 1.0); g.fillText(let_, 0, 0); g.restore(); } });
   tex.update(true); tex.wrapU = tex.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; tex.anisotropicFilteringLevel = 8;
-  const mat = mkMat('aero_marcas', VS, FS, ['position', 'uv', 'color', 'rw'], [], ['tDes'], { cull: false });
-  mat.setTexture('tDes', tex); mat.zOffset = -1; mat.zOffsetUnits = -4;
+  const mat = mkMat('aero_marcas', VS, FS, ['position', 'uv', 'color', 'rw'], [], ['tDes', 'tCes'], { cull: false });
+  mat.setTexture('tDes', tex);
+  // AE4: campo de distancia del borde del césped (PNG en el JSON; fila 0 = v0), con filtro bilineal y sin mipmaps
+  let tCes = null;
+  if (ces && ces.sdf) { tCes = new BABYLON.Texture(ces.sdf.png, scene, true, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE); tCes.wrapU = tCes.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; }
+  else tCes = BABYLON.RawTexture.CreateLuminanceTexture(new Uint8Array([255]), 1, 1, scene, false, false);
+  mat.setTexture('tCes', tCes); mat.zOffset = -1; mat.zOffsetUnits = -4;
   const mesh = new BABYLON.Mesh('aeroMarcas', scene);
   mesh.setVerticesData('position', new Float32Array(P), false);
   mesh.setVerticesData('uv', new Float32Array(UV), false, 2);
