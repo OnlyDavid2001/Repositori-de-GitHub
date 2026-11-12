@@ -539,7 +539,9 @@ void main(){
         if (Math.abs(ex * c + ez * sn) < 0.62 && Math.abs(-ex * sn + ez * c) < 0.62) F[(j * NT + i) * 4 + 3] = pa; }
     }
     const FK = new Uint8Array(NT * NT * 4);
-    for (let q = 0; q < NT * NT; q++) { if (nW[q] < 0) continue; const k = kindOf(nW[q]); FK[q * 4] = k[0] * 40; FK[q * 4 + 1] = Math.round(k[1] * 255); FK[q * 4 + 3] = 255; }
+    for (let q = 0; q < NT * NT; q++) { if (nW[q] < 0) continue; const k = kindOf(nW[q]);
+      if (k[0] === 6 && F[q * 4 + 2] > 127) F[q * 4 + 2] = 127;   // G1S1: pista o senda de monte: tierra y grava, no losa de granito
+      FK[q * 4] = k[0] * 40; FK[q * 4 + 1] = Math.round(k[1] * 255); FK[q * 4 + 3] = 255; }
     const slot = freeSlots.pop(); if (slot === undefined) return;
     const sx = (slot % SLOTS) * NT, sy = Math.floor(slot / SLOTS) * NT;
     yield;

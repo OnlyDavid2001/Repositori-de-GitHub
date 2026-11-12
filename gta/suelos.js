@@ -111,7 +111,7 @@ function acera(cls, hw, x0, z0, x1, z1) {
 // hasta 3 m más allá del bordillo y se apaga a 10 m. Autopistas y rondas (clases 0, 1, 10) no entran en la máscara.
 // app.js la usa en heightAt (FLAT.h: así la siguen calzada, aceras, bordillos, árboles y mobiliario) y hunde la malla del
 // terreno lo justo para que no asome por encima de las calles (low: mínimo de la corrección alrededor de cada nudo de 20 m).
-const RAS = new Set([2, 3, 4, 5, 6, 7, 8, 11]);
+const RAS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 15]);   // G1S1: también las pistas de tierra (9) y las clases 12 y 15
 function segsOf(polys) {
   const seg = [];
   for (const P of polys) { if (!RAS.has(P.cls)) continue;
@@ -121,7 +121,7 @@ function segsOf(polys) {
 // S3: el cálculo por teselas (calc) va aparte para poder repartirlo entre varios workers (allanarPar): part = [w, nW] hace solo
 // las teselas con clave % nW == w. low se combina con el mínimo y las teselas no se solapan: el resultado es idéntico
 function calc(h0, seg, WX, WZ, GW, GH, CELL, part) {
-  const CS = 5, TN = 52, TS = CS * TN, NTX = Math.ceil(WX / TS), NTZ = Math.ceil(WZ / TS), RB = 10, Q = 0.01, MG = 6, N = TN + 2 * MG, BR = 2;
+  const CS = 5, TN = 52, TS = CS * TN, NTX = Math.ceil(WX / TS), NTZ = Math.ceil(WZ / TS), RB = 11, FW = 5, Q = 0.01, MG = 6, N = TN + 2 * MG, BR = 2;
   const NS = seg.length / 5, bucket = new Map(), RM = MG * CS;
   for (let s = 0; s < NS; s++) { const o = s * 5, r = seg[o + 4] + RB + RM;
     const i0 = Math.max(0, Math.floor((Math.min(seg[o], seg[o + 2]) - r) / TS)), i1 = Math.min(NTX - 1, Math.floor((Math.max(seg[o], seg[o + 2]) + r) / TS));
@@ -130,7 +130,7 @@ function calc(h0, seg, WX, WZ, GW, GH, CELL, part) {
   const tiles = new Array(NTX * NTZ).fill(null), low = new Float32Array(GW * GH);
   let nodes = 0, moved = 0, sum = 0, mx = 0;
   const WG = new Float32Array(N * N), HH = new Float32Array(N * N), A = new Float32Array(N * N), B = new Float32Array(N * N);
-  const TA = new Float32Array(N), TB = new Float32Array(N), OA = new Float32Array(N), OB = new Float32Array(N), RA = new Float32Array(N * N), RB2 = new Float32Array(N * N), FL = new Uint8Array(N * N);
+  const TA = new Float32Array(N), TB = new Float32Array(N), OA = new Float32Array(N), OB = new Float32Array(N), RA = new Float32Array(N * N), RB2 = new Float32Array(N * N), FL = new Uint8Array(N * N), LS = new Float32Array(N * N), LW = new Float32Array(N * N);
   // S3: caja de radio BR dos veces (≈ gaussiana de σ ≈ 10 m), A y B a la vez, filas vacías saltadas y, por columnas, solo las
   // columnas de la tesela (las del margen no se usan). Mismo resultado que antes, ~3× más rápido
   const pass2 = (n) => { for (let pass = 0; pass < 2; pass++) { let a = 0, b = 0; for (let k = 0; k < BR && k < n; k++) { a += TA[k]; b += TB[k]; }
@@ -141,13 +141,13 @@ function calc(h0, seg, WX, WZ, GW, GH, CELL, part) {
       if (!nz) { RA.fill(0, o, o + N); RB2.fill(0, o, o + N); continue; }
       for (let k = 0; k < N; k++) { TA[k] = A[o + k]; TB[k] = B[o + k]; } pass2(N);
       for (let k = 0; k < N; k++) { RA[o + k] = TA[k]; RB2[o + k] = TB[k]; } }
-    for (let c = MG; c < MG + TN; c++) { let nz = false; for (let k = 0; k < N; k++) { const v = RB2[k * N + c]; TA[k] = RA[k * N + c]; TB[k] = v; if (v) nz = true; }
+    for (let c = 0; c < N; c++) { let nz = false; for (let k = 0; k < N; k++) { const v = RB2[k * N + c]; TA[k] = RA[k * N + c]; TB[k] = v; if (v) nz = true; }
       if (!nz) { for (let k = 0; k < N; k++) { A[k * N + c] = 0; B[k * N + c] = 0; } continue; }
       pass2(N); for (let k = 0; k < N; k++) { A[k * N + c] = TA[k]; B[k * N + c] = TB[k]; } } };
   for (const [key, list] of bucket) { if (part && key % part[1] !== part[0]) continue;
     const ti = key % NTX, tj = (key / NTX) | 0, bx = ti * TS - RM, bz = tj * TS - RM; let T = null;
     WG.fill(0); A.fill(0); B.fill(0); FL.fill(0);
-    for (const s of list) { const o = s * 5, ax = seg[o], az = seg[o + 1], dx = seg[o + 2] - ax, dz = seg[o + 3] - az, hw = seg[o + 4], r = hw + RB;
+    const each = visit => { for (const s of list) { const o = s * 5, ax = seg[o], az = seg[o + 1], dx = seg[o + 2] - ax, dz = seg[o + 3] - az, hw = seg[o + 4], r = hw + RB;
       const l2 = dx * dx + dz * dz, ln = Math.sqrt(l2), ux = dx / ln, uz = dz / ln;
       const i0 = Math.max(0, Math.ceil((Math.min(ax, ax + dx) - r - bx) / CS)), i1 = Math.min(N - 1, Math.floor((Math.max(ax, ax + dx) + r - bx) / CS));
       const j0 = Math.max(0, Math.ceil((Math.min(az, az + dz) - r - bz) / CS)), j1 = Math.min(N - 1, Math.floor((Math.max(az, az + dz) + r - bz) / CS));
@@ -161,14 +161,29 @@ function calc(h0, seg, WX, WZ, GW, GH, CELL, part) {
         for (let i = ia; i <= ib; i++) {
           const px = bx + i * CS - ax; let t = (px * ux + pz * uz) / ln; t = t < 0 ? 0 : t > 1 ? 1 : t;
           const qx = px - dx * t, qz = pz - dz * t, e = Math.sqrt(qx * qx + qz * qz) - hw; if (e >= RB) continue;
-          const q = j * N + i, w = e <= 3 ? 1 : 1 - (e - 3) / (RB - 3), ww = w * w * (3 - 2 * w);
-          if (ww > WG[q]) WG[q] = ww;
-          if (e <= 1 && !B[q]) { B[q] = 1; FL[q] = 1; const H = h0(bx + i * CS, z); HH[q] = H; A[q] = H; }
-        } } }
+          visit(j * N + i, e, hw, ax + dx * t, az + dz * t, z, i);
+        } } } };
+    // banda a nivel: hasta FW m del borde de la calzada (aceras) y talud hasta RB; en las pistas y sendas (semiancho < 2,5 m),
+    // 1,5 m de arcén a nivel y talud hasta 7 m, para no abrir una explanada en el monte
+    each((q, e, hw, cx, cz, z, i) => { const fw = hw < 2.5 ? 1.5 : FW, rb = hw < 2.5 ? 7 : RB; if (e >= rb) return;
+      const w = e <= fw ? 1 : 1 - (e - fw) / (rb - fw), ww = w * w * (3 - 2 * w);
+      if (ww > WG[q]) WG[q] = ww;
+      if (e <= 1 && !B[q]) { B[q] = 1; FL[q] = 1; const H = h0(bx + i * CS, z); HH[q] = H; A[q] = H; } });
     box2();
+    // G1S1 · sección transversal a nivel: cada nudo toma la cota filtrada del punto del EJE más cercano de cada tramo que lo
+    // alcanza (no la suya), con más peso cuanto más dentro de la calzada. Así calzada, aceras y arcenes quedan horizontales de
+    // lado a lado (sin inclinación lateral), la pendiente a lo largo se conserva suavizada y en los cruces las calles se funden
+    LS.fill(0); LW.fill(0);
+    const sf = (fx, fz) => { fx = fx < 0 ? 0 : fx > N - 1.001 ? N - 1.001 : fx; fz = fz < 0 ? 0 : fz > N - 1.001 ? N - 1.001 : fz;
+      const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, k = j * N + i;
+      const a = (A[k] * (1 - u) + A[k + 1] * u) * (1 - v) + (A[k + N] * (1 - u) + A[k + N + 1] * u) * v;
+      const b = (B[k] * (1 - u) + B[k + 1] * u) * (1 - v) + (B[k + N] * (1 - u) + B[k + N + 1] * u) * v;
+      return b > 1e-3 ? a / b : NaN; };
+    each((q, e, hw, cx, cz) => { if (e >= (hw < 2.5 ? 7 : RB)) return; const L = sf((cx - bx) / CS, (cz - bz) / CS); if (L !== L) return;
+      const f = (RB - e) / (RB + hw), wk = f * f + 1e-4; LS[q] += wk * L; LW[q] += wk; });
     for (let j = MG; j < MG + TN; j++) for (let i = MG; i < MG + TN; i++) { const q = j * N + i, w = WG[q]; if (!w || B[q] < 1e-3) continue;
       const x = bx + i * CS, z = bz + j * CS, H = FL[q] ? HH[q] : h0(x, z), cf = Math.min(1, B[q] / 6);
-      const dl = (A[q] / B[q] - H) * w * cf * cf * (3 - 2 * cf), v = Math.max(-32000, Math.min(32000, Math.round(dl / Q)));
+      const dl = ((LW[q] > 0 ? LS[q] / LW[q] : A[q] / B[q]) - H) * w * cf * cf * (3 - 2 * cf), v = Math.max(-32000, Math.min(32000, Math.round(dl / Q)));
       nodes++; if (!v) continue;
       if (!T) T = new Int16Array(TN * TN); T[(j - MG) * TN + (i - MG)] = v; moved++; sum += Math.abs(dl); mx = Math.max(mx, Math.abs(dl));
       if (v < 0) { const gi0 = Math.ceil((x - CELL) / CELL), gj0 = Math.ceil((z - CELL) / CELL);
@@ -200,7 +215,7 @@ function finish(R, h0, WX, WZ) {
 // La clave (preClave) resume las entradas: si cambian las calles o el relieve, no coincide y se recalcula como siempre
 const MAGIC = 0x33414c46;   // 'FLA3': teselas guardadas a 2 cm (la mitad del valor; ~3,3 MB comprimido en vez de 4,9)
 function preClave(polys, h0, WX, WZ) { let h = 2166136261 >>> 0; const mix = v => { h = Math.imul(h ^ (v | 0), 16777619) >>> 0; };
-  mix(polys.length); mix(WX); mix(WZ); mix(7);   // 7: versión del cálculo (súbela si cambias calc)
+  mix(polys.length); mix(WX); mix(WZ); mix(8);   // 8: versión del cálculo (G1S1: sección a nivel y pistas) (súbela si cambias calc)
   for (let k = 0; k < polys.length; k += 97) { const p = polys[k]; mix(p.cls); mix(p.hw * 10); mix(p.xs.length); mix(p.xs[0] * 10); mix(p.zs[0] * 10); }
   for (let j = 1; j < 16; j++) for (let i = 1; i < 16; i++) mix(Math.round(h0(WX * i / 16, WZ * j / 16) * 100));
   return h; }
