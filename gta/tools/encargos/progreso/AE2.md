@@ -16,7 +16,7 @@
   - `aero_focos`: torres de focos de plataforma (30 m, corona con 4 proyectores; cada ~150 m en el borde de cada
     plataforma, a más de 150 m de las pistas) y báculos de aparcamiento (13 m).
 - **Bordillo de la T1 arreglado**: el código de AE1 buscaba la fachada por aristas con la normal al revés y no ponía
-  ningún bordillo útil; ahora va en la recta real de la fachada de llegadas (rumbo 156°, ~264 m): acera de llegadas,
+  ningún bordillo útil; ahora va en la recta real de la fachada de llegadas (rumbo 156°, ~264 m): acera de llegadas, coches y taxis parados,
   carril, isleta, viaducto de salidas con su acera, mampara, marquesina y pilares. Verificado a pie (vista t1_bordillo).
 - **Luces de noche** (módulo BCN_AERO, dos mallas, dos llamadas): ~8 000 puntos de luz que miran a la cámara (radio en m,
   mínimo 1,3 px; pierden intensidad al crecer) y 340 charcos de luz:
@@ -27,7 +27,7 @@
   de aparcamiento con charcos (en HDR multiplican el suelo, como las farolas), luminarias del bordillo y del viaducto
   de la T1, balizas rojas de las torres. Todo se apaga de día (`uDusk`).
 ## Coste
-- Hitos: 155 991 → 341 342 triángulos (+185 k: coches ~150 k sin sombra, P1 ~20 k, focos ~8 k, estación ~1 k).
+- Hitos: 155 991 → 341 742 triángulos (+185 k: coches ~150 k sin sombra, P1 ~20 k, focos ~8 k, estación ~1 k).
 - Luces: 16,7 k triángulos en una malla de mezcla + charcos 0,7 k. Nada por fotograma (dos uniformes al enlazar).
 - Carga: igual (las capturas varían entre 47 y 67 s por la carga de la máquina).
 ## Flojo / pendiente
@@ -40,3 +40,10 @@
 - `data/aero_lado_tierra.json`; `masts()` en aeropuerto.js (torres de focos, compartidas por hitos y luces).
 - Material `aero_luces` (mezcla, puntos de luz con radio mínimo en píxeles, uniformes `uEye`, `uPx`) y
   `aero_charcos` (charcos que multiplican en HDR). `BCN.mods.aero.stats()` → luces, charcos, trisLuces, focos.
+## Notas del revisor (AERO.md) y su estado
+1. Bordillo a pie: hecho el de llegadas (vista `t1_bordillo`, día y noche); el de salidas (sobre el viaducto) no tiene
+   vista propia; no hay gente.
+2. Bloques de vivienda delante de la T1: sustituidos por el P1. Quedan volúmenes genéricos al este de la T1 (no revisados).
+3. Procesador de la T1 más alto y T2 legible desde el aire: NO hecho.
+4. Césped del campo de vuelo con franjas de siega: NO hecho.
+5. Pistas y rodajes legibles de noche por sus balizas: hecho.

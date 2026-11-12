@@ -237,6 +237,11 @@ else {
       q = at(m, 24); L.caja(B, q[0], q[1], 8.6, 0.4, Ld - 20, 1.1, ang, [200, 200, 196], K.LISO);                                // pretil
       for (let u = 16; u < Ld - 10; u += 24) for (const o of [9, 20]) { q = at(u, o); L.tambor(B, q[0], q[1], -1, 7.3, 0.7, { lados: 8, col: [186, 184, 178], k: K.LISO }); }
       for (let u = 14; u < Ld - 10; u += 18) { q = at(u, 15.2); L.caja(B, q[0], q[1], 8.6, 0.25, 0.25, 4.9, 0, [140, 144, 150], K.METAL); }   // pilares de la marquesina
+      { const R = rng(918);                                                    // AE2: coches y taxis (negro y amarillo) parados en el bordillo de llegadas
+        for (let u = 12; u < Ld - 12; u += 8.5) { if (R() < 0.35) continue; q = at(u + R(-1, 1), 12.5);
+          if (R() < 0.5) { const v0 = B.nv; L.caja(B, 0, 0, 0.22, 1.8, 4.6, 0.72, 0, [22, 22, 24], K.LISO);
+            L.caja(B, 0, 0.1, 0.36, 1.84, 2.2, 0.5, 0, [222, 178, 28], K.LISO); L.caja(B, 0, -0.15, 0.94, 1.58, 2.4, 0.5, 0, [30, 32, 36], K.LISO);
+            L.xf(B, v0, q[0], q[1], ang, 1, 1, 0); } else coche(B, L, q[0], q[1], ang, 0, R); } }
       for (let u = 30; u < Ld - 20; u += 40) { q = at(u, 4.2); L.caja(B, q[0], q[1], 0, 1.6, 4, 3.4, ang, [220, 220, 216], K.METAL); } // accesos (cortavientos)
     }
     for (const s of stands()) if (s.pas && inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.4);
