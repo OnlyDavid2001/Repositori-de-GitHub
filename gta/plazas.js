@@ -97,21 +97,21 @@ const C = {
   iron: [40, 42, 45], green: [34, 62, 46], wood: [128, 82, 46], stone: [176, 168, 152], bronze: [92, 74, 52], water: [52, 86, 96], white: [222, 222, 216],
 };
 // especies de árbol de plaza: [copa, tronco, alto de tronco, radio de copa, forma (0 redonda, 1 parasol de pino, 2 columna)]
-const TREES = { platan: [[92, 118, 58], [112, 106, 88], 4.0, 3.1, 0], lledoner: [[78, 104, 62], [110, 108, 104], 2.8, 3.0, 0], pi: [[58, 84, 50], [104, 76, 56], 6.0, 4.2, 1],
+const TREES = { platan: [[92, 118, 58], [96, 92, 78], 4.0, 3.1, 0], lledoner: [[78, 104, 62], [110, 108, 104], 2.8, 3.0, 0], pi: [[58, 84, 50], [104, 76, 56], 6.0, 4.2, 1],
   tipuana: [[96, 122, 60], [104, 92, 78], 3.2, 4.0, 0], xiprer: [[46, 72, 46], [92, 74, 58], 1.0, 1.2, 2], taronger: [[60, 96, 48], [96, 86, 70], 1.6, 1.6, 0] };
 
 // ------------------------------------------------------------------ piezas propias (marco F: u, y, d; coordenadas de la malla)
-function tree(B, F, y, sp, h) {
-  const [lc, tc, th, cr, form] = sp, s = 0.85 + 0.3 * h;
+function tree(B, F, y, sp, h, hard) {
+  const [lc, tc, th0, cr0, form] = sp, s = 0.85 + 0.3 * h, th = hard ? th0 * 1.2 : th0, cr = hard ? cr0 * 0.72 : cr0;   // en alcorque: más fuste y menos copa
   rev(B, F, 0, 0, [[0.2 * s, y - 0.1], [0.15 * s, y + th * 0.6 * s], [0.12 * s, y + th * s]], 6, tc, K.FURN, { aux: A0.MATTE, cap: 1 });
   if (form === 2) { sphere(B, F, 0, y + th + 3.4 * s, 0, cr * s, 7, 6, lc, K.PLZ_LEAF, null, 3.2); return; }
   if (form === 1) { // pino piñonero: tronco largo algo inclinado y copa en parasol
     sphere(B, F, 0.4, y + th * s + 0.8, 0, cr * s, 9, 5, lc, K.PLZ_LEAF, null, 0.38);
     sphere(B, F, -1.2 * s, y + th * s + 0.4, 1.0 * s, cr * 0.6 * s, 7, 4, mixc(lc, [40, 60, 36], 0.3), K.PLZ_LEAF, null, 0.45); return; }
   const top = y + th * s;
-  sphere(B, F, 0, top + cr * 0.55 * s, 0, cr * s, 8, 6, lc, K.PLZ_LEAF, null, 0.82);
-  sphere(B, F, cr * 0.45 * s, top + cr * 0.35 * s, cr * 0.25 * s, cr * 0.62 * s, 7, 5, shade(lc, 1.08), K.PLZ_LEAF, null, 0.8);
-  sphere(B, F, -cr * 0.4 * s, top + cr * 0.4 * s, -cr * 0.3 * s, cr * 0.6 * s, 7, 5, shade(lc, 0.92), K.PLZ_LEAF, null, 0.8);
+  sphere(B, F, 0, top + cr * 0.55 * s, 0, cr * s, 7, 5, lc, K.PLZ_LEAF, null, 0.82);
+  sphere(B, F, cr * 0.45 * s, top + cr * 0.35 * s, cr * 0.25 * s, cr * 0.62 * s, 6, 4, shade(lc, 1.08), K.PLZ_LEAF, null, 0.8);
+  sphere(B, F, -cr * 0.4 * s, top + cr * 0.4 * s, -cr * 0.3 * s, cr * 0.6 * s, 6, 4, shade(lc, 0.92), K.PLZ_LEAF, null, 0.8);
 }
 // banco moderno de piedra (bloque de granito, a veces con asiento de listones)
 function stoneBench(B, F, y, len, wood) {
@@ -360,7 +360,8 @@ window.BCN_PLAZAS = { async init(ctx) {
     const cu = Math.cos(o.ang), su = Math.sin(o.ang); let hu = 0, hv = 0;
     for (const [x, z] of o.r) { const dx = x - o.c[0], dz = z - o.c[1]; hu = Math.max(hu, Math.abs(dx * cu + dz * su)); hv = Math.max(hv, Math.abs(-dx * su + dz * cu)); }
     o.hu = hu; o.hv = hv; o.cu = cu; o.su = su; o.st = null; return o; });
-  const R_SIMPLE = [600, 680], R_HI = [90, 115];
+  const R_SIMPLE = [600, 680], R_HI = [90, 115], R_OBJ = 300;
+  let trisOn = 0;
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;
   const bbDist = (o, P) => Math.hypot(Math.max(o.bb[0] - P.x, 0, P.x - o.bb[2]), Math.max(o.bb[1] - P.z, 0, P.z - o.bb[3]));
 
@@ -439,7 +440,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     const fr = (x, z, a) => ({ x: x - ox, z: z - oz, tx: Math.cos(a), tz: Math.sin(a), nx: -Math.sin(a), nz: Math.cos(a) });
     for (const [t, x, z, a, ex, u, v] of items) {
       const y = yAt(x, z), F = fr(x, z, a), h = hash2(Math.round(x * 5), Math.round(z * 5));
-      if (t === 'tree') { tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h); if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
+      if (t === 'tree') { tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc); if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
       else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); }
       else if (t === 'bench') { if (FUR) { FUR.bench(Wo, AS, F, y); FUR.bench(Wh, AH, F, y); } else stoneBench(Wo, F, y, 1.8, true); }
       else if (t === 'bin') { if (FUR) { FUR.bin(Wo, AS, F, y, [40, 96, 70]); FUR.bin(Wh, AH, F, y, [40, 96, 70]); } }
@@ -489,10 +490,11 @@ window.BCN_PLAZAS = { async init(ctx) {
     const pc = { hi: null };
     const mp = reg(mkMesh(r.Wp, matP, 'plp' + o.i), { cast: false, layer: 'walk' });
     const mo = reg(mkMesh(r.Wo, matB, 'plo' + o.i), { cast: true, layer: 'furn', cell: pc });
-    o.st = { pc, mp, mo, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
+    if (mo) mo.setEnabled(false);
+    o.st = { pc, mp, mo, on: false, triO: r.Wo.ni / 3, triP: r.Wp.ni / 3, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
     tris += o.st.tris; built++;
   }
-  function drop(o) { const s = o.st; if (!s) return; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
+  function drop(o) { const s = o.st; if (!s) return; if (s.on) trisOn -= s.triO; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
   function dropHi(o) { const s = o.st; if (s && s.mh) { s.mh.dispose(); s.mh = null; s.pc.hi = null; trisHi -= s.triH; } }
   function step(P, budget) {
     const t0 = performance.now();
@@ -500,6 +502,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     for (const o of PL) { const s = o.st; if (!s) continue; const d = bbDist(o, P);
       if (d < R_HI[0] && !s.mh && s.Wh.nv) { s.mh = reg(mkMesh(s.Wh, matB, 'plh' + o.i), { cast: true, layer: 'furn' }); s.pc.hi = s.mh; trisHi += s.triH; }
       else if (d > R_HI[1] && s.mh) dropHi(o);
+      if (s.mo) { const on = d < R_OBJ; if (on !== s.on) { s.mo.setEnabled(on); s.on = on; trisOn += (on ? 1 : -1) * s.triO; } }
       if (d > R_SIMPLE[1]) drop(o); }
     while (performance.now() - t0 < budget) {
       if (!job) { const cand = PL.filter(o => !o.st && !o.fail && bbDist(o, P) < R_SIMPLE[0]); if (!cand.length) return; cand.sort((a, b) => bbDist(a, P) - bbDist(b, P)); job = { o: cand[0], g: runJob(cand[0]) }; }
@@ -512,7 +515,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     update(P) { lastP = P; step(P, 4); },
     busy() { if (job) return true; if (!lastP) return false; return PL.some(o => !o.st && !o.fail && bbDist(o, lastP) < R_SIMPLE[0]); },
     flush(P) { lastP = P; for (let k = 0; k < 400 && this.busy(); k++) step(P, 1e9); step(P, 0); },
-    stats: () => ({ plazas: PL.length, singulares: PL.filter(o => o.sg).length, hechas: built, tris: Math.round(tris), trisHi: Math.round(trisHi) }),
+    stats: () => ({ plazas: PL.length, singulares: PL.filter(o => o.sg).length, hechas: built, tris: Math.round(tris), trisVisibles: Math.round(trisOn + PL.reduce((a, o) => a + (o.st ? o.st.triP : 0), 0)), trisHi: Math.round(trisHi) }),
     list: () => PL.map(o => ({ n: o.n, t: o.t, a: o.a, c: o.c, sg: !!o.sg, st: o.st && { tris: o.st.tris, items: o.st.items, lamps: o.st.lamps } })),
   };
 } };
