@@ -53,3 +53,15 @@ una estación (un tirón al acercarse a cada una: pendiente de trocear).
 - Colocación: no pisa calzada (≥ 1,85 m del bordillo: fuera de alcorques, farolas, papeleras), edificios (margen 0,8 m),
   cruces (11 m), bancos, buzones, parquímetros (misma retícula `along` que `furniture.js`), otras bocas ni paradas. Las
   paradas van centradas entre dos árboles (retícula de 10,5 m de `streets.js`) y sin farola/papelera/banco encima.
+
+## Estado al cerrar esta ejecución (sincero)
+- Capturas hechas sin errores de consola: bocas de cerca de día de L1/L3, L3/L5 (marquesina), L2/L5, L4, L9N, L11, ascensor,
+  escalera desde arriba y marquesina de bus. Hoja parcial: scratchpad `n3/t/hoja_T.jpg`.
+- FALTAN (la tanda de capturas seguía en marcha al cerrar; una tanda anterior se cayó por falta de memoria en la máquina):
+  vista desde el dron del cruce con boca y parada, las cuatro de noche y las ANTES (`?notransp=1`). Repetir con
+  `n3/t/g2.json`, `g3.json` y `vantes.json` (DRAW=900, SIZE=640x360, de 2 en 2 vistas).
+- Flojo: el ascensor se ve como una caja opaca blanca (el vidrio no deja ver la cabina; hay que aclararla y afinarla);
+  en L4 Bogatell la boca sigue junto a una terraza de bar (segunda pasada a 1 m de la fachada); en Sagrada Família cae dentro
+  del parque; la colocación de una estación tarda ≈ 55 ms de golpe (tirón); 1 583 postes de bus quizá sigan siendo muchos.
+- Coste medido (vista de Catalunya): nivel 1 = 4 bocas + 1 marquesina → 1 888 triángulos sobre la acera + 1 008 del
+  interior (≈ 250 por boca) + 24 de vidrio; nivel 2 = 9 bocas + 8 marquesinas + 3 postes → 2 498.
