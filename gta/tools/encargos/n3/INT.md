@@ -5,13 +5,15 @@ principal `gta-barcelona-fachadas-detalle`). Identidad y pie de los commits: los
 revisor» de abajo: cada etapa tiene las suyas, y son obligatorias para esa etapa.
 
 ## INT (etapa INT3)
-Fusiona, por este orden: `wt-n3-edif`, `wt-n3-suelos`, `wt-n3-arb`, `wt-n3-transp`, `wt-n3-puerto`, `wt-n3-aero` y, la
-última, `wt-n3-plazas` (`git merge --no-edit`). **Antes de fusionar `wt-n3-plazas` espera a que exista el fichero
-`/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/p3.done`**: la etapa P3 está rehaciendo a
-petición del usuario la Plaça de Catalunya (y retocando Lesseps y Glòries) en esa rama. Mientras tanto haz todo lo demás
-(las otras seis fusiones, sus conflictos y sus pruebas). Si al acabarlo el fichero no existe, espera en tandas de 9
-minutos como máximo, hasta 75 minutos; si sigue sin existir, fusiona la rama como esté y dilo. Después de fusionar
-plazas, lee `gta/tools/encargos/progreso/P3.md` y haz las pruebas de las plazas. Cada rama trae también lo que hicieron sus repasos: E3 y E4 (edificios), S2 y S3
+Fusiona, por este orden: `wt-n3-edif`, `wt-n3-arb`, `wt-n3-transp`, `wt-n3-puerto`, `wt-n3-aero`, después
+`wt-n3-suelos` y, la última, `wt-n3-plazas` (`git merge --no-edit`). Dos ramas aún tienen una etapa trabajando cuando
+empiezas: **antes de fusionar `wt-n3-suelos` espera a que exista
+`/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/s3.done`** (lo crea el coordinador cuando la
+etapa S3 termina y ha subido) y **antes de fusionar `wt-n3-plazas` espera a que exista `…/scratchpad/n3/p3.done`** (la
+etapa P3 está rehaciendo a petición del usuario la Plaça de Catalunya y retocando Lesseps y Glòries). Mientras tanto haz
+todo lo demás (las otras fusiones, sus conflictos y sus pruebas). Espera en tandas de 9 minutos como máximo, hasta 90
+minutos por fichero; si sigue sin existir, fusiona la rama como esté y dilo. Después de fusionar cada una, lee su progreso
+(`gta/tools/encargos/progreso/S3.md` y `P3.md`) y haz sus pruebas. Cada rama trae también lo que hicieron sus repasos: E3 y E4 (edificios), S2 y S3
 (suelos), ARB4 (árboles), T2 (transporte), PU3 (puerto), AE3 y AE4 (aeropuerto). Resuelve los conflictos conservando
 la intención de las dos partes (los informes de las etapas están en tu encargo). Haz las peticiones pequeñas de los
 carriles que sean de fusión. Prueba: `node --check`; arnés a las 10:30 y a las 23:00 en Plaça de Catalunya, una calle
