@@ -13,10 +13,12 @@
 (function () {
 'use strict';
 const LM = window.BCN_LM;
-const DATA = { d: null };
+const DATA = { d: null }, AERO_LOD = { n: 0 };
 const dataP = fetch('data/aero_lado_aire.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(d => (DATA.d = d)).catch(e => { console.warn('Aeropuerto: sin datos (data/aero_lado_aire.json)', e); return null; });
 // AE2: lado tierra (aparcamientos, P1, estación). Sin él, el lado aire sigue igual
+const cesP = fetch('data/aero_cesped.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .catch(e => { console.warn('Aeropuerto: sin césped (data/aero_cesped.json)', e); return null; });
 const dataT = fetch('data/aero_lado_tierra.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(d => (DATA.t = d)).catch(e => { console.warn('Aeropuerto: sin datos del lado tierra (data/aero_lado_tierra.json)', e); return null; });
 
@@ -113,6 +115,41 @@ function masts() {
   }
   return (MASTS = out);
 }
+
+// ------------------------------------------------------------------ AE3: geometría compartida de la T1 y la T2
+// Recta de la fachada de llegadas de la T1 (rumbo 156°, mira al oeste-suroeste): n hacia fuera, t a lo largo; f = n·p de la
+// fachada, [u0, u1] = extensión en t. La usan el bordillo (hito), lo menudo, los rótulos y las luces.
+function curbFrame(d) {
+  const n = [-0.9135, -0.4067], t = [0.4067, -0.9135], fr = d.t1.filter(p => p[1] > 2990 && p[1] < 3360 && p[0] > 3940 && p[0] < 4200);
+  let f = -1e9; for (const p of fr) f = Math.max(f, p[0] * n[0] + p[1] * n[1]);
+  let u0 = 1e9, u1 = -1e9; for (const p of fr) if (p[0] * n[0] + p[1] * n[1] > f - 15) { const u = p[0] * t[0] + p[1] * t[1]; u0 = Math.min(u0, u); u1 = Math.max(u1, u); }
+  const a = [n[0] * f + t[0] * u0, n[1] * f + t[1] * u0];
+  return { n, t, f, u0, u1, Ld: u1 - u0, a, P: (u, o) => [a[0] + t[0] * u + n[0] * o, a[1] + t[1] * u + n[1] * o] };
+}
+// recorte de un polígono (cualquiera) por semiplanos convexos: cada plano [nx, nz, c] deja n·p >= c (Sutherland-Hodgman)
+function clipHP(P, planes) {
+  let o = P.slice();
+  for (const [nx, nz, c] of planes) { const r = []; if (!o.length) break;
+    for (let i = 0; i < o.length; i++) { const a = o[i], b = o[(i + 1) % o.length], da = a[0] * nx + a[1] * nz - c, db = b[0] * nx + b[1] * nz - c;
+      if (da >= 0) r.push(a);
+      if ((da >= 0) !== (db >= 0)) { const k = da / (da - db); r.push([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k]); } }
+    o = r; }
+  return o;
+}
+// desplazamiento de un polígono: d > 0 crece, d < 0 encoge (inglete limitado a 3 d)
+function offs(P, d) { const sg = areaS(P) > 0 ? 1 : -1, n = P.length, o = [];
+  const nr = (a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1; return [dz / l * sg, -dx / l * sg]; };
+  for (let i = 0; i < n; i++) { const p = P[i], n1 = nr(P[(i - 1 + n) % n], p), n2 = nr(p, P[(i + 1) % n]);
+    let mx = n1[0] + n2[0], mz = n1[1] + n2[1]; const k = 1 + n1[0] * n2[0] + n1[1] * n2[1]; mx /= Math.max(k, 0.2); mz /= Math.max(k, 0.2);
+    const l = Math.hypot(mx, mz); if (l > 3) { mx *= 3 / l; mz *= 3 / l; } o.push([p[0] + mx * d, p[1] + mz * d]); }
+  return o;
+}
+// procesador central de la T1: la franja de 170 m detrás de la fachada de llegadas, entre los arranques de los diques norte y sur
+function procT1(d) { const c = curbFrame(d);
+  return clipHP(d.t1, [[-c.n[0], -c.n[1], -c.f - 5], [c.n[0], c.n[1], c.f - 170], [c.t[0], c.t[1], c.u0 - 6], [-c.t[0], -c.t[1], -c.u1 - 6]]); }
+// edificios de la T2 (A, B y C): la franja de 75 m detrás de la fachada de lado tierra (mira al nor-noroeste)
+function procT2(d) { const n = [-0.4067, 0.9135]; let f = -1e9; for (const p of d.t2) f = Math.max(f, p[0] * n[0] + p[1] * n[1]);
+  return clipHP(d.t2, [[n[0], n[1], f - 75]]); }
 
 // ------------------------------------------------------------------ hitos
 if (!LM) { console.warn('Aeropuerto: sin BCN_LM (landmarks.js no se ha cargado)'); }
@@ -215,37 +252,117 @@ else {
     // cubierta ondulada: crestas cada 36 m a lo largo del eje de la terminal (rumbo 66°)
     const ola = (x, z) => 17.2 + 1.9 * Math.cos((x * 0.9135 + z * 0.4067) / 36 * 2 * Math.PI);
     L.prisma(B, loc, -1.5, 15.2, VI, K.CORTINA, { aux: L.aux.cortina(4.6, 2.4, 0.18), sinTecho: true });
-    L.prisma(B, L.mover(loc, 0, 0, 0, 1), 15.2, ola, CU, K.METAL, { aux: L.aux.panel(3, 0.06, 0), techo: CU, kTecho: K.METAL });
+    // AE3: diques (más bajos) con cubierta plana gris y alero; el procesador central sube a 27,5 m con su cubierta ondulada
+    // (crestas cada 42 m a lo largo de la terminal) y un lucernario corrido de vidrio en cada cresta
+    L.prisma(B, L.mover(loc, 0, 0, 0, 1), 15.2, 16.3, [178, 182, 188], K.METAL, { aux: L.aux.panel(3, 0.06, 0), techo: [170, 174, 178], kTecho: K.METAL, auxTecho: L.aux.panel(6, 0.12, 0) });
+    const PR = procT1(d).map(p => [p[0] - h.x, p[1] - h.z]);
+    if (PR.length >= 3 && Math.abs(areaS(PR)) > 1000) {
+      const UU = [0.9135, 0.4067], VV = [-0.4067, 0.9135], ola2 = (x, z) => 29.6 + 2.3 * Math.cos((x * UU[0] + z * UU[1]) / 42 * 2 * Math.PI);
+      L.prisma(B, PR, 16.3, 27.6, [112, 140, 158], K.CORTINA, { aux: L.aux.cortina(4.6, 2.0, 0.1), sinTecho: true });
+      L.prisma(B, offs(PR, 3), 27.6, ola2, [240, 240, 238], K.METAL, { aux: L.aux.panel(2.5, 0.04, 0), techo: [240, 240, 238], kTecho: K.METAL, auxTecho: L.aux.panel(1.8, 0.03, 0) });
+      // lucernarios en las crestas: tramos continuos dentro de la planta (con 6 m de margen)
+      let s0 = 1e9, s1 = -1e9, w0 = 1e9, w1 = -1e9; for (const p of PR) { const s = p[0] * UU[0] + p[1] * UU[1], w = p[0] * VV[0] + p[1] * VV[1]; s0 = Math.min(s0, s); s1 = Math.max(s1, s); w0 = Math.min(w0, w); w1 = Math.max(w1, w); }
+      const PRi = offs(PR, -8);
+      for (let k = Math.ceil(s0 / 42); k * 42 <= s1; k++) { const s = k * 42; let a = null;
+        for (let w = w0; w <= w1 + 4; w += 4) { const x = UU[0] * s + VV[0] * w, z = UU[1] * s + VV[1] * w, ins = w <= w1 && inPoly(PRi, x, z);
+          if (ins && a === null) a = w;
+          if (!ins && a !== null) { if (w - a > 10) { const m = (a + w - 4) / 2; L.caja(B, UU[0] * s + VV[0] * m, UU[1] * s + VV[1] * m, 31.4, 6, w - 4 - a, 1.2, hdg(VV[0], VV[1]), [150, 186, 208], K.CORTINA, { aux: L.aux.cortina(1.2, 1.5, 0.05), techo: [128, 168, 196], kTecho: K.CORTINA }); } a = null; } } }
+    }
     // lado tierra: en los frentes largos que miran al oeste-suroeste (rumbo 246°), el bordillo de llegadas a pie de calle
     // (acera elevada y marquesina) y, encima, el viaducto de salidas con su bordillo cubierto a la altura del vestíbulo
     const sg = areaS(loc) > 0 ? 1 : -1, HOR = [196, 194, 188], AS = [70, 70, 74];
-    // AE2: la fachada de llegadas es una recta (rumbo 156°) que mira al oeste-suroeste, hacia el P1: un solo bordillo a lo largo
-    // de toda ella (antes se buscaba por aristas con la normal al revés y no salía ninguno)
-    { const n = [-0.9135, -0.4067], t = [0.4067, -0.9135], fr = d.t1.filter(p => p[1] > 2990 && p[1] < 3360 && p[0] > 3940 && p[0] < 4200);
-      let f = -1e9; for (const p of fr) f = Math.max(f, p[0] * n[0] + p[1] * n[1]);
-      let u0 = 1e9, u1 = -1e9; for (const p of fr) if (p[0] * n[0] + p[1] * n[1] > f - 15) { const u = p[0] * t[0] + p[1] * t[1]; u0 = Math.min(u0, u); u1 = Math.max(u1, u); }
-      const a = [n[0] * f + t[0] * u0 - h.x, n[1] * f + t[1] * u0 - h.z], Ld = u1 - u0;
-      const ang = hdg(t[0], t[1]), P = (u, o) => [a[0] + t[0] * u + n[0] * o, a[1] + t[1] * u + n[1] * o], m = Ld / 2, c = P(m, 0);
-      const at = (u, o) => P(u, o);
-      let q = at(m, 5); L.caja(B, q[0], q[1], -1, 10, Ld - 10, 1.18, ang, HOR, K.LISO, { aux: L.aux.liso(1.2) });             // acera de llegadas
-      q = at(m, 12.5); L.caja(B, q[0], q[1], -1, 5, Ld - 10, 1.0, ang, AS, K.LISO);                                            // carril de parada
-      q = at(m, 18); L.caja(B, q[0], q[1], -1, 0.5, Ld - 30, 1.35, ang, HOR, K.LISO);                                           // isleta
-      q = at(m, 13); L.caja(B, q[0], q[1], 7.2, 22, Ld - 20, 1.4, ang, [176, 174, 168], K.LISO);                                // tablero del viaducto
-      q = at(m, 6); L.caja(B, q[0], q[1], 8.6, 8, Ld - 20, 0.25, ang, HOR, K.LISO);                                            // acera de salidas
-      q = at(m, 2.5); L.caja(B, q[0], q[1], 8.85, 0.12, Ld - 26, 3.0, ang, [120, 140, 156], K.CORTINA, { aux: L.aux.cortina(3, 1.5, 0.05) });   // mampara
-      q = at(m, 9); L.caja(B, q[0], q[1], 13.4, 15, Ld - 20, 0.6, ang, [230, 232, 232], K.METAL, { aux: L.aux.panel(2.4, 0.05, 0) });          // marquesina
-      q = at(m, 24); L.caja(B, q[0], q[1], 8.6, 0.4, Ld - 20, 1.1, ang, [200, 200, 196], K.LISO);                                // pretil
-      for (let u = 16; u < Ld - 10; u += 24) for (const o of [9, 20]) { q = at(u, o); L.tambor(B, q[0], q[1], -1, 7.3, 0.7, { lados: 8, col: [186, 184, 178], k: K.LISO }); }
-      for (let u = 14; u < Ld - 10; u += 18) { q = at(u, 15.2); L.caja(B, q[0], q[1], 8.6, 0.25, 0.25, 4.9, 0, [140, 144, 150], K.METAL); }   // pilares de la marquesina
-      { const R = rng(918);                                                    // AE2: coches y taxis (negro y amarillo) parados en el bordillo de llegadas
-        for (let u = 12; u < Ld - 12; u += 8.5) { if (R() < 0.35) continue; q = at(u + R(-1, 1), 12.5);
-          if (R() < 0.5) { const v0 = B.nv; L.caja(B, 0, 0, 0.22, 1.8, 4.6, 0.72, 0, [22, 22, 24], K.LISO);
-            L.caja(B, 0, 0.1, 0.36, 1.84, 2.2, 0.5, 0, [222, 178, 28], K.LISO); L.caja(B, 0, -0.15, 0.94, 1.58, 2.4, 0.5, 0, [30, 32, 36], K.LISO);
-            L.xf(B, v0, q[0], q[1], ang, 1, 1, 0); } else coche(B, L, q[0], q[1], ang, 0, R); } }
-      for (let u = 30; u < Ld - 20; u += 40) { q = at(u, 4.2); L.caja(B, q[0], q[1], 0, 1.6, 4, 3.4, ang, [220, 220, 216], K.METAL); } // accesos (cortavientos)
+    // AE2/AE3: la fachada de llegadas es una recta (rumbo 156°) que mira al oeste-suroeste, hacia el P1. A pie de calle, el
+    // bordillo de llegadas (acera gris con bordillo de granito, carril de parada, carril de taxis, pasos de cebra, isleta con
+    // los pilares del viaducto); encima, el viaducto de salidas (tablero con vigas, acera, carriles y marquesina). Lo menudo
+    // (coches, taxis, gente, bancos, carros) va en la ficha aparte «aero_t1_menudo», que se oculta de lejos.
+    { const cf = curbFrame(d), Ld = cf.Ld, ang = hdg(cf.t[0], cf.t[1]), at = (u, o) => { const p = cf.P(u, o); return [p[0] - h.x, p[1] - h.z]; }, m = Ld / 2;
+      const ACE = [132, 130, 126], GRA = [160, 158, 152], HOR = [146, 144, 138], HORo = [118, 116, 112], AS = [62, 62, 66], BL = [226, 226, 222], AMA = [220, 172, 34];
+      const strip = (u0, u1, o0, o1, y0, al, col, k, ox) => { const q = at((u0 + u1) / 2, (o0 + o1) / 2); L.caja(B, q[0], q[1], y0, o1 - o0, u1 - u0, al, ang, col, k, ox); };
+      // ---- llegadas (a pie de calle)
+      strip(5, Ld - 5, 0, 9.8, -1, 1.18, ACE, K.LISO, { aux: L.aux.liso(0.6) });                       // acera (baldosa gris)
+      strip(5, Ld - 5, 9.8, 10.1, -1, 1.2, GRA, K.LISO);                                                // bordillo de granito
+      strip(5, Ld - 5, 10.1, 17.6, -1, 1.0, AS, K.LISO);                                                // carril de parada y de paso
+      strip(15, Ld - 15, 17.6, 21.2, -1, 1.15, ACE, K.LISO, { aux: L.aux.liso(0.6) });                  // isleta (con los pilares)
+      strip(15, Ld - 15, 17.6, 17.8, -1, 1.17, GRA, K.LISO); strip(15, Ld - 15, 21.0, 21.2, -1, 1.17, GRA, K.LISO);
+      const uTx = Ld * 0.62;                                                                            // carril de taxis: el último tercio
+      for (let u = 8; u < Ld - 8; u += 6) if (u < uTx - 4) strip(u, u + 3, 13.9, 14.05, 0, 0.02, BL, K.LISO);   // línea discontinua
+      strip(uTx, Ld - 8, 13.9, 14.05, 0, 0.02, AMA, K.LISO); strip(uTx, Ld - 8, 10.25, 10.4, 0, 0.02, AMA, K.LISO);  // líneas amarillas del carril de taxis
+      for (let u = uTx; u < Ld - 10; u += 3) strip(u, u + 1.6, 10.4, 13.9, 0, 0.015, [204, 166, 40], K.LISO);  // cebreado amarillo (zona reservada)
+      const zebra = (uc, o0, o1, y) => { for (let k = -3; k < 3; k++) strip(uc + k * 1.0, uc + k * 1.0 + 0.5, o0, o1, y, 0.02, BL, K.LISO); };
+      for (const r of [0.2, 0.45, 0.8]) zebra(Ld * r, 10.1, 17.6, 0);
+      // pilares del viaducto (hormigón con junta de encofrado y capitel) y tablero con vigas; cara inferior propia
+      for (let u = 16; u < Ld - 10; u += 24) for (const o of [9, 19.4]) { const q = at(u, o);
+        L.caja(B, q[0], q[1], -1, 1.1, 1.1, 7.0, ang, HOR, K.LISO, { aux: L.aux.panel(1.25, 0.12, 0) });
+        L.caja(B, q[0], q[1], 5.9, 1.7, 1.7, 0.4, ang, HORo, K.LISO); }
+      for (let u = 16; u < Ld - 10; u += 24) strip(u - 0.45, u + 0.45, 2, 24, 6.3, 0.9, HORo, K.LISO, { suelo: true });   // vigas transversales
+      for (const o of [9, 19.4]) strip(10, Ld - 10, o - 0.6, o + 0.6, 6.3, 0.9, HORo, K.LISO, { suelo: true });            // vigas longitudinales
+      strip(10, Ld - 10, 2, 24, 7.2, 1.4, HOR, K.LISO, { aux: L.aux.panel(3, 0.05, 0), suelo: true });                       // tablero
+      strip(10, Ld - 10, 23.6, 24.0, 8.6, 1.1, [176, 174, 168], K.LISO, { suelo: true });                                   // pretil
+      // ---- salidas (sobre el viaducto)
+      strip(10, Ld - 10, 2, 9.8, 8.6, 0.25, ACE, K.LISO, { aux: L.aux.liso(0.6) });                    // acera de salidas
+      strip(10, Ld - 10, 9.8, 10.1, 8.6, 0.27, GRA, K.LISO);
+      strip(10, Ld - 10, 10.1, 23.6, 8.6, 0.02, AS, K.LISO);                                            // calzada del viaducto
+      for (let u = 14; u < Ld - 14; u += 6) for (const o of [14, 18.8]) strip(u, u + 3, o - 0.07, o + 0.07, 8.62, 0.02, BL, K.LISO);
+      for (const r of [0.3, 0.7]) zebra(Ld * r, 10.1, 13.9, 8.62);
+      let q = at(m, 2.5); L.caja(B, q[0], q[1], 8.85, 0.12, Ld - 26, 3.0, ang, [120, 140, 156], K.CORTINA, { aux: L.aux.cortina(3, 1.5, 0.05) });   // mampara
+      q = at(m, 9); L.caja(B, q[0], q[1], 13.4, 15, Ld - 20, 0.6, ang, [230, 232, 232], K.METAL, { aux: L.aux.panel(2.4, 0.05, 0), suelo: true });   // marquesina
+      for (let u = 14; u < Ld - 10; u += 18) { q = at(u, 15.2); L.caja(B, q[0], q[1], 8.6, 0.3, 0.3, 4.9, 0, [140, 144, 150], K.METAL); }   // pilares de la marquesina
+      // accesos: vestíbulos cortavientos de vidrio con marco oscuro, abajo (llegadas) y arriba (salidas)
+      for (let u = 30; u < Ld - 20; u += 40) for (const y0 of [0.18, 8.85]) { q = at(u, 1.3);
+        L.caja(B, q[0], q[1], y0, 2.5, 6.2, 2.9, ang, [150, 176, 190], K.CORTINA, { aux: L.aux.cortina(2.9, 1.2, 0.04), techo: [70, 74, 80], kTecho: K.METAL });
+        q = at(u, 1.3); L.caja(B, q[0], q[1], y0 + 2.9, 2.7, 6.4, 0.3, ang, [62, 66, 72], K.METAL);                             // dintel
+        for (const e of [-3.1, 3.1]) { q = at(u + e, 1.3); L.caja(B, q[0], q[1], y0, 2.5, 0.12, 2.9, ang, [62, 66, 72], K.METAL); }   // jambas
+        q = at(u, 2.56); L.caja(B, q[0], q[1], y0, 0.04, 1.8, 2.3, ang, [40, 46, 54], K.CORTINA, { aux: L.aux.cortina(2.3, 0.9, 0.02) }); }   // puerta corredera
     }
     for (const s of stands()) if (s.pas && inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.4);
   };
+  // AE3: lo menudo del bordillo de la T1 (coches, taxis, gente, bancos, carros): malla aparte que se oculta a más de 700 m
+  const PIEL = [[232, 196, 170], [196, 150, 116], [150, 104, 74], [96, 66, 48]], ROPA = [[40, 44, 52], [70, 74, 82], [150, 40, 40], [36, 60, 110], [210, 206, 196], [120, 96, 70], [60, 90, 70], [180, 150, 60], [24, 24, 28]];
+  function persona(B, L, x, z, y, a, R) { const v0 = B.nv, alto = 0.92 + R(0.12), ropa = ROPA[Math.floor(R(ROPA.length))];
+    L.caja(B, 0, 0, 0, 0.34, 0.22, 0.82 * alto, 0, R() < 0.5 ? [40, 44, 56] : ROPA[Math.floor(R(ROPA.length))], K.LISO);
+    L.caja(B, 0, 0, 0.82 * alto, 0.44, 0.26, 0.62 * alto, 0, ropa, K.LISO);
+    L.caja(B, 0, 0, 1.46 * alto, 0.2, 0.22, 0.24, 0, PIEL[Math.floor(R(4))], K.LISO);
+    if (R() < 0.45) L.caja(B, 0.38, -0.1, 0, 0.26, 0.42, 0.62, 0, [[30, 30, 34], [110, 30, 40], [40, 70, 120], [140, 140, 146]][Math.floor(R(4))], K.LISO);   // maleta
+    L.xf(B, v0, x, z, a, 1, 1, y); }
+  // coche de perfil (capó, parabrisas, techo, maletero) con ruedas; taxi: negro con puertas amarillas y luz verde
+  function turismo(B, L, x, z, y, a, col, taxi) { const v0 = B.nv, w = 1.76;
+    L.extruir(B, [[-2.25, 0.32], [2.25, 0.32], [2.28, 0.64], [2.18, 0.8], [0.95, 0.92], [0.32, 1.38], [-1.25, 1.42], [-2.05, 1.0], [-2.27, 0.9]], -w / 2, w / 2, col, K.LISO);
+    L.extruir(B, [[0.98, 0.9], [0.36, 1.33], [-1.22, 1.37], [-2.0, 0.99]], -w / 2 - 0.02, w / 2 + 0.02, [30, 34, 40], K.LISO);
+    for (const sx of [-1.45, 1.45]) for (const sz of [-1, 1]) L.caja(B, sx, sz * (w / 2 - 0.12), 0, 0.64, 0.26, 0.64, 0, [20, 20, 22], K.LISO);
+    if (taxi) { for (const sz of [-1, 1]) L.caja(B, -0.2, sz * (w / 2 + 0.01), 0.36, 2.3, 0.02, 0.5, 0, [226, 180, 26], K.LISO);
+      L.caja(B, -0.4, 0, 1.42, 0.18, 0.5, 0.14, 0, [70, 230, 110], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) }); }
+    L.xf(B, v0, 0, 0, 90, 1, 1, 0); L.xf(B, v0, x, z, a, 1, 1, y); }
+  ficha({ id: 'aero_t1_menudo', nombre: 'Bordillo T1', etiqueta: false, nivel: 'B', x: 4240, z: 3250, alto: 12, noche: 'nada', sombra: false, edificios: [],
+    build(B, h, L) {
+      const d = DATA.d, cf = curbFrame(d), Ld = cf.Ld, ang = hdg(cf.t[0], cf.t[1]), at = (u, o) => { const p = cf.P(u, o); return [p[0] - h.x, p[1] - h.z]; };
+      const R = rng(918), uTx = Ld * 0.62, CL = [[236, 236, 234], [176, 180, 184], [96, 100, 106], [40, 42, 46], [44, 62, 104], [120, 30, 30], [190, 186, 170]];
+      let q;
+      // llegadas: coches parados en el carril de parada; cola de taxis en su carril; alguno de paso
+      for (let u = 12; u < uTx - 6; u += 6.5) { if (R() < 0.4) continue; q = at(u + R(-1, 1), 12.1); turismo(B, L, q[0], q[1], 0, ang + R(-2, 2), CL[Math.floor(R(CL.length))], false); }
+      for (let u = uTx + 3; u < Ld - 12; u += 5.6) { if (R() < 0.12) continue; q = at(u, 12.1); turismo(B, L, q[0], q[1], 0, ang, [24, 24, 26], true); }
+      for (let u = 20; u < Ld - 20; u += 30) if (R() < 0.5) { q = at(u + R(0, 10), 15.8); turismo(B, L, q[0], q[1], 0, ang, R() < 0.3 ? [24, 24, 26] : CL[Math.floor(R(CL.length))], R() < 0.3); }
+      // salidas (sobre el viaducto): coches dejando viajeros
+      for (let u = 16; u < Ld - 16; u += 7) { if (R() < 0.45) continue; q = at(u + R(-1, 1), 12); const tx = R() < 0.35; turismo(B, L, q[0], q[1], 8.62, ang + R(-2, 2), tx ? [24, 24, 26] : CL[Math.floor(R(CL.length))], tx); }
+      for (let u = 30; u < Ld - 30; u += 35) if (R() < 0.6) { q = at(u + R(0, 12), 16.4); turismo(B, L, q[0], q[1], 8.62, ang, CL[Math.floor(R(CL.length))], false); }
+      q = at(uTx + 2, 9.3); L.caja(B, q[0], q[1], 0.18, 0.1, 0.1, 2.5, ang, [52, 54, 58], K.METAL);
+      q = at(8, 26); L.caja(B, q[0], q[1], 0, 0.2, 0.2, 5.2, ang, [52, 54, 58], K.METAL);
+      // bancos y papeleras en la acera, entre pilares
+      for (const y0 of [0.18, 8.85]) for (let u = 28; u < Ld - 12; u += 24) { q = at(u, 6.6);
+        const v0 = B.nv; L.caja(B, 0, 0, 0.4, 0.5, 2.0, 0.07, 0, [96, 100, 104], K.METAL); L.caja(B, 0.22, 0, 0.47, 0.06, 2.0, 0.42, 0, [96, 100, 104], K.METAL);
+        for (const e of [-0.85, 0.85]) L.caja(B, 0, e, 0, 0.45, 0.06, 0.4, 0, [60, 62, 66], K.METAL);
+        L.xf(B, v0, q[0], q[1], ang, 1, 1, y0); q = at(u + 2, 8.8); L.tambor(B, q[0], q[1], y0, y0 + 0.9, 0.25, { lados: 8, col: [70, 74, 78], k: K.METAL }); }
+      // carros portaequipajes: en fila junto a los accesos y alguno suelto con maletas
+      for (const y0 of [0.18, 8.85]) for (let u = 30; u < Ld - 20; u += 40) { const nn = 3 + Math.floor(R(5));
+        for (let k = 0; k < nn; k++) { q = at(u + 5 + k * 0.45, 4.2); const v0 = B.nv;
+          L.caja(B, 0, 0, 0.18, 0.55, 0.95, 0.05, 0, [150, 154, 160], K.METAL); L.caja(B, 0, -0.45, 0.18, 0.55, 0.05, 0.8, 0, [150, 154, 160], K.METAL);
+          L.caja(B, 0, 0.47, 0.9, 0.6, 0.06, 0.06, 0, [40, 90, 150], K.METAL); L.caja(B, 0, 0.45, 0, 0.06, 0.06, 0.92, 0, [150, 154, 160], K.METAL);
+          L.xf(B, v0, q[0], q[1], ang + 90, 1, 1, y0); } }
+      // gente: esperando en la cola de taxis, saliendo por los accesos y caminando, con maletas y carros
+      for (let u = uTx + 2; u < Ld - 14; u += 1.6 + R(1.2)) { q = at(u, 8.6 + R(-0.4, 0.4)); persona(B, L, q[0], q[1], 0.18, ang + R(-40, 40), R); }
+      for (const y0 of [0.18, 8.85]) for (let i = 0; i < 46; i++) { const u = 12 + R(Ld - 24), o = 2.6 + R(5.6); q = at(u, o);
+        persona(B, L, q[0], q[1], y0, ang + (R() < 0.5 ? 0 : 180) + R(-30, 30), R);
+        if (R() < 0.25) { const p2 = at(u + 0.9, o); const v0 = B.nv; L.caja(B, 0, 0, 0.18, 0.55, 0.95, 0.05, 0, [150, 154, 160], K.METAL); L.caja(B, 0, 0, 0.23, 0.45, 0.7, 0.45, 0, [40, 44, 52], K.LISO); L.xf(B, v0, p2[0], p2[1], ang, 1, 1, y0); } }
+    } });
   const inT1 = p => p[1] < 4200;                                         // la T2 queda toda al norte de z = 4400
   if (t1f) { t1f.build = t1Build; t1f.rot = 0; t1f.x = 4240; t1f.z = 3250; t1f.ancho = 1150; t1f.largo = 720; t1f.alto = 20; }
   else ficha({ id: 'aero_t1', nombre: 'Aeroport · Terminal 1', nivel: 'B', x: 4240, z: 3250, alto: 20, ancho: 1150, largo: 720, noche: 'ventanas', edificios: [], build: t1Build });
@@ -253,9 +370,18 @@ else {
   ficha({ id: 'aero_t2', nombre: 'Aeroport · Terminal 2', nivel: 'B', x: 4380, z: 4810, alto: 16, ancho: 1100, largo: 560, noche: 'ventanas', edificios: [],
     build(B, h, L) {
       const d = DATA.d, loc = d.t2.map(p => [p[0] - h.x, p[1] - h.z]);
-      L.prisma(B, loc, -1.5, 12.5, [150, 166, 178], K.CORTINA, { aux: L.aux.cortina(4.2, 2.0, 0.22), techo: [206, 208, 206], kTecho: K.METAL, auxTecho: L.aux.panel(4, 0.1, 0) });
-      for (let u = -480; u <= 420; u += 60) { const x = u * 0.9135, z = u * 0.4067 + 40;          // lucernarios en diente de sierra
-        if (inPoly(loc, x, z) && inPoly(loc, x + 12, z + 5)) L.caja(B, x, z, 12.5, 8, 30, 2.4, 156, [176, 196, 210], K.CORTINA, { aux: L.aux.cortina(2.4, 1.5, 0.1) }); }
+      L.prisma(B, loc, -1.5, 12.5, [150, 166, 178], K.CORTINA, { aux: L.aux.cortina(4.2, 2.0, 0.22), techo: [168, 172, 176], kTecho: K.METAL, auxTecho: L.aux.panel(6, 0.12, 0) });
+      // AE3: edificios de lado tierra (A, B, C) más altos que los diques, con vidrio más oscuro, alero blanco y lucernarios
+      const PT = procT2(d).map(p => [p[0] - h.x, p[1] - h.z]);
+      if (PT.length >= 3) {
+        L.prisma(B, PT, 12.5, 20.5, [104, 130, 148], K.CORTINA, { aux: L.aux.cortina(4.2, 1.8, 0.1), sinTecho: true });
+        L.prisma(B, offs(PT, 2.5), 20.5, 21.6, [236, 236, 234], K.METAL, { aux: L.aux.panel(2.5, 0.04, 0), techo: [226, 228, 228], kTecho: K.METAL, auxTecho: L.aux.panel(3, 0.05, 0) });
+        const PTi = offs(PT, -10);
+        for (let u = -560; u <= 560; u += 36) for (let w = -200; w <= 200; w += 10) { const x = u * 0.9135 - w * 0.4067, z = u * 0.4067 + w * 0.9135;   // lucernarios en diente de sierra
+          if (inPoly(PTi, x, z) && inPoly(PTi, x + 9 * 0.9135, z + 9 * 0.4067) && inPoly(PTi, x - 30 * 0.4067, z + 30 * 0.9135) && (Math.round(w / 10) % 4 === 0)) {
+            const v0 = B.nv; L.extruir(B, [[0, 0], [9, 0], [9, 0.3], [0, 2.6]], 0, 30, [150, 186, 208], K.CORTINA, { aux: L.aux.cortina(1.3, 1.5, 0.05) });
+            L.xf(B, v0, x, z, 66 - 90, 1, 1, 21.6); w += 30; } }
+      }
       for (const s of stands()) if (s.pas && !inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.0);
     } });
   // torre de control (la de 2006, en el campo entre pistas): edificio bajo redondo, fuste blanco y fanal de vidrio inclinado
@@ -308,7 +434,6 @@ else {
       for (const s of ST) {
         const x = s.x - h.x, z = s.z - h.z, yb = h.y(x, z) + 0.45, a = hdg(s.f[0], s.f[1]);
         avion(B, L, s.tipo, x, z, a, yb, R);
-        if (s.pas) vehiculos(B, L, s, x, z, yb, R);
       }
     } });
   // recinto del aeropuerto: sin malla; solo despeja de árboles y matas el campo de vuelo (nature.js lee las huellas de los hitos)
@@ -376,7 +501,7 @@ else {
       for (let x = x0 + 8; x < x1; x += 16) for (let z = z0 + 8; z < z1; z += 16) if (inPoly(Pi, x, z)) L.caja(B, x, z, y0 - 1, 0.7, 0.7, HP[3] + 1, 0, CON, K.LISO);
       // coches: en la cubierta (sol) y en la primera fila de cada planta (lo que se ve por los huecos)
       const ax = unit(P[1][0] - P[0][0], P[1][1] - P[0][1]);
-      for (let k = 0; k < HP.length; k++) { const Pk = k ? inset(P, 2) : inset(P, 3);
+      if (false) for (let k = 0; k < HP.length; k++) { const Pk = k ? inset(P, 2) : inset(P, 3);
         const Pc = inset(Pk, 13);
         plazas(Pk, ax, k === HP.length - 1 ? 0.55 : 0.75, R, (x, z, a) => { if (k < HP.length - 1 && inPoly(Pc, x, z)) return; coche(B, L, x, z, a, y0 + HP[k] + (k ? 0 : 0.05), R); }); }
       // núcleos de escalera y ascensores (vidrio) en las esquinas, y la rampa helicoidal
@@ -389,6 +514,13 @@ else {
       // farolas de la cubierta
       for (const m of masts()) if (m.kind === 'r') { const x = m.x - h.x, z = m.z - h.z;
         L.caja(B, x, z, y0 + HP[4], 0.2, 0.2, 6, 0, [90, 94, 98], K.METAL); L.caja(B, x, z, y0 + HP[4] + 6, 0.5, 1.6, 0.25, 0, [60, 62, 66], K.METAL); }
+    } });
+  // AE3: los coches del P1 en una malla aparte (se ocultan de lejos)
+  ficha({ id: 'aero_p1_coches', nombre: 'Cotxes P1', etiqueta: false, nivel: 'B', x: 3880, z: 3130, alto: 15, noche: 'nada', sombra: false, edificios: [],
+    build(B, h, L) {
+      const P = inset(DATA.t.p1, 6).map(p => [p[0] - h.x, p[1] - h.z]), R = rng(4402), y0 = h.y(0, 0), ax = unit(P[1][0] - P[0][0], P[1][1] - P[0][1]);
+      for (let k = 0; k < HP.length; k++) { const Pk = k ? inset(P, 2) : inset(P, 3), Pc = inset(Pk, 13);
+        plazas(Pk, ax, k === HP.length - 1 ? 0.55 : 0.75, R, (x, z, a) => { if (k < HP.length - 1 && inPoly(Pc, x, z)) return; coche(B, L, x, z, a, y0 + HP[k] + (k ? 0 : 0.05), R); }); }
     } });
   // estación de la T2 (tren R2 Nord y metro L9 Sud): andenes cubiertos con marquesina, vestíbulo de vidrio a nivel y pasarela
   // cubierta hasta la terminal. A lo largo de las vías (rumbo 66°)
@@ -413,9 +545,8 @@ else {
       for (const x of [40, 62, 84]) L.caja(B, x, -40, y0 - 1, 1.2, 1.2, 7.5, 0, [176, 174, 168], K.LISO);
     } });
   // torres de focos (plataformas, aparcamientos): fuste troncocónico, corona con proyectores
-  ficha({ id: 'aero_focos', nombre: 'Focus', etiqueta: false, nivel: 'B', x: 5000, z: 4000, alto: 32, noche: 'nada', edificios: [],
-    build(B, h, L) {
-      for (const m of masts()) { if (m.kind === 'r') continue; const x = m.x - h.x, z = m.z - h.z, y = h.y(x, z), H = m.h, a = hdg(m.d[0], m.d[1]);
+  const focosBuild = (cell) => (B, h, L) => {
+      for (const m of masts()) { if (m.kind === 'r' || cellOf(m.x, m.z) !== cell) continue; const x = m.x - h.x, z = m.z - h.z, y = h.y(x, z), H = m.h, a = hdg(m.d[0], m.d[1]);
         L.tambor(B, x, z, y - 0.5, y + H, m.kind === 'a' ? 0.75 : 0.32, { r1: m.kind === 'a' ? 0.35 : 0.16, lados: 6, col: [176, 178, 182], k: K.METAL });
         const fx = x + m.d[0] * 0.8, fz = z + m.d[1] * 0.8;
         if (m.kind === 'a') { L.caja(B, fx, fz, y + H - 0.6, 6, 1.2, 0.3, a + 90, [120, 124, 130], K.METAL);
@@ -423,7 +554,35 @@ else {
           L.caja(B, fx + m.d[0] * 0.3, fz + m.d[1] * 0.3, y + H - 0.25, 6, 0.08, 0.8, a + 90, [236, 234, 226], K.METAL); }
         else { L.caja(B, fx, fz, y + H - 0.2, 0.5, 1.4, 0.22, a, [70, 72, 76], K.METAL); L.caja(B, fx - m.d[0] * 1.6, fz - m.d[1] * 1.6, y + H - 0.2, 0.5, 1.4, 0.22, a, [70, 72, 76], K.METAL); }
       }
-    } });
+    };
+  // AE3: celdas de 450 m para lo pequeño que se oculta de lejos (vehículos de pista, torres de focos)
+  const cellOf = (x, z) => Math.floor(x / 450) + ':' + Math.floor(z / 450);
+  function porCeldas(pts, pre, mk, extra) { const g = new Map();
+    for (const p of pts) { const k = cellOf(p[0], p[1]); if (!g.has(k)) g.set(k, []); g.get(k).push(p); }
+    for (const [k, L_] of g) { let cx = 0, cz = 0; for (const p of L_) { cx += p[0]; cz += p[1]; } cx /= L_.length; cz /= L_.length;
+      LM.add(Object.assign({ id: pre + k.replace(':', '_'), nombre: pre, etiqueta: false, nivel: 'B', x: cx, z: cz, alto: 6, noche: 'nada', sombra: false, edificios: [], build: mk(k) }, extra || {})); } }
+  const vehBuild = (cell) => (B, h, L) => { const R = rng(2025 + cell.length);
+    for (const s of stands()) { if (!s.pas || cellOf(s.x, s.z) !== cell) continue; const x = s.x - h.x, z = s.z - h.z; vehiculos(B, L, s, x, z, h.y(x, z) + 0.45, R); } };
+  // AE3: volúmenes del registro convertidos: por planta y altura, nave (chapa grecada), oficinas (muro cortina) o caseta técnica
+  const edifBuild = (B, h, L) => {
+    for (const e of h.edif) { const P = e.plantas[0]; if (!P || P.length < 3) continue;
+      let cx = 0, cz = 0; for (const p of P) { cx += p[0]; cz += p[1]; } cx /= P.length; cz /= P.length;
+      const A = Math.abs(areaS(P)), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
+      if (e.y0 > 2.5) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
+      if (A > 1500 && H < 18) {                                                                    // nave
+        L.prisma(B, P, y0, top, [190, 194, 198], K.METAL, { aux: L.aux.panel(0.9, 0.06, 0), techo: [168, 172, 176], kTecho: K.METAL, auxTecho: L.aux.panel(4, 0.1, 0) });
+        L.prisma(B, offs(P, 0.05), y0 + 1.2 + 3.2, y0 + 1.2 + 4.0, [96, 112, 124], K.CORTINA, { aux: L.aux.cortina(0.8, 1.6, 0.05), sinTecho: true });
+      } else if (H >= 14 || A > 400) {                                                              // oficinas
+        L.prisma(B, P, y0, top, [112, 136, 152], K.CORTINA, { aux: L.aux.cortina(3.6, 1.5, 0.15), techo: [184, 186, 188] });
+        L.prisma(B, offs(P, 0.2), top, top + 1.0, [214, 214, 210], K.METAL, { sinTecho: true });
+        L.caja(B, cx, cz, top, 4, 6, 2.2, 0, [150, 154, 158], K.METAL, { aux: L.aux.panel(0.6, 0.05, 0) });
+      } else {                                                                                      // caseta técnica
+        L.prisma(B, P, y0, top, [214, 210, 200], K.LISO, { aux: L.aux.panel(1.4, 0.08, 0.25), techo: [150, 150, 148] });
+        L.caja(B, cx, cz, top, 2, 2.5, 1.3, 0, [170, 172, 174], K.METAL);
+      } }
+  };
+  // distancia (m) a la que se ocultan las mallas de lo pequeño
+  const LODD = [[/^aero_t1_menudo$/, 700], [/^aero_veh_/, 800], [/^aero_parking_/, 850], [/^aero_p1_coches$/, 850], [/^aero_focos_/, 900]];
 
   // la carga de los hitos espera al JSON; con él, cada ficha sustituye los volúmenes simples que caen en su planta
   const LMS = window.BCN_LANDMARKS;
@@ -446,9 +605,26 @@ else {
             if (cx < x0 || cx > x1 || cz < z0 || cz > z1) continue; if (inPoly(P, cx, cz)) set.add(b); }
           f.edificios = [...set]; }
         const ta = fx('aero_torre_antigua'); if (ta) { ta.x = d.torreAntigua.c[0]; ta.z = d.torreAntigua.c[1]; }
+        // AE3: volúmenes genéricos del registro alrededor de la T1 (al sur y al este, lado tierra) que ninguna ficha recoge:
+        // pasan a ser lo que son en un aeropuerto (naves, oficinas de vidrio, casetas técnicas), no viviendas
+        const used = new Set(); for (const f of LM.fichas) for (const b of (f.edificios || [])) used.add(b);
+        const t1 = d.t1, ed = [];
+        for (let b = 0; b < BR.n; b++) { const k = b * 4, cx = (bb[k] + bb[k + 2]) / 2, cz = (bb[k + 1] + bb[k + 3]) / 2;
+          if (cx < 3550 || cx > 4950 || cz < 2150 || cz > 3560 || used.has(b)) continue;
+          if (inPoly(t1, cx, cz) || (bb[k + 2] - bb[k] > 600)) continue;
+          ed.push(b); }
+        LM.add({ id: 'aero_edificis', nombre: 'Edificis de serveis', etiqueta: false, nivel: 'B', x: 4250, z: 2850, alto: 20, noche: 'ventanas', edificios: ed, build: edifBuild });
+        AERO_LOD.edificis = ed.length;
       } catch (e) { console.warn('Aeropuerto: no se han podido asignar los volúmenes sustituidos', e); }
       else for (const f of LM.fichas) if (/^aero_/.test(f.id)) f.build = undefined;
-      return init0.call(this, ctx);
+      if (d) { porCeldas(stands().filter(s => s.pas).map(s => [s.x, s.z]), 'aero_veh_', vehBuild);
+        porCeldas(masts().filter(m => m.kind !== 'r').map(m => [m.x, m.z]), 'aero_focos_', focosBuild, { alto: 32 }); }
+      const r = await init0.call(this, ctx);
+      try { const api = window.BCN && window.BCN.lm; let n = 0;
+        if (api) for (const f of LM.fichas) { const e = LODD.find(([re]) => re.test(f.id)), rec = e && api.get(f.id);
+          if (rec && rec.mesh) { rec.mesh.addLODLevel(e[1], null); n++; } }
+        AERO_LOD.n = n; } catch (e) { console.warn('Aeropuerto: sin niveles de detalle', e); }
+      return r;
     }; }
 }
 // marcador de posición de la torre antigua hasta que llega el JSON (se corrige en el init de los hitos)
@@ -507,6 +683,29 @@ void main(){
     vec3 alb = mix(asf, pint, p*(0.85 + 0.15*n1));
     vec3 c = shade(alb, N, V, 0.86, 0.0, 1.0);
     FRAG(c);
+  } else if (vC.a < 0.75) {
+    // AE3: césped del campo de vuelo (franjas de siega a lo largo de las pistas, tonos por manchas, franja de pista segada
+    // más corta y clara, y matojos secos en el campo abierto). vST = (s, t) en metros en el marco de las pistas 07/25;
+    // vRw.x = distancia al borde de la pista más cercana, vRw.y = a la calle de rodaje más cercana
+    float s = vST.x, t = vST.y, dR = vRw.x, dT = vRw.y;
+    float n1 = vnoise(vPos.xz*0.006), n2 = vnoise(vPos.xz*0.031 + 3.1), n3 = vnoise(vPos.xz*0.17 + 9.7), n4 = vnoise(vPos.xz*1.3);
+    vec3 g0 = mix(vec3(0.330, 0.410, 0.190), vec3(0.430, 0.470, 0.235), n1);
+    g0 = mix(g0, vec3(0.540, 0.520, 0.330), smoothstep(0.5, 0.85, n2)*0.6);                  // manchas secas
+    g0 = mix(g0, vec3(0.270, 0.350, 0.160), smoothstep(0.6, 0.9, n3)*0.4);                   // matas más oscuras
+    float strip = 1.0 - smoothstep(55.0, 75.0, dR);                                         // franja de pista (segada corta)
+    float shoulder = 1.0 - smoothstep(2.0, 10.0, min(dR, dT));                                // margen junto al pavimento
+    vec3 sc = mix(vec3(0.420, 0.490, 0.240), vec3(0.470, 0.510, 0.260), n2);
+    vec3 alb = mix(g0, sc, strip*0.8);
+    // franjas de siega: pasadas de 7 m paralelas a las pistas (en la franja de pista), y en ángulo en el campo abierto
+    float pw = 7.0, ph = mix(t, s*0.5 + t*0.866, 1.0 - strip), band = fract(ph/(2.0*pw)), fw = fwidth(ph)/(2.0*pw);
+    float b = smoothstep(0.5 - fw - 0.02, 0.5 + fw + 0.02, band) - smoothstep(1.0 - fw - 0.02, 1.0, band);
+    b = mix(b, 0.5, clamp(fw*3.0, 0.0, 1.0));
+    alb *= 0.88 + 0.2*b*(0.6 + 0.4*strip);
+    alb = mix(alb, vec3(0.43, 0.42, 0.33), shoulder*0.5);                                    // tierra y hierba rala junto al borde
+    alb *= 0.9 + 0.18*n4;
+    vec3 c = shade(alb, N, V, 0.95, 0.0, 1.0);
+    c *= 1.0 - 0.55*uNight;                                                                  // como el suelo: de noche, casi negro
+    FRAG(c);
   } else {
     // pintura (líneas de rodaje, puntos de espera, puestos): por debajo del píxel, tramado en vez de parpadeo
     float w = vRw.x, fw = max(fwidth(vST.y), 1e-3);
@@ -558,6 +757,65 @@ void main(){
   gl_FragColor = vec4(1.0 + vC.rgb*(a*6.0), 1.0);
 #endif
 }`;
+// ------------------------------------------------------------------ rótulos del bordillo de la T1 (AE3)
+// Paneles con texto genérico en catalán (sin marcas): «Arribades», «Sortides», «Parada de taxis» y «TAXI» pintado en el
+// carril. Atlas de 8 filas de 1024 × 64; de noche, los paneles están retroiluminados. Una malla, una llamada.
+const VS_R = `precision highp float;
+attribute vec3 position; attribute vec2 uv; attribute vec3 normal; attribute vec4 color;
+uniform mat4 world; uniform mat4 viewProjection;
+varying vec3 vPos; varying vec2 vUv; varying vec3 vN; varying vec4 vC;
+void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vUv = uv; vN = normal; vC = color; gl_Position = viewProjection*wp; }`;
+const FS_R = `varying vec2 vUv; varying vec3 vN; varying vec4 vC;
+uniform sampler2D tTx;
+void main(){
+  vec4 tx = texture2D(tTx, vUv);
+  if (vC.a > 0.5 && tx.a < 0.5) discard;
+  vec3 V = normalize(uCam - vPos), alb = tx.rgb;
+  vec3 c = shade(alb, normalize(vN), V, 0.55, 0.0, 1.0);
+  if (vC.a < 0.5) c += emit(alb, 0.7)*smoothstep(0.03, 0.3, uDusk);
+  FRAG(c);
+}`;
+function rotulos(ctx, d) {
+  const { scene, engine, heightAt, mkMat, reg } = ctx, VB = BABYLON.VertexBuffer;
+  const ROWS = [['Arribades', '#1d3550', '#fff'], ['Sortides', '#1d3550', '#fff'], ['Parada de taxis', '#1d3550', '#fff'], ['TAXI', null, '#e3b21e'], ['Arribades · Sortides', '#1d3550', '#fff']];
+  const tex = new BABYLON.DynamicTexture('aeroRot', { width: 1024, height: 512 }, scene, true);
+  const g = tex.getContext(); g.clearRect(0, 0, 1024, 512); g.textAlign = 'center'; g.textBaseline = 'middle';
+  ROWS.forEach(([t, bg, fg], r) => { if (bg) { g.fillStyle = bg; g.fillRect(0, r * 64, 1024, 64); g.fillStyle = '#c9a227'; g.fillRect(0, r * 64 + 58, 1024, 6); }
+    g.fillStyle = fg; g.font = (bg ? 'bold 40px' : 'bold 58px') + ' sans-serif'; g.save(); g.translate(512, r * 64 + 31); if (!bg) g.scale(0.7, 1); g.fillText(t, 0, 0); g.restore(); });
+  tex.update(true); tex.hasAlpha = true; tex.wrapU = tex.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; tex.anisotropicFilteringLevel = 8;
+  const P = [], UV = [], N = [], C = [], I = [];
+  const quad = (c4, uvs, nrm, flat) => { const b = P.length / 3; for (let i = 0; i < 4; i++) { P.push(...c4[i]); UV.push(...uvs[i]); N.push(...nrm); C.push(0, 0, 0, flat ? 255 : 0); }
+    I.push(b, b + 1, b + 2, b, b + 2, b + 3, b, b + 2, b + 1, b, b + 3, b + 2); };
+  const rowUV = (r, w, hgt) => { const uw = Math.min(1, w / hgt / 16) / 2, vB = 1 - (r + 1) / 8 + 0.004, vT = 1 - r / 8 - 0.004; return [0.5 - uw, 0.5 + uw, vB, vT]; };
+  // panel vertical centrado en (x, z), base y0, mirando a nrm; dos caras (la de atrás también se lee bien)
+  function panel(x, z, y0, w, hgt, nx, nz, r, dos) { const [uL, uR, vB, vT] = rowUV(r, w, hgt);
+    for (const sg of dos ? [1, -1] : [1]) { const Nx = nx * sg, Nz = nz * sg, rx = -Nz, rz = Nx, cx = x + Nx * 0.03, cz = z + Nz * 0.03;
+      quad([[cx - rx * w / 2, y0, cz - rz * w / 2], [cx + rx * w / 2, y0, cz + rz * w / 2], [cx + rx * w / 2, y0 + hgt, cz + rz * w / 2], [cx - rx * w / 2, y0 + hgt, cz - rz * w / 2]],
+        [[uL, vB], [uR, vB], [uR, vT], [uL, vT]], [Nx, 0, Nz], false); } }
+  function suelo(x, z, y, w, hgt, fx, fz, r) { const [uL, uR, vB, vT] = rowUV(r, w, hgt), rx = fz, rz = -fx;
+    quad([[x - rx * w / 2 - fx * hgt / 2, y, z - rz * w / 2 - fz * hgt / 2], [x + rx * w / 2 - fx * hgt / 2, y, z + rz * w / 2 - fz * hgt / 2], [x + rx * w / 2 + fx * hgt / 2, y, z + rz * w / 2 + fz * hgt / 2], [x - rx * w / 2 + fx * hgt / 2, y, z - rz * w / 2 + fz * hgt / 2]],
+      [[uL, vB], [uR, vB], [uR, vT], [uL, vT]], [0, 1, 0], true); }
+  const cf = curbFrame(d), yb = heightAt(4240, 3250), n = cf.n, t = cf.t, uTx = cf.Ld * 0.62;
+  for (let u = 30; u < cf.Ld - 20; u += 40) {
+    let [x, z] = cf.P(u, 0.12); panel(x, z, yb + 3.6, 3.4, 0.5, n[0], n[1], 0, false);           // sobre el acceso de llegadas
+    panel(x, z, yb + 8.85 + 3.3, 3.4, 0.5, n[0], n[1], 1, false); }                                   // sobre el de salidas
+  for (let u = 40; u < cf.Ld - 20; u += 48) { const [x, z] = cf.P(u, 5.5); panel(x, z, yb + 5.2, 3.6, 0.55, t[0], t[1], 0, true); }   // colgados bajo el viaducto
+  for (let u = 30; u < cf.Ld - 30; u += 60) { const [x, z] = cf.P(u, 16.56); panel(x, z, yb + 13.45, 5, 0.5, n[0], n[1], 1, false); }   // canto de la marquesina
+  { const [x, z] = cf.P(uTx + 2, 9.3); panel(x, z, yb + 2.1, 2.4, 0.42, t[0], t[1], 2, true); }                                       // tótem de la parada
+  for (let u = uTx + 10; u < cf.Ld - 14; u += 26) { const [x, z] = cf.P(u, 12.1); suelo(x, z, yb + 0.03, 1.5, 3.6, -t[0], -t[1], 3); }   // «TAXI» en el carril
+  { const [x, z] = cf.P(8, 26); panel(x, z, yb + 4.5, 6, 0.7, -t[0], -t[1], 4, true); }                                                // banderola a la entrada del bordillo
+  const mat = mkMat('aero_rotulos', VS_R, FS_R, ['position', 'uv', 'normal', 'color'], [], ['tTx'], {});
+  mat.setTexture('tTx', tex);
+  const mesh = new BABYLON.Mesh('aeroRotulos', scene);
+  mesh.setVerticesData('position', new Float32Array(P), false); mesh.setVerticesData('uv', new Float32Array(UV), false, 2);
+  mesh.setVerticesData('normal', new Float32Array(N), false);
+  mesh.setVerticesBuffer(new VB(engine, new Uint8Array(C), 'color', false, false, 4, false, 0, 4, VB.UNSIGNED_BYTE, true));
+  mesh.setIndices(new Uint32Array(I), P.length / 3);
+  mesh.material = mat; mesh.isPickable = false; mesh.renderingGroupId = 1; mesh.freezeWorldMatrix();
+  mesh.addLODLevel(700, null);
+  reg(mesh, { cast: false, layer: 'lm' });
+  return I.length / 3;
+}
 function luces(ctx, d) {
   const { scene, engine, heightAt, mkMat, reg } = ctx, VB = BABYLON.VertexBuffer;
   const P = [], UV = [], C = [], LT = [], I = [];
@@ -577,10 +835,10 @@ function luces(ctx, d) {
     const ne = Math.round(L / 60);
     for (let i = 0; i <= ne; i++) { const s = L * i / ne, e = Math.min(s, L - s); for (const sg of [-1, 1]) L1(s, sg * (hw + 1.5), e < 600 ? YEL : WHI, 0.7, 1.4, 1.3); add('borde', 2); }
     // eje: cada 15 m; a 900–300 m del final, rojo y blanco alternos; los últimos 300 m, rojo
-    for (let s = 15, i = 0; s < L - 10; s += 15, i++) { const e = Math.min(s, L - s); L1(s, 0, e < 300 ? RED : e < 900 && i % 2 ? RED : WHI, 0.45, 1.0, 1.0); add('eje'); }
+    for (let s = 15, i = 0; s < L - 10; s += 15, i++) { const e = Math.min(s, L - s); const rd = e < 300 || (e < 900 && i % 2); L1(s, 0, rd ? RED : WHI, 0.45, 1.0, rd ? 0.55 : 1.0); add('eje'); }
     for (const [s0, dir, des] of [[0, 1, 0], [L, -1, 1]]) {
       // umbral (verde, fuera) y fin de pista (rojo, dentro), con barras de ala verdes
-      for (let t = -hw; t <= hw + 0.01; t += 3) { L1(s0 - dir * 1.0, t, GRN, 0.6, 1.3, 1.4); L1(s0 + dir * 1.5, t, RED, 0.55, 1.2, 1.1); add('umbral', 2); }
+      for (let t = -hw; t <= hw + 0.01; t += 3) { L1(s0 - dir * 1.0, t, GRN, 0.6, 1.3, 1.4); L1(s0 + dir * 1.5, t, RED, 0.5, 1.1, 0.6); add('umbral', 2); }
       for (const sg of [-1, 1]) for (let k = 0; k < 5; k++) { L1(s0 - dir * 1.0, sg * (hw + 4 + k * 3), GRN, 0.6, 1.3, 1.4); add('umbral'); }
       // toma de contacto (solo la pista larga, de precisión): barretas de tres luces cada 30 m hasta 900 m
       if (ip === 0) for (let s = 60; s <= 900; s += 30) for (const sg of [-1, 1]) for (let k = 0; k < 3; k++) { L1(s0 + dir * s, sg * (9 + k * 1.5), WHI, 0.35, 0.9, 0.8); add('tdz'); }
@@ -613,22 +871,20 @@ function luces(ctx, d) {
     PI.push(b, b + 2, b + 1, b, b + 3, b + 2); };
   for (const m of masts()) {
     const y = H(m.x, m.z) + (m.kind === 'r' ? 13.6 + 6 : m.h), ex = m.x + m.d[0] * 1.2, ez = m.z + m.d[1] * 1.2;
-    if (m.kind === 'a') { for (const o of [-1.5, 1.5]) luz(ex + m.d[1] * o, ez - m.d[0] * o, y - 0.2, WHI, 1.3, 2.0, 2.4); charco(m.x + m.d[0] * 40, m.z + m.d[1] * 40, 75, [255, 222, 170], 150); }
-    else if (m.kind === 'p') { for (const s of [1, -1]) luz(m.x + m.d[0] * 1.6 * s, m.z + m.d[1] * 1.6 * s, y - 0.3, AMB, 0.45, 1.3, 1.1); charco(m.x, m.z, 30, [255, 200, 130], 105); }
+    // AE3: proyectores más pequeños y charcos más tenues (con el bloom quemaban la imagen desde el aire)
+    if (m.kind === 'a') { for (const o of [-1.5, 1.5]) luz(ex + m.d[1] * o, ez - m.d[0] * o, y - 0.2, WHI, 0.8, 1.3, 1.1); charco(m.x + m.d[0] * 40, m.z + m.d[1] * 40, 58, [255, 226, 186], 62); }
+    else if (m.kind === 'p') { for (const s of [1, -1]) luz(m.x + m.d[0] * 1.6 * s, m.z + m.d[1] * 1.6 * s, y - 0.3, AMB, 0.35, 1.1, 0.7); charco(m.x, m.z, 24, [255, 214, 160], 48); }
     else { luz(m.x, m.z, y - 0.2, AMB, 0.6, 1.2, 1.6); }
     add('foco');
   }
   // ---- bordillos de la T1 (la misma recta que en el hito): luminarias bajo el viaducto (llegadas) y bajo la marquesina
   // (salidas), con sus charcos
-  { const n = [-0.9135, -0.4067], t = [0.4067, -0.9135], fr = d.t1.filter(p => p[1] > 2990 && p[1] < 3360 && p[0] > 3940 && p[0] < 4200);
-    let f = -1e9; for (const p of fr) f = Math.max(f, p[0] * n[0] + p[1] * n[1]);
-    let u0 = 1e9, u1 = -1e9; for (const p of fr) if (p[0] * n[0] + p[1] * n[1] > f - 15) { const u = p[0] * t[0] + p[1] * t[1]; u0 = Math.min(u0, u); u1 = Math.max(u1, u); }
-    const yb = H(n[0] * f + t[0] * (u0 + u1) / 2, n[1] * f + t[1] * (u0 + u1) / 2);
-    for (let u = u0 + 10; u < u1 - 8; u += 12) for (const [o, y, cy] of [[5, 7.0, 0.25], [12.5, 7.0, 0.05], [8, 13.2, 8.9]]) {
-      const x = n[0] * (f + o) + t[0] * u, z = n[1] * (f + o) + t[1] * u;
-      luz(x, z, yb + y, [255, 236, 210], 0.35, 1.0, 1.4); charco(x, z, 8, [255, 230, 196], 110, cy + yb - H(x, z) + 0.04); add('bordillo'); } }
+  { const cf = curbFrame(d), yb = heightAt(4240, 3250);
+    for (let u = 10; u < cf.Ld - 8; u += 12) for (const [o, y, cy] of [[5, 6.2, 0.18], [13, 6.2, 0.0], [6, 13.3, 8.85]]) {
+      const [x, z] = cf.P(u, o);
+      luz(x, z, yb + y, [255, 236, 210], 0.3, 1.0, 1.0); charco(x, z, 7, [255, 232, 204], 72, cy + yb - H(x, z) + 0.04); add('bordillo'); } }
   // ---- balizas de obstáculo (rojas): torres de control, hangar
-  for (const [x, z, hh] of [[5839, 3973, 66], [d.torreAntigua.c[0], d.torreAntigua.c[1], 44]]) { luz(x, z, H(x, z) + hh, RED, 0.8, 1.6, 2.2); add('obst'); }
+  for (const [x, z, hh] of [[5839, 3973, 66], [d.torreAntigua.c[0], d.torreAntigua.c[1], 44]]) { luz(x, z, H(x, z) + hh, RED, 0.6, 1.3, 1.2); add('obst'); }
   // mallas
   const mk = (name, VS, FS, attrs, unis, opts) => mkMat(name, VS, FS, attrs, unis, [], opts);
   const matL = mk('aero_luces', VS_L, FS_L, ['position', 'uv', 'color', 'lt'], ['uEye', 'uPx'], { blend: true });
@@ -705,6 +961,22 @@ window.BCN_AERO = { async init(ctx) {
     const hx = A.S / 2 + 4, z0 = 5, z1 = -(A.L + 6), cn = [[-hx, z0], [hx, z0], [hx, z1], [-hx, z1]].map(([x, z]) => [s.x + n[0] * x + f[0] * z, s.z + n[1] * x + f[1] * z]);
     for (let k = 0; k < 4; k++) if (k !== 2 || !s.pas) cinta(cn[k], cn[(k + 1) % 4], 0.3, ROJ, dy);
   }
+  // AE3: césped del campo de vuelo (data/aero_cesped.json: filas de celdas de 6 m en el marco de las pistas 07/25, solo donde
+  // el mapa del suelo es verde dentro del recinto, lejos de pistas, rodaje, plataformas y terminales); tramos de ≤ 90 m
+  let nCes = 0;
+  const ces = await cesP;
+  if (ces) { const U = ces.u, Vv = ces.v, C = ces.c, O = ces.o;
+    const dRw = (x, z) => { let m = 1e9; for (const p of d.pistas) m = Math.min(m, segDist([x, z], p.a, p.b) - p.w / 2); return Math.max(m, 0); };
+    const dTx = (x, z) => { let m = 1e9; for (const pl of d.rodaje) for (let i = 0; i + 1 < pl.length; i++) { const a = pl[i], b = pl[i + 1];
+      if (Math.abs(x - a[0]) > 400 && Math.abs(x - b[0]) > 400) continue; m = Math.min(m, segDist([x, z], a, b) - 11.5); } return Math.max(m, 0); };
+    const W = (uu, vv) => [O[0] + U[0] * uu + Vv[0] * vv, O[1] + U[1] * uu + Vv[1] * vv];
+    for (const row of ces.filas) { const j = row[0], va = ces.v0 + j * C - 0.35, vb = va + C + 0.7;
+      for (let r = 1; r + 1 < row.length; r += 2) { const ua = ces.u0 + row[r] * C - 0.35, ub = ces.u0 + row[r + 1] * C + 0.35, US = [ua];
+        for (let g = Math.floor(ua / 90) * 90 + 90; g < ub - 1; g += 90) US.push(g); US.push(ub); const ns = US.length - 1;
+        const b0 = P.length / 3;
+        for (const uu of US) {
+          for (const vv of [va, vb]) { const [x, z] = W(uu, vv); vtx(x, heightAt(x, z) + 0.42, z, uu, vv, [0, 0, 0], 128, [dRw(x, z), dTx(x, z), 0, 0]); } }
+        for (let i = 0; i < ns; i++) { const a = b0 + i * 2; I.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); nCes++; } } } }
   // atlas de designadores: 8 casillas de 128 × 256 (número arriba, letra abajo), blanco sobre negro
   const tex = new BABYLON.DynamicTexture('aeroDes', { width: 1024, height: 256 }, scene, true);
   const g = tex.getContext(); g.fillStyle = '#000'; g.fillRect(0, 0, 1024, 256); g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -723,9 +995,10 @@ window.BCN_AERO = { async init(ctx) {
   mesh.material = mat; mesh.isPickable = false; mesh.renderingGroupId = 1; mesh.freezeWorldMatrix(); mesh.alwaysSelectAsActiveMesh = true; mesh.doNotSyncBoundingInfo = true;
   reg(mesh, { cast: false, layer: 'road' });
   await dataT;
+  let nRot = 0; try { nRot = rotulos(ctx, d); } catch (e) { console.warn('Aeropuerto: sin rótulos', e); }
   let LU = null; try { LU = luces(ctx, d); } catch (e) { console.warn('Aeropuerto: sin luces de noche', e); }
   const tris = I.length / 3, nStands = stl.length;
-  return { update() {}, busy: () => false, stats: () => ({ tris, hold: nHold, puestos: nStands, luces: LU && LU.luces, charcos: LU && LU.charcos, trisLuces: LU && LU.tris, focos: masts().length }) };
+  return { update() {}, busy: () => false, stats: () => ({ tris, cesped: nCes * 2, rotulos: nRot, lod: AERO_LOD.n, hold: nHold, puestos: nStands, luces: LU && LU.luces, charcos: LU && LU.charcos, trisLuces: LU && LU.tris, focos: masts().length }) };
 } };
 // los puestos (los mismos que usan los hitos) para las marcas del suelo
 window.BCN_AERO_STANDS = () => (DATA.d ? stands() : []);
