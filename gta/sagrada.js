@@ -73,7 +73,7 @@ function construir(B, h, L, q) {
   const aP = L.aux.piedra(0.7, 1.4);
   const OCRE = mix(sh(c.naves, 0.9), [206, 168, 116], 0.25), NAIX = c.naix, PASS = sh(c.pass, 0.92), BL = c.blanco;
   const TOR = mix(sh(c.torres, 0.94), [214, 170, 112], 0.45);         // SF3: piedra de las torres ocre dorada (foto del usuario)
-  const LUZ_T = [126, 86, 46], aLT = L.aux.emisivo(2.4, true);        // SF3: huecos de las torres encendidos desde dentro de noche
+  const LUZ_T = [126, 86, 46], aLT = L.aux.emisivo(1.5, true);        // SF3: huecos de las torres encendidos desde dentro de noche
   const TECHO = sh(OCRE, 0.82);
 
   // ---- perfil de Gaudí: paraboloide r = √(a·(Hv − y)) que pasa por (r0, y0) y (r1, y1); devuelve [[r, y], …] y r(y)
@@ -191,11 +191,12 @@ function construir(B, h, L, q) {
   const xN = R.xN + 2.5, xP = R.xP - 1.5;                             // muros testeros del crucero (detrás de los pórticos)
   const VL = aP, VC = aP;
   // ventanal gótico-gaudiniano: hueco oscuro con arco apuntado en un muro de normal (nx, nz) que pasa por (x, z)
-  const VENT = [], VID_F = [44, 92, 132], VID_C = [150, 74, 34], aVID = L.aux.emisivo(1.5, true);
+  const VENT = [], VID_F = [44, 92, 132], VID_C = [150, 74, 34], VID_G = [150, 118, 52],   // Glòria: claros y amarillos
+    aVID = L.aux.emisivo(1.5, true);
   const ventanal = (x, z, nx, nz, y0, y1, w) => { VENT.push({ x, z, nx, nz, y0, y1, w }); if (!MED) return; const tx = -nz, tz = nx, e = 0.08, X = (u, y) => [x + tx * u + nx * e, y, z + tz * u + nz * e];
     // SF3: vidriera encendida desde dentro de noche: fría al este (Naixement, −X), cálida al oeste (Passió, +X); de día, vidrio oscuro
     const tw = Math.max(0, Math.min(1, (nx + 1) / 2 + 0.12 * Math.sin(x * 1.7 + z * 0.9 + y0)));
-    L.poly(B, [X(-w / 2, y0), X(w / 2, y0), X(w / 2, y1 - w * 0.75), X(w * 0.28, y1 - w * 0.2), X(0, y1), X(-w * 0.28, y1 - w * 0.2), X(-w / 2, y1 - w * 0.75)], mix(VID_F, VID_C, tw), K.EMISIVO, aVID);
+    L.poly(B, [X(-w / 2, y0), X(w / 2, y0), X(w / 2, y1 - w * 0.75), X(w * 0.28, y1 - w * 0.2), X(0, y1), X(-w * 0.28, y1 - w * 0.2), X(-w / 2, y1 - w * 0.75)], nz > 0.7 ? VID_G : mix(VID_F, VID_C, tw), K.EMISIVO, aVID);
     L.q4(B, X(-w / 2 - 0.25, y0 - 0.5), X(w / 2 + 0.25, y0 - 0.5), X(w / 2 + 0.25, y0 - 0.05), X(-w / 2 - 0.25, y0 - 0.05), sh(OCRE, 1.05), K.PIEDRA); };
   const muroV = (xa, za, xb, zb, nx, nz, y0, y1, w, paso) => { const l = Math.hypot(xb - xa, zb - za), m = Math.max(1, Math.round(l / paso));
     for (let i = 0; i < m; i++) { const t = (i + 0.5) / m, x = xa + (xb - xa) * t, z = za + (zb - za) * t;
@@ -261,7 +262,7 @@ function construir(B, h, L, q) {
   for (const e of R.ev) {
     const { P, f } = parab(5.0, 60, 2.5, yEp, FAR ? 4 : 10);
     if (BASE) facetas(e.x, e.z, [[5.2, 40]].concat(P.map(p => [p[0] * 1.04, p[1]])), 8, TOR, K.PIEDRA, { a0: 22.5, aux: aP });
-    if (!FAR) huecos(e.x, e.z, y => f(y) * 1.04, 66, yEp - 3, 2.6, 16, 0.5, { ancho: 0.62, sal: 0.25, rombo: true, luz: true });
+    if (!FAR) huecos(e.x, e.z, y => f(y) * 1.04, 66, yEp - 3, 2.6, 16, 0.5, { ancho: 0.48, sal: 0.25, rombo: true, luz: true });
     if (BASE) rv(e.x, e.z, [[2.6, yEp], [2.9, yEp + 1.2, BL], [2.2, yEp + 5, BL], [1.5, yEp + 7.5, c.ama]], n(12), BL, K.TRENCADIS);
     if (MED) for (let k = 0; k < 6; k++) { const b = k / 6 * 2 * PI; L.esfera(B, e.x + Math.cos(b) * 3.0, yEp + 0.6, e.z + Math.sin(b) * 3.0, 0.32, { gajos: 5, anillos: 3, col: [255, 206, 140], k: K.EMISIVO, aux: L.aux.emisivo(3.5, true) }); }   // SF3: luces cálidas
     if (BASE) L.esfera(B, e.x, yEp + 10.5, e.z, 3.0, { gajos: FAR ? 5 : 10, anillos: FAR ? 3 : 5, col: c.oro, k: K.TRENCADIS });   // icosaedro con la esfera
@@ -279,7 +280,7 @@ function construir(B, h, L, q) {
   // ---- Mare de Déu (138 m): paraboloides que se cortan (12 lóbulos), corona de piedra y estrella de 12 puntas a 135 m
   { const [mx, mz] = R.md, yC = R.Hmd - 25, { P, f } = parab(9.0, 52, 5.0, yC, FAR ? 4 : 12);
     if (BASE) lobulos(mx, mz, [[9.2, 40]].concat(P), n(48), 12, 0.1, TOR, K.PIEDRA, aP);
-    if (!FAR) huecos(mx, mz, y => f(y) * 1.01, 58, yC - 3, 2.8, 24, 0.5, { ancho: 0.62, sal: 0.3, rombo: true, luz: true });
+    if (!FAR) huecos(mx, mz, y => f(y) * 1.01, 58, yC - 3, 2.8, 24, 0.5, { ancho: 0.48, sal: 0.3, rombo: true, luz: true });
     if (BASE) rv(mx, mz, [[5.0, yC], [5.9, yC + 1.5], [5.9, yC + 4.5], [3.6, yC + 4.5], [2.6, yC + 12], [1.5, yC + 18], [0.8, yC + 21.5]], n(12), TOR, K.PIEDRA);
     const yS = R.Hmd - 3;                                             // centro de la estrella (135 m), 7,5 m de diámetro
     if (BASE) for (let k = 0; k < 3; k++) { const b = k / 3 * 2 * PI; L.bar(B, [mx + Math.cos(b) * 0.7, yC + 20, mz + Math.sin(b) * 0.7], [mx + Math.cos(b) * 1.6, yS - 2.2, mz + Math.sin(b) * 1.6], FAR ? 0.35 : 0.22, C([200, 204, 210]), K.METAL); }
@@ -290,7 +291,7 @@ function construir(B, h, L, q) {
   { const yB = 142.5, yW = 155.5, prof = [[9.4, 58], [9.4, 64], [9.2, 85], [8.6, 100], [7.6, 115], [6.2, 130], [4.3, yB]];
     if (BASE) facetas(AX, CZ, prof, 12, TOR, K.PIEDRA, { aux: aP, a0: 15 });
     const rJ = y => { for (let i = 1; i < prof.length; i++) if (y <= prof[i][1]) { const t = (y - prof[i - 1][1]) / (prof[i][1] - prof[i - 1][1]); return (prof[i - 1][0] + (prof[i][0] - prof[i - 1][0]) * t) * Math.cos(PI / 12); } return 4; };
-    if (!FAR) huecos(AX, CZ, y => rJ(y) * 1.035, 66, yB - 1, 3.0, 24, 0.5, { ancho: 0.64, sal: 0.3, rombo: true, luz: true });
+    if (!FAR) huecos(AX, CZ, y => rJ(y) * 1.035, 66, yB - 1, 3.0, 24, 0.5, { ancho: 0.48, sal: 0.3, rombo: true, luz: true });
     // corona bajo la cruz: celosía más fina (rombos pequeños) en el tramo de cerámica
     if (!FAR) { const PW = [[4.3, yB], [4.0, yB + 4], [3.4, yB + 8.5], [2.6, yW]], rW = y => { for (let i = 1; i < PW.length; i++) if (y <= PW[i][1]) { const t = (y - PW[i - 1][1]) / (PW[i][1] - PW[i - 1][1]); return (PW[i - 1][0] + (PW[i][0] - PW[i - 1][0]) * t) + 0.03; } return 2.6; }; huecos(AX, CZ, rW, yB + 1, yW - 0.5, 1.5, 24, 0.5, { ancho: 0.6, sal: 0.12, rombo: true, luz: true, col: BL }); }
     if (BASE) facetas(AX, CZ, [[4.3, yB], [4.0, yB + 4], [3.4, yB + 8.5], [2.6, yW], [1.8, yW + 0.6]], 12, BL, K.TRENCADIS, { a0: 15, sinTecho: false, techo: BL });
@@ -481,7 +482,7 @@ function construir(B, h, L, q) {
       if (MED) { rv(x, z, [[0.55, 47], [1.0, 48.4, BL], [0.7, 50, c.oro], [0, 51.5, BL]], 8, BL, K.TRENCADIS);
         L.caja(B, x, z, 51, 0.3, 0.3, 2.4, 0, BL, K.TRENCADIS); L.caja(B, x, z, 52.4, 1.3, 0.3, 0.3, 0, BL, K.TRENCADIS); }
       // piñones de las esquinas (dos por lado, de frente) con celosía de panal y pináculos
-      for (const [ox, w] of [[-4.6, 6.6], [4.6, 6.6]]) { const cx = x + ox, cz = zL2 + 6.2, y0 = 9, y1 = 18.5;
+      for (const [ox, w] of [[-4.6, 6.6], [4.6, 6.6]]) { const cx = x + ox, cz = zL2 + 3.4, y0 = 9, y1 = 18.5;
         const F = (u, y, d) => [cx + u, y, cz + d];
         if (BASE) { L.caja(B, cx, cz - 1.6, yLo, w, 3.2, y0 - yLo, 0, sh(TOR, 0.97), K.PIEDRA, { aux: aP, techo: TECHO });
           const th = [[-w / 2, y0], [w / 2, y0], [0, y1]];
@@ -497,12 +498,9 @@ function construir(B, h, L, q) {
       }
       if (MED) for (const ox of [-9.6, 9.6]) rv(x + ox, zL2 + 5, [[0.6, 0], [0.5, 15], [0.75, 15.6], [0.3, 20], [0, 22.5, c.ama]], 8, sh(TOR, 1.04), K.PIEDRA);
     }
-    // basamento ancho con escalinata frontal (de z ≈ 47 a la línea de fachada, z = 71, donde empieza la de ENTORNO)
-    if (BASE) { const zp0 = zL2 + 2.2, zp1 = 63, ySt = Math.min(-0.2, yG(gx, 71));
-      L.caja(B, gx, (zp0 + zp1) / 2, yLo, 92, zp1 - zp0, -yLo, 0, sh(OCRE, 1.02), K.PIEDRA, { aux: aP, techo: sh(OCRE, 0.95) });
-      const NS = 10; for (let i = 0; i < NS; i++) { const z0 = zp1 + i * (71 - zp1) / NS, yt = ySt * (i + 1) / NS;
-        L.caja(B, gx, (z0 + 71) / 2, yLo, 44, 71 - z0, yt - yLo, 0, sh(OCRE, 1.05 - 0.01 * i), K.PIEDRA, { techo: sh(OCRE, 1.0) }); }
-      for (const sg of [-1, 1]) L.caja(B, gx + sg * 24, (zp1 + 71) / 2, yLo, 4, 71 - zp1, 1.0 - yLo, 0, sh(OCRE, 0.98), K.PIEDRA, { aux: aP }); }
+    // basamento: solo un zócalo bajo el bosque de columnas (z 39 → 47). Delante pasa Mallorca: la losa y la escalinata
+    // sobre la calle son de ENTORNO (véase el progreso SF3)
+    if (BASE) L.caja(B, gx, (39.3 + zL2 + 3) / 2, yLo, 74, zL2 + 3 - 39.3, 0.6 - yLo, 0, sh(OCRE, 1.02), K.PIEDRA, { aux: aP, techo: sh(OCRE, 0.95) });
     if (MED) [-13.5, -9, -4.5, 0, 4.5, 9, 13.5].forEach((dx, i) => {      // siete puertas de bronce (la central, 4,7 × 5 m)
       const w = i === 3 ? 4.7 : 3.6, hh = i === 3 ? 7.5 : 6.2;
       L.caja(B, gx + dx, zD + 2.45, 0, w, 0.1, hh, 0, [92, 76, 52], K.METAL, { aux: L.aux.panel(0.6, 0.3, 0) }); });
@@ -713,7 +711,7 @@ void main(){
 #ifdef LDR
   FRAGA(c, 0.32*f);
 #else
-  gl_FragColor = vec4(toLin(c)*0.09*f, 0.0);
+  gl_FragColor = vec4(toLin(c)*0.07*f, 0.0);
 #endif
 }`;
 function haces(ctx, m) {
@@ -722,7 +720,7 @@ function haces(ctx, m) {
   const D = [];
   for (let i = 0; i < 4; i++) { const b = a + i * PI / 2; D.push([b, 0.06, 230, 7.0]); }               // a lo largo de los brazos, casi horizontales
   for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2; D.push([b, 0.62, 260, 9.0]); }       // hacia arriba, entre los brazos
-  for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2 + 0.2; D.push([b, -0.5, 170, 8.0]); } // hacia abajo, hacia los evangelistas
+  for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2 + 0.2; D.push([b, -0.5, 130, 6.0]); } // hacia abajo, hacia los evangelistas
   const P = [], U = [], I = [];
   for (const [az, el, len, rad] of D) {
     const d = [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
