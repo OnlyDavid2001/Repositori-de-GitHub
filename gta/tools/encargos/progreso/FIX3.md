@@ -16,7 +16,8 @@ allanado), trb (máx. ms por paso de transporte) y lt (fases de carga).
    `aero_campo`: sin aura de calzada (FS_ROAD), de acera (FS_WALK), de suelo urbano (uGlow.w) ni farolas de furniture.js.
 4. **Presupuesto de hitos** — HECHO A MEDIAS (landmarks.js): LOD de Babylon con malla nula por ficha, a max(450, 80·s) m (s = alto
    o radio del modelo; primero solo s < 30 m, luego todas). Total construido 698 k; dentro de su distancia con s < 30 m: 482–486 k
-   (Gòtic, Glòries, Passeig de Gràcia, aeropuerto desde el aire). Con todas las fichas, ver D2 (abajo). Sigue por encima de 400 k: los
+   (Gòtic, Glòries, Passeig de Gràcia, aeropuerto desde el aire). Con todas las fichas (D2): 476–481 k, casi igual: lo que pesa son las fichas grandes de puerto y aeropuerto
+   y los hitos cercanos. No he subido el tope ni partido esas fichas: queda para REV3/otra etapa. Sigue por encima de 400 k: los
    hitos grandes de puerto y aeropuerto pesan; frustum aparte, lo dibujado depende del encuadre. `BCN.lm.stats().trisVis` da los triángulos de hitos dentro de su distancia desde la cámara.
 5. **Tirones** — HECHO: `build` de transporte.js es un generador (cede cada 3 piezas); paso máximo de construcción 25,9 → 2,9–3,1 ms
    (colocación de estaciones, máx. por paso 111 → 4–8 ms en las mismas vistas, con ruido de la máquina); ground.webp se descodifica una vez
@@ -36,3 +37,15 @@ allanado), trb (máx. ms por paso de transporte) y lt (fases de carga).
 - Allanado precalculado: `data/allanado.bin.gz` + `tools/allanado.sh` (relanzar si cambian calles, relieve o `calc`).
 - transporte.js construye las celdas por pasos; `ctx.groundBmp` comparte la ortofoto descodificada entre nature y transporte.
 - Asfalto: albedo por estado 0,084 · 0,11 · 0,15 · 0,20 · 0,26–0,33.
+
+## Lo flojo
+- Hitos: el LOD por ficha solo baja lo de dentro de distancia de 698 k a ~480 k; sigue por encima de 400 k.
+- Asfalto del Passeig de Gràcia: más gris que antes pero todavía oscuro a pie de día (D2_pg_calz).
+- Gòtic: la vista desde el dron no deja ver si queda el alcorque de arb4 (dgo_tp_gotic); la regla está cambiada pero sin
+  comprobación visual a pie. La vista `gotic` (la de ARB4) en mi arnés mira a una pared.
+- La regla nueva de «ancha» también quita adultos fuera de Ciutat Vella donde un lado da a una plaza: al fondo de pg_calz
+  desaparecen algunas copas (D2_pg_calz frente a A_pg_calz).
+- data/allanado.bin.gz pesa 3,9 MB (+13 % de data/). Hay que regenerarlo si cambian calles o relieve (si no, recalcula: no rompe).
+- glor_pie mira a un muro: Glòries se comprueba con los números y desde el dron.
+
+Hoja: scratchpad/n3/fix3/hoja_antes_despues.jpg (aero_n, glor_dron, pg_calz, gotic_dron, pg_n).
