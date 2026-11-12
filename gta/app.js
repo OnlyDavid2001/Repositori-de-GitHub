@@ -804,7 +804,7 @@ uniform sampler2D uStreet; uniform vec4 uStreetR;
 float seaM(vec2 q){ return texture2D(uStreet, (q - uStreetR.xy)*uStreetR.zw).r; }
 vec3 seaLights(vec2 p, vec2 g, float px, float t){
   vec2 dir = normalize(p - uCam.xz + vec2(1e-4)), sd = vec2(-dir.y, dir.x);
-  float wob = dot(g, sd)*30.0;
+  float wob = dot(g, sd)*12.0;
   // 1) la orilla iluminada en la recta p + dir·s: primer tramo con calle (pasos geométricos) y bisección hasta ~15 m
   float s0 = 0.0, s1 = -1.0, soft = 0.0;
   for (int i = 0; i < 12; i++) { float s = 15.0*pow(1.6, float(i)); float m = seaM(p + dir*s);
@@ -812,21 +812,22 @@ vec3 seaLights(vec2 p, vec2 g, float px, float t){
   if (s1 < 0.0) return vec3(0.0);
   for (int i = 0; i < 6; i++) { float sm = 0.5*(s0 + s1); if (seaM(p + dir*sm) > 0.3) s1 = sm; else s0 = sm; }
   // 2) farolas de la primera franja de calle (una por celda de 22 m, con azar): estela fina de lado y entera a lo largo
-  float w = 1.1 + 0.7*fwidth(dot(p, sd)), acc = 0.0, port = 0.0;
-  for (int i = 0; i < 4; i++) {
+  float w = 0.6 + 0.35*fwidth(dot(p, sd)), acc = 0.0, port = 0.0;
+  for (int i = 0; i < 2; i++) {
     vec2 q = p + dir*(s1 + 2.0 + float(i)*18.0) + sd*wob*(0.3 + s1*0.002);
     vec2 cid = floor(q/22.0), lp = (cid + 0.5 + (vec2(hash21(cid), hash21(cid + 3.7)) - 0.5)*0.5)*22.0;
-    float mL = seaM(lp)*step(0.3, hash21(cid + 9.1)), perp = dot(q - lp, sd), along = dot(q - lp, dir);
-    float k = exp(-perp*perp/(w*w))*(1.0 - smoothstep(9.0, 14.0, abs(along)))*mL*(1.0 - 0.18*float(i));
+    float mL = seaM(lp)*step(0.55, hash21(cid + 9.1)), perp = dot(q - lp, sd), along = dot(q - lp, dir);
+    float k = exp(-perp*perp/(w*w))*(1.0 - smoothstep(9.0, 14.0, abs(along)))*mL*(1.0 - 0.4*float(i));
     acc += k;
     port = max(port, k*(1.0 - smoothstep(-400.0, 400.0, dot(lp - vec2(12950.0, 12350.0), vec2(0.61, 0.79)))));
   }
   // la estela se apaga lejos de la orilla (más larga cuanto más rasante se mira) y se trocea con el oleaje
-  float L = mix(250.0, 1400.0, clamp(1.0 - uCam.y/250.0, 0.0, 1.0));
+  float L = mix(140.0, 650.0, clamp(1.0 - uCam.y/250.0, 0.0, 1.0));
   float fall = exp(-s1/L);
   float dash = smoothstep(0.30, 0.75, vnoise(vec2(dot(p, dir)*0.45 - t*1.6, dot(p, sd)*0.9)));
-  vec3 cw = mix(vec3(1.0, 0.62, 0.30), vec3(0.85, 0.92, 1.0), clamp(port/max(acc, 1e-3), 0.0, 1.0));
-  return cw*min(acc, 1.5)*fall*(0.3 + 0.7*dash)*1.6 + vec3(1.0, 0.66, 0.36)*(soft*0.012 + 0.05*exp(-s1/200.0));
+  dash = mix(dash, 0.45, smoothstep(1.5, 5.0, fwidth(dot(p, dir))));   // de lejos, sin dientes
+  vec3 cw = mix(vec3(1.0, 0.62, 0.30), vec3(0.80, 0.84, 0.86), clamp(port/max(acc, 1e-3), 0.0, 1.0));
+  return cw*min(acc, 1.0)*fall*(0.1 + 0.9*dash)*1.7 + vec3(1.0, 0.66, 0.36)*(soft*0.008 + 0.035*exp(-s1/150.0));
 }
 void main(){
   vec2 p = vPos.xz; vec3 V = uCam - vPos; float dist = length(V); V /= dist;
