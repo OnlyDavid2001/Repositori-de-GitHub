@@ -52,24 +52,22 @@
  {
   "name": "poblenou_rambla",
   "n": "Rambla del Poblenou",
-  "x": 15089.1,
-  "z": 15329.6,
+  "x": 15088.2,
+  "z": 15328.7,
   "walk": true,
-  "yaw": -0.78,
+  "yaw": -0.787,
   "pitch": -0.02,
-  "hour": 11,
-  "eval": "(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"poblenou\",15089.1,15329.6,-0.78,3,40)"
+  "hour": 11
  },
  {
   "name": "sarria_major",
   "n": "Carrer Major de Sarrià",
-  "x": 8114.1,
-  "z": 15591.8,
+  "x": 8113.4,
+  "z": 15591.2,
   "walk": true,
-  "yaw": 0.8,
+  "yaw": -0.698,
   "pitch": -0.02,
-  "hour": 11,
-  "eval": "(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"sarria\",8114.1,15591.8,0.8,1,8)"
+  "hour": 11
  },
  {
   "name": "rambla_noche",
@@ -167,13 +165,13 @@
  {
   "name": "coll_camino",
   "n": "Camino de tierra de Collserola a pie",
-  "x": 7350,
-  "z": 17650,
+  "x": 7349.9,
+  "z": 17647.8,
   "walk": true,
-  "yaw": 0.6,
+  "yaw": 1.608,
   "pitch": 0.02,
   "hour": 12,
-  "eval": "BCN.st.maxDist=40000;(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"coll\",7350,17650,0.6,0,2.99)"
+  "eval": "BCN.st.maxDist=40000;"
  },
  {
   "name": "coll_desde_ciudad",
@@ -189,13 +187,13 @@
  {
   "name": "tibidabo_ctra",
   "n": "Carretera del Tibidabo",
-  "x": 8001.3,
-  "z": 18186.2,
+  "x": 8002.1,
+  "z": 18186.1,
   "walk": true,
-  "yaw": 0.0,
+  "yaw": 0.095,
   "pitch": 0.0,
   "hour": 12,
-  "eval": "BCN.st.maxDist=40000;(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"tibidabo\",8001.3,18186.2,0,2,10)"
+  "eval": "BCN.st.maxDist=40000;"
  },
  {
   "name": "eix_dron",
