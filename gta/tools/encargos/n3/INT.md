@@ -2,7 +2,7 @@
 
 ## INT
 Worktree `/home/user/wt/n3-int`, rama `wt-n3-int` (desde la rama principal). Fusiona, por este orden: `wt-n3-edif`,
-`wt-n3-suelos`, `wt-n3-transp`, `wt-n3-plazas`, `wt-n3-puerto` y `wt-n3-aero` (`git merge --no-edit`, identidad y pie de
+`wt-n3-suelos`, `wt-n3-arb` (ÁRBOLES 3: solo toca `trees.js` y la colocación de árboles de `streets.js`), `wt-n3-transp`, `wt-n3-plazas`, `wt-n3-puerto` y `wt-n3-aero` (`git merge --no-edit`, identidad y pie de
 `comun.md`). Conflictos esperables en `app.js` (líneas `addMod`, `FS_BLD` de EDIFICIOS frente a `FS_ROAD` de SUELOS),
 `index.html` (scripts nuevos antes de `lighting.js`) y `streets.js`: resuélvelos conservando la intención de las dos
 partes. Lee los informes de las etapas (en tu encargo) y sus «peticiones a otros carriles» (haz las pequeñas).
