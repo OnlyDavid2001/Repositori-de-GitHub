@@ -350,18 +350,20 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // en los talleres: algún coche o furgoneta aparcados y palés
     if (tipo === 'talleres' || tipo === 'mixto') for (let i = 0; i < 1 + Math.floor(g[30] * 3); i++) { const r = takeS(src, 600 + i, 6), p = spot(2.6); if (p) items.push({ t: 'car', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[0] < 0.5 ? 0 : Math.PI / 2), l: r[1] < 0.3 ? 5 : 4.2, col: [[200, 200, 196], [60, 62, 66], [150, 30, 28], [40, 70, 120], [220, 220, 214], [120, 124, 128]][Math.floor(r[2] * 6)] }); }
     // n3 E3 · patio con vida: zonas de otro suelo (la terracita de una finca, una pista), cosas de taller y rarezas repartidas
-    for (let i = 0; i < 1 + Math.floor(g[32] * 3); i++) { const r = takeS(src, 700 + i, 6), w = 3 + r[0] * 4, l = 4 + r[1] * 5, p = spot(Math.hypot(l, w) / 2 + 0.4); if (!p) continue;
+    // cuántas cosas: según el área del patio (un patio de 3 000 m² lleva el triple que uno de 1 000)
+    const fA = Math.max(1, Math.min(4, Math.abs(MZ_area(sp.inner)) / 900));
+    for (let i = 0; i < Math.round((1 + g[32] * 3) * fA); i++) { const r = takeS(src, 700 + i, 6), w = 4 + r[0] * 6, l = 5 + r[1] * 7, p = spot(Math.hypot(l, w) / 2 + 0.4); if (!p) continue;
       const a = ang + (r[2] < 0.5 ? 0 : Math.PI / 2), c = Math.cos(a), sn = Math.sin(a), Q = [[-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]].map(([u, v]) => [p[0] + c * u - sn * v, p[1] + sn * u + c * v]);
       const zg = [2, 4, 3, 1, 2][Math.floor(r[3] * 5)], zc = zg === 3 ? LAWN[Math.floor(r[4] * LAWN.length)] : zg === 1 ? [176, 168, 150] : [[196, 186, 168], [186, 120, 96], [170, 168, 160]][Math.floor(r[4] * 3)];
       items.push({ t: 'ground', P: Q, col: shade(zc, 0.8), x: p[0], z: p[1], y: 0, a: 0, up: 0.1, g: zg });
       if (r[5] < 0.5) items.push({ t: 'table', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.1, a: a + r[5], n: 2 + Math.floor(r[1] * 3), round: r[0] < 0.5, umb: r[2] < 0.6 ? AWN[Math.floor(r[3] * AWN.length)] : null, col: r[4] < 0.5 ? [236, 236, 230] : [92, 70, 52] }); }
     if (tipo === 'talleres' || tipo === 'mixto' || tipo === 'aparcamiento') {
-      for (let i = 0; i < 2 + Math.floor(g[33] * 4); i++) { const r = takeS(src, 720 + i, 4), p = spot(1.0); if (p) items.push({ t: 'pal', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + r[0] * 0.4, n: 1 + Math.floor(r[1] * 6) }); }
+      for (let i = 0; i < Math.round((2 + g[33] * 4) * fA); i++) { const r = takeS(src, 720 + i, 4), p = spot(1.0); if (p) items.push({ t: 'pal', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + r[0] * 0.4, n: 1 + Math.floor(r[1] * 6) }); }
       if (g[34] < 0.7) { const r = takeS(src, 730, 4), p = spot(2.2); if (p) items.push({ t: 'bin', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[0] < 0.5 ? 0 : Math.PI / 2), col: [[230, 170, 40], [200, 80, 40], [60, 110, 160], [90, 130, 80]][Math.floor(r[1] * 4)] }); }
       for (let i = 0; i < 1 + Math.floor(g[35] * 3); i++) { const r = takeS(src, 735 + i, 4), p = spot(1.4); if (p) items.push({ t: 'skyg', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 1.4 + r[0] * 1.6, w: 1 + r[1] }); }
     }
     const RAR = ['inv', 'ping', 'tramp', 'hoop', 'slide', 'dog', 'bikes', 'palm', 'carcov', 'lamp', 'inv', 'bikes', 'dog', 'lamp'];
-    const nR = (tipo === 'publico' ? 2 : 3) + Math.floor(g[36] * 4);
+    const nR = Math.round(((tipo === 'publico' ? 2 : 3) + g[36] * 4) * fA);
     for (let i = 0; i < nR; i++) { const r = takeS(src, 760 + i, 8), t = RAR[Math.floor(r[0] * RAR.length)];
       const rad = { inv: 2.2, ping: 2.4, tramp: 2.2, hoop: 1.2, slide: 2.0, dog: 0.9, bikes: 1.3, palm: 1.6, carcov: 2.6, lamp: 0.5 }[t], p = spot(rad); if (!p) continue;
       const y = gY(p[0], p[1]), a = ang + (r[1] < 0.5 ? 0 : Math.PI / 2) + (t === 'bikes' || t === 'dog' ? r[2] : 0);
