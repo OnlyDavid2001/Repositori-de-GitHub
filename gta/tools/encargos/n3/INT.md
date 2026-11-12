@@ -52,3 +52,6 @@ final para el usuario con lo mejor del día (de día y de noche) en
   (ÁRBOLES 3 quitó árboles de las calles por eso). Las plazas duras de Gràcia van casi sin árboles, con alguno en el borde.
 - **Plaça de Catalunya a pie**: el granito es demasiado uniforme. **Fuente de Espanya**: los grupos escultóricos son
   bultos. **Canòpia de Glòries**: los pilares con bola verde quedan raros.
+- **Aeropuerto (tras AE4)**: queda un bloque blanco liso (`lm_aero_edificis`, hacia 3777, 2759; vista `pie_lejos` de
+  `ae4/`) sin fachada, el techo del viaducto de la T1 muy oscuro de noche y ningún carguero visible en la plataforma de
+  carga. Arréglalo solo si cabe entre los 10 defectos más visibles.
