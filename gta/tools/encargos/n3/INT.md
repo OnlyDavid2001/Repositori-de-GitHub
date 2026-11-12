@@ -67,3 +67,7 @@ final para el usuario con lo mejor del día (de día y de noche) en
   de duplicados). Mira la Diagonal y el Passeig de Gràcia desde el dron y a pie en tercera persona.
 - **Plaça de la Vila de Gràcia a pie** (`p2/d1_gracia_pie.jpg`): hay un bloque blanco liso en medio de la plaza (¿la
   base del campanario o un volumen del registro?); revísalo.
+- **Transporte (tras T2)**: la construcción de una celda de 200 m de transporte.js tarda hasta ~45 ms sin trocear (tirón
+  al moverse), y ground.webp se descodifica dos veces (nature.js y transporte.js): comparte la descodificación si es fácil.
+  Falta una vista de dron de un cruce con boca y marquesina (la de T2 mira a una azotea). Una estación sigue sin boca y
+  dos con menos de las que tocan (`count.noSite`, `count.short`).
