@@ -23,5 +23,30 @@ Rama `wt-n2-arb`. Ficheros: `trees.js`, `streets.js` (sombreador de árbol y `fi
 `$SCRATCH/n2/arb2/mkv2.js <grupos> [antes]` (sp, mid, calle, gen, aer) genera las vistas; `run.sh <prefijo> <json> [dir]`
 lanza el arnés (antes = copia de HEAD de ARB en `arb2/old/gta`). `tris.js` cuenta triángulos por especie sin navegador.
 
-## Pendiente
-- (se actualiza al terminar)
+## Coste (arnés, 640×360; ANTES = HEAD de ARB, mismas vistas)
+- Triángulos por ejemplar (cerca / media): tipuana 4840/358 → 4116/428, pino 2816/348 → 3460/378, Phoenix (nueva)
+  704/144; el resto igual (plátano 4272/328). Impostor: 4 en todas. Ejemplares: los mismos (la Phoenix sale de tramos que
+  antes eran Washingtonia).
+- Aérea 10:30 (y = 160): árboles a media distancia 541 672 → 549 458 (+1,4 %), impostores 97 784 = 97 784; cascada lejana
+  de sombras 1 513 391 → 1 521 177 tris, mallas que proyectan 67 → 69.
+- Acera del Eixample 23:00: cerca 205 056 = 205 056, media 583 180 → 592 300 (+1,6 %), cascada lejana 1 140 969 → 1 150 089.
+- Una especie más: 5 mallas y 5 materiales más (40 en total, solo dibujan las que tienen instancias), 2 texturas de 512² y
+  una de 256² más. Sin trabajo por fotograma nuevo (la corteza procedural es solo sombreador, en el tronco cercano).
+
+## Hojas (scratchpad n2/arb2/)
+`hoja_arb2_especies.jpg` (las especies a pie; ANTES con otra cámara porque el `findTree` viejo no da el lado de la
+calzada), `hoja_arb2_media_distancia.jpg` (jacaranda, pino, tipuana y Phoenix a 90 m y 480 m), `hoja_arb2_calles.jpg`
+(siete barrios a pie en la acera, misma cámara antes y después), `hoja_arb2_general.jpg` (acera, aérea y dron a las 10:30,
+dron y acera a las 23:00: la noche sale igual). Cero errores y avisos de consola en todas las capturas.
+
+## Pendiente / flojo
+- Pino de cerca: ya es tronco alto sin ramas bajas con parasol, pero las ramas madre se ven como radios rectos y el
+  parasol, desde abajo, es una masa oscura; de media distancia no se distingue bien de un plátano visto de lado.
+- La corteza en placas se lee en el tronco; en las ramas se nota algo el patrón de ladrillo.
+- Jacaranda de lejos: los ejemplares en flor tiran a lila, pero a 480 m son pocos píxeles y la vista de prueba no
+  enfoca una calle entera de jacarandas.
+- Luz sobre la copa desde el aire: el cambio es sutil (las copas son algo más claras arriba); el Eixample sigue siendo
+  plátano y la vista aérea cambia poco.
+- La vista de prueba `sp3_palmera` (Washingtonia) queda tapada por una jacaranda: falta una buena vista de cerca de la
+  Washingtonia con su corteza fibrosa.
+- DESARROLLO.md (nombres de malla, `trees.js`, `free`/`findTree`) sin tocar: no es de mi carril.

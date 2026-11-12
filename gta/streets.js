@@ -587,7 +587,9 @@ void main(){
       const u = Math.max(0, Math.min(1, ((best[0] - ax) * dx + (best[2] - az) * dz) / L2)), qx = ax + dx * u - best[0], qz = az + dz * u - best[2], ad = Math.hypot(qx, qz) || 1;
       best.push(qx / ad, qz / ad, ad); }
     return best; }
-  const api = { update, setRange, flush, busy, findTree, lastCam: null,
+  // para las vistas de prueba: ¿es (x, z) suelo libre (ni dentro de un edificio ni en mitad de la calzada)?
+  const free = (x, z) => coverAt(x, z, -1) < -1e8 && nearestCar(x, z)[1] > 0.3;
+  const api = { update, setRange, flush, busy, findTree, free, lastCam: null,
     stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
   return api;
 } };
