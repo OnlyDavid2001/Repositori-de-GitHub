@@ -120,7 +120,7 @@
     const lamp = (x, z, y0) => { L.tambor(B, x, z, y0, y0 + 0.6, 0.32, { r1: 0.24, lados: 8, col: [44, 46, 44], k: K.METAL });
       L.tambor(B, x, z, y0 + 0.6, y0 + 4.6, 0.11, { r1: 0.08, lados: 6, col: [44, 46, 44], k: K.METAL });
       for (const d of [-1, 1]) { L.bar(B, [x, y0 + 4.3, z], [x + d * 0.75, y0 + 4.6, z], 0.04, [44, 46, 44], K.METAL);
-        L.tambor(B, x + d * 0.75, z, y0 + 4.3, y0 + 4.85, 0.2, { r1: 0.26, lados: 6, col: [255, 226, 168], k: K.EMISIVO, aux: L.aux.emisivo(2.2, true) });
+        L.tambor(B, x + d * 0.75, z, y0 + 4.3, y0 + 4.85, 0.2, { r1: 0.26, lados: 6, col: [255, 226, 168], k: K.EMISIVO, aux: L.aux.emisivo(1.2, true) }); // SFR: brillaban demasiado de noche
         L.piramide(B, x + d * 0.75, z, y0 + 4.85, 0.6, 0.6, 0.28, { col: [40, 42, 40], k: K.METAL }); } };
     for (const s of [-1, 1]) { for (const [z0, z1, yy, isL] of LV.steps) if (isL) { lamp(s * (XW - 0.3), (z0 + z1) / 2, yy + 1.17); lamp(s * 10, z0 + 1.0, yy); lamp(s * 10, z1 - 1.0, yy); }
       lamp(s * (XW - 0.3), zt0 + 1.0, yT + 1.15); lamp(s * (XW - 0.3), zt1 - 0.6, yT + 1.17); lamp(s * 26, D.monumento.Z, yT); }

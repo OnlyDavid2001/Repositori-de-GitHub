@@ -837,12 +837,14 @@ const SF_NOCHE = `
 #ifdef SFG
       float fl = (0.10 + 0.25*dl)*(1.0 - 0.85*up);
 #else
-      float fl = (0.14 + 0.86*exp(-hy/0.38))*(0.10 + 0.90*dl*dl)*ed*(1.0 - 0.7*up);
+      float fl = (0.10 + 0.90*exp(-hy/0.32))*(0.10 + 0.90*dl*dl)*ed*(1.0 - 0.8*up);
 #endif
       emis += emit(alb*vec3(1.0, 0.68, 0.32), 1.0*fl*uDusk*(1.0 - 0.45*uLate));
 #ifndef SFG
-      float cold = smoothstep(0.30, 0.80, hy)*(0.35 + 0.65*ed)*(1.0 - 0.6*dl) + 0.9*up*smoothstep(0.12, 0.3, hy);
-      emis += emit(alb*vec3(0.46, 0.62, 1.0), 0.55*cold*uDusk*(1.0 - 0.35*uLate));
+      // SFR: más luz fría azulada arriba (pináculos, hastiales, cubiertas) y un fondo azul tenue en las caras sin foco
+      float cold = smoothstep(0.20, 0.70, hy)*(0.35 + 0.65*ed)*(1.0 - 0.5*dl) + 1.1*up*smoothstep(0.08, 0.25, hy);
+      emis += emit(alb*vec3(0.40, 0.56, 1.0), 0.95*cold*uDusk*(1.0 - 0.35*uLate));
+      emis += emit(alb*vec3(0.30, 0.40, 0.78), 0.14*(1.0 - dl)*uDusk);
 #endif
       emis += emit(wcol*win, 0.55*wl);
     } else if (false) {`;
