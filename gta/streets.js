@@ -372,7 +372,7 @@ void main(){
     v = { wide, cv, rambla };
     wideCache.set(s, v); return v;
   }
-  const treeCache = new Map();
+  const treeCache = new Map(), PLZ = window.BCN_PLAZAS;
   function treesOf(ci) {
     let t = treeCache.get(ci); if (t) return t;
     const cx = ci % NX, cz = (ci / NX) | 0, x0 = cx * CS, z0 = cz * CS, out = [];
@@ -391,6 +391,8 @@ void main(){
         const off = rambla ? hw - 1.2 : hw + 1.3, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (x < x0 || x >= x0 + CS || z < z0 || z >= z0 + CS) continue;
         if (hash2(Math.round(x * 3), Math.round(z * 3)) > 0.93) continue;
+        // REV3: nada de árboles ni alcorques de calle sobre el pavimento de las plazas (plataforma de plazas.js: Catalunya…)
+        if (PLZ && PLZ.pavAt && PLZ.pavAt(x, z)) continue;
         let bad = false;
         for (const j of J) if (Math.hypot(x - j[0], z - j[1]) < 11) { bad = true; break; }
         if (bad) continue;

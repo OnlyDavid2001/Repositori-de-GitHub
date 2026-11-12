@@ -432,9 +432,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
         if (Q && Q.length >= 3) items.push({ t: 'ground', P: Q, col: shade(LAWN[Math.floor(g[20 + q] * LAWN.length)], 0.92 + g[24 + q] * 0.14), x: C[0], z: C[1], y: 0, a: 0, up: 0.05, g: 3 }); }
     }
     // tapias entre fincas (de la trasera hacia el centro), salvo en el jardín público
-    if (tipo !== 'publico') for (let k = 0; k < sp.rad.length; k++) { const r = takeS(src, 200 + k, 4); if (r[0] < 0.25) continue;
+    if (tipo !== 'publico') for (let k = 0; k < sp.rad.length; k++) { const r = takeS(src, 200 + k, 4); if (r[0] < 0.4) continue;
       const a = sp.rad[k], dx = C[0] - a[0], dz = C[1] - a[1], D = Math.hypot(dx, dz), L = Math.min(D * (0.4 + r[1] * 0.3), 16); if (L < 2) continue;
-      items.push({ t: 'tapia', x: a[0] + dx / D * L / 2, z: a[1] + dz / D * L / 2, y: gY(a[0], a[1]), a: Math.atan2(dz, dx), l: L, h: 1.9 + r[2] * 0.8, col: shade([206, 196, 178], 0.85 + r[3] * 0.25) }); }
+      items.push({ t: 'tapia', x: a[0] + dx / D * L / 2, z: a[1] + dz / D * L / 2, y: gY(a[0], a[1]), a: Math.atan2(dz, dx), l: L, h: 1.9 + r[2] * 0.8, col: shade([156, 146, 130], 0.82 + r[3] * 0.22) }); }   // REV3: tapias más oscuras (desde el dron se leían como rayas claras)
     // árboles
     const nT = { talleres: 1 + Math.floor(g[2] * 3), jardines: 4 + Math.floor(g[2] * 6), mixto: 2 + Math.floor(g[2] * 4), publico: 8 + Math.floor(g[2] * 7), aparcamiento: 3 + Math.floor(g[2] * 4) }[tipo];
     for (let i = 0; i < nT; i++) { const r = takeS(src, 300 + i, 6), rr = 2 + r[0] * 2.2, p = spot(Math.max(1.6, rr * 0.8)); if (!p) continue;
@@ -629,7 +629,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
       case 'pool': poolE(W, it, ox, oz, lvl); return true;
       case 'rail': if (lvl !== 3) railE(W, it, ox, oz, lvl); return true;
       case 'tapia': { const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l, 0.25, it.h, it.a, it.col, A_MATTE);
-        if (lvl === 1) bx(W, x, z, y + it.h, it.l + 0.06, 0.34, 0.06, it.a, shade(it.col, 1.1), A_MATTE); return true; }
+        if (lvl === 1) bx(W, x, z, y + it.h, it.l + 0.06, 0.34, 0.06, it.a, shade(it.col, 0.92), A_MATTE); return true; }
       case 'hedge': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l, it.w, it.h, it.a, [56, 86, 44], A_MATTE); return true; }
       case 'car': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.3, it.l, 1.75, 0.68, it.a, it.col, A_PAINT);
         if (lvl === 1) { const [cx, cz] = loc(it, -it.l * 0.06, 0, ox, oz); bx(W, cx, cz, y + 0.98, it.l * (it.l > 4.6 ? 0.8 : 0.52), 1.55, 0.55, it.a, [44, 50, 58], A_GLASS);

@@ -38,6 +38,12 @@ void main(){
     vec2 q = W/vec2(0.6, 0.4); q.x += 0.5*floor(q.y); vec2 id = floor(q), f = fract(q);
     float j = min(min(f.x, 1.0 - f.x)*0.6, min(f.y, 1.0 - f.y)*0.4), jt = smoothstep(0.003, 0.011, j), aa = smoothstep(0.02, 0.1, fw);
     alb *= mix(mix(0.8, 1.0, jt)*mix(0.9, 1.08, hash21(id)), 0.97, aa)*mix(0.86, 1.08, n1*0.6 + n2*0.4); rough = 0.8;
+    // REV3: a pie el granito era un gris liso: grano de la piedra (moteado fino), losas de tono algo distinto (más cálidas
+    // o más frías, alguna repuesta más clara u oscura) y manchas de uso; todo se apaga con la distancia (sin moiré)
+    float gr = 1.0 - smoothstep(0.004, 0.03, fw), hs = hash21(id + 3.1);
+    alb *= mix(vec3(1.0), mix(vec3(1.04, 1.0, 0.95), vec3(0.95, 0.99, 1.04), hs)*mix(0.86, 1.12, hash21(id + 7.7))*(hs > 0.93 ? 0.8 : 1.0), 0.55 + 0.45*gr);
+    alb *= mix(1.0, mix(0.84, 1.12, vnoise(W*41.0))*mix(0.92, 1.05, vnoise(W*13.0 + 3.0)), gr);
+    alb *= 1.0 - 0.12*smoothstep(0.62, 0.8, vnoise(W*0.9 + 11.0))*gr;
   } else if (pat < 2.5) {                           // 2: panot de 20×20 (las cuatro pastillas, insinuadas)
     vec2 q = W*5.0, f = fract(q) - 0.5; float aa = smoothstep(0.05, 0.25, fw*5.0);
     float jt = smoothstep(0.43, 0.48, max(abs(f.x), abs(f.y))), fl = 1.0 - smoothstep(0.0, 0.05, abs(length(abs(f) - 0.25) - 0.13));
@@ -79,15 +85,17 @@ void main(){
     float ring = floor(r/0.75), nb = max(8.0, floor(6.2832*(ring + 0.5)*0.75/0.8)), ja = abs(fract(th/6.2832*nb) - 0.5)*6.2832/nb*r, jr = abs(fract(r/0.75) - 0.5)*0.75;
     float jt = smoothstep(0.004, 0.012, min(jr, ja)), aj = smoothstep(0.02, 0.1, fw);
     alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4); rough = 0.6;
+    { float gr = 1.0 - smoothstep(0.004, 0.03, fw);   // REV3: grano de la piedra a pie, como en el dibujo 1
+      alb *= mix(1.0, mix(0.86, 1.1, vnoise(W*41.0))*mix(0.93, 1.05, vnoise(W*13.0 + 3.0)), gr); }
   } else {                                          // 10: macizo de flores: hojas verdes con manchas de flor del color del vértice
     float g = vnoise(W*0.7)*0.4 + vnoise(W*5.0)*0.35 + vnoise(W*0.12)*0.25, fl = smoothstep(0.42, 0.62, vnoise(W*3.3 + 7.0)*0.7 + vnoise(W*11.0)*0.3);
     alb = mix(vec3(0.27, 0.38, 0.18)*mix(0.7, 1.15, g), vCol.rgb*mix(0.8, 1.1, vnoise(W*17.0)), fl*0.85); rough = 0.92;
   }
   alb *= mix(1.0, mix(0.7, 1.0, n1), pWear);         // suciedad y desgaste
   if (uGlow.x > 0.001) {                            // de noche: aura de la calle + charcos de las farolas de la plaza (cocidos)
-    float gW = (0.2 + 1.6*pGlow*pGlow)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    float gW = (0.2 + 1.15*pGlow*pGlow)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));   // REV3: 1,6 → 1,15 (granito naranja y quemado a pie)
     gW *= mix(1.0, 0.45, smoothstep(25.0, 140.0, uCam.y - vPos.y));
-    emis = emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);
+    emis = emit(mix(kAura, kLed, 0.35)*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);
   }
   FRAG(shade(alb, N, V, rough, 0.0, 1.0) + emis);
 }`;
@@ -394,8 +402,22 @@ lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: '
             L.aguja(B, cx * 6.4, cz * 6.4, 16.3, 2.6, 0.55, { lados: 8, col: BR, k: KK.METAL, pot: 2, exp: 0.5 });
       // grupo escultórico de agua en cada lado (entre vértices) y su caño
       const b = a + 60 * D2R, sx = Math.cos(b) * 5.2, sz = Math.sin(b) * 5.2;
-      L.esfera(B, sx, 3.6, sz, 1.4, { col: [190, 180, 160], k: KK.PIEDRA, sy: 1.5 });
-      L.esfera(B, sx * 1.12, 2.4, sz * 1.12, 1.1, { col: [190, 180, 160], k: KK.PIEDRA, sy: 0.9 });
+      // REV3: grupo escultórico legible (antes, dos bultos): roca escalonada, figura sentada, figura de pie con el brazo en
+      // alto y ánfora que vierte agua hacia el estanque. Marco local: r hacia fuera, t a lo largo del lado
+      const rx = Math.cos(b), rz = Math.sin(b), tx = -rz, tz = rx, Q = (r, t) => [rx * r + tx * t, rz * r + tz * t], SC = [196, 186, 166];
+      const P3 = (r, y, t) => { const q = Q(r, t); return [q[0], y, q[1]]; };
+      { const q = Q(5.6, 0); L.caja(B, q[0], q[1], 0.5, 3.6, 4.6, 1.5, -b / D2R, [176, 168, 150], KK.PIEDRA, { aux: L.aux.piedra(0.5, 0.9) }); }
+      // figura sentada (t = −1,1): tronco, cabeza, muslos hacia fuera, brazo apoyado
+      { const [x, y, z] = P3(5.3, 2.0, -1.1); L.tambor(B, x, z, 2.0, 3.5, 0.48, { lados: 8, col: SC, k: KK.PIEDRA, r1: 0.36 }); L.esfera(B, x, 3.85, z, 0.36, { col: SC, k: KK.PIEDRA, gajos: 10, anillos: 7 });
+        L.bar(B, P3(5.4, 2.15, -1.3), P3(6.6, 2.1, -1.3), 0.26, SC, KK.PIEDRA); L.bar(B, P3(5.4, 2.15, -0.85), P3(6.6, 2.1, -0.85), 0.26, SC, KK.PIEDRA);
+        L.bar(B, P3(6.6, 2.1, -1.1), P3(6.8, 0.9, -1.1), 0.22, SC, KK.PIEDRA); L.bar(B, P3(5.3, 3.3, -1.55), P3(5.9, 2.3, -1.75), 0.15, SC, KK.PIEDRA); }
+      // figura de pie (t = +1,0): piernas, tronco, cabeza y brazo alzado
+      { const [x, , z] = P3(5.1, 0, 1.0); for (const d of [-0.18, 0.18]) { const q = Q(5.1, 1.0 + d); L.tambor(B, q[0], q[1], 2.0, 3.7, 0.17, { lados: 6, col: SC, k: KK.PIEDRA, r1: 0.14 }); }
+        L.tambor(B, x, z, 3.6, 4.9, 0.36, { lados: 8, col: SC, k: KK.PIEDRA, r1: 0.3 }); L.esfera(B, x, 5.25, z, 0.3, { col: SC, k: KK.PIEDRA, gajos: 10, anillos: 7 });
+        L.bar(B, P3(5.1, 4.8, 1.35), P3(5.3, 6.2, 1.6), 0.13, SC, KK.PIEDRA); L.bar(B, P3(5.1, 4.8, 0.65), P3(5.6, 3.9, 0.35), 0.13, SC, KK.PIEDRA); }
+      // ánfora volcada al centro, con su chorro
+      { const [x, , z] = P3(6.4, 0, 0); L.esfera(B, x, 2.55, z, 0.55, { col: SC, k: KK.PIEDRA, sy: 1.25, gajos: 10, anillos: 8 }); L.bar(B, P3(6.6, 2.7, 0), P3(7.3, 2.4, 0), 0.2, SC, KK.PIEDRA);
+        L.bar(B, P3(7.35, 2.4, 0), P3(8.2, 0.75, 0), 0.12, [214, 230, 236], KK.AGUA); }
       L.tambor(B, Math.cos(b) * 8.2, Math.sin(b) * 8.2, 0.7, 1.4, 0.5, { lados: 8, col: [214, 230, 236], k: KK.AGUA, r1: 0.05 });
       for (let j = 0; j < 4; j++) { const c = b + (j - 1.5) * 0.25; L.tambor(B, Math.cos(c) * 12.5, Math.sin(c) * 12.5, 0.7, 3.2, 0.09, { lados: 5, col: [214, 230, 236], k: KK.AGUA, r1: 0.02 }); }
     }
@@ -412,8 +434,10 @@ lmLater({ id: 'canopia_glories', nombre: 'Canòpia Urbana', nivel: 'B', x: 13612
     for (let j = 1; j < NZ - 1; j += 3) for (let i = 1; i < NX - 1; i += 3) { const p = P(i, j), q = [p[0], -0.5, p[2]];
       L.tambor(B, p[0], p[2], -0.5, p[1], 0.22, { lados: 8, col: WH, k: KK.METAL });
       for (const [dx, dz] of [[SX, 0], [-SX, 0], [0, SZ], [0, -SZ]]) L.bar(B, [p[0], p[1] - 3.2, p[2]], [p[0] + dx, p[1], p[2] + dz], 0.06, WH, KK.METAL);
-      L.tambor(B, q[0], q[2], -0.5, 0.6, 1.0, { lados: 8, col: [120, 116, 108], k: KK.LISO });
-      L.esfera(B, q[0], 1.5, q[2], 1.1, { col: GR, k: KK.CESPED, sy: 1.0 }); }
+      // REV3: jardinera baja cuadrada con matas y trepadora que sube por el pilar (antes, una bola verde sobre un tambor)
+      L.caja(B, q[0], q[2], -0.5, 2.0, 2.0, 1.0, 0, [132, 128, 120], KK.LISO);
+      L.esfera(B, q[0], 0.5, q[2], 0.85, { col: GR, k: KK.CESPED, sy: 0.42, gajos: 10, anillos: 6 });
+      L.tambor(B, q[0], q[2], 0.5, p[1] * 0.55, 0.36, { lados: 8, col: GR, k: KK.CESPED, r1: 0.25 }); }
     // trepadoras sobre la celosía: manchas verdes
     for (let j = 0; j < NZ - 1; j += 2) for (let i = (j / 2) % 2; i < NX - 1; i += 2) { const a = P(i, j), b = P(i + 1, j), c = P(i + 1, j + 1), d = P(i, j + 1);
       L.q4(B, [a[0], a[1] + 0.12, a[2]], [b[0], b[1] + 0.12, b[2]], [c[0], c[1] + 0.12, c[2]], [d[0], d[1] + 0.12, d[2]], GR, KK.CESPED); }
@@ -685,13 +709,20 @@ lmLater({ id: 'rellotge_gracia', nombre: 'Torre del Rellotge (Gràcia)', nivel: 
 lmLater({ id: 'gat_botero', nombre: 'Gat de Botero', nivel: 'C', x: 12118.8, z: 13145.3, rot: 136, alto: 3, ancho: 2.5, largo: 7, noche: 'focos',
   build(B, h, L) {
     const KK = window.BCN_LM.K, BZ = [66, 56, 46];
-    for (const [z, r] of [[-1.7, 0.95], [-0.5, 1.1], [0.8, 1.05]]) L.esfera(B, 0, 1.65, z, r, { col: BZ, k: KK.METAL, sy: 0.82 });
+    // REV3: cuerpo continuo y rollizo (antes, tres esferas en fila): esferas solapadas cada 0,3 m a lo largo del lomo con
+    // perfil de radio suave (pecho ancho, barriga caída), que se leen como un solo volumen; cuello que sube hacia la cabeza
+    for (let k = 0; k <= 13; k++) { const t = k / 13, z = -2.2 + t * 3.9, r = 0.78 + 0.42 * Math.sin(Math.PI * (0.15 + 0.75 * t)), y = 1.55 + 0.12 * Math.sin(Math.PI * t) + (t > 0.85 ? (t - 0.85) * 2.2 : 0);
+      L.esfera(B, 0, y, z, r, { col: BZ, k: KK.METAL, sy: 0.84, gajos: 14, anillos: 9 }); }
+    L.esfera(B, 0, 1.05, -0.3, 0.95, { col: BZ, k: KK.METAL, sy: 0.6, gajos: 14, anillos: 8 });   // barriga
     for (const [x, z] of [[-0.55, -2.0], [0.55, -2.0], [-0.55, 1.3], [0.55, 1.3]]) { L.tambor(B, x, z, 0, 1.2, 0.36, { lados: 8, col: BZ, k: KK.METAL }); L.esfera(B, x, 0.22, z + 0.15, 0.42, { col: BZ, k: KK.METAL, sy: 0.55 }); }
     L.esfera(B, 0, 2.35, 2.25, 0.82, { col: BZ, k: KK.METAL, sy: 0.92 });
     L.esfera(B, 0, 2.05, 2.85, 0.42, { col: BZ, k: KK.METAL, sy: 0.75 });
     for (const x of [-0.45, 0.45]) L.aguja(B, x, 2.25, 2.9, 0.6, 0.3, { lados: 4, col: BZ, k: KK.METAL, pot: 1, exp: 1 });
     const T = [[0, 1.8, -2.5], [0, 1.6, -3.3], [0.2, 1.9, -3.9], [0.5, 2.6, -4.1], [0.55, 3.0, -3.8]];
-    for (let k = 0; k + 1 < T.length; k++) L.bar(B, T[k], T[k + 1], 0.22, BZ, KK.METAL);
+    for (let k = 0; k + 1 < T.length; k++) L.bar(B, T[k], T[k + 1], 0.3 - k * 0.03, BZ, KK.METAL);   // REV3: cola más gruesa, con juntas redondas
+    for (let k = 1; k < T.length; k++) L.esfera(B, T[k][0], T[k][1], T[k][2], 0.3 - k * 0.03, { col: BZ, k: KK.METAL, gajos: 8, anillos: 6 });
+    L.esfera(B, 0, 2.0, 3.0, 0.3, { col: BZ, k: KK.METAL, sy: 0.7, gajos: 10, anillos: 6 });   // hocico
+    for (const x of [-0.3, 0.3]) L.esfera(B, x, 2.5, 2.98, 0.11, { col: [40, 34, 28], k: KK.METAL, gajos: 8, anillos: 6 });   // ojos
   } });
 // Monument al Doctor Robert (Plaça de Tetuan; Domènech i Montaner y Llimona, 1910): basamento de piedra escalonado, gran
 // cuerpo piramidal con grupos de figuras de bronce a los lados y el busto arriba

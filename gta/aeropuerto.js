@@ -300,6 +300,9 @@ else {
       for (let u = 16; u < Ld - 10; u += 24) strip(u - 0.45, u + 0.45, 2, 24, 6.3, 0.9, HORo, K.LISO, { suelo: true });   // vigas transversales
       for (const o of [9, 19.4]) strip(10, Ld - 10, o - 0.6, o + 0.6, 6.3, 0.9, HORo, K.LISO, { suelo: true });            // vigas longitudinales
       strip(10, Ld - 10, 2, 24, 7.2, 1.4, HOR, K.LISO, { aux: L.aux.panel(3, 0.05, 0), suelo: true });                       // tablero
+      // REV3: de noche la cara inferior del tablero quedaba negra (las luminarias de llegadas solo dan charco en el suelo):
+      // paños entre vigas alumbrados desde abajo, emisivos solo de noche y suaves
+      for (let u = 16; u < Ld - 34; u += 24) strip(u + 0.5, u + 23.5, 2.2, 23.8, 7.16, 0.02, [168, 156, 138], K.EMISIVO, { aux: L.aux.emisivo(0.45, true), suelo: true });
       strip(10, Ld - 10, 23.6, 24.0, 8.6, 1.1, [176, 174, 168], K.LISO, { suelo: true });                                   // pretil
       // ---- salidas (sobre el viaducto)
       strip(10, Ld - 10, 2, 9.8, 8.6, 0.25, ACE, K.LISO, { aux: L.aux.liso(0.6) });                    // acera de salidas
@@ -596,12 +599,17 @@ else {
       // AE4: el área de la planta puede venir mal (planta en varias piezas): manda también el tamaño de su recuadro
       const A = Math.max(Math.abs(areaS(P)), (x1 - x0) * (z1 - z0) * 0.5), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
       // AE4: solo es marquesina si el volumen elevado es delgado; el bloque blanco de pie_lejos (elevado y de 15 m) no lo es
+      (window.BCN_AEROED = window.BCN_AEROED || []).push([Math.round(cx + h.x), Math.round(cz + h.z), Math.round(A), Math.round(H), +(+e.y0).toFixed(1)]);   // REV3: pruebas
       if (e.y0 > 2.5 && top - e.y0 < 6) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
       // AE4: el bloque blanco de ventanas al este del P1 es el parque de bomberos del sur (C. I. Sur, data/aero_carga.json)
       if (DATA.c && DATA.c.bomberosSur && Math.hypot(cx + h.x - 3866, cz + h.z - 2826) < 70) { bomberos(B, L, P, y0, Math.max(top, y0 + 9), h); continue; }
       if (A > 1500 && H >= 10) {                                                                    // AE4: oficinas de hormigón con huecos
-        L.prisma(B, P, y0, top, [214, 208, 196], K.VENTANAS, { aux: L.aux.ventanas(3.6, 2.4, 0.55, 0.42), techo: [150, 150, 148] });
-        L.prisma(B, offs(P, 0.25), y0, y0 + 1.0, [150, 148, 142], K.LISO, { sinTecho: true });
+        // REV3: era un bloque blanco liso visto desde lejos (huecos pequeños en hormigón claro): ahora cuerpo de hormigón
+        // gris arena y bandas corridas de vidrio oscuro por planta (ventanas en cinta, legibles a 500 m), zócalo y antepecho
+        L.prisma(B, P, y0, top, [176, 170, 158], K.VENTANAS, { aux: L.aux.ventanas(3.6, 2.4, 0.55, 0.42), techo: [150, 150, 148] });
+        const gl = offs(P, 0.12);
+        for (let yf = y0 + 4.4; yf + 2.0 < top - 0.6; yf += 3.6) L.prisma(B, gl, yf, yf + 1.9, [58, 76, 92], K.CORTINA, { aux: L.aux.cortina(1.8, 1.9, 0.08), sinTecho: true });
+        L.prisma(B, offs(P, 0.25), y0, y0 + 1.0, [110, 108, 104], K.LISO, { sinTecho: true });
         L.prisma(B, offs(P, 0.15), top, top + 1.1, [196, 192, 182], K.LISO, { sinTecho: true });
         for (const o of [[-6, -4], [5, 3]]) L.caja(B, cx + o[0], cz + o[1], top, 5, 3, 2.0, 0, [150, 154, 158], K.METAL, { aux: L.aux.panel(0.6, 0.05, 0) });
         continue; }

@@ -360,6 +360,7 @@ void main(){
       float cell = hash21(vec2(floor(u/1.9), floor(h/3.6)));
       if (uDusk > 0.01) glow = vec3(0.80, 0.90, 1.0)*((1.0 - mull)*step(fract(cell*5.3), 0.45*homeFrac())*uDusk*mix(0.5, 1.0, fade));   // oficinas: pocas plantas encendidas
       vec3 gl = mix(base*0.62, mix(base, uSkyCol*1.25, 0.45), cell*0.6 + 0.2);
+      gl = mix(gl, mix(base, uSkyCol*1.3, 0.5)*1.1, 0.4*(1.0 - uDusk));   // REV3: de día, vidrio menos negro (como el de cerca)
       base = mix(mix(base*0.85, gl, 0.7), mix(gl, base*0.55, mull*0.8), fade);
     } else if (!plain) {
       float fh = 3.2, fl = floor(h/fh), fy = fract(h/fh);
@@ -798,27 +799,34 @@ uniform sampler2D coastTex; uniform vec2 uSize; uniform sampler2D uShore; unifor
 uniform sampler2D uStreet; uniform vec4 uStreetR;
 // REV3: REFLEJO DE LAS LUCES DE LA COSTA de noche. Cada farola de la orilla (máscara de calles, una farola por celda de 26 m
 // con azar) deja una estela vertical en pantalla: los puntos de agua p cuya recta p + dir·s (dir = de la cámara hacia p) pasa
-// junto a una farola, para 10 distancias s de 12 a ~900 m. El oleaje tuerce la recta (temblor) y la trocea en guiones.
+// junto a una farola de la primera franja de calle de la orilla (hallada con pasos geométricos y bisección). El oleaje tuerce la recta (temblor) y la trocea en guiones.
 // Cálida en el paseo, blanca en el puerto (al suroeste de la Barceloneta). Más un brillo suave del agua frente a la ciudad.
+float seaM(vec2 q){ return texture2D(uStreet, (q - uStreetR.xy)*uStreetR.zw).r; }
 vec3 seaLights(vec2 p, vec2 g, float px, float t){
   vec2 dir = normalize(p - uCam.xz + vec2(1e-4)), sd = vec2(-dir.y, dir.x);
-  float wob = dot(g, sd)*38.0, acc = 0.0, soft = 0.0, port = 0.0;
-  float w = 0.9 + 0.55*px;
-  for (int i = 0; i < 10; i++) {
-    float s = 12.0*pow(1.62, float(i));
-    vec2 q = p + dir*s + sd*wob*(0.4 + s*0.004);
-    float m = texture2D(uStreet, (q - uStreetR.xy)*uStreetR.zw).r;
-    soft += m/(1.0 + s*0.004);
-    vec2 cid = floor(q/26.0), lp = (cid + 0.5 + (vec2(hash21(cid), hash21(cid + 3.7)) - 0.5)*0.5)*26.0;
-    float mL = texture2D(uStreet, (lp - uStreetR.xy)*uStreetR.zw).r*step(0.35, hash21(cid + 9.1));
-    float perp = dot(q - lp, sd), along = dot(q - lp, dir);
-    float k = exp(-perp*perp/(w*w))*(1.0 - smoothstep(6.0, 13.0, abs(along)))*mL/(1.0 + s*0.006);
+  float wob = dot(g, sd)*30.0;
+  // 1) la orilla iluminada en la recta p + dir·s: primer tramo con calle (pasos geométricos) y bisección hasta ~15 m
+  float s0 = 0.0, s1 = -1.0, soft = 0.0;
+  for (int i = 0; i < 12; i++) { float s = 15.0*pow(1.6, float(i)); float m = seaM(p + dir*s);
+    soft += m/(1.0 + s*0.002); if (m > 0.3) { s1 = s; break; } s0 = s; }
+  if (s1 < 0.0) return vec3(0.0);
+  for (int i = 0; i < 6; i++) { float sm = 0.5*(s0 + s1); if (seaM(p + dir*sm) > 0.3) s1 = sm; else s0 = sm; }
+  // 2) farolas de la primera franja de calle (una por celda de 22 m, con azar): estela fina de lado y entera a lo largo
+  float w = 1.1 + 0.7*fwidth(dot(p, sd)), acc = 0.0, port = 0.0;
+  for (int i = 0; i < 4; i++) {
+    vec2 q = p + dir*(s1 + 2.0 + float(i)*18.0) + sd*wob*(0.3 + s1*0.002);
+    vec2 cid = floor(q/22.0), lp = (cid + 0.5 + (vec2(hash21(cid), hash21(cid + 3.7)) - 0.5)*0.5)*22.0;
+    float mL = seaM(lp)*step(0.3, hash21(cid + 9.1)), perp = dot(q - lp, sd), along = dot(q - lp, dir);
+    float k = exp(-perp*perp/(w*w))*(1.0 - smoothstep(9.0, 14.0, abs(along)))*mL*(1.0 - 0.18*float(i));
     acc += k;
     port = max(port, k*(1.0 - smoothstep(-400.0, 400.0, dot(lp - vec2(12950.0, 12350.0), vec2(0.61, 0.79)))));
   }
+  // la estela se apaga lejos de la orilla (más larga cuanto más rasante se mira) y se trocea con el oleaje
+  float L = mix(250.0, 1400.0, clamp(1.0 - uCam.y/250.0, 0.0, 1.0));
+  float fall = exp(-s1/L);
   float dash = smoothstep(0.30, 0.75, vnoise(vec2(dot(p, dir)*0.45 - t*1.6, dot(p, sd)*0.9)));
   vec3 cw = mix(vec3(1.0, 0.62, 0.30), vec3(0.85, 0.92, 1.0), clamp(port/max(acc, 1e-3), 0.0, 1.0));
-  return cw*acc*(0.25 + 0.75*dash)*0.9 + vec3(1.0, 0.66, 0.36)*soft*0.010;
+  return cw*min(acc, 1.5)*fall*(0.3 + 0.7*dash)*1.6 + vec3(1.0, 0.66, 0.36)*(soft*0.012 + 0.05*exp(-s1/200.0));
 }
 void main(){
   vec2 p = vPos.xz; vec3 V = uCam - vPos; float dist = length(V); V /= dist;
@@ -955,7 +963,7 @@ if (window.BCN_PAL) matBld.setTexture('uRoofPal', BABYLON.RawTexture.CreateRGBAT
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
 const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet', 'uShore']);
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
-for (const m of [matBld, matTer, matSea]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
+for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
 const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph', 'uSF'], ['tAsD', 'tAsN']);
 matRoad.setVector2('uSF', new BABYLON.Vector2(0, 0));   // FIX3: depuración de S3 apagada
@@ -967,6 +975,7 @@ matTer.zOffset = 0; matTer.zOffsetUnits = 8;
 matOut.zOffset = 0; matOut.zOffsetUnits = 8;
 matSea.zOffset = 0; matSea.zOffsetUnits = 40;
 for (const m of [matTer, matSea]) m.setTexture('uShore', SH_NONE);
+matSea.setTexture('uStreet', SH_NONE); matSea.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0));
 matSea.setTexture('groundTex', SH_NONE);
 matSky.disableDepthWrite = true;
 

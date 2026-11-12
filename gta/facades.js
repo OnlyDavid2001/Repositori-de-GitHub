@@ -113,6 +113,9 @@ void main(){
     inside = mix(inside, vec3(0.62,0.56,0.46), step(0.58, h2)*0.30*smoothstep(0.25, 0.9, yy));   // visillos
     if (kind > 10.5) inside = vec3(0.30,0.26,0.20)*(0.7 + 0.6*vnoise(P*2.3)) + vCol.rgb*0.25;   // escaparate iluminado
     vec3 c = mix(inside*(uSkyCol*1.4 + uSunCol*0.25), refl, clamp(fres*0.92 + 0.10, 0.0, 1.0));
+    // REV3: vidrio de muro cortina (torres de oficinas: color claro en vCol): de día quedaba casi negro (refleja la calle
+    // oscura); vidrio tintado gris azulado con algo de cielo, sin tocar la noche
+    if (kind < 2.5 && vCol.b > 0.4) c = mix(c, vCol.rgb*(uSkyCol*1.25 + uSunCol*0.40*max(uSunDir.y, 0.0))*(0.85 + 0.3*h), 0.5*(1.0 - uDusk));
     c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.5;
     if (kind < 2.5) c += emit(vec3(1.0,0.74,0.42), homeOn(h)*0.55);                    // pisos: muchas al anochecer, casi ninguna de madrugada
     else c += emit(vec3(1.0,0.85,0.62), shopOn()*0.35);                              // bajos: hasta la madrugada
@@ -626,6 +629,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     wr(W0, F, a, e0, k, P, wc, kw); wr(W0, F, e1, a + bw, k, P, wc, kw);
   }
   const planter = (...a) => { if (D.planter) D.planter(...a); };   // maceta de details.js
+  const CW_GL = [104, 122, 138];
   const CW_SP = GEO.pbrAux ? GEO.pbrAux(0.18, 0.55, 0, 0) : undefined;   // antepecho del muro cortina: vidrio opaco satinado
   // pisos de un tramo según la variante
   function pisosV(env, run) {
@@ -648,7 +652,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       // medio vano y travesaño; canto de forjado fino de aluminio
       if (V.cw && k >= cover - 0.2) { const sp = Math.min(1.0, m * 0.28), mc = env.cwMt;
         rect(W0, F, 0, L, k, k + sp, -0.02, env.cwSp, K.PBR, CW_SP);
-        rect(W0, F, 0, L, k + sp, P - 0.08, -0.06, env.glass, K.GLASS);
+        rect(W0, F, 0, L, k + sp, P - 0.08, -0.06, CW_GL, K.GLASS);   // REV3: color propio (el sombreador lo tiñe de día)
         box(W0, F, 0, L, k - 0.06, k + 0.06, -0.02, 0.06, mc, K.METAL, 1);
         if (W1) { const nv = Math.max(2, Math.round(L / (V.bay / 2)));
           for (let q = 0; q <= nv; q++) { const x = Math.min(L - 0.04, Math.max(0.04, L * q / nv)); box(W1, F, x - 0.035, x + 0.035, k, P, -0.06, 0.07, mc, K.METAL, 4); }
