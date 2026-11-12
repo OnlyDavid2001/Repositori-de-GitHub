@@ -677,11 +677,11 @@ void main(){
   // SUELOS (día 3): estado del asfalto por polilínea, de suelos.js (vInfo.w: 0 nuevo · 1 seminuevo · 2 gastado · 3 bastante
   // gastado · 4 muy gastado, continuo). De lejos, solo el tono: nuevo casi negro y uniforme, gastado más claro, gris y a rodales
   float wr = uSF.x > 0.5 ? uSF.x - 0.5 : clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;   // uSF: muestras forzadas (depuración, S3)
-  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.084 + 0.021*wr + 0.0058*wr*wr;   // FIX3: nuevo 0,084 · seminuevo 0,11 · gastado 0,15 · bastante 0,20 · muy gastado 0,26–0,33
+  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.100 + 0.018*wr + 0.006*wr*wr;   // FIX3: nuevo 0,10 · seminuevo 0,124 · gastado 0,16 · bastante 0,21 · muy gastado 0,27–0,34
   if (car) {
     // S3: albedo medio por estado, absoluto (no relativo al color de la clase), para que cada estado se reconozca a pie:
     // nuevo ≈ 0,08 (negro profundo) · seminuevo ≈ 0,12 · gastado ≈ 0,17 · bastante ≈ 0,22 · muy gastado ≈ 0,29 (gris claro)
-    // FIX3: los estados 0–1 suben (0,062 → 0,084 y 0,096 → 0,11): el Passeig de Gràcia y la Diagonal salían casi negros
+    // FIX3: los estados 0–1 suben (0,062 → 0,10 y 0,096 → 0,124): el Passeig de Gràcia y la Diagonal salían casi negros
     alb *= (Ta/Lb)*(1.0 + (vnoise(P*0.045 + 7.3) - 0.5)*0.36*smoothstep(1.5, 4.5, wr));
     alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.02, 1.0, 0.97), smoothstep(1.5, 4.0, wr)*0.75);
   }
