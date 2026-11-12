@@ -904,7 +904,10 @@ window.BCN_PLAZAS = { async init(ctx) {
       let all = true, z0k = null, same = true;
       for (const [a, b] of pts) { const x = gx + a, z = gz + b; if (!free(o, x, z)) { all = false; break; } const zz = zoneOf(o, x, z); const k = ZK(zz); if (z0k === null) z0k = k; else if (k !== z0k) same = false; }
       if (all && same) { const zz = zoneOf(o, gx + 2, gz + 2); if (zz) quads.push([gx, gz, 4, zz]); }
-      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x = gx + i + 0.5, z = gz + j + 0.5; if (!free(o, x, z)) continue; const zz = zoneOf(o, x, z); if (zz) quads.push([gx + i, gz + j, 1, zz]); }
+      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x0 = gx + i, z0 = gz + j;
+        // P3: borde suavizado: celda entera si sus cuatro esquinas están libres, triángulo si lo están tres (sin dientes de sierra)
+        const cf = [free(o, x0, z0), free(o, x0 + 1, z0), free(o, x0 + 1, z0 + 1), free(o, x0, z0 + 1)], nf = cf[0] + cf[1] + cf[2] + cf[3];
+        if (nf < 3 && !(nf === 2 && free(o, x0 + 0.5, z0 + 0.5))) continue; const zz = zoneOf(o, x0 + 0.5, z0 + 0.5); if (zz) quads.push([x0, z0, 1, zz, false, nf === 3 ? cf.indexOf(false) : -1]); }
       if (++nb % 60 === 0) yield; } }
     yield;
     // ---- objetos de la plaza
@@ -970,14 +973,21 @@ window.BCN_PLAZAS = { async init(ctx) {
     const LGR = 9;
     const glowAt = (x, z) => { let g = 0; for (const [lx, lz, H] of lamps) { const d2 = (lx - x) ** 2 + (lz - z) ** 2, r = H * 1.5; if (d2 < 9 * r * r) g += Math.exp(-d2 / (r * r)); } return Math.min(1, g); };
     let nq = 0;
-    for (const [x, z, s, zz, top] of quads) {
+    for (const [x, z, s, zz, top, miss] of quads) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
       for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
+      const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]];
+      if (miss >= 0) {   // triángulo: las tres esquinas libres, y faldón por la hipotenusa
+        const t = [1, 2, 3].map(q => (miss + q) % 4), A = P4[t[0]], Bq = P4[t[2]], nx = P4[miss][0] - (A[0] + Bq[0]) / 2, nz = P4[miss][1] - (A[1] + Bq[1]) / 2;
+        quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, P4[t[1]][0] - ox, ys[t[1]], P4[t[1]][1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, col, 0, pav(zz[0], gs, wear));
+        const ga = gAt(A[0] + nx * 0.6, A[1] + nz * 0.6) - 0.12, gb = gAt(Bq[0] + nx * 0.6, Bq[1] + nz * 0.6) - 0.12;
+        if (ys[t[0]] - ga > 0.14 || ys[t[2]] - gb > 0.14) quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35));
+        if (++nq % 300 === 0) yield; continue; }
       quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, 0, pav(zz[0], gs, wear));
       // faldón de piedra en el borde exterior del pavimento: del canto de la plataforma hasta el suelo de fuera (algo enterrado)
       if (!top) for (const [i0, i1, nx, nz] of [[0, 1, 0, -1], [1, 2, 1, 0], [2, 3, 0, 1], [3, 0, -1, 0]]) {
-        const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]], A = P4[i0], Bq = P4[i1], mx = (A[0] + Bq[0]) / 2 + nx * 0.5, mz = (A[1] + Bq[1]) / 2 + nz * 0.5;
+        const A = P4[i0], Bq = P4[i1], mx = (A[0] + Bq[0]) / 2 + nx * 0.5, mz = (A[1] + Bq[1]) / 2 + nz * 0.5;
         if (free(o, mx, mz) && zoneOf(o, mx, mz)) continue;
         const ga = gAt(A[0] + nx * 0.4, A[1] + nz * 0.4) - 0.12, gb = gAt(Bq[0] + nx * 0.4, Bq[1] + nz * 0.4) - 0.12;
         if (ys[i0] - ga < 0.14 && ys[i1] - gb < 0.14) continue;
