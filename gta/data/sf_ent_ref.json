@@ -1,0 +1,677 @@
+{
+ "fuente": "ENT0 (carril ENTORNO). Contornos y puntos: © OpenStreetMap contributors (ODbL) vía Nominatim, 12-11-2026. Textos: ver 'fuentes'. Coordenadas del juego: x = E − 418400,7 ; z = N − 4567997,6 (UTM 31N ETRS89). 'local' = ejes de la ficha sagrada_familia (centro 12597,9/15875,2, rot 136; +Z hacia la Glòria/Mallorca, −X Naixement/Marina, +X Passió/Sardenya).",
+ "ejes": {
+  "centro": [
+   12597.9,
+   15875.2
+  ],
+  "rot": 136,
+  "vecZ": [
+   0.6947,
+   -0.7193
+  ],
+  "vecX": [
+   -0.7193,
+   -0.6947
+  ],
+  "nota": "punto mundo = centro + X·vecX + Z·vecZ"
+ },
+ "calles_local": {
+  "nota": "ejes de calzada medidos sobre las vías OSM (Z para las paralelas a Mallorca, X para las perpendiculares); paso de manzana ≈ 133,4 m, calle de 20 m (calzada + aceras)",
+  "Provença_Z": -83.0,
+  "Mallorca_Z": 50.6,
+  "València_Z": 184.4,
+  "Aragó_Z": 318.3,
+  "Marina_X": -78.0,
+  "Sardenya_X": 73.4,
+  "Lepant_X": -208.0,
+  "Sicília_X": 205.0,
+  "Diagonal": {
+   "eje_local": [
+    [
+     203.8,
+     255.8
+    ],
+    [
+     111.5,
+     300.9
+    ],
+    [
+     54.6,
+     328.5
+    ],
+    [
+     -58.6,
+     378.5
+    ],
+    [
+     -136.5,
+     452.2
+    ],
+    [
+     -210.9,
+     489.6
+    ]
+   ],
+   "cruce_eje_basilica_Z": 352.6,
+   "osm": [
+    "way/37017345",
+    "way/1266453783 (tramo peatonal central)",
+    "way/313379196"
+   ],
+   "nota": "la Diagonal corta el eje de la Glòria (X=0) en Z ≈ 352, justo después de Aragó: dos manzanas (Mallorca–València y València–Aragó) más el triángulo Aragó–Diagonal"
+  },
+  "manzana_basilica_local": {
+   "X": [
+    -68,
+    63
+   ],
+   "Z": [
+    -73,
+    40.5
+   ],
+   "nota": "bordes de acera aproximados (eje de calle ± 10 m)"
+  },
+  "Marina_peatonal": "way/1491046071: la c/ Marina ante el Naixement es peatonal entre Provença y Mallorca (X −95…−50, Z −80…+44)"
+ },
+ "discrepancia_fachada": "comun.md fija la línea de la fachada de la Glòria en Z local +71, pero el eje de Mallorca está en Z +50,6 (bordillo de la basílica ≈ +40,5; acera de enfrente ≈ +60,6). +71 cae DENTRO de la manzana de enfrente (Mallorca 410-414). El pórtico real de la Glòria está en el borde de su manzana, sobre la acera de Mallorca, a ≈ 4-5 m sobre la calle. Para ENT2 se toma: umbral del pórtico Z ≈ +40 a cota calle+4,5; losa/plaza elevada sobre Mallorca de Z +40 a ≈ +62; escalinata hacia València. Si el carril basílica mantiene +71, la integración debe desplazar la escalinata (todo lo de 'gloria' está en Z local y es fácil de trasladar).",
+ "plaza_gaudi": {
+  "osm": "relation/7708297 (leisure=park)",
+  "manzana": "Marina · Provença · Lepant · Mallorca (frente al Naixement)",
+  "contorno": [
+   [
+    12619.7,
+    15981.1
+   ],
+   [
+    12631.0,
+    15976.3
+   ],
+   [
+    12631.5,
+    15976.4
+   ],
+   [
+    12634.2,
+    15973.5
+   ],
+   [
+    12640.8,
+    15966.1
+   ],
+   [
+    12666.1,
+    15941.0
+   ],
+   [
+    12672.7,
+    15932.7
+   ],
+   [
+    12673.7,
+    15930.4
+   ],
+   [
+    12677.1,
+    15926.6
+   ],
+   [
+    12707.0,
+    15925.8
+   ],
+   [
+    12743.2,
+    15961.0
+   ],
+   [
+    12757.5,
+    15974.4
+   ],
+   [
+    12757.5,
+    15976.0
+   ],
+   [
+    12751.0,
+    15982.4
+   ],
+   [
+    12747.4,
+    15986.2
+   ],
+   [
+    12739.8,
+    15993.4
+   ],
+   [
+    12697.2,
+    16036.2
+   ],
+   [
+    12691.0,
+    16042.8
+   ],
+   [
+    12676.5,
+    16043.2
+   ],
+   [
+    12670.7,
+    16049.1
+   ],
+   [
+    12664.4,
+    16042.9
+   ],
+   [
+    12661.5,
+    16040.1
+   ],
+   [
+    12632.3,
+    16011.6
+   ],
+   [
+    12626.9,
+    16006.4
+   ],
+   [
+    12620.2,
+    15999.8
+   ],
+   [
+    12619.7,
+    15981.1
+   ]
+  ],
+  "area_m2": 9867,
+  "centro": [
+   12681.5,
+   15990.4
+  ],
+  "centro_local": [
+   -140.2,
+   -24.8
+  ],
+  "historia": "Jardín de Nicolau M. Rubió i Tudurí (encargo 1977), inaugurado el 27-9-1981; antes talleres y almacenes.",
+  "elementos": {
+   "estanque": {
+    "desc": "gran estanque central de ≈3000 m² ('espejo de agua') donde se refleja el Naixement; paseo de tierra perimetral entre parterres, vistas oblicuas y frontales. La parte del lado de Mallorca era para modelismo naval; hoy no se accede al agua.",
+    "area_m2": 3000,
+    "radio_equivalente_m": 30.9,
+    "forma": "interpretación: lámina orgánica alargada en el eje Marina–Lepant, centrada en la plaza y algo hacia Mallorca; bordillo bajo de piedra, sin barandilla alta. Contorno exacto NO disponible (Overpass, API OSM y ortofoto ICGC bloqueados por el proxy).",
+    "isla": "una isla arbolada dentro del estanque (pedida en el encargo y visible en fotos); posición y tamaño: interpretación, verificar con foto aérea"
+   },
+   "monolito_Rubio": "columna de mármol blanco de Macael de 2,36 m, de Xavier Corberó (1983), dentro del estanque en un lateral (lado Mallorca), medio oculta por la vegetación",
+   "dotaciones": "bancos, dos fuentes de agua potable, juegos infantiles, pistas de petanca y bolos catalanes, bar con terraza, urinario público (1985, renovado 2012), Punt verd en la esquina Lepant–Provença (2002)",
+   "puntos_osm": {
+    "juegos": [
+     {
+      "osm": "way/175292224",
+      "tipo": "playground",
+      "ref": null,
+      "xz": [
+       12716.9,
+       15998.4
+      ],
+      "local": [
+       -171.2,
+       -6.0
+      ]
+     }
+    ],
+    "bancos": [
+     {
+      "osm": "node/1859043317",
+      "tipo": "bench",
+      "ref": null,
+      "xz": [
+       12694.0,
+       16005.0
+      ],
+      "local": [
+       -159.3,
+       -26.6
+      ]
+     }
+    ],
+    "fuentes_potables": [
+     {
+      "osm": "node/1860476057",
+      "tipo": "drinking_water",
+      "ref": "02-074",
+      "xz": [
+       12723.6,
+       15992.6
+      ],
+      "local": [
+       -172.0,
+       2.9
+      ]
+     },
+     {
+      "osm": "node/4654612007",
+      "tipo": "drinking_water",
+      "ref": "02-073",
+      "xz": [
+       12652.1,
+       16010.0
+      ],
+      "local": [
+       -132.6,
+       -59.3
+      ]
+     }
+    ]
+   },
+   "foto_tipica": "desde la orilla NE/E del estanque (lado Lepant), mirando al SO: el Naixement con su reflejo; se modelará un punto de vista a ≈ X −185, Z −10 local",
+   "arbolado": "vegetación mediterránea (Rubió). Especies concretas no encontradas en fuente escrita: interpretación por fotos — pinos piñoneros, palmeras, plátanos y almeces en el perímetro, setos recortados y parterres con flor junto al paseo del estanque"
+  }
+ },
+ "plaza_sagrada_familia": {
+  "osm": "way/23431084 (leisure=park)",
+  "manzana": "Mallorca · Provença · Sardenya · Sicília (frente a la Passió)",
+  "contorno": [
+   [
+    12416.9,
+    15783.2
+   ],
+   [
+    12443.6,
+    15755.8
+   ],
+   [
+    12447.2,
+    15752.1
+   ],
+   [
+    12450.8,
+    15748.4
+   ],
+   [
+    12458.9,
+    15740.1
+   ],
+   [
+    12459.7,
+    15739.2
+   ],
+   [
+    12477.2,
+    15721.3
+   ],
+   [
+    12494.8,
+    15721.6
+   ],
+   [
+    12501.3,
+    15727.9
+   ],
+   [
+    12517.4,
+    15743.5
+   ],
+   [
+    12534.5,
+    15760.0
+   ],
+   [
+    12554.8,
+    15779.5
+   ],
+   [
+    12555.0,
+    15798.2
+   ],
+   [
+    12535.1,
+    15818.6
+   ],
+   [
+    12521.5,
+    15832.7
+   ],
+   [
+    12510.3,
+    15843.9
+   ],
+   [
+    12495.3,
+    15858.9
+   ],
+   [
+    12479.5,
+    15858.9
+   ],
+   [
+    12478.3,
+    15857.9
+   ],
+   [
+    12477.4,
+    15857.2
+   ],
+   [
+    12476.2,
+    15856.0
+   ],
+   [
+    12468.6,
+    15848.8
+   ],
+   [
+    12471.0,
+    15846.7
+   ],
+   [
+    12459.2,
+    15835.2
+   ],
+   [
+    12457.4,
+    15834.3
+   ],
+   [
+    12455.7,
+    15836.1
+   ],
+   [
+    12450.5,
+    15831.1
+   ],
+   [
+    12448.6,
+    15829.1
+   ],
+   [
+    12444.7,
+    15825.5
+   ],
+   [
+    12417.1,
+    15798.8
+   ],
+   [
+    12417.0,
+    15796.1
+   ],
+   [
+    12416.9,
+    15785.7
+   ],
+   [
+    12416.9,
+    15783.2
+   ]
+  ],
+  "area_m2": 11626,
+  "centro": [
+   12485.9,
+   15790.7
+  ],
+  "centro_local": [
+   139.3,
+   -17.0
+  ],
+  "historia": "Jardines de Rubió i Tudurí (1928, para la Exposición de 1929), catalogados. Paseos curvos y diagonales: la única vista frontal del templo queda enmarcada por la vegetación.",
+  "elementos": {
+   "estanque": "estanque pequeño (TripAdvisor: 'a small pond') con surtidor; posición: interpretación, en el eje de la vista frontal hacia la Passió",
+   "dotaciones": "bancos, dos fuentes de agua potable, juegos infantiles, área para perros, bar con terraza, punto de información turística, dos esculturas (una de ellas la de Míliu)",
+   "puntos_osm": {
+    "juegos": [
+     {
+      "osm": "way/175464306",
+      "tipo": "playground",
+      "ref": null,
+      "xz": [
+       12491.3,
+       15831.8
+      ],
+      "local": [
+       106.8,
+       -42.8
+      ]
+     },
+     {
+      "osm": "way/175464305",
+      "tipo": "playground",
+      "ref": null,
+      "xz": [
+       12475.7,
+       15838.8
+      ],
+      "local": [
+       113.2,
+       -58.7
+      ]
+     }
+    ],
+    "bancos": [
+     {
+      "osm": "node/1861584800",
+      "tipo": "bench",
+      "ref": null,
+      "xz": [
+       12452.7,
+       15784.1
+      ],
+      "local": [
+       167.7,
+       -35.3
+      ]
+     },
+     {
+      "osm": "node/1861584813",
+      "tipo": "bench",
+      "ref": null,
+      "xz": [
+       12433.8,
+       15792.7
+      ],
+      "local": [
+       175.4,
+       -54.6
+      ]
+     }
+    ],
+    "fuentes_potables": [
+     {
+      "osm": "node/14142050901",
+      "tipo": "drinking_water",
+      "ref": null,
+      "xz": [
+       12480.4,
+       15780.0
+      ],
+      "local": [
+       150.7,
+       -13.1
+      ]
+     },
+     {
+      "osm": "node/3616716537",
+      "tipo": "drinking_water",
+      "ref": "02-245",
+      "xz": [
+       12507.1,
+       15836.0
+      ],
+      "local": [
+       92.5,
+       -34.9
+      ]
+     },
+     {
+      "osm": "node/1860476049",
+      "tipo": "drinking_water",
+      "ref": "02-095",
+      "xz": [
+       12494.0,
+       15846.6
+      ],
+      "local": [
+       94.6,
+       -51.6
+      ]
+     },
+     {
+      "osm": "node/5403244321",
+      "tipo": "drinking_water",
+      "ref": "02-094",
+      "xz": [
+       12446.7,
+       15755.9
+      ],
+      "local": [
+       191.6,
+       -19.2
+      ]
+     }
+    ],
+    "quioscos": [
+     {
+      "osm": "node/5518011424",
+      "tipo": "kiosk",
+      "ref": null,
+      "xz": [
+       12384.7,
+       15772.5
+      ],
+      "local": [
+       224.7,
+       -74.2
+      ]
+     }
+    ]
+   },
+   "arbolado": {
+    "fuente": "es.wikipedia 'Plaza de la Sagrada Familia' (inventario municipal)",
+    "especies": "tipuanas 22 %, árbol del amor (Cercis) 11 %, agriaz/melia 10 %, además pino, almez, laurel, cedro, jacarandá y CIPRESES altos (emulan las torres); la especie principal de la lista quedó cortada en la fuente (probablemente plátano)"
+   }
+  }
+ },
+ "gloria": {
+  "proyecto": {
+   "que_es_del_proyecto": [
+    "Pórtico de la Glòria a ≈ 4-5 m sobre la calle de Mallorca (Wikipedia en: 5 m; CNN 2026: ≈4 m).",
+    "Plaza elevada que cubre el tramo de Mallorca ante la basílica; el tráfico pasa por debajo en un túnel decorado con el infierno, los vicios, ídolos y herejías (EFE 2025, El País 2026, Wikipedia).",
+    "Gran escalinata de ≈57 m de largo que baja desde esa plaza hacia la manzana de enfrente (Wikipedia en, según la Junta Constructora).",
+    "Sobre la terraza de la escalinata, el Monumento al Fuego y al Agua: un gran tedero con fuego y un surtidor de 20 m que se divide en cuatro cascadas (ríos del paraíso) (Wikipedia es).",
+    "Exige derribar el bloque de Núñez y Navarro de Mallorca 410-414 y otras edificaciones menores entre él y València (La Vanguardia 13-6-2026; New Barcelona Post 22-9-2026); ≈400 viviendas.",
+    "PGM 1976 (vigente): avenida de 60 m de ancho a través de las dos manzanas Mallorca–València y València–Aragó, desde la escalinata hasta la Diagonal, más de 200 m (El País 10-6-2026; Wikipedia en: 'avenue of 2 blocks to Diagonal').",
+    "Solución de mínimos de la Junta (sept. 2026): realojar a los vecinos de Mallorca 410-414 en un solar propio de la calle Mallorca y construir la escalinata; la gran plaza hasta Aragó queda pendiente."
+   ],
+   "interpretacion_ENT2": [
+    "Ancho de la escalinata y del eje: 60 m centrados en X = 0 (el del PGM), X ∈ [−30, +30]; los edificios fuera de esa franja en las dos manzanas se conservan (con nueva fachada medianera a la avenida).",
+    "Niveles: umbral del pórtico a cota calle + 4,5 m; plaza elevada de Z +40 a +66 sobre Mallorca (losa de ≈1,2 m, gálibo libre ≥ 3,3 m sobre la calzada); terraza del Monumento al Fuego y al Agua de Z +66 a +80 a la misma cota; escalinata de Z +80 a +137 (57 m) bajando 4,5 m en 3 tramos con 2 rellanos (contrahuella 15 cm, huella ≈ 45-50 cm, 10 peldaños por tramo); explanada a cota de calle de Z +137 a la acera de València (+174).",
+    "Cruce de València (Z 174-194) a nivel, con paso de cebra de 60 m y la calzada intacta.",
+    "Manzana València–Aragó (Z 194-308): avenida-paseo de 60 m con dos hileras dobles de plátanos y almeces, parterres, bancos y farolas, fuentes; pavimento de losa de la Diagonal y panot.",
+    "Aragó (Z 308-328) a nivel con cruce; triángulo Aragó–Diagonal (Z 328-352) hasta el paseo central de la Diagonal (way/1266453783).",
+    "Monumento al Fuego y al Agua: surtidor central de 20 m que se abre en 4 cascadas a un vaso en cruz; trípode-tedero con llama (de noche, luz cálida)."
+   ]
+  },
+  "edificios_a_ocultar": "bloque Mallorca 410-414 (nodo OSM 12046680010, local X −12, Z +61) y lo que caiga en la franja X ∈ [−30, +30], Z ∈ [60, 308]; los IDs del registro se sacarán en ENT2 con el registro de volúmenes del juego.",
+  "puntos_local": {
+   "portico_umbral": [
+    0,
+    40
+   ],
+   "plaza_elevada": [
+    [
+     -30,
+     40
+    ],
+    [
+     30,
+     66
+    ]
+   ],
+   "terraza_monumento": [
+    [
+     -30,
+     66
+    ],
+    [
+     30,
+     80
+    ]
+   ],
+   "escalinata": [
+    [
+     -30,
+     80
+    ],
+    [
+     30,
+     137
+    ]
+   ],
+   "explanada": [
+    [
+     -30,
+     137
+    ],
+    [
+     30,
+     174
+    ]
+   ],
+   "valencia": [
+    [
+     -30,
+     174
+    ],
+    [
+     30,
+     194
+    ]
+   ],
+   "avenida": [
+    [
+     -30,
+     194
+    ],
+    [
+     30,
+     308
+    ]
+   ],
+   "arago": [
+    [
+     -30,
+     308
+    ],
+    [
+     30,
+     328
+    ]
+   ],
+   "triangulo_diagonal": [
+    [
+     -30,
+     328
+    ],
+    [
+     30,
+     352.6
+    ]
+   ]
+  }
+ },
+ "fuentes": [
+  "https://es.wikipedia.org/wiki/Plaza_de_Gaud%C3%AD",
+  "https://ca.wikipedia.org/wiki/Pla%C3%A7a_de_Gaud%C3%AD",
+  "https://es.wikipedia.org/wiki/Plaza_de_la_Sagrada_Familia",
+  "https://es.wikipedia.org/wiki/Templo_Expiatorio_de_la_Sagrada_Familia",
+  "https://en.wikipedia.org/wiki/Sagrada_Fam%C3%ADlia",
+  "https://elpais.com/espana/2026-06-10/que-queda-por-construir-las-dos-manzanas-de-viviendas-que-necesita-la-sagrada-familia-para-ser-terminada.html",
+  "https://www.lavanguardia.com/local/barcelona/20260613/11563499/ayuntamiento-dilata-decision-construir-fachada-gloria.html",
+  "https://www.thenewbarcelonapost.com/diez-anos-terminar-sagrada-familia-edificio-condiciona-final",
+  "https://efe.com/cataluna/2025-09-18/la-sagrada-familia-alcanzara-su-cuspide-en-2026-sin-resolver-la-polemica-escalinata",
+  "https://cnnespanol.cnn.com/2026/06/09/espana/barcelona-sagrada-familia-gaudi-torre-jesucristo-trax",
+  "https://www.tripadvisor.com/ShowUserReviews-g187497-d12606976-r689304215-Placa_de_la_Sagrada_Familia-Barcelona_Catalonia.html",
+  "Nominatim (OSM): relation/7708297, way/23431084, vías de Mallorca, València, Aragó, Diagonal, Provença, Marina, Sardenya, Lepant, Sicília; amenity playground/bench/drinking_water/toilets/kiosk"
+ ],
+ "no_conseguido": "Interior exacto de las plazas (contorno del estanque y de la isla, caminos, parterres, árboles uno a uno): Overpass, la API de OSM y la ortofoto del ICGC están bloqueados por el proxy de esta sesión; Nominatim no devuelve elementos sin nombre de tipo agua o camino. ENT1 deberá trazarlos por interpretación de fotos o con acceso a Overpass."
+}
