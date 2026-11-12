@@ -420,9 +420,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const rnd = (i, j, k) => seed(b, i, j, k);
     const V = varOf(b);                               // variante de estilo por barrio (null: la fachada de antes, details.js)
     rnd();                                            // ámbito del edificio
-    const cls6 = d.cls === 6;
+    const tipo = BREC.tipo ? BREC.tipo[b] : 0;       // n3 E1: 0 vivienda · 1 nave · 2 equipamiento u oficinas (app.js)
+    const cls6 = d.cls === 6 || tipo > 0;              // naves y equipamientos: sobrios y sin comercios, como la clase 6
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
-    const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [150, 138, 120], 0.6), 0.92);
+    const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [170, 160, 146], 0.3), 0.88);   // n3 E4: la piedra de la planta baja, del tono de la fachada
     const shut = pick(SHUTTERS), persi = shade(shut, 1.5), wood = pick(WOODS), iron = [20, 20, 23];
     const porticones = R() < 0.55, tribunaOK = style !== 'sobrio' && R() < 0.5, balusters = style !== 'sobrio' && R() < 0.75;
     const shops = !cls6 && H >= 10;
@@ -440,6 +441,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       Object.assign(env, { V, kw: KW[V.acab], uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
         marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
         galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
+        cwSp: V.cw ? [[92, 108, 122], [112, 120, 126], [84, 100, 108], [120, 130, 138]][(r[3] * 4) | 0] : null, cwMt: V.cw ? [[178, 182, 186], [150, 156, 160], [196, 198, 200]][(r[2] * 3) | 0] : null,
         losaV: r[4] < 0.55 ? shade(mixc(p, [92, 88, 82], 0.7), 0.62) : r[4] < 0.8 ? [72, 70, 66] : [58, 66, 62] });   // bajo la losa: piedra a la sombra, gris o verde oscuro
     }
 
@@ -451,7 +453,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (r.kind === 'blind') { D.blindRun(env, run); continue; }
       if (r.kind === 'plain') { D.plainRun(env, run); continue; }
       const L = r.L, street = r.kind === 'street';
-      const bwT = street ? 3.7 : 3.2, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
+      const bwT = street ? 3.7 : 4.4, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
       const N = r === lay.portal && L >= 9 ? nb >> 1 : -1;
       rnd(1, i); const rM = R();                      // ámbito del tramo
       const M = street && tribunaOK && nb >= 3 && nF >= 3 && rM < 0.6 ? nb >> 1 : -9;
@@ -508,6 +510,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
         else {
           let i0 = (r * L.length) | 0;
+          const tp = BREC.tipo ? BREC.tipo[b] : 0, LT = tp > 0 && !fv && EST.TIPO && EST.TIPO[tp === 1 ? 'nave' : BREC.vid && BREC.vid[b] && EST.TIPO.vidrio ? 'vidrio' : 'equip'];
+          if (LT) { V = LT[(r * LT.length) | 0]; const j0 = j[0], j3 = j[3];
+            return (VAR[b] = Object.assign({}, V, { bay: V.bay * (0.93 + j0 * 0.14), hp: V.hp * (0.97 + j3 * 0.06) })); }
           if (bget(b).cls === 6) {                    // clase 6 (sin comercios): si la familia tiene nave o fábrica, esa
             const T = []; L.forEach((v, k) => { if (v.hueco === 'taller') T.push(k); }); if (T.length) { i0 = T[(r * T.length) | 0]; dep = 400; }
           }
@@ -621,12 +626,13 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     wr(W0, F, a, e0, k, P, wc, kw); wr(W0, F, e1, a + bw, k, P, wc, kw);
   }
   const planter = (...a) => { if (D.planter) D.planter(...a); };   // maceta de details.js
+  const CW_SP = GEO.pbrAux ? GEO.pbrAux(0.18, 0.55, 0, 0) : undefined;   // antepecho del muro cortina: vidrio opaco satinado
   // pisos de un tramo según la variante
   function pisosV(env, run) {
     const { W0, W1, V, kw, uV, iron, F1, nF, m, y0, shutV, marcoV, windowHole } = env;
     const { F, L, cover, street, wallC } = run, RQ = RQV();
     env.runWall = wallC;
-    const nb = Math.max(1, Math.round(L / (street ? V.bay : 3.2))), bw = L / nb;
+    const nb = Math.max(1, Math.round(L / (street ? V.bay : 4.4))), bw = L / nb;
     const Mt = street && env.tribV && nb >= 3 && nF >= 3 && run.rM < 0.6 ? nb >> 1 : -9;
     if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, uV, K.STUCCO);
     for (let D = 1; D <= nF; D++) {
@@ -637,6 +643,17 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const corr = tipo === 'corrido' || tipo === 'terraza';
       if (D > 1 && V.imposta === 3 && k > cover) box(W0, F, 0, L, k - 0.24, k + 0.06, 0, 0.05, env.forjV, 19, 3);   // canto de forjado visto
       else if (D > 1 && V.imposta && k > cover) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, (V.imposta > 1 ? 0.16 : 0.07) * (street ? 1 : 0.6), uV, K.STUCCO);
+      // n3 E4 · MURO CORTINA (torres de vidrio, V.cw): por planta, antepecho de vidrio opaco (bandas de forjado) y paño de visión
+      // de forjado a forjado (el vidrio del núcleo: reflejo del cielo, interiores y, de noche, alguna luz), montantes finos cada
+      // medio vano y travesaño; canto de forjado fino de aluminio
+      if (V.cw && k >= cover - 0.2) { const sp = Math.min(1.0, m * 0.28), mc = env.cwMt;
+        rect(W0, F, 0, L, k, k + sp, -0.02, env.cwSp, K.PBR, CW_SP);
+        rect(W0, F, 0, L, k + sp, P - 0.08, -0.06, env.glass, K.GLASS);
+        box(W0, F, 0, L, k - 0.06, k + 0.06, -0.02, 0.06, mc, K.METAL, 1);
+        if (W1) { const nv = Math.max(2, Math.round(L / (V.bay / 2)));
+          for (let q = 0; q <= nv; q++) { const x = Math.min(L - 0.04, Math.max(0.04, L * q / nv)); box(W1, F, x - 0.035, x + 0.035, k, P, -0.06, 0.07, mc, K.METAL, 4); }
+          box(W1, F, 0, L, k + sp - 0.03, k + sp + 0.03, -0.06, 0.05, mc, K.METAL, 1); }
+        continue; }
       for (let W = 0; W < nb; W++) {
         const a = W * bw, c = a + bw / 2;
         env.rnd(3, run.i, W * 64 + D);
@@ -716,16 +733,39 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
   }
   // ventana de patio de manzana (con tendedero a veces)
+  // n3 E3 · trasera de patio: menos huecos (vano de 4,4 m) y más variedad. El tipo va por COLUMNA de vanos (se apila de planta en
+  // planta, como en las traseras reales): muro ciego, ventanuco de baño, ventana de cocina con persiana y tendedero, galería
+  // acristalada de lado a lado (con antepecho y persiana alicantina a medio bajar) o balconera con barandilla y ropa tendida
   function patioV(env, F, a, bw, c, k, P, col, rr) {
     const { W0, W1, uV, iron, kw, windowHole, V } = env;
-    const ww = Math.min(1.05, bw - 0.8), tt = c - ww / 2, ct = c + ww / 2, st = k + 0.95, yt = Math.min(P - 0.35, st + 1.4);
+    const hc = Math.abs(Math.sin(F.x * 12.9898 + F.z * 78.233 + c * 37.719) * 43758.5453) % 1;   // tipo de la columna
+    const ty = hc < 0.2 ? 0 : hc < 0.42 ? 1 : hc < 0.7 ? 2 : hc < 0.86 ? 3 : 4;
+    if (ty === 0 || P - k < 2.2) { wr(W0, F, a, a + bw, k, P, col, kw); return; }
+    if (ty === 1) {                                   // ventanuco de baño, alto y estrecho, con lamas o vidrio mate
+      const tt = c - 0.28 + (hc - 0.3) * 2, ct = tt + 0.56, st = k + 1.55, yt = Math.min(P - 0.3, st + 0.62);
+      windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.14, col, kw, rr[0] < 0.4 ? 1 : 0); return; }
+    if (ty === 3) {                                   // galería acristalada: antepecho de obra, carpintería y persiana a medio bajar
+      const tt = a + 0.35, ct = a + bw - 0.35, st = k + 0.9, yt = P - 0.3;
+      windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.12, col, kw, 0.25 + rr[1] * 0.5);
+      if (W1) { const n = Math.max(2, Math.round((ct - tt) / 0.9)); for (let q = 1; q < n; q++) { const u = tt + (ct - tt) * q / n; box(W1, F, u - 0.03, u + 0.03, st, yt, -0.1, -0.05, rr[2] < 0.5 ? [236, 234, 226] : [92, 70, 52], K.METAL); } }
+      box(W0, F, tt - 0.08, ct + 0.08, st - 0.08, st, 0, 0.12, uV, K.STUCCO);
+      if (rr[3] < 0.35) ropa(W0, F, tt, ct, st + 0.05, 0.25, rr[4]);
+      return; }
+    if (ty === 4) {                                   // balconera con barandilla y, a menudo, ropa tendida
+      const ww = Math.min(1.0, bw - 1.2), tt = c - ww / 2, ct = c + ww / 2, st = k + 0.02, yt = Math.min(P - 0.35, k + 2.2);
+      windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.2, col, kw, rr[0] < 0.6 ? 0.3 + rr[1] * 0.6 : 0);
+      box(W0, F, tt - 0.5, ct + 0.5, k - 0.12, k + 0.02, 0, 0.6, uV, K.STUCCO);
+      if (W1) lattice(W1, F, tt - 0.5, ct + 0.5, k + 0.02, k + 1.0, 0.58, iron, K.IRON, 0);
+      if (rr[2] < 0.6) ropa(W0, F, tt - 0.45, ct + 0.45, k + 1.45, 0.5, rr[3]);
+      return; }
+    const ww = Math.min(1.05, bw - 0.8), tt = c - ww / 2 + (rr[5] - 0.5) * 0.8, ct = tt + ww, st = k + 0.95, yt = Math.min(P - 0.35, st + 1.3);
     if (yt - st < 0.5) { wr(W0, F, a, a + bw, k, P, col, kw); return; }
     windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.2, col, kw, rr[0] < 0.65 ? 0.2 + rr[1] * 0.7 : V.carp === 'enrollable' ? 0.3 : 0);
     box(W1, F, tt - 0.06, ct + 0.06, st - 0.07, st, 0, 0.09, uV, K.STUCCO);
-    if (rr[2] < 0.15 + V.ropa * 0.5) {                // tendedero: dos varillas y ropa
+    if (rr[2] < 0.3 + V.ropa * 0.5) {                // tendedero: dos varillas y ropa
       box(W1, F, tt - 0.1, ct + 0.1, st + 0.02, st + 0.05, 0, 0.5, iron, K.METAL, 3);
       ropa(W0, F, tt - 0.1, ct + 0.1, st + 0.03, 0.45, rr[3]);
-    } else if (W1 && rr[2] < 0.4) lattice(W1, F, tt - 0.1, ct + 0.1, st, st + 0.9, 0.12, iron, K.IRON, 0);
+    } else if (W1 && rr[2] < 0.5) lattice(W1, F, tt - 0.1, ct + 0.1, st, st + 0.9, 0.12, iron, K.IRON, 0);
   }
   // coronación de un tramo según la variante
   function coronaV(env, run) {

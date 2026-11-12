@@ -281,7 +281,44 @@ const DISTRICTE = { 'Nou Barris': 'nou_barris', 'Ciutat Vella': 'ciutat_vella', 
   'Les Corts': 'les_corts', 'Sarrià-Sant Gervasi': 'sant_gervasi', 'Horta-Guinardó': 'horta_guinardo', 'Sant Andreu': 'sant_andreu', 'Sant Martí': 'poblenou' };
 const familia = barri => !barri ? 'periferia' : BARRI[barri.n] || DISTRICTE[barri.d] || 'periferia';
 
+// n3 E1 · TIPOLOGÍAS que no son vivienda (app.js las marca en BREC.tipo; varOf las toma de aquí, sin mirar el barrio):
+//   nave   naves industriales y almacenes (clases 1 y 5, y las naves bajas y grandes de la 0): ventanal de taller corrido,
+//          chapa o bloque, peto o frontis; sin balcones ni ropa.
+//   equip  equipamientos y oficinas (escuelas, ambulatorios, mercados, oficinas de los 70–2000): ventanas apaisadas en
+//          bandas, canto de forjado visto, aluminio, peto liso.
+const GRAFITO = [[58, 62, 66], [84, 88, 90], [40, 44, 48]], VERDEIND = [[62, 92, 80], [44, 70, 92], [120, 60, 48]];
+const TIPO = {
+  nave: [
+    { id: 'nave_bloque', bay: 5.2, hp: 4.6, win: 3.2, alto: 0.42, hueco: 'taller', bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+      marco: GRAFITO, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.25 },
+    { id: 'nave_maó', bay: 4.6, hp: 4.4, win: 2.6, alto: 0.55, hueco: 'taller', bal: 'ninguno', acab: 'ladrillo', carp: 'ninguna',
+      marco: ACERO, recerc: 1, imposta: 2, ultimo: 'normal', coron: 'frontis', mac: 0, remate: 0.5 },
+    { id: 'nave_revoc', bay: 5.0, hp: 4.2, win: 2.8, alto: 0.5, hueco: 'taller', bal: 'ninguno', acab: 'revoco', carp: 'ninguna',
+      marco: VERDEIND, recerc: 0, imposta: 1, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.35 },
+    { id: 'nave_chapa', bay: 6.0, hp: 5.0, win: 4.2, alto: 0.3, hueco: 'taller', bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.15 }],
+  equip: [
+    { id: 'eq_bandas', bay: 3.0, hp: 3.5, win: 2.4, alto: 0.5, hueco: 'ventana', bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+      marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.2 },
+    { id: 'eq_maó', bay: 3.4, hp: 3.5, win: 2.0, alto: 0.55, hueco: 'ventana', bal: 'ninguno', acab: 'ladrillo', carp: 'enrollable',
+      carpCol: BLANCO.concat(GRIS), marco: ALU, recerc: 1, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.45 },
+    { id: 'eq_escola', bay: 3.6, hp: 3.6, win: 2.6, alto: 0.6, hueco: 'ventana', bal: 'ninguno', acab: 'estuco', carp: 'enrollable',
+      carpCol: VERDEIND.concat(BLANCO), marco: BLANCO, recerc: 1, imposta: 2, ultimo: 'normal', coron: 'cornisa', mac: 0, remate: 0.55 },
+    { id: 'eq_oficina', bay: 2.7, hp: 3.6, win: 2.1, alto: 0.62, hueco: 'ventana', bal: 'ninguno', acab: 'gresite', carp: 'ninguna',
+      marco: GRAFITO, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.3 }],
+  // n3 E4: cw = 1, muro cortina de verdad (facades.js pisosV): antepecho opaco, paño de forjado a forjado, montantes finos.
+  // n3 E3 · torres de vidrio y oficinas (clases 3 y 12): muro cortina aproximado con el ventanal de taller (paño de vidrio casi
+  // de forjado a forjado con retícula de montantes), bandas de forjado (imposta) y acabado de hormigón o gresite oscuro
+  vidrio: [
+    { id: 'cw_gris', bay: 3.0, hp: 3.7, win: 2.85, alto: 0.86, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+      marco: GRAFITO, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.1 },
+    { id: 'cw_alu', bay: 3.2, hp: 3.8, win: 3.0, alto: 0.9, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'gresite', carp: 'ninguna',
+      marco: ALU, recerc: 0, imposta: 2, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.1 },
+    { id: 'cw_bandas', bay: 2.8, hp: 3.6, win: 2.6, alto: 0.7, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+      marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.15 }] };
+
 // variantes completas (BASE + propias), congeladas
 for (const f in FAM) FAM[f] = FAM[f].map(v => Object.freeze(Object.assign({}, BASE, v, { fam: f })));
-window.BCN_FX_ESTILOS = { FAM, BASE, BARRI, familia, MEZCLA };
+for (const f in TIPO) TIPO[f] = TIPO[f].map(v => Object.freeze(Object.assign({}, BASE, v, { fam: 'tipo_' + f })));
+window.BCN_FX_ESTILOS = { FAM, BASE, BARRI, familia, MEZCLA, TIPO };
 })();

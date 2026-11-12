@@ -276,9 +276,19 @@ const VS_NRM = `precision highp float;
 attribute vec3 position; attribute vec3 normal; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vN;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_Position = viewProjection*wp; }`;
 
+// n3 E1 · PENUMBRA DE AZOTEAS DE NOCHE: lo que mira al cielo recibe de noche la luz de la luna y del cielo nocturno, que en una
+// ciudad es el resplandor anaranjado-violáceo de su propio alumbrado reflejado en la bruma. Sin él, cubiertas y piezas de
+// azotea salían casi negras («no digo que se vean, pero que no quede tan oscuro»). Lo usan FS_BLD (cubiertas) y rooftops.js
+// (piezas y tejados, con la misma constante: igual de cerca que de lejos). up = componente vertical de la normal.
+// Se atenúa algo de madrugada (uLate: el alumbrado ornamental se apaga y la bruma refleja menos)
+const ROOF_NIGHT = `vec3 roofNight(vec3 alb, float up){
+  return alb*vec3(0.120, 0.114, 0.134)*(uNight*(1.0 - 0.25*uLate)*(0.35 + 0.65*clamp(up, 0.0, 1.0)));
+}`;
+window.BCN_ROOF_NIGHT = ROOF_NIGHT;
 const FS_BLD = `
 varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx; uniform vec2 uFx;
 uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uRoofPal;
+` + ROOF_NIGHT + `
 void main(){
   vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc)));
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
@@ -420,9 +430,10 @@ void main(){
       tx += (0.09*(step(0.72, zk) - 0.28) - 0.07*(step(zk, 0.12) - 0.12))*(1.0 - smoothstep(0.3, 0.6, pw/3.4))
           + 0.11*(vnoise(q*0.13 + seed*5.0) - 0.5)*(1.0 - smoothstep(0.35, 0.7, pw/7.0));
     }
-    base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
-    // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
-    base *= 1.0 - 0.55*uNight;
+    base = roof*(1.0 + tx*(1.0 - 0.5*uNight));
+    // de noche las cubiertas quedan en penumbra (n3 E1: antes, casi negras): algo menos de oscurecimiento que antes y, más
+    // abajo, el reflejo del cielo nocturno y del resplandor de la ciudad (ROOFN), igual de cerca que de lejos
+    base *= 1.0 - 0.35*uNight;
   }
   // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
   // DIA: de lejos (sin mapa de sombras) la parte baja de los muros queda en la sombra de la acera de enfrente: calle de
@@ -430,6 +441,8 @@ void main(){
   if (abs(n.y) < 0.5) { float hs = clamp(19.0 - 14.0*sunTan(), 0.0, 19.0), so = shOut()*(1.0 - uNight);
     if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
+  // de lejos, algo más (la bruma nocturna se come la penumbra y las cubiertas volvían a leerse como un agujero negro desde el aire)
+  if (abs(n.y) >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
@@ -1167,10 +1180,92 @@ const BREC = { dv: [], n: 0 };
   let done = 0, total = 0;
   const conts = [];
   for (let f = 0; f < files.length; f++) { setMsg('Descargando edificios…', 0.36 + 0.08 * f / files.length); conts.push(await loadContainer('data/' + files[f])); }
+  // n3 E2 · MANZANAS ENTERAS (manzanas.js): los volúmenes que son una manzana entera (o un bloque grande) se parten en fincas
+  // y se ahuecan con su interior de manzana. Primera pasada: se buscan, se parten y sus trozos van a un contenedor sintético
+  // (mismo formato) que se carga el ÚLTIMO (los índices de los demás no cambian: los hitos los usan). El original se colapsa.
+  const MZJ = window.BCN_MZ, MZ_SKIP = new Set(), MZ = { blocks: [], order: null };
+  const inPolyMZ = (P, x, z) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) ins = !ins; } return ins; };
+  if (MZJ && QS.get('mz') !== '0') {
+    const tMZ0 = performance.now(); MZ.ms = {};
+    // una manzana partida: sus trozos (fincas y cubiertas del patio) entran en recs con el mismo azar que al calcularla
+    const recs = [];
+    const mzBlock = (f, sp, skip, isR) => {
+      for (const b of skip) MZ_SKIP.add(b);
+      const g0 = heightAt(f.cx, f.cz), R = MZJ.rng(f.b * 31 + 7), blk = { src: f.b, sp, fincas: [], parcels: [], f: { b: f.b, cx: f.cx, cz: f.cz, yb: f.yb, ybot: f.ybot, cls: f.cls }, skip, isR };
+      const add = (poly, H, cls, kind, ref) => { let x = 0, z = 0, gl = 1e9; for (const q of poly) { x += q[0]; z += q[1]; gl = Math.min(gl, heightAt(q[0], q[1])); } x /= poly.length; z /= poly.length;
+        const dy = Math.round((heightAt(x, z) - g0) * 10), r = { cls, seed: Math.floor(R() * 256), yb: f.yb + dy, ybot: Math.min(f.ybot + dy, Math.round(gl * 10) - 8), H, poly, kind, blk, ref };
+        recs.push(r); return r; };
+      for (const fi of sp.fincas) blk.fincas.push(add(fi.poly, fi.H, f.cls, 1, fi));
+      for (const pa of sp.parcels) blk.parcels.push(add(pa.poly, pa.h, 0, pa.kind === 'terraza' ? 3 : 2, pa));
+      MZ.blocks.push(blk); if (isR) MZ.nR = (MZ.nR || 0) + 1; };
+    // n3 E4 · las manzanas ya partidas vienen precalculadas (data/mz_partidas.json, ver tools/mz_partidas.js): la trama tarda
+    // varios segundos al cargar. Si el fichero no casa con los edificios (otro recuento) o con ?mz=calc, se calculan aquí
+    let nB0 = 0; for (const c of conts) for (const ck of c.meta.chunks) nB0 += ck[4];
+    const MZC = QS.get('mz') === 'calc' ? null : await fetch('data/mz_partidas.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    if (MZC && MZC.nB === nB0) { MZ.cache = true; for (const k of MZC.blocks) mzBlock(k.f, k.sp, k.skip, k.isR); }
+    else {
+    const reserved = new Set(); for (const f of ((window.BCN_LM && window.BCN_LM.fichas) || [])) for (const b of (f.edificios || [])) reserved.add(b);
+    const lmPts = ((window.BCN_LM && window.BCN_LM.fichas) || []).filter(f => isFinite(f.x)).map(f => [f.x, f.z]);
+    const found = [], loose = [], allB = []; let bi = 0;
+    for (let ci = 0; ci < conts.length; ci++) { const dv = conts[ci].view('data');
+      for (const ck of conts[ci].meta.chunks) { const ox = ck[0] * CH, oz = ck[1] * CH; let p = ck[2]; const end = p + ck[3];
+        while (p < end) { const nR = dv.getUint8(p), cls = dv.getUint8(p + 1), n = dv.getUint16(p + 4, true), yb = dv.getInt16(p + 6, true), ybot = dv.getInt16(p + 8, true), ytop = dv.getInt16(p + 10, true);
+          const p0 = p, q0 = p + 12 + (nR > 1 ? nR * 2 : 0), m0 = nR > 1 ? dv.getUint16(p + 12, true) : n; p = q0 + n * 4;
+          const b = bi++, H = (ytop - yb) / 10, hb = (ybot - yb) / 10;
+          if (H > 3 && m0 <= 400) allB.push(ci, p0, ck[0], ck[1], b);
+          if ((cls !== 0 && cls !== 6) || H < 10.5 || H > 45 || hb >= 1.5 || m0 > 400 || reserved.has(b)) continue;
+          let A = 0; const P = [];
+          for (let k = 0; k < m0; k++) { const x = dv.getInt16(q0 + k * 4, true) / 10 + ox, z = dv.getInt16(q0 + k * 4 + 2, true) / 10 + oz; P.push([x, z]); }
+          for (let k = 0; k < m0; k++) { const a = P[k], c = P[(k + 1) % m0]; A += a[0] * c[1] - c[0] * a[1]; } A = Math.abs(A) / 2;
+          if (A < 1000 || A > 32000) continue;
+          const fill = A / Math.max(1, MZJ.sarea(MZJ.hull(P)));
+          let cx = 0, cz = 0; for (const q of P) { cx += q[0]; cz += q[1]; } cx /= m0; cz /= m0;
+          if (lmPts.some(l => Math.hypot(l[0] - cx, l[1] - cz) < 90)) continue;
+          if (!MZJ.cand({ cls, hb, H, A, fill })) {   // n3 E3: no convexas, con patio propio o trozos de manzana → por grupos
+            if (A < 1000) continue; const holes = []; let q = q0 + m0 * 4;
+            for (let r = 1; r < nR; r++) { const m = dv.getUint16(p0 + 12 + r * 2, true), h = []; for (let k = 0; k < m; k++, q += 4) h.push([dv.getInt16(q, true) / 10 + ox, dv.getInt16(q + 2, true) / 10 + oz]); holes.push(h); }
+            let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const t of P) { x0 = Math.min(x0, t[0]); x1 = Math.max(x1, t[0]); z0 = Math.min(z0, t[1]); z1 = Math.max(z1, t[1]); }
+            loose.push({ b, cls, yb, ybot, H, P, holes, cx, cz, A, bb: [x0, z0, x1, z1] }); continue; }
+          found.push({ b, cls, yb, ybot, H, P, cx, cz }); } } }
+    // volúmenes apilados sobre la misma planta (complejos): fuera
+    const dup = new Set(); for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length && j < i + 40; j++) if (Math.hypot(found[i].cx - found[j].cx, found[i].cz - found[j].cz) < 25) { dup.add(i); dup.add(j); }
+    MZ.ms.scan = performance.now() - tMZ0;
+    for (let i = 0; i < found.length; i++) { if (dup.has(i)) continue; const f = found[i];
+      const sp = MZJ.split(f.P, (f.b * 2654435761 + Math.round(f.cx) * 7 + Math.round(f.cz)) >>> 0, f.H); if (!sp) continue;
+      mzBlock(f, sp, [f.b], 0); }
+    // n3 E3 · grupos de 1–6 volúmenes grandes que se tocan (manzanas no convexas, de varios trozos o con patio propio):
+    // trama de 1 m (BCN_MZ.splitR) con los vecinos como «no calle». Fuera los grupos con algo apilado encima.
+    MZ.ms.split = performance.now() - tMZ0;
+    const GRP = MZJ.group(loose).filter(g => { let A = 0; for (const i of g) A += loose[i].A; return g.length <= 6 && A >= 2600 && A <= 32000 && (g.length > 1 || loose[g[0]].A >= 2600); });
+    if (GRP.length) {
+      const hash = new Map(), gb = GRP.map(g => { const bb = [1e9, 1e9, -1e9, -1e9]; for (const i of g) { const c = loose[i].bb; bb[0] = Math.min(bb[0], c[0]); bb[1] = Math.min(bb[1], c[1]); bb[2] = Math.max(bb[2], c[2]); bb[3] = Math.max(bb[3], c[3]); } return bb; });
+      gb.forEach((bb, k) => { for (let gx = Math.floor(bb[0] / 200); gx <= Math.floor(bb[2] / 200); gx++) for (let gz = Math.floor(bb[1] / 200); gz <= Math.floor(bb[3] / 200); gz++) { const key = gx * 100003 + gz; let l = hash.get(key); if (!l) hash.set(key, l = []); l.push(k); } });
+      const mine = new Set(); for (const g of GRP) for (const i of g) mine.add(loose[i].b);
+      const oth = GRP.map(() => []), bad = new Uint8Array(GRP.length);
+      for (let t = 0; t < allB.length; t += 5) { const ci = allB[t], p0 = allB[t + 1], ox = allB[t + 2] * CH, oz = allB[t + 3] * CH, b = allB[t + 4]; if (mine.has(b)) continue;
+        const dv = conts[ci].view('data'), nR = dv.getUint8(p0), n = dv.getUint16(p0 + 4, true), m0 = nR > 1 ? dv.getUint16(p0 + 12, true) : n, q0 = p0 + 12 + (nR > 1 ? nR * 2 : 0);
+        const x = dv.getInt16(q0, true) / 10 + ox, z = dv.getInt16(q0 + 2, true) / 10 + oz, l = hash.get(Math.floor(x / 200) * 100003 + Math.floor(z / 200)); if (!l) continue;
+        let P = null;
+        for (const k of l) { const bb = gb[k]; if (x < bb[0] - 40 || x > bb[2] + 40 || z < bb[1] - 40 || z > bb[3] + 40) continue;
+          if (!P) { P = []; for (let q = 0; q < m0; q++) P.push([dv.getInt16(q0 + q * 4, true) / 10 + ox, dv.getInt16(q0 + q * 4 + 2, true) / 10 + oz]); }
+          let cx = 0, cz = 0; for (const q of P) { cx += q[0]; cz += q[1]; } cx /= m0; cz /= m0;
+          if (GRP[k].some(i => inPolyMZ(loose[i].P, cx, cz))) bad[k] = 1;    // algo apilado o metido dentro: no se toca
+          oth[k].push(P); } }
+      GRP.forEach((g, k) => { if (bad[k]) return; const mem = g.map(i => loose[i]), f = mem[0];
+        const sp = MZJ.splitR(mem.map(m => ({ P: m.P, holes: m.holes, H: m.H })), oth[k], (f.b * 2654435761 + Math.round(f.cx) * 7 + Math.round(f.cz)) >>> 0); if (!sp) return;
+        mzBlock(f, sp, mem.map(m => m.b), 1); });
+    }
+    }
+    MZ.ms.trama = performance.now() - tMZ0; MZ.nB = nB0;
+    if (recs.length) { const syn = MZJ.encode(recs, CH); conts.push(syn); MZ.order = syn.order; MZ.cont = conts.length - 1; }
+    MZ.ms.total = performance.now() - tMZ0;
+    console.log('Manzanas enteras partidas: ' + MZ.blocks.length + ' (' + (MZ.nR || 0) + ' por trama; ' + recs.length + ' trozos)');
+  }
   let nTot = 0;
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
-  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot);
+  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot); BREC.vid = new Uint8Array(nTot);
+  BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; let mzK = 0;   // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
@@ -1232,9 +1327,34 @@ const BREC = { dv: [], n: 0 };
         bldCount++;
         BREC.v1[bi] = vp;
         BREC.bb[bi * 4] = bx0 + ox; BREC.bb[bi * 4 + 1] = bz0 + oz; BREC.bb[bi * 4 + 2] = bx1 + ox; BREC.bb[bi * 4 + 3] = bz1 + oz;
-        // ¿vivienda susceptible de fachada de detalle? (ni torres, ni naves, ni volúmenes elevados)
+        // ¿lleva fachada de detalle? (n3 E1: ya no quedan cubos) y con qué tipología (BREC.tipo, la leen facades.js y rooftops.js):
+        //   0 vivienda de su familia de barrio (clases 0 y 6: también las casas de una planta y las torres de pisos) ·
+        //   1 nave (naves bajas y grandes de la clase 0 y las clases 1 y 5, industria y almacenes) ·
+        //   2 equipamiento u oficinas (clases 2, 8, 9, 11 y 13: escuelas, ambulatorios, oficinas, mercados; y las 1 y 5 altas)
+        // Fuera: casetas mínimas (< 3,8 m o < 35 m² de caja), volúmenes elevados (partes altas de otro edificio), los de más
+        // de 16 000 m² de caja (manzanas y complejos enteros: etapa E2), vidrio (3, 12), cristal y pilares (4), los muy
+        // grandes de la clase 10 (centros comerciales, aeropuerto) y los invernaderos y templos (14, 15). Los hitos los quitan.
         const Hm = Ht / 10, area = (bx1 - bx0) * (bz1 - bz0);
-        BREC.elig[bi] = ((cls === 0 && Hm >= 6 && Hm <= 45) || (cls === 6 && Hm >= 5 && Hm <= 16)) && hb < 15 && area < 16000 && !(Hm < 9 && area > 1800) && rsz[0] >= 3 ? 1 : 0;
+        let tp = -1;
+        if (hb < 15 && area >= 35 && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
+          if (cls === 0) tp = Hm < 9 && area > 1800 ? 1 : Hm <= 110 ? 0 : -1;
+          else if (cls === 6) tp = Hm <= 30 ? (Hm < 9 && area > 2500 ? 1 : 0) : -1;
+          else if (cls === 1 || cls === 5) tp = Hm <= 14 ? 1 : Hm <= 60 ? 2 : -1;
+          else if (cls === 2 || cls === 8 || cls === 9 || cls === 11 || cls === 13) tp = Hm <= 60 ? 2 : -1;
+          // n3 E3: vidrio y oficinas (3, 12) → muro cortina (BREC.vid); grandes superficies (10) y 14, 15 → nave o equipamiento
+          else if (cls === 3 || cls === 12) { tp = Hm <= 160 ? 2 : -1; if (tp > 0) BREC.vid[bi] = 1; }
+          else if (cls === 10) tp = Hm < 12 ? 1 : Hm <= 60 ? 2 : -1;
+          else if (cls === 14 || cls === 15) tp = Hm <= 40 ? 2 : -1;
+        }
+        BREC.elig[bi] = tp >= 0 ? 1 : 0; BREC.tipo[bi] = tp >= 0 ? tp : 0;
+        if (MZ_SKIP.has(bi)) {                       // manzana entera partida: se colapsa (la sustituyen sus fincas)
+          const v0 = BREC.v0[bi]; for (let v = v0 + 1; v < vp; v++) { pos[v * 3] = pos[v0 * 3]; pos[v * 3 + 1] = pos[v0 * 3 + 1]; pos[v * 3 + 2] = pos[v0 * 3 + 2]; }
+          BREC.elig[bi] = 0;
+        } else if (ci === MZ.cont) {                 // trozo de manzana: finca (vivienda), taller (nave) o terraza del patio
+          const r = MZ.order[mzK++]; r.bi = bi; BREC.mzk[bi] = r.kind;
+          if (r.kind === 2) { BREC.elig[bi] = area >= 20 ? 1 : 0; BREC.tipo[bi] = 1; }
+          else if (r.kind === 3) { BREC.elig[bi] = area >= 20 ? 1 : 0; BREC.tipo[bi] = 0; }
+        }
       }
       const infBuf = inf.subarray(0, vp * 4);
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);
