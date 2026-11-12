@@ -61,7 +61,7 @@ window.BCN_GEO.regKind('FXVIDRIO', 101, `
     bk = mix(bk, mix(vec3(0.07, 0.08, 0.09), vec3(0.62, 0.62, 0.6), fr), inW);
     if (yh < 0.0) bk = vCol.rgb*0.55;                 // suelo del balcón
     vec3 r = reflect(-V, n), refl = envRefl(r, 0.04);
-    float w = clamp(0.16 + 0.84*pow(1.0 - max(dot(n, V), 0.0), 4.0), 0.0, 0.85);
+    float w = clamp(0.12 + 0.6*pow(1.0 - max(dot(n, V), 0.0), 4.0), 0.0, 0.6);
     vec3 c = mix(lit(bk*vec3(0.80, 0.88, 0.94), n), refl*vec3(0.86, 0.92, 1.0), w);
     c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 300.0)*1.6;
     FRAG(c); return;`);
