@@ -41,7 +41,7 @@ const SP = [
     l: { nN: 1250, sN: [0.45, 0.8], DN: 1.7, ys: [-0.95, 0.55], mid: 1, nF: 130, sF: [1.4, 2.2], DF: 1.5 }, imp: [6.6, 12.5],
     bark: [0.62, 0.56, 0.5, 0.15], leaf: [1.12, 1.1, 0.78, 0.92], fl: 0 },
   { id: 'pi', n: 'pi pinyer', g: { h: 8.6, r: 0.33, n: 7, y0: 8.0, len: [3.2, 4.1], up: 0.26, out: 0.96, rad: 0.15, kl: 0.72, dh: 2, lean: 1.4 },
-    l: { nN: 820, sN: [0.6, 1.0], DN: 1.25, ys: [-0.2, 0.3], flat: 1, nF: 95, sF: [1.5, 2.2], DF: 1.3 }, imp: [6.8, 12.5],
+    l: { nN: 820, sN: [0.6, 1.0], DN: 1.25, ys: [-0.2, 0.3], flat: 1, mid: 1, nF: 95, sF: [1.5, 2.2], DF: 1.3 }, imp: [6.8, 12.5],
     bark: [1, 1, 1, 1], bm: 1, leaf: [0.74, 0.86, 0.8, 0.72], fl: 0 },
   // 7: palmera datilera (Phoenix): tronco grueso con cicatrices de hoja, corona de muchas hojas largas y arqueadas
   { id: 'phoenix', n: 'palmera datilera', g: { h: 8.6, r: 0.42, n: 0, y0: 8.6, len: [0, 0], up: 0, out: 0, rad: 0, kl: 0, dh: 0 },
@@ -114,21 +114,23 @@ function treeGeo(sp, hi) {
   const g = sp.g, k0 = SP.indexOf(sp);
   if (k0 === 0) seedRaw(5); else seed(900 + k0, hi ? 1 : 0);
   const P = [], Nn = [], U = [], I = [];
-  const ring = (c, ax, r, sides, v) => {
+  // us: escala de la u (vuelta al tronco). Con corteza del sombreador (bm) las ramas la reducen con su radio, para que las
+  // placas o rombos tengan el mismo tamaño en el tronco y en las ramas; el plátano y las de corteza de textura, como antes
+  const ring = (c, ax, r, sides, v, us) => {
     let ux = -ax[2], uy = 0, uz = ax[0]; let l = Math.hypot(ux, uy, uz); if (l < 1e-4) { ux = 1; uz = 0; l = 1; } ux /= l; uz /= l;
     const wx = ax[1] * uz - ax[2] * uy, wy = ax[2] * ux - ax[0] * uz, wz = ax[0] * uy - ax[1] * ux;
     const base = P.length / 3;
     for (let k = 0; k <= sides; k++) { const a = k / sides * 6.2832, ca = Math.cos(a), sa = Math.sin(a);
       const nx = ux * ca + wx * sa, ny = uy * ca + wy * sa, nz = uz * ca + wz * sa;
-      P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); Nn.push(nx, ny, nz); U.push(k / sides, v); }
+      P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); Nn.push(nx, ny, nz); U.push(k / sides * us, v); }
     return base;
   };
-  const tube = (pts, rad, sides) => {
+  const tube = (pts, rad, sides, us = 1) => {
     let prev = -1, v = 0;
     for (let k = 0; k < pts.length; k++) {
       const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], ax = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...ax); ax[0] /= l; ax[1] /= l; ax[2] /= l;
       if (k) v += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1], pts[k][2] - pts[k - 1][2]);
-      const cur = ring(pts[k], ax, rad(k / (pts.length - 1)), sides, v);
+      const cur = ring(pts[k], ax, rad(k / (pts.length - 1)), sides, v, us);
       if (prev >= 0) for (let s = 0; s < sides; s++) I.push(prev + s, cur + s, cur + s + 1, prev + s, cur + s + 1, prev + s + 1);
       prev = cur;
     }
@@ -144,7 +146,7 @@ function treeGeo(sp, hi) {
   const br = (E, dir, len, rad, depth) => {
     const Pp = [E[0] + dir[0] * len, E[1] + dir[1] * len, E[2] + dir[2] * len];
     const M = [(E[0] + Pp[0]) / 2 + R(-0.25, 0.25), (E[1] + Pp[1]) / 2 + R(-0.1, 0.2), (E[2] + Pp[2]) / 2 + R(-0.25, 0.25)];
-    tube([E, M, Pp], t => rad * (1 - 0.5 * t), depth === 0 ? (hi ? 9 : 5) : depth === 1 ? 5 : 3);
+    tube([E, M, Pp], t => rad * (1 - 0.5 * t), depth === 0 ? (hi ? 9 : 5) : depth === 1 ? 5 : 3, sp.bm ? Math.max(0.2, rad / g.r) : 1);
     if (depth >= 1 || g.dh <= 2) mids.push(M);
     if (depth >= (hi ? g.dh : 0)) { tips.push(Pp); return; }
     for (let b = 0; b < 3; b++) {
