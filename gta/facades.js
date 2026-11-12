@@ -797,6 +797,30 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     return null;
   }
 
+  // depuración (FIX2): vista de fachada entera desde la acera de enfrente: busca, entre los edificios de la familia, un tramo de
+  // calle lo bastante ancho para ver de la 1.ª a la última planta con la cámara a 1,75 m y mirando «pitch» rad hacia arriba
+  // (fov vertical 0,86). Devuelve la vista con más holgura (la k-ésima de las válidas, por orden de holgura)
+  function spotFull(fam, k, pitch) {
+    const pt = pitch === undefined ? 0.3 : pitch, top = Math.tan(pt + 0.43 - 0.04), out = [];
+    for (let b = 0; b < NB && out.length < 400; b++) {
+      if (!BREC.elig[b] || famOf(b) !== fam) continue;
+      const lay = layoutB(b); if (!lay || lay.H < 9 || lay.H > 34) continue;
+      for (const r of lay.runs) {
+        if (r.kind !== 'street' || r.L < 12) continue;
+        const mx = r.ax + r.tx * r.L / 2, mz = r.az + r.tz * r.L / 2; let w = 0;
+        for (let t = 1.5; t <= 40; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
+        const dc = w - 1.6, need = (lay.H + 0.8 - 1.75) / top;
+        if (w < 8 || w >= 40 || dc < need) continue;
+        const x = mx + r.nx * dc, z = mz + r.nz * dc;
+        if (coverAt(x, z, -1) > -1e8) continue;
+        out.push({ x, z, walk: true, yaw: Math.atan2(mx - x, mz - z), pitch: -pt, b, V: varOf(b) && varOf(b).id, H: lay.H, w, s: Math.min(r.L, 30) + (dc - need) * 0.5 });
+        break;
+      }
+    }
+    out.sort((a, c) => c.s - a.s);
+    return out[Math.min(k || 0, out.length - 1)] || null;
+  }
+
   // depuración (FX3): vista a pie a lo largo de una calle cerca de (x, z): busca la calzada más cercana, el eje de la calle (la
   // dirección con más espacio libre entre fachadas) y se pone en la acera del lado «side» (+1/−1), a ~1,8 m de las fachadas,
   // mirando a lo largo de la calle (sentido «dir» ±1) y algo girado hacia la acera de enfrente
@@ -923,7 +947,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   setRange(1);
   // depuración: fuerza un estilo («familia:n», «familia», «off» o null) y rehace las celdas
   function force(v) { FXV = v; VAR.fill(undefined); dropAll(); planT = 0; }
-  return { update, setRange, nElig, spot, calle, famOf, varOf, force, busy: () => !!job || queue.length > 0,
+  return { update, setRange, nElig, spot, spotFull, calle, famOf, varOf, force, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();

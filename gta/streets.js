@@ -98,7 +98,9 @@ void main(){
   } else if (f.b > 0.5) {                               // plaza o calle peatonal: losas de granito
     vec2 gP = P/2.5; float gB = smoothstep(0.42, 0.62, vnoise(P*0.02));
     vec3 tx = mix(texture2D(tGrD, gP).rgb, texture2D(tGrD, gP.yx*0.75 + vec2(0.31, 0.17)).rgb, gB);
-    alb = tx*1.75*mix(0.74, 1.12, n1)*mix(0.88, 1.08, n2);
+    // FIX2: granito algo menos claro y con rodilla en los tonos más altos (las plazas abiertas salían blancas quemadas al sol)
+    alb = tx*1.5*mix(0.74, 1.12, n1)*mix(0.88, 1.08, n2);
+    alb = min(alb, vec3(0.50) + 0.4*(alb - vec3(0.50)));
     vec3 tn = texture2D(tGrN, gP).xyz*2.0 - 1.0; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
   } else {                                              // panot de 20×20 cm
     vec2 gP = P*5.0; vec3 tx = texture2D(tPanD, gP).rgb;
@@ -120,6 +122,9 @@ void main(){
   // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
   if (uGlow.x > 0.001) {
     float gW = (0.55 + 0.45*exp(-dA/5.0))*mix(0.40, 1.0, smoothstep(40.0, 240.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    // FIX2: visto desde arriba (cámara a más de ~25 m sobre la acera) el baño se queda en la mitad: desde el aire las aceras
+    // y ramblas con poca copa encima eran franjas brillantes. A pie de calle (cámara a 1,7 m) no cambia nada
+    gW *= mix(1.0, 0.5, smoothstep(25.0, 140.0, uCam.y - vPos.y));
     c += emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);   // tope: el granito claro de las ramblas no se enciende de más
   }
   FRAG(c);

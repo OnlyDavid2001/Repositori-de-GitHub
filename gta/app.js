@@ -376,7 +376,9 @@ void main(){
     else { roof = base*0.95; rt = 3.0; }
     vec2 ax = vAx/max(length(vAx), 1e-3);
     vec2 q = vec2(dot(vLoc.xz, ax), dot(vLoc.xz, vec2(-ax.y, ax.x))) + seed*vec2(37.0, 53.0);   // metros, en ejes del edificio
-    float pw = max(length(fwidth(q)), 1e-4);                  // metros por píxel
+    // metros por píxel: el eje más estirado del píxel (no length(fwidth), que suma |dx|+|dy| de los dos ejes y lo exagera
+    // ×1,4–2: con él la textura se apagaba ya a 60 m y las cubiertas cercanas salían lisas)
+    float pw = max(max(length(dFdx(q)), length(dFdy(q))), 1e-4);
     float tx = 0.0;                                           // relieve de la textura (media cero)
     if (rt > -0.5) {
       if (rt < 0.5 || rt > 3.5) {
@@ -409,8 +411,14 @@ void main(){
       // REV: rodales de piezas cambiadas, sol y humedad (de 0,6 a 2 m): el «granulado» que se ve de cerca a 50–150 m, cuando la
       // pieza ya no se resuelve. También de media cero y apagado con el píxel: de lejos, el color de la tabla
       float rk = hash21(floor(q/vec2(1.1, 0.9)) + seed*3.0) - 0.5;
-      tx += (0.09*(vnoise(q*0.95) - 0.5) + 0.07*rk)*(1.0 - smoothstep(0.35, 0.8, pw/0.6))
-          + 0.08*(vnoise(q*0.42 + 3.0) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/1.4));
+      tx += (0.10*(vnoise(q*0.95) - 0.5) + 0.09*rk)*(1.0 - smoothstep(0.3, 0.6, pw/0.9))
+          + 0.10*(vnoise(q*0.42 + 3.0) - 0.5)*(1.0 - smoothstep(0.35, 0.7, pw/1.6));
+      // FIX2: zonas de reparación (paños de 3–4 m relosados, más claros o más oscuros) y cercos de humedad de 6–10 m, que
+      // todavía se leen desde una azotea vecina o desde el aire bajo (100–200 m); de media cero y apagados con el píxel
+      vec2 zq = q/vec2(3.7, 3.1); zq.x += 0.5*step(1.0, mod(floor(zq.y), 2.0));
+      float zk = hash21(floor(zq) + seed*11.0);
+      tx += (0.09*(step(0.72, zk) - 0.28) - 0.07*(step(zk, 0.12) - 0.12))*(1.0 - smoothstep(0.3, 0.6, pw/3.4))
+          + 0.11*(vnoise(q*0.13 + seed*5.0) - 0.5)*(1.0 - smoothstep(0.35, 0.7, pw/7.0));
     }
     base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
     // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
