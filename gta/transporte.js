@@ -30,7 +30,7 @@ GEO.regKind('TRSIGN', 140, `
     vec3 tx = texture2D(tTrSign, vInfo.xy*(255.0/256.0)).rgb;
     float fN = smoothstep(0.05, 0.3, uDusk), lt = vInfo.z;
     alb = tx*(1.0 - 0.55*lt*fN); rough = 0.3;
-    emis = emit(tx, lt*mix(0.42, 1.75, fN));`, 'uniform sampler2D tTrSign;');
+    emis = emit(tx, lt*mix(0.42, 1.25, fN));`, 'uniform sampler2D tTrSign;');
 GEO.regKind('TRIN', 141, `
     float pat = floor(vInfo.x*255.0 + 0.5), lampF = vInfo.z, fN = smoothstep(0.05, 0.3, uDusk);
     ao = mix(0.35, 1.0, vInfo.y); rough = 0.7;
@@ -418,9 +418,9 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       jamb(Bi, F, UE, yb, y0 - 0.35, -HWI, HWI, [96, 94, 88], K.TRIN, tin(1, 0.05, 0.3));
       jamb(Bi, F, UE - 0.01, yb, yb + 2.1, -0.55, 0.55, [22, 22, 21], K.TRIN, tin(0, 0, 0.15));
       // regletas de luz: en las paredes, paralelas a la escalera, y en el techo bajo la losa
-      for (const sd of [1, -1]) { const d = sd * (HWI - 0.01), h = 2.05;
+      for (const sd of [1, -1]) { const d = sd * (HWI - 0.04), h = 2.05;   // 4 cm de la pared (a 1 cm se peleaban)
         quad(Bi, F, -1.6, y0 - (-1.6 - US) / RUN * RISE + h - 0.02, d, 2.2, y0 - (2.2 - US) / RUN * RISE + h - 0.02, d, 2.2, y0 - (2.2 - US) / RUN * RISE + h + 0.05, d, -1.6, y0 - (-1.6 - US) / RUN * RISE + h + 0.05, d, [240, 238, 230], K.TRIN, tin(3, 1, 1)); }
-      hpl(Bi, F, U1 + 0.6, UE - 0.4, y0 - 0.36, -0.08, 0.08, [240, 238, 230], K.TRIN, tin(3, 1, 1));
+      hpl(Bi, F, U1 + 0.6, UE - 0.4, y0 - 0.41, -0.08, 0.08, [240, 238, 230], K.TRIN, tin(3, 1, 1));
       // pasamanos a los dos lados
       for (const sd of [1, -1]) { const d = sd * (HWI - 0.07);
         tube(Bi, F, [[U0 + 0.1, y0 + 0.9, d], [US, y0 + 0.9 - 0.0, d], [US + NS * RUN, yb + 0.9, d], [US + NS * RUN + 0.5, yb + 0.9, d]], 0.025, 5, C_STEEL, K.TRIN, { aux: MET });
