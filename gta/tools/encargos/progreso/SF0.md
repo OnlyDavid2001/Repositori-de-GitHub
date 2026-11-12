@@ -69,3 +69,12 @@ esa carpeta (reutilizables en SF1-SF3). En SF0 no hay «después»: no cambia na
 - `gta/data/sf_ref.json`: referencia de la Sagrada Família acabada (marco local de la ficha, contorno OSM local, planta,
   18 torres, fachadas, escalinata, noche), con `estado` verificado/estimación por dato. Lo leen las etapas SF1-SF3.
 - La fachada de la Glòria está en z local ≈ +32 (puertas) / +39 (nártex, línea de manzana), no en +71.
+
+## Resultado de las capturas ANTES (0 errores y 0 avisos de consola)
+Triángulos dibujados de todos los hitos (`lm.trisVis`; la basílica sola no se mide aparte en el arnés): dron Glòria
+478 418 · dron Naixement 470 618 · Pl. de Gaudí 477 502 · Mallorca 477 786 · noche 478 418 (hitos en total 698 777).
+Carga 18,9 s; 26-98 s por vista. Lo que se ve hoy: silueta reconocible desde el dron, pero torres lisas en huso, Glòria
+de cajas, puente-plaza plano sobre Mallorca; de noche la basílica es un bloque blanco uniforme sin estrella visible.
+Vistas flojas para comparar: `pie_mallorca` (local 30, 52) cae **debajo** del puente-plaza actual (solo se ve la losa) y
+`pie_gaudi` queda tapada por los árboles de la plaza; en SF1 hay que moverlas (Mallorca a z ≈ +75 mirando al ábside, Gaudí
+en un claro del estanque). Para medir la basílica sola conviene un `eval` que sume los triángulos de sus mallas.
