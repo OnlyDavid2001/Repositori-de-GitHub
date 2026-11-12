@@ -1772,3 +1772,72 @@ fundido 60–75 m); el canal alfa del campo de aceras ya no se usa (la rama de a
 - Fichas nuevas `aero_carga`, `aero_combustible`, `aero_hangars` (creadas en el init de los hitos, reclaman los
   volúmenes del registro de su recinto); `window.BCN_AERO_ZONAS` da cuántos.
 
+
+## 13. Sagrada Família acabada, sus dos plazas y la escalinata de la Glòria
+
+Lo que dejaron las etapas SF0-SF3 (basílica) y ENT0-ENT2 (entorno) en sus progresos (`tools/encargos/progreso/<ETAPA>.md`,
+sección «Para DESARROLLO.md»), fusionado por la integración SFI. Orden de los `<script>`: `… landmarks_e.js, sagrada.js,
+gloria.js, … app.js`. Todo lo de la basílica y su entorno va en **ejes locales de la ficha `sagrada_familia`**: centro
+(12597,9; 15875,2), `rot` 136, mundo = centro + X·vecX + Z·vecZ con vecX = (−0,7193; −0,6947) y vecZ = (0,6947; −0,7193).
++Z hacia la Glòria (Mallorca, la Diagonal), −Z ábside (Provença), −X Naixement (Marina, Pl. de Gaudí), +X Passió (Sardenya,
+Pl. de la Sagrada Família).
+
+### 13.1 Datos
+- `data/sf_ref.json` (SF0): referencia de la basílica acabada, cada dato `verificado` (con fuente) o `estimación`: marco
+  local, contorno OSM local (anillo 0 planta; 1-6 columnas de la Passió; 7-8 del Naixement), planta por el módulo de 7,5 m
+  (eje de la nave x −2,5, crucero z −20,5), 18 torres, fachadas, escalinata, sacristías, vidrieras, paleta y noche.
+- `data/sf_ent_ref.json` (ENT0): plazas de Gaudí y de la Sagrada Família, calles medidas en ejes locales (Provença Z −83,
+  **Mallorca +50,6**, València +184,4, Aragó +318,3; la Diagonal cruza el eje en Z +352,6) y el proyecto de la Glòria
+  separado de la interpretación.
+- `data/sf_ent_plazas.json` (ENT1, generador `scratchpad/sf/ent1/gen/plazas_gen.py`) y `data/sf_ent_gloria.json` (ENT2,
+  `scratchpad/sf/ent2/gen/gloria_gen.py`): trazado de las plazas y de la escalinata y el eje, en ejes locales.
+- `data/sf_cruz.json` (malla del modelo 3D del usuario para la cruz, `tools/stl_cruz.py`): aún sin usar (SFD2).
+- **La línea de la fachada de la Glòria** no está en z +71 (como decía el encargo): puertas en z 32-34,5, nártex hasta 39,3
+  (línea de manzana), bosque de columnas en z ≈ 44,7 y zócalo hasta 46,7; la losa de ENTORNO empieza en z 41.
+
+### 13.2 La basílica (`sagrada.js`)
+- Sustituye el constructor de la ficha `sagrada_familia` (como `aeropuerto.js` con `aeroport`): un único
+  `construir(B, h, L, q)` con tres calidades y tres fichas en el mismo sitio: `sagrada_familia` (q 1, media, ≈ 40 k
+  triángulos), `sagrada_familia_lluny` (q 0, silueta, `addLODLevel(1500)` de la principal, ≈ 8 k) y
+  `sagrada_familia_detall` (q 2, detalle superpuesto, `addLODLevel(350, null)`, ≈ 94 k). Envuelve `BCN_LANDMARKS.init`
+  para esperar al JSON. `BCN.lm.stats().sf` da los triángulos de la basílica dibujados.
+- Todo se modela con y = 0 en el suelo del templo (`yF`: la cota más alta bajo el ábside y el crucero). Ayudas reutilizables:
+  `parab()` (perfil de Gaudí), `huecos(…, { rombo, luz })` (huecos en espiral o retícula de rombos, encendida de noche),
+  `lobulos()`, `ventanal()`/`muroV()` (con tracería; cada hueco va a `VENT` para las vidrieras), `estrella()`, `marco`,
+  `arcoC`, `banda`, `figura` (también `BCN_SF.figura`) y `animal`; `gota()` y `GLI` para las linternas de la Glòria.
+- Envejecimiento barato por color de vértice (hollín abajo, manchas por bloques; Naixement más pardo) en las tres mallas.
+- Noche: vidrieras emisivas solo de noche (frías al este, cálidas al oeste, amarillas en la Glòria), retícula de las torres
+  encendida, estrella de la Mare de Déu, cruz encendida y `sf_haces` (12 haces aditivos, `renderingGroupId` 1, mezcla
+  1,1,0,1 en HDR, sin niebla, solo con `uDusk`). `BCN_SF.cruz` y `BCN_SF.gloria`.
+- Mantener «sagrada» en el nombre de las mallas: el reflejo del estanque de la Plaça de Gaudí las elige por el nombre.
+
+### 13.3 Las plazas (`plazas.js` + `data/sf_ent_plazas.json`)
+- `sfSing` añade las dos plazas singulares con `sfZone` (pavimento por zonas, `fondo`) y `sfObjs` (árboles por especie de
+  la plaza, setos, farolas, bancos; `filas`, `nolamp`). Las singulares aceptan `after(o, AFT)` (mallas propias que se
+  liberan con la plaza) y objetos con `ex.y` (cota fija).
+- Plaça de Gaudí: estanque de 3000 m² con isla, monolito de Corberó (`P3PIECE.sfmono`), pretil y talud (`sfpond`); agua
+  propia (`VS_POND`/`FS_POND`) con `MirrorTexture` a media resolución (`sfPondMir`) de las mallas «sagrada» y los objetos de
+  la plaza, activa solo a < 420 m. El suelo alrededor del estanque sube hasta ~3,5 m: `BCN_PLAZAS.floorAt(x, z)`.
+- Plaça de la Sagrada Família: paseo de sauló en el eje de la Passió (Z −17), rotonda con estanque, cipreses.
+- Esplanada, Passeig y Placeta de la Glòria (eje hasta la Diagonal) como plazas singulares desde `sf_ent_gloria.json`;
+  `pavAt` es cierto bajo la losa de Mallorca (sin árboles de calle ni bocas de metro debajo).
+
+### 13.4 La escalinata de la Glòria (`gloria.js` + `data/sf_ent_gloria.json`)
+- Tres fichas con el centro y el giro de la basílica: `sf_gloria` (losa sobre Mallorca con paso inferior iluminado, pilas,
+  terraza, Monumento al Fuego y al Agua, escalinata de 4 tramos con 3 rellanos), `sf_gloria_detall` (balaustradas,
+  pasamanos, farolas, relieves del infierno; `addLODLevel(420, null)`) y `sf_gloria_edificis` (oculta los volúmenes del
+  registro de la franja de 60 m y rehace lo que queda fuera con fachada nueva). `BCN_GLORIA.stats()`.
+- Cotas: suelo del templo `yF`, Mallorca `yM` (Z 50,6), losa `yS = max(yF, yM + 5,5)` (pórtico 4-5 m sobre Mallorca
+  según el proyecto, ~4 m libres bajo los nervios).
+
+### 13.5 Integración (SFI)
+- **Encaje de la Glòria con la losa**: el suelo del templo queda solo ~2,3 m sobre Mallorca, así que `sagrada.js` sube el
+  zócalo del bosque de columnas (z 41-46,7 y los costados desde 39,3) a la cota de la losa (`dS = yM + 5,5 − yF`) y pone
+  una escalera de ~20 peldaños bajo el nártex (z 34,6-41, 56 m de ancho) que baja hasta las siete puertas; las columnas y
+  sus pedestales (pecados) arrancan sobre ese zócalo. `gloria.js` ya no dibuja los 21 peldaños de enlace que chocaban con
+  las columnas, y calcula `yF` con el mismo eje y crucero que `sagrada.js` (−2,5; −20,5).
+- **A pie** (app.js `walkFloor`): la cota del jugador es la mayor de `heightAt`, `BCN_PLAZAS.floorAt` (talud del estanque)
+  y `BCN_GLORIA.floorAt(x, z, pies)` (escalera del nártex, zócalo, losa, terraza y peldaños de la escalinata). La losa es
+  hueca: quien llega por la calle de Mallorca (pies > 0,9 m por debajo) pasa por debajo.
+- `tools/mz_partidas.js` relanzado: las manzanas precalculadas salen idénticas (593 manzanas, 294 037 edificios), así que
+  `data/mz_partidas.json` no cambia y el juego no las recalcula al cargar (`MZC.nB === nB0`).
