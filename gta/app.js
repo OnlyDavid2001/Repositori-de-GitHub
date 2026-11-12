@@ -1428,6 +1428,7 @@ setMsg('Plantando el monte…', 0.99);
 await tick();
 await addMod('nat', 'BCN_NATURE', 'vegetación de montaña');
 if (FXS && QS.get('notransp') !== '1') await addMod('transp', 'BCN_TRANSPORTE', 'metro y bus');   // transporte.js: bocas de metro y paradas de bus
+await addMod('aero', 'BCN_AERO', 'aeropuerto (marcas de pistas y puestos)');
 // iluminación: siempre el último
 const LIGHT = QS.get('nolight') === '1' ? null : await addMod('light', 'BCN_LIGHTING', 'módulo de iluminación');   // ?nolight=1: prueba del respaldo
 if (!LIGHT) setLDR();                                         // sin módulo de luz no hay postproceso: tono y gamma en los shaders

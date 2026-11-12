@@ -25,3 +25,15 @@ y coste.
 ## Verificación
 Hojas ANTES/DESPUÉS desde el aire (todo el aeropuerto), desde el dron (T1 con aviones, una cabecera de pista, la torre) y a
 pie en los bordillos de la T1; de día y a las 23:00.
+
+## Notas del revisor para AE2 (mirando las hojas de AE1)
+1. La vista `t1_pie` sale idéntica antes y después: la cámara no mira a la T1 (se ve un bloque genérico blanco con ventanas
+   negras). Ponla a pie en el bordillo de salidas, bajo la marquesina del viaducto, y en el de llegadas; deben verse el muro
+   de vidrio, la marquesina, las puertas, el bordillo con coches y taxis y la gente. Lo que tape la T1 desde ahí, revísalo.
+2. `t1_lado_tierra` enseña delante un bloque de oficinas de cubierta rojiza y otros bloques blancos de ventanas negras
+   (fachada genérica de vivienda): en el aeropuerto, todo volumen del registro debe ser lo que es de verdad (aparcamiento
+   de varias plantas con rampas y coches, hotel, oficinas de vidrio, naves) y no vivienda; si es un volumen fantasma, quítalo.
+3. Desde el aire la T1 se lee como un bloque blanco y plano: que el procesador central (más alto) y su cubierta ondulada
+   con lucernarios se distingan de los diques, más bajos; y la T2 igual de legible.
+4. El césped del campo de vuelo se ve uniforme y borroso de cerca: varía tonos, franjas de siega y márgenes de pista.
+5. De noche, desde el aire, que las pistas y rodajes se lean por sus balizas sin quemar la imagen.
