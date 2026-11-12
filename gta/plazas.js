@@ -390,6 +390,7 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
     // escalinatas en las esquinas (bajan de la plataforma a la acera cuando hay desnivel)
     for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), dl = Math.hypot(k[0] - c[0], k[1] - c[1]) - 1.5; W('stairs', c[0] + Math.cos(a) * dl, c[1] + Math.sin(a) * dl, a, { w: 10 }); }
     for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 48.5, c[1] + Math.sin(a) * 48.5, a); }
+    for (let k = 0; k < 8; k++) { const a = (k + 0.25) / 8 * 2 * Math.PI; W('lamp', c[0] + Math.cos(a) * 31, c[1] + Math.sin(a) * 31, a, { H: 7.5 }); }   // farolas altas sobre la explanada: luz cálida de noche en la rosa
     for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 49.5, c[1] + Math.sin(a) * 49.5, a + Math.PI); }
     for (let k = 0; k < 4; k++) { const a = k * 1.7 + 0.4, r = 14 + k * 7; W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a); }
     // setos: anillo de boj tras los macizos de flores, cortado en los paseos
@@ -841,8 +842,9 @@ window.BCN_PLAZAS = { async init(ctx) {
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;
   const bbDist = (o, P) => Math.hypot(Math.max(o.bb[0] - P.x, 0, P.x - o.bb[2]), Math.max(o.bb[1] - P.z, 0, P.z - o.bb[3]));
 
+  // P3: a 1,4 m del bordillo (allí la acera de streets.js sube y asomaba entre el césped: los «triangulitos» de Glòries)
   // ¿suelo libre de plaza? dentro del contorno, fuera de calzada (a 0,5 m del bordillo) y fuera de todo edificio
-  function free(o, x, z) { if (!inPoly(o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < 0.5) return false; return coverAt(x, z, -1) < -1e8; }
+  function free(o, x, z) { if (!inPoly(o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < (o.noPav ? 0.5 : 1.4)) return false; return coverAt(x, z, -1) < -1e8; }
   const zoneOf = (o, x, z) => { const dx = x - o.c[0], dz = z - o.c[1], u = dx * o.cu + dz * o.su, v = -dx * o.su + dz * o.cu, e = edgeDist(o.r, x, z);
     return o.sg ? o.sg.zone(u, v, x, z, e, o) : genZone(o, u, v, x, z, e); };
   // disposición genérica: borde de granito; en las medianas y grandes, parterres alineados con el eje; sauló en parques
