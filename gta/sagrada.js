@@ -877,7 +877,9 @@ const FS_HZ = `varying vec2 vUv; varying float vEnd;   // vPos ya lo declara el 
 void main(){
   float a = uDusk*(1.0 - 0.35*uLate);
   if (a < 0.002) discard;
-  float across = 1.0 - abs(vUv.x*2.0 - 1.0), along = vUv.y;
+  // clamp antes de pow: en muchas GPU pow() de un número algo negativo (el borde del haz o su punta, por redondeo al
+  // interpolar) da NaN, y el NaN en la imagen HDR acaba en rayas negras saliendo de la cruz al pasar por el bloom
+  float across = clamp(1.0 - abs(vUv.x*2.0 - 1.0), 0.0, 1.0), along = clamp(vUv.y, 0.0, 1.0);
   float f = pow(across, 2.4)*pow(1.0 - along, 1.9)*smoothstep(0.0, 0.05, along)*a;
   f *= 1.0 - smoothstep(0.80, 0.98, vEnd);                  // mirando a lo largo del haz: se apaga en vez de hacer un destello
   f *= smoothstep(8.0, 60.0, length(uCam - vPos));          // de cerca (en el mirador, junto a la cruz) no tapa la vista
@@ -885,7 +887,7 @@ void main(){
 #ifdef LDR
   FRAGA(c, 0.26*f);
 #else
-  gl_FragColor = vec4(toLin(c)*0.055*f, 0.0);
+  gl_FragColor = vec4(toLin(c)*(0.055*clamp(f, 0.0, 1.0)), 0.0);
 #endif
 }`;
 function haces(ctx, m) {
@@ -907,7 +909,7 @@ function haces(ctx, m) {
   const mesh = new BABYLON.Mesh('sf_haces', ctx.scene), VD = new BABYLON.VertexData();
   VD.positions = P; VD.normals = N; VD.uvs = U; VD.indices = I; VD.applyToMesh(mesh);
   const mat = ctx.mkMat('sf_haces', VS_HZ, FS_HZ, ['position', 'normal', 'uv'], [], [], { blend: true });
-  mat.backFaceCulling = false;
+  mat.backFaceCulling = false; mat.disableDepthWrite = true;   // luz sumada: no tapa lo que se dibuja después (luces de la ciudad)
   mat.onBindObservable.add(() => { if (ctx.out && ctx.out.hdr) ctx.engine.alphaState.setAlphaBlendFunctionParameters(1, 1, 0, 1); });
   mesh.material = mat; mesh.isPickable = false; mesh.renderingGroupId = 1;
   mesh.position.set(m.mesh.position.x, m.mesh.position.y, m.mesh.position.z); mesh.freezeWorldMatrix(); mesh.alwaysSelectAsActiveMesh = true;
