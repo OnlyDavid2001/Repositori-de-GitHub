@@ -879,15 +879,15 @@ void main(){
   float amp = mix(1.0, 0.3, smoothstep(25.0, 260.0, dist));
   vec2 g = ((vec2(a1, a2) - 0.5)*0.03 + (vec2(a2, a3) - 0.5)*0.022 + (vec2(a3, a4) - 0.5)*0.016)*amp;
   vec3 N = normalize(vec3(g.x, 1.0, g.y));
-  float ndv = max(dot(N, V), 0.0), fr = 0.02 + 0.98*pow(1.0 - ndv, 5.0), k = clamp(0.42 + 0.58*fr, 0.0, 1.0);
-  vec3 rd = reflect(-V, N), sky = toLin(envRefl(rd, 0.02));
+  float ndv = max(dot(N, V), 0.0), fr = 0.02 + 0.98*pow(1.0 - ndv, 5.0), k = clamp(0.3 + 0.7*fr, 0.0, 1.0);
+  vec3 rd = reflect(-V, N), sky = toLin(envRefl(rd, 0.02)); sky = mix(vec3(dot(sky, vec3(0.3, 0.5, 0.2))), sky, 0.6)*0.85;   // agua turbia: el cielo se refleja algo apagado
   vec4 m = texture2D(uRefl, vClip.xy/vClip.w*0.5 + 0.5 + g*0.6);
   vec3 mr = m.rgb;
 #ifdef LDR
   mr = toLin(mr);
 #endif
   vec3 refl = mix(sky, mr, step(0.5, m.a)*uReflOn.x);
-  vec3 deep = toLin(vec3(0.12, 0.15, 0.12))*(uSunL*(0.35*max(uSunDir.y, 0.0)) + ambL(vec3(0.0, 1.0, 0.0)));
+  vec3 deep = toLin(vec3(0.14, 0.16, 0.11))*(uSunL*(0.35*max(uSunDir.y, 0.0)) + ambL(vec3(0.0, 1.0, 0.0)));
   float sh = pow(max(dot(N, normalize(uSunDir + V)), 0.0), 900.0)*sunVis();
   vec3 c = mix(deep, refl, k) + uSunL*sh*3.0;
   FRAG(toScr(c));
@@ -899,10 +899,10 @@ P3PIECE.sfpond = (B, F, y, h, ex, X) => {
   const N = P.map((p, i) => { const a = P[(i + n - 1) % n], b = P[(i + 1) % n]; let nx = b[1] - a[1], nz = a[0] - b[0]; const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
     if (nx * (p[0] - cx) + nz * (p[1] - cz) < 0) { nx = -nx; nz = -nz; } return [nx, nz]; });
   const st = [186, 178, 162], pt = (i, off) => [P[i][0] + N[i][0] * off - ox, P[i][1] + N[i][1] * off - oz];
-  const yc = P.map((p, i) => Math.max(X.hAt(p[0] + N[i][0] * 0.6, p[1] + N[i][1] * 0.6) + 0.1, Lw + 0.24));
+  const HA = X.o.hAt, yc = P.map((p, i) => Math.max(HA(p[0] + N[i][0] * 0.6, p[1] + N[i][1] * 0.6) + 0.1, Lw + 0.24));
   for (let i = 0; i < n; i++) { const j = (i + 1) % n, a0 = pt(i, -0.14), a1 = pt(j, -0.14), b0 = pt(i, 0.55), b1 = pt(j, 0.55), s = 0.93 + 0.12 * hash2(i, 17);
     quad(B, F, a0[0], yc[i], a0[1], a1[0], yc[j], a1[1], b1[0], yc[j], b1[1], b0[0], yc[i], b0[1], shade(st, s), K.FURN, A0.STONE);
-    const g0 = X.hAt(P[i][0] + N[i][0] * 0.9, P[i][1] + N[i][1] * 0.9) - 0.1, g1 = X.hAt(P[j][0] + N[j][0] * 0.9, P[j][1] + N[j][1] * 0.9) - 0.1;
+    const g0 = HA(P[i][0] + N[i][0] * 0.9, P[i][1] + N[i][1] * 0.9) - 0.1, g1 = HA(P[j][0] + N[j][0] * 0.9, P[j][1] + N[j][1] * 0.9) - 0.1;
     if (yc[i] - g0 > 0.04 || yc[j] - g1 > 0.04) quad(B, F, b0[0], yc[i], b0[1], b1[0], yc[j], b1[1], b1[0], g1, b1[1], b0[0], g0, b0[1], shade(st, 0.84 * s), K.FURN, A0.STONE);
     quad(B, F, a0[0], yc[i], a0[1], a1[0], yc[j], a1[1], a1[0], Lw + 0.07, a1[1], a0[0], Lw + 0.07, a0[1], shade(st, 0.74 * s), K.FURN, A0.STONE);
     quad(B, F, a0[0], Lw + 0.07, a0[1], a1[0], Lw + 0.07, a1[1], a1[0], Lw - 0.5, a1[1], a0[0], Lw - 0.5, a0[1], [78, 86, 66], K.FURN, A0.MATTE); }
@@ -937,6 +937,9 @@ function sfObjs(S, D) {
     for (const [x, z] of P) { gmax = Math.max(gmax, GH(x, z)); hmin = Math.min(hmin, o.hAt(x, z)); cx += x / P.length; cz += z / P.length; }
     for (let k = 0; k < 400; k++) { const X = D.ebb[0] + (D.ebb[2] - D.ebb[0]) * hash2(k, 3), Z = D.ebb[1] + (D.ebb[3] - D.ebb[1]) * hash2(k, 5); if (inPoly(D.estanque, X, Z)) { const [x, z] = sfW(X, Z); gmax = Math.max(gmax, GH(x, z)); } }
     const Lw = Math.max(gmax + 0.1, hmin - 0.3); o.sfLw = Lw;
+    // la plaza tiene ~4,5 % de pendiente y el agua es horizontal: talud alrededor del estanque (el paseo y los parterres suben
+    // hasta la albardilla con un 14 % como mucho y bajan hacia las calles; en el borde, el faldón de piedra de la plataforma)
+    const h0 = o.hAt; o.hAt = (x, z) => { const b = h0(x, z); if (b > Lw + 0.3) return b; const d = inPoly(P, x, z) ? 0 : edgeDist(P, x, z); return Math.max(b, Lw + 0.3 - 0.14 * d); };
     S.putW('sfpond', cx, cz, 0, { force: 1, Lw, P, I: D.isla ? D.isla.map(([X, Z]) => sfW(X, Z)) : null });
     for (const [sp, X, Z] of (D.arboles.isla || [])) W(sp === 'palm' ? 'palm' : 'tree', X, Z, 0, { sp, force: 1, y: Lw + 0.42 });
     for (const q of D.puntos) if (q.t === 'mono') { let X = q.X, Z = q.Z; const c = D.estanque.reduce((a, p) => [a[0] + p[0] / D.estanque.length, a[1] + p[1] / D.estanque.length], [0, 0]);
@@ -1117,7 +1120,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     const pos = [], idx = [], [wx, wz] = sfW(cx, cz); pos.push(wx, Lw, wz);
     for (const [X, Z] of E) { const dX = X - cx, dZ = Z - cz, l = Math.hypot(dX, dZ) || 1, s = (l + 0.3) / l, [x, z] = sfW(cx + dX * s, cz + dZ * s); pos.push(x, Lw, z); }
     for (let i = 0; i < n; i++) idx.push(0, 1 + i, 1 + (i + 1) % n);
-    const me = new BABYLON.Mesh('sfPond' + o.i, sc); me.setVerticesData(BABYLON.VertexBuffer.PositionKind, pos, false); me.setIndices(idx); me.material = POND.mat; me.isPickable = false;
+    const me = new BABYLON.Mesh('sfPond' + o.i, sc); me.setVerticesData(BABYLON.VertexBuffer.PositionKind, pos, false); me.setIndices(idx); me.material = POND.mat; me.isPickable = false; me.renderingGroupId = 1; me.freezeWorldMatrix();
     reg(me, { cast: false, layer: 'walk' });
     POND.it = { o, c: [wx, wz], Lw }; return { mesh: me, tris: n }; } };
   function pondOff() { if (!POND.mir) return; const crt = ctx.scene.customRenderTargets, k = crt.indexOf(POND.mir); if (k >= 0) crt.splice(k, 1); POND.on = false; POND.mat.setVector4('uReflOn', new BABYLON.Vector4(0, 0, 0, 0)); }
@@ -1143,6 +1146,10 @@ window.BCN_PLAZAS = { async init(ctx) {
   window.BCN_PLAZAS.pavAt = (x, z) => { for (const o of PL) { if (o.tile || o.noPav || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
       if (o.excl && o.excl.some(q => inPoly(q.r, x, z))) continue; return true; } return false; };
   // REV4: ¿alguna plaza con pavimento toca el rectángulo? (nature.js lo pregunta por celda antes de usar pavAt planta a planta)
+  // ENT1: cota del suelo de las plazas cuya plataforma sube mucho sobre la calle (el talud del estanque de la Plaça de Gaudí):
+  // null fuera de ellas. Para que quien calcula la altura a pie (walkAt) pueda subir al jugador encima (petición a integración)
+  window.BCN_PLAZAS.floorAt = (x, z) => { for (const o of PL) { if (o.sfLw === undefined || !o.st || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
+      return o.hAt(x, z); } return null; };
   window.BCN_PLAZAS.pavAny = (x0, z0, x1, z1) => PL.some(o => !o.tile && !o.noPav && o.bb[0] < x1 && o.bb[2] > x0 && o.bb[1] < z1 && o.bb[3] > z0);
   const R_SIMPLE = [600, 680], R_HI = [90, 115], R_OBJ = 300;
   let trisOn = 0;
@@ -1243,7 +1250,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     }
     yield;
     // ---- mallas: objetos (la cota, la de la acera en su sitio)
-    const yAt = o.noPav ? (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05) + 0.04 : (x, z) => hAt(x, z) + 0.02;
+    const yAt = o.noPav ? (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05) + 0.04 : (x, z) => o.hAt(x, z) + 0.02;
     const trees = { m: [], k: [] }, tm = new BABYLON.Matrix(), tq = new BABYLON.Quaternion(), tv = new BABYLON.Vector3(), ts = new BABYLON.Vector3();
     const fr = (x, z, a) => ({ x: x - ox, z: z - oz, tx: Math.cos(a), tz: Math.sin(a), nx: -Math.sin(a), nz: Math.cos(a) });
     let ni = 0;
@@ -1282,7 +1289,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     let nq = 0;
     for (const [x, z, s, zz, top, miss] of quads) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
-      for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
+      for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(o.hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
       const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]];
       if (miss >= 0) {   // triángulo: las tres esquinas libres, y faldón por la hipotenusa
