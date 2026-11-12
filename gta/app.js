@@ -1180,10 +1180,49 @@ const BREC = { dv: [], n: 0 };
   let done = 0, total = 0;
   const conts = [];
   for (let f = 0; f < files.length; f++) { setMsg('Descargando edificios…', 0.36 + 0.08 * f / files.length); conts.push(await loadContainer('data/' + files[f])); }
+  // n3 E2 · MANZANAS ENTERAS (manzanas.js): los volúmenes que son una manzana entera (o un bloque grande) se parten en fincas
+  // y se ahuecan con su interior de manzana. Primera pasada: se buscan, se parten y sus trozos van a un contenedor sintético
+  // (mismo formato) que se carga el ÚLTIMO (los índices de los demás no cambian: los hitos los usan). El original se colapsa.
+  const MZJ = window.BCN_MZ, MZ_SKIP = new Set(), MZ = { blocks: [], order: null };
+  if (MZJ && QS.get('mz') !== '0') {
+    const reserved = new Set(); for (const f of ((window.BCN_LM && window.BCN_LM.fichas) || [])) for (const b of (f.edificios || [])) reserved.add(b);
+    const lmPts = ((window.BCN_LM && window.BCN_LM.fichas) || []).filter(f => isFinite(f.x)).map(f => [f.x, f.z]);
+    const found = []; let bi = 0;
+    for (let ci = 0; ci < conts.length; ci++) { const dv = conts[ci].view('data');
+      for (const ck of conts[ci].meta.chunks) { const ox = ck[0] * CH, oz = ck[1] * CH; let p = ck[2]; const end = p + ck[3];
+        while (p < end) { const nR = dv.getUint8(p), cls = dv.getUint8(p + 1), n = dv.getUint16(p + 4, true), yb = dv.getInt16(p + 6, true), ybot = dv.getInt16(p + 8, true), ytop = dv.getInt16(p + 10, true);
+          const q0 = p + 12 + (nR > 1 ? nR * 2 : 0), m0 = nR > 1 ? dv.getUint16(p + 12, true) : n; p = q0 + n * 4;
+          const b = bi++, H = (ytop - yb) / 10, hb = (ybot - yb) / 10;
+          if ((cls !== 0 && cls !== 6) || H < 10.5 || H > 45 || hb >= 1.5 || m0 > 400 || reserved.has(b)) continue;
+          let A = 0; const P = [];
+          for (let k = 0; k < m0; k++) { const x = dv.getInt16(q0 + k * 4, true) / 10 + ox, z = dv.getInt16(q0 + k * 4 + 2, true) / 10 + oz; P.push([x, z]); }
+          for (let k = 0; k < m0; k++) { const a = P[k], c = P[(k + 1) % m0]; A += a[0] * c[1] - c[0] * a[1]; } A = Math.abs(A) / 2;
+          if (A < 2600 || A > 32000) continue;
+          const fill = A / Math.max(1, MZJ.sarea(MZJ.hull(P)));
+          if (!MZJ.cand({ cls, hb, H, A, fill })) continue;
+          let cx = 0, cz = 0; for (const q of P) { cx += q[0]; cz += q[1]; } cx /= m0; cz /= m0;
+          if (lmPts.some(l => Math.hypot(l[0] - cx, l[1] - cz) < 90)) continue;
+          found.push({ b, cls, yb, ybot, H, P, cx, cz }); } } }
+    // volúmenes apilados sobre la misma planta (complejos): fuera
+    const dup = new Set(); for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length && j < i + 40; j++) if (Math.hypot(found[i].cx - found[j].cx, found[i].cz - found[j].cz) < 25) { dup.add(i); dup.add(j); }
+    const recs = [];
+    for (let i = 0; i < found.length; i++) { if (dup.has(i)) continue; const f = found[i];
+      const sp = MZJ.split(f.P, (f.b * 2654435761 + Math.round(f.cx) * 7 + Math.round(f.cz)) >>> 0, f.H); if (!sp) continue;
+      MZ_SKIP.add(f.b); const g0 = heightAt(f.cx, f.cz), R = MZJ.rng(f.b * 31 + 7), blk = { src: f.b, sp, fincas: [], parcels: [] };
+      const add = (poly, H, cls, kind, ref) => { let x = 0, z = 0, gl = 1e9; for (const q of poly) { x += q[0]; z += q[1]; gl = Math.min(gl, heightAt(q[0], q[1])); } x /= poly.length; z /= poly.length;
+        const dy = Math.round((heightAt(x, z) - g0) * 10), r = { cls, seed: Math.floor(R() * 256), yb: f.yb + dy, ybot: Math.min(f.ybot + dy, Math.round(gl * 10) - 8), H, poly, kind, blk, ref };
+        recs.push(r); return r; };
+      for (const fi of sp.fincas) blk.fincas.push(add(fi.poly, fi.H, f.cls, 1, fi));
+      for (const pa of sp.parcels) blk.parcels.push(add(pa.poly, pa.h, 0, pa.kind === 'terraza' ? 3 : 2, pa));
+      MZ.blocks.push(blk); }
+    if (recs.length) { const syn = MZJ.encode(recs, CH); conts.push(syn); MZ.order = syn.order; MZ.cont = conts.length - 1; }
+    console.log('Manzanas enteras partidas: ' + MZ.blocks.length + ' (' + recs.length + ' trozos)');
+  }
   let nTot = 0;
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
   BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot);
+  BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; let mzK = 0;   // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
@@ -1261,6 +1300,14 @@ const BREC = { dv: [], n: 0 };
           else if (cls === 2 || cls === 8 || cls === 9 || cls === 11 || cls === 13) tp = Hm <= 60 ? 2 : -1;
         }
         BREC.elig[bi] = tp >= 0 ? 1 : 0; BREC.tipo[bi] = tp >= 0 ? tp : 0;
+        if (MZ_SKIP.has(bi)) {                       // manzana entera partida: se colapsa (la sustituyen sus fincas)
+          const v0 = BREC.v0[bi]; for (let v = v0 + 1; v < vp; v++) { pos[v * 3] = pos[v0 * 3]; pos[v * 3 + 1] = pos[v0 * 3 + 1]; pos[v * 3 + 2] = pos[v0 * 3 + 2]; }
+          BREC.elig[bi] = 0;
+        } else if (ci === MZ.cont) {                 // trozo de manzana: finca (vivienda), taller (nave) o terraza del patio
+          const r = MZ.order[mzK++]; r.bi = bi; BREC.mzk[bi] = r.kind;
+          if (r.kind === 2) { BREC.elig[bi] = area >= 20 ? 1 : 0; BREC.tipo[bi] = 1; }
+          else if (r.kind === 3) { BREC.elig[bi] = area >= 20 ? 1 : 0; BREC.tipo[bi] = 0; }
+        }
       }
       const infBuf = inf.subarray(0, vp * 4);
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);

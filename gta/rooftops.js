@@ -124,7 +124,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
       items.push({ t: 'ant', x: it.x + Math.cos(a) * u, z: it.z + Math.sin(a) * u, y: yr, a: a + r[1] * 3.1, h: 2.2 + r[2] * 2.2, nd: 1 + Math.floor(r[3] * 2.5), pilot: false }); }
     return items;
   }
-  function plan(b) {
+  function plan0(b) {
     // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
     const tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
     const d = bget(b); if (d.cls !== 0 && d.cls !== 2 && d.cls !== 6 && !(BREC.elig[b] && tipo > 0)) return null;
@@ -211,6 +211,122 @@ window.BCN_ROOFTOPS = { init(ctx) {
     return items;
   }
 
+  // ---------------------------------------------------------------- n3 E2 · interiores de manzana (manzanas.js)
+  // Cada manzana partida trae su plan (BREC.mz.blocks[k].sp): contorno interior, lo que queda libre en el centro, cubiertas de
+  // planta baja (BREC.mzk 2 taller → azotea de nave; 3 terraza del piso principal → plan propio) y los cortes entre fincas.
+  // Su mobiliario de patio cuelga del plan de la PRIMERA finca (el ancla), con azar del ámbito de la manzana: seed(src, 95, k).
+  const MZB = (BREC.mz && BREC.mz.blocks) || [], anchorOf = new Map();
+  for (const blk of MZB) if (blk.fincas.length && blk.fincas[0].bi !== undefined) anchorOf.set(blk.fincas[0].bi, blk);
+  const takeS = (src, k, n) => { seed(src, 95, k); const a = new Array(n); for (let i = 0; i < n; i++) a[i] = R(); return a; };
+  const inPoly = (P, x, z) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) ins = !ins; } return ins; };
+  const edgeDist = (P, x, z) => { let m = 1e9; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); m = Math.min(m, Math.hypot(a[0] + dx * t - x, a[1] + dz * t - z)); } return m; };
+  const gY = (x, z) => (ctx.heightAt ? ctx.heightAt(x, z) || 0 : 0);
+  const PLANTC = [[64, 104, 52], [84, 122, 60], [52, 88, 46], [104, 132, 70], [70, 110, 80], [120, 140, 64]];
+  const POTC = [[176, 110, 84], [160, 96, 70], [200, 196, 186], [120, 122, 124]];
+  const FLOORC = [[178, 112, 86], [168, 120, 96], [196, 184, 166], [150, 140, 128], [186, 104, 78]];
+  // terraza del piso principal sobre una cubierta de planta baja del patio
+  function planTerraza(b) {
+    const y = roofY(b); if (y === null) return null;
+    const d = bget(b), P = []; const r0 = d.rings[0]; for (let i = 0; i < r0.length; i += 2) P.push([r0[i], r0[i + 1]]);
+    const g = take(b, 60, 40), items = [];
+    const ang = axis(r0), fc = FLOORC[Math.floor(g[0] * FLOORC.length)];
+    items.push({ t: 'floor', P, y: y + 0.03, col: fc, x: P[0][0], z: P[0][1], a: 0 });
+    // borde: pared (si al otro lado hay un edificio más alto) o barandilla
+    const railC = g[1] < 0.5 ? [44, 46, 48] : g[1] < 0.8 ? [232, 230, 222] : [86, 70, 54];
+    const open = [];
+    for (let i = 0; i < P.length; i++) { const A = P[i], B = P[(i + 1) % P.length], L = Math.hypot(B[0] - A[0], B[1] - A[1]); if (L < 0.6) continue;
+      const tx = (B[0] - A[0]) / L, tz = (B[1] - A[1]) / L; let nx = -tz, nz = tx; const mx = (A[0] + B[0]) / 2, mz = (A[1] + B[1]) / 2;
+      if (inPoly(P, mx + nx * 0.4, mz + nz * 0.4)) { nx = -nx; nz = -nz; }
+      const cov = city.coverAt(mx + nx * 0.7, mz + nz * 0.7, b);
+      if (cov > y + 1.2) continue;                     // contra la finca o un vecino alto: nada
+      items.push({ t: 'rail', ax: A[0], az: A[1], bx: B[0], bz: B[1], nx, nz, y, L, col: railC, solid: g[2] < 0.35, x: mx, z: mz, a: 0 });
+      open.push([A, B, nx, nz, L]); }
+    // objetos: macetas junto a la barandilla, mesa con sillas, toldo o pérgola, tendedero, aire acondicionado, piscinita
+    const free = [];
+    const fits = (x, z, rr) => { if (!inPoly(P, x, z) || edgeDist(P, x, z) < rr + 0.25) return false; for (const u of free) if (Math.hypot(u[0] - x, u[1] - z) < u[2] + rr) return false; return true; };
+    let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const p of P) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+    const spot = (rr, k) => { const r = take(b, 61 + k, 24); for (let t = 0; t < 12; t++) { const x = x0 + (x1 - x0) * r[t * 2], z = z0 + (z1 - z0) * r[t * 2 + 1]; if (fits(x, z, rr)) { free.push([x, z, rr]); return [x, z]; } } return null; };
+    for (let i = 0; i < open.length && i < 4; i++) { const [A, B, nx, nz, L] = open[i]; if (L < 2 || g[3 + i] < 0.3) continue;
+      const n = Math.min(6, Math.floor(L / 1.3)), r = take(b, 70 + i, 12);
+      for (let k = 0; k < n; k++) { if (r[k] < 0.35) continue; const t = (k + 0.5) / n, px = A[0] + (B[0] - A[0]) * t - nx * 0.45, pz = A[1] + (B[1] - A[1]) * t - nz * 0.45;
+        items.push({ t: 'pot', x: px, z: pz, y, a: 0, r: 0.22 + r[(k + 3) % 12] * 0.25, col: POTC[Math.floor(r[(k + 5) % 12] * 4)], pc: PLANTC[Math.floor(r[(k + 7) % 12] * 6)], tall: r[(k + 1) % 12] < 0.3 }); } }
+    const area = Math.abs(MZ_area(P));
+    if (area > 14 && g[8] < 0.75) { const p = spot(1.3, 1); if (p) items.push({ t: 'table', x: p[0], z: p[1], y, a: ang + g[9], n: 2 + Math.floor(g[10] * 3), round: g[11] < 0.5, umb: g[12] < 0.4 ? AWN[Math.floor(g[13] * AWN.length)] : null, col: g[14] < 0.5 ? [236, 236, 230] : [70, 72, 70] }); }
+    if (area > 25 && g[15] < 0.4) { const p = spot(1.8, 2); if (p) items.push({ t: 'perg', x: p[0], z: p[1], y, a: ang, l: 3 + g[16] * 1.5, w: 2.4 + g[17], wood: g[18] < 0.6, awn: g[19] < 0.6 ? AWN[Math.floor(g[20] * AWN.length)] : null, pl: g.slice(20, 30) }); }
+    if (g[21] < 0.35) { const p = spot(1.3, 3); if (p) { const cl = []; const r = take(b, 66, 40); for (let i = 0; i < 12; i++) cl.push([r[20 + i] < 0.68, CLOTHES[Math.floor(r[32 - i] * CLOTHES.length) % CLOTHES.length], 0.3 + r[8 + i] * 0.5, 0.3 + r[i] * 0.45]);
+      items.push({ t: 'cloth', x: p[0], z: p[1], y, a: ang, l: 2.2, cl }); } }
+    if (g[22] < 0.5) { const p = spot(0.6, 4); if (p) items.push({ t: 'ac', x: p[0], z: p[1], y, a: ang, n: 1 + Math.floor(g[23] * 2), col: [214, 214, 208] }); }
+    if (area > 40 && g[24] < 0.12) { const p = spot(2.2, 5); if (p) items.push({ t: 'pool', x: p[0], z: p[1], y, a: ang, l: 3 + g[25] * 1.4, w: 1.8 + g[26] * 0.8, on: true }); }
+    if (g[27] < 0.35) { const p = spot(0.5, 6); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: y + 0.45, a: 0, sp: 3, h: 1.6 + g[28], r: 0.7 + g[29] * 0.4, pot: true }); }
+    return items;
+  }
+  function MZ_area(P) { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
+  // mobiliario del interior de manzana (en el suelo del patio)
+  function planPatio(blk) {
+    const sp = blk.sp, src = blk.src, g = takeS(src, 0, 40), items = [], tipo = sp.tipo;
+    const parc = blk.parcels.map(r => r.poly), F = sp.free, C = sp.C;
+    const used = [];
+    const ok = (x, z, rr) => { if (!inPoly(sp.inner, x, z) || edgeDist(sp.inner, x, z) < rr + 0.6) return false;
+      for (const p of parc) if (inPoly(p, x, z) || edgeDist(p, x, z) < rr + 0.3) return false;
+      for (const u of used) if (Math.hypot(u[0] - x, u[1] - z) < u[2] + rr) return false; return true; };
+    let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const p of sp.inner) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+    let kk = 1;
+    const spot = rr => { const r = takeS(src, kk++, 40); for (let t = 0; t < 20; t++) { const x = x0 + (x1 - x0) * r[t * 2], z = z0 + (z1 - z0) * r[t * 2 + 1]; if (ok(x, z, rr)) { used.push([x, z, rr]); return [x, z]; } } return null; };
+    // eje de la manzana (la arista exterior más larga)
+    let ang = 0, bl = 0; for (let i = 0; i < sp.outer.length; i++) { const a = sp.outer[i], b = sp.outer[(i + 1) % sp.outer.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; ang = Math.atan2(b[1] - a[1], b[0] - a[0]); } }
+    // suelo: el interior entero (bajo las cubiertas no se ve) en tierra, sauló, césped o baldosa según el tipo
+    const GC = { talleres: [[150, 146, 138], [138, 132, 122]], jardines: [[96, 124, 62], [112, 132, 70], [150, 136, 108]], mixto: [[146, 140, 130], [104, 128, 66]],
+      publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[104, 126, 64], [150, 144, 132]] }[tipo];
+    items.push({ t: 'ground', P: sp.inner, col: GC[Math.floor(g[0] * GC.length)], x: C[0], z: C[1], y: 0, a: 0 });
+    if (tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.6)) {           // césped en el centro (jardín)
+      const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.72, C[1] + (p[1] - C[1]) * 0.72]);
+      items.push({ t: 'ground', P: L, col: tipo === 'publico' ? [98, 128, 62] : [90, 122, 58], x: C[0], z: C[1], y: 0, a: 0, up: 0.04 });
+    }
+    // tapias entre fincas (de la trasera hacia el centro), salvo en el jardín público
+    if (tipo !== 'publico') for (let k = 0; k < sp.rad.length; k++) { const r = takeS(src, 200 + k, 4); if (r[0] < 0.25) continue;
+      const a = sp.rad[k], dx = C[0] - a[0], dz = C[1] - a[1], D = Math.hypot(dx, dz), L = Math.min(D * (0.4 + r[1] * 0.3), 16); if (L < 2) continue;
+      items.push({ t: 'tapia', x: a[0] + dx / D * L / 2, z: a[1] + dz / D * L / 2, y: gY(a[0], a[1]), a: Math.atan2(dz, dx), l: L, h: 1.9 + r[2] * 0.8, col: shade([206, 196, 178], 0.85 + r[3] * 0.25) }); }
+    // árboles
+    const nT = { talleres: 1 + Math.floor(g[2] * 3), jardines: 4 + Math.floor(g[2] * 6), mixto: 2 + Math.floor(g[2] * 4), publico: 8 + Math.floor(g[2] * 7), aparcamiento: 3 + Math.floor(g[2] * 4) }[tipo];
+    for (let i = 0; i < nT; i++) { const r = takeS(src, 300 + i, 6), rr = 2 + r[0] * 2.2, p = spot(Math.max(1.6, rr * 0.8)); if (!p) continue;
+      const spc = r[1] < 0.45 ? 0 : r[1] < 0.62 ? 1 : r[1] < 0.8 ? 2 : 3;   // 0 frondoso · 1 palmera · 2 ciprés · 3 frutal
+      items.push({ t: 'tree', x: p[0], z: p[1], y: gY(p[0], p[1]), a: r[2] * 6.28, sp: spc, h: spc === 1 ? 7 + r[3] * 6 : spc === 2 ? 6 + r[3] * 4 : spc === 3 ? 2.5 + r[3] : 5 + r[3] * 6, r: spc === 3 ? 1.4 + r[4] * 0.6 : rr, c: r[5] }); }
+    // piscina comunitaria o particular
+    if ((tipo === 'jardines' && g[3] < 0.45) || (tipo === 'mixto' && g[3] < 0.25) || (tipo === 'aparcamiento' && g[3] < 0.2) || (tipo === 'talleres' && g[3] < 0.08)) {
+      const l = 6 + g[4] * 6, w = 3 + g[5] * 2.5, p = spot(Math.hypot(l, w) / 2 + 1); if (p) { const y = gY(p[0], p[1]);
+        items.push({ t: 'pool', x: p[0], z: p[1], y, a: ang, l, w, on: false });
+        for (let q = 0; q < 2 + Math.floor(g[6] * 3); q++) { const u = -l / 2 + 0.6 + q * 0.9, v = w / 2 + 1.3, X = p[0] + Math.cos(ang) * u - Math.sin(ang) * v, Z = p[1] + Math.sin(ang) * u + Math.cos(ang) * v;
+          items.push({ t: 'lounger', x: X, z: Z, y: gY(X, Z), a: ang + Math.PI / 2, col: g[7] < 0.5 ? [236, 236, 228] : [60, 120, 170] }); } } }
+    // huerto (bancales) y setos
+    if ((tipo === 'jardines' || tipo === 'publico' || tipo === 'mixto') && g[8] < 0.5) for (let i = 0; i < 2 + Math.floor(g[9] * 3); i++) { const p = spot(1.8); if (p) items.push({ t: 'bed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 2.8, w: 1.1, pl: takeS(src, 400 + i, 10) }); }
+    for (let i = 0; i < (tipo === 'publico' ? 4 : tipo === 'jardines' ? 3 : 1); i++) { if (g[10 + i] < 0.3) continue; const l = 3 + g[14 + i] * 5, p = spot(l / 2); if (p) items.push({ t: 'hedge', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (g[18 + i] < 0.5 ? 0 : Math.PI / 2), l, w: 0.8, h: 0.8 + g[22 + i] * 0.6 }); }
+    // mesas, pérgolas, casetas, tendederos, bancos, juegos
+    const nM = { talleres: 1, jardines: 3, mixto: 2, publico: 4, aparcamiento: 2 }[tipo];
+    for (let i = 0; i < nM; i++) { const r = takeS(src, 500 + i, 30), sel = r[0];
+      if (tipo === 'publico') {
+        if (sel < 0.6) { const p = spot(1.2); if (p) items.push({ t: 'bench', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[1] < 0.5 ? 0 : Math.PI / 2) }); }
+        else { const p = spot(3.5); if (p) items.push({ t: 'play', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, pl: r.slice(2, 12) }); }
+        continue; }
+      if (sel < 0.35) { const p = spot(1.4); if (p) items.push({ t: 'table', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + r[1], n: 2 + Math.floor(r[2] * 3), round: r[3] < 0.5, umb: r[4] < 0.5 ? AWN[Math.floor(r[5] * AWN.length)] : null, col: r[6] < 0.5 ? [236, 236, 230] : [92, 70, 52] }); }
+      else if (sel < 0.55) { const p = spot(2.2); if (p) items.push({ t: 'perg', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 3.5 + r[7] * 2, w: 2.6 + r[8], wood: r[9] < 0.7, awn: r[10] < 0.4 ? AWN[Math.floor(r[11] * AWN.length)] : null, pl: r.slice(12, 22) }); }
+      else if (sel < 0.75) { const p = spot(1.3); if (p) items.push({ t: 'shed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 1.6 + r[12], w: 1.2 + r[13] * 0.6, col: r[14] < 0.5 ? [196, 198, 196] : [150, 120, 92] }); }
+      else { const p = spot(1.4); if (p) { const cl = []; for (let q = 0; q < 12; q++) cl.push([r[(q + 3) % 30] < 0.68, CLOTHES[Math.floor(r[(q + 11) % 30] * CLOTHES.length) % CLOTHES.length], 0.3 + r[(q + 17) % 30] * 0.5, 0.3 + r[(q + 5) % 30] * 0.45]);
+        items.push({ t: 'cloth', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 2.6, cl }); } }
+    }
+    // en los talleres: algún coche o furgoneta aparcados y palés
+    if (tipo === 'talleres' || tipo === 'mixto') for (let i = 0; i < 1 + Math.floor(g[30] * 3); i++) { const r = takeS(src, 600 + i, 6), p = spot(2.6); if (p) items.push({ t: 'car', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[0] < 0.5 ? 0 : Math.PI / 2), l: r[1] < 0.3 ? 5 : 4.2, col: [[200, 200, 196], [60, 62, 66], [150, 30, 28], [40, 70, 120], [220, 220, 214], [120, 124, 128]][Math.floor(r[2] * 6)] }); }
+    return items;
+  }
+  function plan(b) {
+    const mk = BREC.mzk ? BREC.mzk[b] : 0;
+    if (mk === 3) return planTerraza(b);
+    let it = plan0(b);
+    const blk = anchorOf.get(b);
+    if (blk) it = (it || []).concat(planPatio(blk));
+    return it;
+  }
+
   // ---------------------------------------------------------------- emisión (piezas baratas: caras planas, sin fondos)
   // punto local (u a lo largo, v a lo ancho) de un elemento girado a → mundo menos el origen de la celda
   const loc = (it, u, v, ox, oz) => [it.x + Math.cos(it.a) * u - Math.sin(it.a) * v - ox, it.z + Math.sin(it.a) * u + Math.cos(it.a) * v - oz];
@@ -270,7 +386,113 @@ window.BCN_ROOFTOPS = { init(ctx) {
     if (!it.two) { const rl = Math.max(0, hl - hw);
       for (const [p, q] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) bar(W, P(p * (hl + o * 0.9), q * (hw + o * 0.9), ye + 0.08), P(p * rl, 0, yr + 0.06), 0.08, rc, K.PBR, A_TILE); }
   }
+  // ---------------------------------------------------------------- n3 E2 · piezas de los interiores de manzana
+  const TRUNK = [96, 80, 64], LEAVES = [[70, 104, 50], [86, 116, 56], [60, 92, 48], [98, 124, 62]], WATER = [70, 156, 190];
+  // polígono horizontal (suelo del patio o de la terraza), subdividido para seguir el relieve: yf(x, z) da la cota
+  function fillPoly(W, P, yf, col, aux, maxE, ox, oz) {
+    const flat = []; for (const p of P) flat.push(p[0], p[1]);
+    const tr = earcut(flat);
+    const tri = (a, b, c, dep) => {
+      const lab = Math.hypot(a[0] - b[0], a[1] - b[1]), lbc = Math.hypot(b[0] - c[0], b[1] - c[1]), lca = Math.hypot(c[0] - a[0], c[1] - a[1]);
+      if (dep < 4 && Math.max(lab, lbc, lca) > maxE) { const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], ab = m(a, b), bc = m(b, c), ca = m(c, a);
+        tri(a, ab, ca, dep + 1); tri(ab, b, bc, dep + 1); tri(ca, bc, c, dep + 1); tri(ab, bc, ca, dep + 1); return; }
+      quad(W, F0, a[0] - ox, yf(a[0], a[1]), a[1] - oz, b[0] - ox, yf(b[0], b[1]), b[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, col, K.PBR, aux);
+    };
+    for (let k = 0; k < tr.length; k += 3) tri(P[tr[k]], P[tr[k + 1]], P[tr[k + 2]], 0);
+  }
+  function treeE(W, it, ox, oz, lvl) {
+    const x = it.x - ox, z = it.z - oz, y = it.y, h = it.h, lc = LEAVES[Math.floor((it.c || 0.3) * 4) % 4];
+    if (it.sp === 1) {                                 // palmera: tronco alto y fino, penacho de palmas
+      if (lvl === 1) { cyl(W, x, z, y, y + h, 0.2, 0.16, 5, [120, 104, 84], K.PBR, A_MATTE);
+        for (let k = 0; k < 8; k++) { const a = it.a + k * 0.785, L = 2.4; GEO.bar(W, [x, y + h, z], [x + Math.cos(a) * L, y + h - 0.9 + (k % 2) * 0.4, z + Math.sin(a) * L], 0.16, [80, 112, 52], K.PBR, A_MATTE); } }
+      else GEO.sphere(W, F0, x, y + h - 0.2, z, 2.2, lvl === 2 ? 5 : 4, 2, [80, 112, 52], K.PBR, A_MATTE, 0.45);
+      return; }
+    const tH = it.sp === 2 ? 0.6 : h * 0.4;
+    if (lvl === 1) { if (!it.pot) cyl(W, x, z, y, y + tH + 0.4, it.sp === 3 ? 0.1 : 0.18, 0.12, 5, TRUNK, K.PBR, A_MATTE);
+      else cyl(W, x, z, y - 0.45, y, 0.35, 0.42, 6, [176, 110, 84], K.PBR, A_MATTE); }
+    if (it.sp === 2) { GEO.sphere(W, F0, x, y + h * 0.55, z, 0.9, lvl === 1 ? 6 : 4, lvl === 1 ? 4 : 2, [52, 80, 44], K.PBR, A_MATTE, h * 0.5 / 0.9); return; }
+    const r = it.r, cy = y + tH + r * 0.8;
+    if (lvl === 1) { GEO.sphere(W, F0, x, cy, z, r, 7, 4, lc, K.PBR, A_MATTE, 0.85);
+      if (r > 1.6) { GEO.sphere(W, F0, x + r * 0.45, cy + r * 0.3, z - r * 0.2, r * 0.65, 6, 3, shade(lc, 1.08), K.PBR, A_MATTE, 0.85);
+        GEO.sphere(W, F0, x - r * 0.4, cy + r * 0.2, z + r * 0.35, r * 0.6, 6, 3, shade(lc, 0.92), K.PBR, A_MATTE, 0.85); } }
+    else GEO.sphere(W, F0, x, cy, z, r * 1.05, lvl === 2 ? 5 : 4, lvl === 2 ? 3 : 2, lc, K.PBR, A_MATTE, 0.85);
+  }
+  function poolE(W, it, ox, oz, lvl) {
+    const [x, z] = loc(it, 0, 0, ox, oz), y = it.y, wl = it.on ? y + 0.5 : y + 0.04, cope = it.on ? y + 0.6 : y + 0.16;
+    const P = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => loc(it, u * it.l / 2, v * it.w / 2, ox, oz));
+    quad(W, F0, P[0][0], wl, P[0][1], P[1][0], wl, P[1][1], P[2][0], wl, P[2][1], P[3][0], wl, P[3][1], WATER, K.PBR, A_GLASS);
+    if (lvl === 3) return;
+    if (it.on) bx(W, x, z, y, it.l + 0.3, it.w + 0.3, 0.6, it.a, [220, 216, 206], A_MATTE);
+    else { const cw = 0.45, cc = [222, 218, 208];
+      for (const [u, v, l, w] of [[0, -(it.w + cw) / 2, it.l + 2 * cw, cw], [0, (it.w + cw) / 2, it.l + 2 * cw, cw], [-(it.l + cw) / 2, 0, cw, it.w], [(it.l + cw) / 2, 0, cw, it.w]]) {
+        const [px, pz] = loc(it, u, v, ox, oz); bx(W, px, pz, y, l, w, cope - y, it.a, cc, A_MATTE); }
+      if (lvl === 1) { const [px, pz] = loc(it, it.l / 2 - 0.4, it.w / 2 - 0.05, ox, oz); post(W, px, pz, y, y + 0.9, 0.05, it.a, [190, 192, 194], A_GALV); } }
+  }
+  function tableE(W, it, ox, oz) {
+    const [x, z] = loc(it, 0, 0, ox, oz), y = it.y;
+    if (it.round) cyl(W, x, z, y + 0.7, y + 0.74, 0.45, 0.45, 8, it.col, K.PBR, A_PAINT); else bx(W, x, z, y + 0.7, 0.85, 0.85, 0.04, it.a, it.col, A_PAINT);
+    post(W, x, z, y, y + 0.7, 0.06, it.a, [70, 70, 70], A_GALV);
+    for (let k = 0; k < it.n; k++) { const a = it.a + k * 6.2832 / it.n, cx = x + Math.cos(a) * 0.75, cz = z + Math.sin(a) * 0.75;
+      bx(W, cx, cz, y + 0.42, 0.42, 0.42, 0.04, a, it.col, A_PAINT);
+      const bx0 = cx + Math.cos(a) * 0.21, bz0 = cz + Math.sin(a) * 0.21, s = Math.sin(a) * 0.21, c = Math.cos(a) * 0.21;
+      vq(W, [bx0 - s, bz0 + c], [bx0 + s, bz0 - c], y + 0.46, y + 0.88, it.col, A_PAINT);
+      post(W, cx, cz, y, y + 0.42, 0.3, a, shade(it.col, 0.7), A_PAINT); }
+    if (it.umb) { post(W, x, z, y + 0.74, y + 2.3, 0.05, 0, [200, 200, 200], A_GALV);
+      rev(W, F0, x, z, [[0, y + 2.45], [1.25, y + 2.05]], 8, it.umb, K.PBR, { aux: A_CLOTH }); }
+  }
+  function railE(W, it, ox, oz, lvl) {
+    const ix = -it.nx * 0.06, iz = -it.nz * 0.06, A = [it.ax - ox + ix, it.az - oz + iz], B = [it.bx - ox + ix, it.bz - oz + iz], y = it.y;
+    if (lvl !== 1) { vq(W, A, B, y, y + (it.solid ? 1.0 : 0.25), it.solid ? [214, 208, 196] : it.col, A_MATTE); return; }
+    if (it.solid) { bx(W, (A[0] + B[0]) / 2, (A[1] + B[1]) / 2, y, it.L, 0.2, 0.55, Math.atan2(B[1] - A[1], B[0] - A[0]), [214, 208, 196], A_MATTE); }
+    const n = Math.max(1, Math.round(it.L / 1.4)), ang = Math.atan2(B[1] - A[1], B[0] - A[0]);
+    for (let k = 0; k <= n; k++) { const t = k / n; post(W, A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, y, y + 1.0, 0.05, ang + Math.PI / 2, it.col, A_PAINT); }
+    vq(W, A, B, y + 0.96, y + 1.02, it.col, A_PAINT);
+    if (!it.solid) { vq(W, A, B, y + 0.12, y + 0.15, it.col, A_PAINT); vq(W, A, B, y + 0.55, y + 0.58, it.col, A_PAINT);
+      const nb = Math.round(it.L / 0.25);                                     // barrotes (paño fino cada 25 cm)
+      if (nb < 60) for (let k = 1; k < nb; k++) { if (k % Math.round(nb / n) === 0) continue; const t = k / nb; post(W, A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, y + 0.15, y + 0.96, 0.02, ang + Math.PI / 2, it.col, A_PAINT); } }
+  }
+  function emitMZ(W, it, ox, oz, lvl) {
+    const y = it.y;
+    switch (it.t) {
+      case 'floor': fillPoly(W, it.P, () => y, it.col, A_TILE, 1e9, ox, oz); return true;
+      case 'ground': { const up = it.up || 0.08; fillPoly(W, it.P, (x, z) => gY(x, z) + up, it.col, A_MATTE, lvl === 1 ? 8 : 16, ox, oz); return true; }
+      case 'tree': treeE(W, it, ox, oz, lvl); return true;
+      case 'pool': poolE(W, it, ox, oz, lvl); return true;
+      case 'rail': if (lvl !== 3) railE(W, it, ox, oz, lvl); return true;
+      case 'tapia': { const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l, 0.25, it.h, it.a, it.col, A_MATTE);
+        if (lvl === 1) bx(W, x, z, y + it.h, it.l + 0.06, 0.34, 0.06, it.a, shade(it.col, 1.1), A_MATTE); return true; }
+      case 'hedge': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l, it.w, it.h, it.a, [56, 86, 44], A_MATTE); return true; }
+      case 'car': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.3, it.l, 1.75, 0.68, it.a, it.col, A_PAINT);
+        if (lvl === 1) { const [cx, cz] = loc(it, -it.l * 0.06, 0, ox, oz); bx(W, cx, cz, y + 0.98, it.l * (it.l > 4.6 ? 0.8 : 0.52), 1.55, 0.55, it.a, [44, 50, 58], A_GLASS);
+          for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const [wx, wz] = loc(it, u * it.l * 0.33, v * 0.82, ox, oz); bx(W, wx, wz, y, 0.62, 0.2, 0.62, it.a, [30, 30, 32], A_MATTE); } } return true; }
+      case 'lounger': { if (lvl !== 1) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.3, 1.9, 0.62, 0.06, it.a, it.col, A_PAINT);
+        const [bx0, bz0] = loc(it, -0.85, 0, ox, oz); post(W, bx0, bz0, y + 0.3, y + 0.75, 0.6, it.a + Math.PI / 2, it.col, A_PAINT); return true; }
+      case 'bed': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l, it.w, 0.35, it.a, [130, 96, 66], A_MATTE);
+        if (lvl === 1) for (let k = 0; k < 6; k++) { const [px, pz] = loc(it, -it.l / 2 + 0.3 + k * (it.l - 0.6) / 5, (it.pl[k] - 0.5) * 0.4, ox, oz);
+          GEO.sphere(W, F0, px, y + 0.45, pz, 0.18 + it.pl[(k + 3) % 10] * 0.12, 4, 3, PLANTC[k % 6], K.PBR, A_MATTE, 0.8); } return true; }
+      case 'pot': { if (lvl !== 1) return true; const x = it.x - ox, z = it.z - oz; cyl(W, x, z, y, y + it.r * 1.4, it.r * 0.8, it.r, 6, it.col, K.PBR, A_MATTE);
+        GEO.sphere(W, F0, x, y + it.r * 1.4 + it.r * (it.tall ? 1.4 : 0.7), z, it.r * 1.05, 5, 3, it.pc, K.PBR, A_MATTE, it.tall ? 1.8 : 0.9); return true; }
+      case 'table': if (lvl === 1) tableE(W, it, ox, oz); return true;
+      case 'bench': { if (lvl !== 1) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.42, 1.8, 0.45, 0.06, it.a, [140, 100, 62], A_MATTE);
+        const [bx0, bz0] = loc(it, 0, 0.22, ox, oz); bx(W, bx0, bz0, y + 0.5, 1.8, 0.06, 0.42, it.a, [140, 100, 62], A_MATTE);
+        for (const u of [-0.75, 0.75]) { const [px, pz] = loc(it, u, 0, ox, oz); bx(W, px, pz, y, 0.08, 0.45, 0.42, it.a, [50, 52, 54], A_GALV); } return true; }
+      case 'play': { if (lvl === 3) return true; const S = [[-3, -3], [3, -3], [3, 3], [-3, 3]].map(([u, v]) => { const [px, pz] = loc(it, u, v, 0, 0); return [px, pz]; });
+        fillPoly(W, S, (x, z) => gY(x, z) + 0.1, [206, 186, 150], A_MATTE, 1e9, ox, oz);
+        if (lvl !== 1) return true;
+        const [tx, tz] = loc(it, -1.2, -1, ox, oz), C1 = [[200, 60, 50], [60, 130, 190], [230, 190, 60], [90, 160, 90]][Math.floor(it.pl[0] * 4)];
+        bx(W, tx, tz, y, 1.2, 1.2, 1.5, it.a, C1, A_PAINT); bx(W, tx, tz, y + 1.5, 1.4, 1.4, 0.9, it.a, shade(C1, 0.8), A_PAINT);
+        const s0 = loc(it, -0.6, -1, ox, oz), s1 = loc(it, 1.8, -1, ox, oz), w = 0.3;
+        quad(W, F0, s0[0], y + 1.5, s0[1] - w, s1[0], y + 0.25, s1[1] - w, s1[0], y + 0.25, s1[1] + w, s0[0], y + 1.5, s0[1] + w, [220, 200, 60], K.PBR, A_PAINT);
+        const a0 = loc(it, -1.5, 1.5, ox, oz), a1 = loc(it, 1.5, 1.5, ox, oz);
+        GEO.bar(W, [a0[0], y, a0[1]], [a0[0], y + 2.2, a0[1]], 0.05, [70, 72, 74], K.PBR, A_GALV); GEO.bar(W, [a1[0], y, a1[1]], [a1[0], y + 2.2, a1[1]], 0.05, [70, 72, 74], K.PBR, A_GALV);
+        GEO.bar(W, [a0[0], y + 2.2, a0[1]], [a1[0], y + 2.2, a1[1]], 0.05, [70, 72, 74], K.PBR, A_GALV);
+        for (const t of [0.33, 0.66]) { const px = a0[0] + (a1[0] - a0[0]) * t, pz = a0[1] + (a1[1] - a0[1]) * t; post(W, px, pz, y + 0.45, y + 2.2, 0.03, it.a + Math.PI / 2, [60, 60, 60], A_GALV); bx(W, px, pz, y + 0.42, 0.45, 0.2, 0.04, it.a, [40, 40, 40], A_MATTE); }
+        return true; }
+    }
+    return false;
+  }
   function emitNear(W, it, ox, oz) {
+    if (emitMZ(W, it, ox, oz, 1)) return;
     const c = Math.cos(it.a), s = Math.sin(it.a), y = it.y;
     switch (it.t) {
       case 'peto': peto(W, it, ox, oz, 1); break;
@@ -388,6 +610,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // nivel 2: cajas de todo lo que tiene bulto, el peto (cara interior) y la ropa como paños; nivel 3: casetas, depósitos,
   // pérgolas y tejados
   function emitFar(W, it, ox, oz, lvl) {
+    if (emitMZ(W, it, ox, oz, lvl)) return;
     const y = it.y, [x, z] = it.t === 'peto' ? [0, 0] : loc(it, 0, 0, ox, oz);
     switch (it.t) {
       case 'teja': teja(W, it, ox, oz, lvl); break;
