@@ -1666,6 +1666,14 @@ fundido 60–75 m); el canal alfa del campo de aceras ya no se usa (la rama de a
 - Piezas por nombre en `P2PIECE` (devuelven el alto de la luz si alumbran) con su radio en `P2RAD`.
 - `BCN.mods.plz.stats()` → ahora también `paseos` (teselas).
 
+#### P3
+
+- `plazas.js` dibujos de pavimento 9 (explanada de Catalunya, centro en `uRose`) y 10 (macizo de flores, color = flor).
+- Plataforma: `o.plat`, `o.hAt(x, z)`; `SING.lift` sube el tope de levante de una singular.
+- Árboles de plaza: mallas `tNB<k>p`, `tNL<k>p`, `tFB<k>p`, `tFL<k>p`, `tI<k>p` (prefijos tN/tF para las cascadas de
+  lighting.js) con los materiales de streets.js; `stats().arboles` = instancias por nivel, `trisArboles`.
+- Si streets.js cambia los nombres de sus materiales de árbol, las plazas vuelven a la pieza propia (sin error).
+
 ### 12.6 Puerto y zona de mercancías (PU1–PU3)
 
 #### PU1
