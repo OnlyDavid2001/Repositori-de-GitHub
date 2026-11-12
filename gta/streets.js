@@ -2,7 +2,7 @@
    Lleva la calle de «Transeúnte» a toda la ciudad, siguiendo la topografía real:
      · aceras de panot de 20×20 cm (el mismo generador de Transeúnte), bordillo de granito de 15 cm,
        plazas y calles peatonales enlosadas, alcorques con reja;
-     · árboles de calle de siete especies (trees.js: plátano, almez, naranjo, palmera, jacaranda, tipuana, pino), cada
+     · árboles de calle de siete especies (trees.js: plátano, almez, naranjo, palmera —Washingtonia y Phoenix—, jacaranda, tipuana, pino), cada
        una en tres niveles: árbol completo con ramas y hojas (cerca), copa de tarjetas (media distancia) e impostor
        (lejos), todos con instancias; la especie se elige por calle o tramo según el barrio y el ancho;
      · mobiliario (furniture.js) y marcas viales (ground.js), que se enganchan aquí por celda.
@@ -167,6 +167,23 @@ void main(){
   if (uKind < 0.5) {                                    // corteza (la del plátano, teñida y menos moteada en las otras especies)
     vec3 tx = texture2D(tMap, vUV*vec2(1.0, 0.5)).rgb;
     tx = mix(vec3(dot(tx, vec3(0.33))), tx, uBark.w)*uBark.rgb*mix(0.9, 1.1, vH);
+    if (uSp.y > 0.5) {                                  // corteza propia (vUV.x: vuelta al tronco, vUV.y: metros a lo largo)
+      vec3 bc;
+      if (uSp.y < 1.5) {                                // pino piñonero: placas rojizas separadas por grietas oscuras
+        vec2 g = vec2(vUV.x*16.0, vUV.y*3.6); float row = floor(g.y); g.x += hash21(vec2(row, 3.0))*7.0 + vnoise(g*0.7)*0.7;
+        vec2 f = fract(g); float h = hash21(floor(g)), e = min(min(f.x, 1.0 - f.x)*1.5, min(f.y, 1.0 - f.y)) + (vnoise(g*3.0) - 0.5)*0.14;
+        bc = mix(vec3(0.15, 0.11, 0.09), mix(vec3(0.50, 0.25, 0.15), vec3(0.66, 0.38, 0.24), h)*(0.82 + 0.34*vnoise(g*5.0)), smoothstep(0.03, 0.14, e));
+      } else if (uSp.y < 2.5) {                         // Washingtonia: fibra vertical gris parda con anillos tenues
+        float sF = vnoise(vec2(vUV.x*90.0, vUV.y*1.5))*0.6 + vnoise(vec2(vUV.x*30.0, vUV.y*0.6))*0.4;
+        float ring = smoothstep(0.8, 1.0, abs(sin(vUV.y*8.0 + vnoise(vUV*vec2(8.0, 2.0))*2.0)));
+        bc = mix(vec3(0.30, 0.26, 0.21), vec3(0.56, 0.49, 0.40), sF)*(1.0 - 0.22*ring);
+      } else {                                          // Phoenix: rombos de las bases de hoja cortadas
+        vec2 g = vec2(vUV.x*13.0, vUV.y*3.0), dd = vec2(g.x + g.y, g.x - g.y), f = fract(dd) - 0.5;
+        float e = max(abs(f.x), abs(f.y)), h = hash21(floor(dd));
+        bc = mix(vec3(0.56, 0.45, 0.31)*(0.82 + 0.3*h), vec3(0.2, 0.15, 0.11), smoothstep(0.34, 0.47, e))*(0.85 + 0.3*vnoise(g*4.0));
+      }
+      tx = bc*mix(0.9, 1.1, vH);
+    }
     vec3 n = normalize(vN); vec3 tn = texture2D(tNrm, vUV*vec2(1.0, 0.5)).xyz*2.0 - 1.0;
     n = normalize(n + vec3(tn.x, tn.y*0.3, tn.x)*0.45);
     vec3 c = lit(tx*1.35, n);
@@ -179,12 +196,17 @@ void main(){
   float fl = smoothstep(0.0, 0.06, tx.b - tx.g);
   vec3 txc = mix(tx.rgb, vec3(0.42, 0.62, 0.28)*dot(tx.rgb, vec3(0.4)), fl*step(uSp.x, vH));
   fl *= step(vH, uSp.x);
+  // de lejos el atlas mezcla flor y hoja (gris azulado): en los ejemplares en flor se empuja hacia el lila
+  txc = mix(txc, vec3(0.70, 0.50, 0.92)*dot(txc, vec3(0.36))*1.25, fl*0.55*smoothstep(15.0, 90.0, dist));
   vec3 alb = txc*mix(tint, vec3(1.0), fl*0.7)*uLeaf.rgb*(uKind > 1.5 ? 0.66 : 0.86);
   alb = mix(vec3(dot(alb, vec3(0.3, 0.6, 0.1))), alb, mix(uLeaf.w, 1.0, fl));   // verde menos saturado (la flor, no)
   vec3 n = normalize(vN); if (dot(n, V) < 0.0) n = mix(-n, n, 0.4);
   vec3 c = lit(alb, normalize(n + vec3(0.0, 0.35, 0.0)));
   float bt = pow(max(dot(-V, uSunDir), 0.0), 3.0)*0.85 + max(dot(-n, uSunDir), 0.0)*0.26;
   c += alb*vec3(1.05, 1.2, 0.55)*uSunCol*bt*0.3;
+  // luz sobre la copa: la cara de arriba (normal al cielo y al sol) más clara y más cálida, para que desde el aire no sean bolas oscuras
+  float top = smoothstep(0.15, 0.85, n.y)*sqrt(max(uSunDir.y, 0.0));
+  c += alb*uSunCol*vec3(1.0, 1.05, 0.8)*top*0.32*(1.0 - uNight);
   if (uGlow.x > 0.001) {
     // de noche, vista desde arriba (cámara por encima de la hoja), la copa es una masa casi negra: la farola solo alumbra la cara
     // de abajo (normal hacia abajo) y deja un borde cálido justo encima de cada luminaria (rejilla de farolas). Desde abajo, como antes
@@ -198,7 +220,7 @@ void main(){
 }`;
   const mkTreeMat = (name, kind, map, nrm, sp) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand', 'uBark', 'uLeaf', 'uSp'], ['tMap', 'tNrm', 'tLamp']);
     m.setTexture('tLamp', LG.tex); m.setFloat('uKind', kind); m.setTexture('tMap', map); m.setTexture('tNrm', nrm || map); m.setVector4('uBand', new BABYLON.Vector4(0, 0, 1e9, 1e9));
-    m.setVector4('uBark', BABYLON.Vector4.FromArray(sp.bark)); m.setVector4('uLeaf', BABYLON.Vector4.FromArray(sp.leaf)); m.setVector4('uSp', new BABYLON.Vector4(sp.fl, 0, 0, 0)); return m; };
+    m.setVector4('uBark', BABYLON.Vector4.FromArray(sp.bark)); m.setVector4('uLeaf', BABYLON.Vector4.FromArray(sp.leaf)); m.setVector4('uSp', new BABYLON.Vector4(sp.fl, sp.bm || 0, 0, 0)); return m; };
   // por especie k: TMAT[k] = { barkN, leafN, barkF, leafF, imp } (mismo programa de sombreado para todas)
   const TMAT = TR.SP.map((sp, k) => ({ barkN: mkTreeMat('barkN' + k, 0, tBkD, tBkN, sp), leafN: mkTreeMat('leafN' + k, 1, tLeafN[k], null, sp), barkF: mkTreeMat('barkF' + k, 0, tBkD, tBkN, sp),
     leafF: mkTreeMat('leafF' + k, 1, tLeafF[k], null, sp), imp: mkTreeMat('imp' + k, 2, tImp[k], null, sp) }));
@@ -560,6 +582,10 @@ void main(){
   // árbol de la especie k más cercano a (x, z) entre las celdas ya calculadas (pruebas y hojas de contacto): [x, y, z, ángulo de la calle]
   function findTree(k, x, z) { let best = null, bd = 1e18;
     for (const T of treeCache.values()) for (let i = 0; i < T.length; i += 7) if (k < 0 || T[i + 6] === k) { const d = (T[i] - x) ** 2 + (T[i + 2] - z) ** 2; if (d < bd) { bd = d; best = [T[i], T[i + 1], T[i + 2], T[i + 5]]; } }
+    if (best) {                                         // para las vistas de prueba: dirección (unitaria) del árbol al eje de la calzada y distancia
+      const o = nearestCar(best[0], best[2])[0] * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L2 = dx * dx + dz * dz || 1;
+      const u = Math.max(0, Math.min(1, ((best[0] - ax) * dx + (best[2] - az) * dz) / L2)), qx = ax + dx * u - best[0], qz = az + dz * u - best[2], ad = Math.hypot(qx, qz) || 1;
+      best.push(qx / ad, qz / ad, ad); }
     return best; }
   const api = { update, setRange, flush, busy, findTree, lastCam: null,
     stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };

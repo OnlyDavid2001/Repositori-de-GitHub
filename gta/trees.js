@@ -1,7 +1,8 @@
 /* GTA Barcelona — Especies de árbol de calle (etapa ARB). Lo usa streets.js.
-   Siete especies típicas de Barcelona, cada una con sus tres niveles de detalle (árbol completo, copa de tarjetas e impostor):
-     0 plátano de sombra · 1 almez (lledoner) · 2 naranjo amargo · 3 palmera (Washingtonia) · 4 jacaranda · 5 tipuana ·
-     6 pino piñonero.
+   Siete especies típicas de Barcelona (ocho mallas: la palmera tiene dos variantes), cada una con sus tres niveles de detalle
+   (árbol completo, copa de tarjetas e impostor):
+     0 plátano de sombra · 1 almez (lledoner) · 2 naranjo amargo · 3 palmera Washingtonia · 4 jacaranda · 5 tipuana ·
+     6 pino piñonero · 7 palmera datilera (Phoenix; sale en los tramos de palmera, ~45 %).
    Aquí van solo datos y geometría (sin Babylon): parámetros de porte, dibujo de las hojas y de la silueta lejana en canvas,
    mallas (posiciones, normales, uv, índices) y el reparto por calle (`pick`). streets.js crea texturas, materiales e
    instancias. El plátano sale idéntico al de antes (mismas secuencias `seedRaw` heredadas de Transeúnte); las especies
@@ -17,28 +18,35 @@ const { seed, seedRaw, R, hash2 } = window.BCN_GEO;
 //    inclinación del tronco lean) · l: hojas (cerca nN tarjetas de sN m, separación DN, alto relativo ys; lejos nF/sF/DF)
 // imp: impostor (semiancho, alto) · bark: tinte de la corteza (rgb, cuánto del moteado del plátano se queda)
 // leaf: ganancia de color de las hojas (rgb, saturación) · fl: fracción de ejemplares en flor (jacaranda)
+// bm: corteza dibujada en el sombreador en vez de la del plátano (1 placas rojizas del pino, 2 fibra de la Washingtonia,
+//     3 cicatrices de hoja de la Phoenix) · l.flat: tarjetas casi horizontales (copa en parasol) · l.mid: hojas también a
+//     media rama (copa que tapa las ramas)
 const SP = [
   { id: 'platan', n: 'plàtan', g: { h: 5.4, r: 0.3, n: 5, y0: 4.9, len: [3.1, 3.9], up: 0.75, out: 0.66, rad: 0.19, kl: 0.68, dh: 3 },
     l: { nN: 620, sN: [0.42, 0.78], DN: 1, ys: [-0.7, 0.8], nF: 90, sF: [1.15, 1.9], DF: 1.2 }, imp: [5.2, 12.5],
     bark: [1, 1, 1, 1], leaf: [1, 1, 1, 0.82], fl: 0 },
   { id: 'lledoner', n: 'lledoner', g: { h: 3.4, r: 0.22, n: 6, y0: 3.0, len: [2.5, 3.1], up: 0.86, out: 0.55, rad: 0.14, kl: 0.66, dh: 3 },
     l: { nN: 620, sN: [0.44, 0.76], DN: 0.95, ys: [-0.7, 0.8], nF: 95, sF: [1.1, 1.75], DF: 1.1 }, imp: [3.8, 11],
-    bark: [0.72, 0.73, 0.76, 0.15], leaf: [0.92, 0.97, 0.95, 0.78], fl: 0 },
+    bark: [0.72, 0.73, 0.76, 0.15], leaf: [0.84, 0.94, 0.9, 0.7], fl: 0 },
   { id: 'taronger', n: 'taronger', g: { h: 1.4, r: 0.12, n: 5, y0: 1.25, len: [1.1, 1.4], up: 0.82, out: 0.55, rad: 0.08, kl: 0.66, dh: 2 },
     l: { nN: 520, sN: [0.34, 0.54], DN: 0.68, ys: [-1.1, 0.8], nF: 64, sF: [0.75, 1.1], DF: 0.75 }, imp: [2.2, 5.0],
-    bark: [0.55, 0.53, 0.5, 0.2], leaf: [0.95, 1.0, 0.95, 0.9], fl: 0 },
+    bark: [0.55, 0.53, 0.5, 0.2], leaf: [0.82, 0.97, 0.78, 0.95], fl: 0 },
   { id: 'palmera', n: 'palmera', g: { h: 11.5, r: 0.27, n: 0, y0: 11.5, len: [0, 0], up: 0, out: 0, rad: 0, kl: 0, dh: 0 },
     l: { nN: 22, sN: [3.6, 4.4], nF: 12, sF: [3.6, 4.4] }, imp: [3.6, 14],
-    bark: [0.6, 0.5, 0.4, 0.1], leaf: [1, 1, 1, 0.85], fl: 0 },
+    bark: [1, 1, 1, 1], bm: 2, leaf: [1, 1, 1, 0.85], fl: 0 },
   { id: 'jacaranda', n: 'jacaranda', g: { h: 3.0, r: 0.2, n: 4, y0: 2.8, len: [2.4, 3.0], up: 0.62, out: 0.8, rad: 0.13, kl: 0.7, dh: 3 },
     l: { nN: 460, sN: [0.4, 0.72], DN: 1.25, ys: [-0.5, 0.7], nF: 70, sF: [1.1, 1.7], DF: 1.3 }, imp: [4.6, 9.5],
-    bark: [0.55, 0.5, 0.47, 0.15], leaf: [1, 1, 1, 0.9], fl: 0.55 },
-  { id: 'tipuana', n: 'tipuana', g: { h: 4.0, r: 0.3, n: 6, y0: 3.7, len: [3.6, 4.4], up: 0.45, out: 0.9, rad: 0.18, kl: 0.66, dh: 3 },
-    l: { nN: 640, sN: [0.55, 0.95], DN: 1.1, ys: [-0.4, 0.6], nF: 95, sF: [1.4, 2.2], DF: 1.25 }, imp: [6.4, 12.5],
-    bark: [0.62, 0.56, 0.5, 0.15], leaf: [1.0, 1.02, 0.95, 0.85], fl: 0 },
-  { id: 'pi', n: 'pi pinyer', g: { h: 7.2, r: 0.3, n: 6, y0: 6.6, len: [2.7, 3.4], up: 0.42, out: 0.92, rad: 0.15, kl: 0.72, dh: 2, lean: 0.9 },
-    l: { nN: 600, sN: [0.55, 0.9], DN: 1.2, ys: [-0.25, 0.35], nF: 90, sF: [1.4, 2.1], DF: 1.3 }, imp: [5.8, 12.5],
-    bark: [0.78, 0.5, 0.36, 0.1], leaf: [0.9, 0.95, 0.9, 0.85], fl: 0 },
+    bark: [0.55, 0.5, 0.47, 0.15], leaf: [1.06, 1.1, 0.96, 0.9], fl: 0.55 },
+  { id: 'tipuana', n: 'tipuana', g: { h: 4.2, r: 0.3, n: 6, y0: 3.8, len: [3.5, 4.3], up: 0.55, out: 0.86, rad: 0.13, kl: 0.7, dh: 2 },
+    l: { nN: 860, sN: [0.5, 0.86], DN: 1.45, ys: [-0.8, 0.6], mid: 1, nF: 110, sF: [1.4, 2.2], DF: 1.5 }, imp: [6.6, 12.5],
+    bark: [0.62, 0.56, 0.5, 0.15], leaf: [1.12, 1.1, 0.78, 0.92], fl: 0 },
+  { id: 'pi', n: 'pi pinyer', g: { h: 8.6, r: 0.33, n: 7, y0: 8.0, len: [3.2, 4.1], up: 0.26, out: 0.96, rad: 0.15, kl: 0.72, dh: 2, lean: 1.4 },
+    l: { nN: 640, sN: [0.6, 1.0], DN: 1.15, ys: [-0.2, 0.3], flat: 1, nF: 95, sF: [1.5, 2.2], DF: 1.3 }, imp: [6.8, 12.5],
+    bark: [1, 1, 1, 1], bm: 1, leaf: [0.74, 0.86, 0.8, 0.72], fl: 0 },
+  // 7: palmera datilera (Phoenix): tronco grueso con cicatrices de hoja, corona de muchas hojas largas y arqueadas
+  { id: 'phoenix', n: 'palmera datilera', g: { h: 8.6, r: 0.42, n: 0, y0: 8.6, len: [0, 0], up: 0, out: 0, rad: 0, kl: 0, dh: 0 },
+    l: { nN: 40, sN: [4.4, 5.4], nF: 18, sF: [4.4, 5.4] }, imp: [5.2, 12],
+    bark: [1, 1, 1, 1], bm: 3, leaf: [0.8, 0.92, 0.88, 0.78], fl: 0 },
 ];
 
 // ---------------------------------------------------------------- reparto por calle
@@ -97,6 +105,7 @@ function pick(s, ax, az, bx, bz, hw, rambla) {
   seed(Math.round(th / 0.05) & 0xffff, Math.round(c / 18) | 0, Math.floor(al / 320) | 0, 71);
   let r = R() * w.reduce((a, b) => a + b, 0); v = 0;
   for (; v < 6; v++) { r -= w[v]; if (r < 0) break; }
+  if (v === 3 && R() < 0.45) v = 7;                                   // palmera: Washingtonia o Phoenix (por tramo)
   segCache.set(s, v); return v;
 }
 
@@ -128,13 +137,15 @@ function treeGeo(sp, hi) {
   const NT = hi ? 14 : 4, trunk = [];
   for (let k = 0; k <= NT; k++) trunk.push([lx(k / NT), k / NT * g.h, 0]);
   const rk = g.r / 0.3;
-  if (sp.id === 'palmera') tube(trunk, E => g.r * (1.25 - 0.4 * E) + 0.25 * Math.pow(1 - Math.min(1, E * 8), 2), hi ? 10 : 5);
+  if (sp.id === 'phoenix') tube(trunk, E => g.r * (1.08 - 0.12 * E) + 0.22 * Math.pow(1 - Math.min(1, E * 6), 2), hi ? 12 : 6);
+  else if (sp.id === 'palmera') tube(trunk, E => g.r * (1.25 - 0.4 * E) + 0.25 * Math.pow(1 - Math.min(1, E * 8), 2), hi ? 10 : 5);
   else tube(trunk, E => rk * (0.3 * (1 - E * 0.5) + 0.2 * Math.pow(1 - Math.min(1, E * 5), 2)), hi ? 14 : 6);
-  const tips = [];
+  const tips = [], mids = [];
   const br = (E, dir, len, rad, depth) => {
     const Pp = [E[0] + dir[0] * len, E[1] + dir[1] * len, E[2] + dir[2] * len];
     const M = [(E[0] + Pp[0]) / 2 + R(-0.25, 0.25), (E[1] + Pp[1]) / 2 + R(-0.1, 0.2), (E[2] + Pp[2]) / 2 + R(-0.25, 0.25)];
     tube([E, M, Pp], t => rad * (1 - 0.5 * t), depth === 0 ? (hi ? 9 : 5) : depth === 1 ? 5 : 3);
+    if (depth >= 1 || g.dh <= 2) mids.push(M);
     if (depth >= (hi ? g.dh : 0)) { tips.push(Pp); return; }
     for (let b = 0; b < 3; b++) {
       const a = R(6.28), q = R(0.25, 0.6); let Wd = [dir[0] + Math.cos(a) * q, dir[1] + R(0.05, 0.4) * (g.up < 0.5 ? 0.4 : 1), dir[2] + Math.sin(a) * q]; const l = Math.hypot(...Wd); Wd = Wd.map(x => x / l);
@@ -146,18 +157,22 @@ function treeGeo(sp, hi) {
   if (sp.id === 'palmera') {        // falda de hojas secas bajo la corona (corteza teñida)
     const top = g.h; tube([[0, top - 1.9, 0], [0, top - 0.9, 0], [0, top + 0.1, 0]], t => 0.3 + 0.32 * Math.sin(t * 3.1416) + 0.12 * t, hi ? 10 : 5);
     tips.push([0, top + 0.2, 0]);
+  } else if (sp.id === 'phoenix') {  // «piña» de bases de hoja bajo la corona
+    const top = g.h; tube([[0, top - 1.2, 0], [0, top - 0.5, 0], [0, top + 0.25, 0]], t => g.r * 0.95 + 0.2 * Math.sin(t * 3.1416), hi ? 12 : 6);
+    tips.push([0, top + 0.3, 0]);
   }
-  return { bark: { P: new Float32Array(P), N: new Float32Array(Nn), U: new Float32Array(U), I: new Uint32Array(I) }, tips };
+  return { bark: { P: new Float32Array(P), N: new Float32Array(Nn), U: new Float32Array(U), I: new Uint32Array(I) }, tips, mids };
 }
 // tarjetas de hojas alrededor de las puntas de las ramas (normales hacia fuera de la copa)
-function leafGeo(sp, tips, far) {
+function leafGeo(sp, tips0, far, mids) {
+  const tips = sp.l.mid && mids ? tips0.concat(mids) : tips0;
   const L = sp.l, k0 = SP.indexOf(sp);
   if (k0 === 0) seedRaw(41); else seed(950 + k0, far ? 1 : 0);
   const n = far ? L.nF : L.nN, s0 = (far ? L.sF : L.sN)[0], s1 = (far ? L.sF : L.sN)[1], D = far ? L.DF : L.DN;
   const fy = tips.reduce((a, t) => a + t[1], 0) / tips.length;
   const P = [], N = [], U = [], I = [];
   for (let q = 0; q < n; q++) {
-    const Wt = tips[Math.floor(R() * tips.length)], x = Wt[0] + R(-D, D), y = Wt[1] + R(D * L.ys[0], D * L.ys[1]), z = Wt[2] + R(-D, D), s = R(s0, s1), t = R(6.28), c = R(-1.2, 1.2);
+    const Wt = tips[Math.floor(R() * tips.length)], x = Wt[0] + R(-D, D), y = Wt[1] + R(D * L.ys[0], D * L.ys[1]), z = Wt[2] + R(-D, D), s = R(s0, s1), t = R(6.28), c0 = R(-1.2, 1.2), c = L.flat ? Math.sign(c0 || 1) * (0.85 + Math.abs(c0) * 0.42) : c0;
     const a = [Math.cos(t), 0, Math.sin(t)], b = [-Math.sin(t) * Math.sin(c), Math.cos(c), Math.cos(t) * Math.sin(c)], base = P.length / 3;
     for (const [w, e] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const px = x + (a[0] * w + b[0] * e) * s, py = y + (a[1] * w + b[1] * e) * s, pz = z + (a[2] * w + b[2] * e) * s;
@@ -169,11 +184,11 @@ function leafGeo(sp, tips, far) {
 }
 // hojas de palmera: tiras curvadas que salen de la corona y caen (uv: u a lo ancho, v a lo largo)
 function frondGeo(sp, far) {
-  seed(970, far ? 1 : 0);
+  const ph = sp.id === 'phoenix'; seed(ph ? 975 : 970, far ? 1 : 0);
   const n = far ? sp.l.nF : sp.l.nN, seg = far ? 2 : 4, top = sp.g.h + 0.15;
   const P = [], N = [], U = [], I = [];
   for (let f = 0; f < n; f++) {
-    const az = f * 2.39996 + R(-0.2, 0.2), inner = f / n, e0 = 1.05 - inner * 1.35 + R(-0.12, 0.12), len = R(sp.l.sN[0], sp.l.sN[1]) * (0.75 + 0.35 * inner), w = R(0.55, 0.75);
+    const az = f * 2.39996 + R(-0.2, 0.2), inner = f / n, e0 = (ph ? 1.25 - inner * 1.15 : 1.05 - inner * 1.35) + R(-0.12, 0.12), len = R(sp.l.sN[0], sp.l.sN[1]) * (0.75 + 0.35 * inner), w = ph ? R(0.5, 0.65) : R(0.55, 0.75);
     const cx = Math.cos(az), cz = Math.sin(az), sx = -cz, sz = cx;
     let p = [cx * 0.25, top + R(-0.2, 0.3), cz * 0.25], el = e0; const base = P.length / 3;
     for (let k = 0; k <= seg; k++) {
@@ -181,7 +196,7 @@ function frondGeo(sp, far) {
       const nx = cx * 0.45, ny = 1, nz = cz * 0.45, nl = Math.hypot(nx, ny, nz);
       P.push(p[0] - sx * ww, p[1] + up, p[2] - sz * ww, p[0] + sx * ww, p[1] + up, p[2] + sz * ww);
       N.push(nx / nl, ny / nl, nz / nl, nx / nl, ny / nl, nz / nl); U.push(0, t, 1, t);
-      if (k < seg) { const d = len / seg; p = [p[0] + cx * v * d, p[1] + Math.sin(el) * d, p[2] + cz * v * d]; el -= (0.32 + 0.25 * inner) * (4 / seg); }
+      if (k < seg) { const d = len / seg; p = [p[0] + cx * v * d, p[1] + Math.sin(el) * d, p[2] + cz * v * d]; el -= (ph ? 0.42 + 0.18 * inner : 0.32 + 0.25 * inner) * (4 / seg); }
     }
     for (let k = 0; k < seg; k++) { const a = base + k * 2; I.push(a, a + 1, a + 3, a, a + 3, a + 2); }
   }
@@ -196,9 +211,9 @@ function impGeo(sp) {
 }
 // los tres niveles de una especie: { nearBark, nearLeaf, farBark, farLeaf, imp }
 function build(k) {
-  const sp = SP[k], gHi = treeGeo(sp, true), gLo = treeGeo(sp, false), palm = sp.id === 'palmera';
-  return { nearBark: gHi.bark, nearLeaf: palm ? frondGeo(sp, false) : leafGeo(sp, gHi.tips, false),
-           farBark: gLo.bark, farLeaf: palm ? frondGeo(sp, true) : leafGeo(sp, gHi.tips, true), imp: impGeo(sp) };
+  const sp = SP[k], gHi = treeGeo(sp, true), gLo = treeGeo(sp, false), palm = sp.id === 'palmera' || sp.id === 'phoenix';
+  return { nearBark: gHi.bark, nearLeaf: palm ? frondGeo(sp, false) : leafGeo(sp, gHi.tips, false, gHi.mids),
+           farBark: gLo.bark, farLeaf: palm ? frondGeo(sp, true) : leafGeo(sp, gHi.tips, true, gHi.mids), imp: impGeo(sp) };
 }
 
 // ---------------------------------------------------------------- texturas (canvas)
@@ -242,21 +257,22 @@ function leafCanvas(k, far) {
     for (let u = 0; u < (far ? 30 : 16); u++) { const [x, y] = disc(), r = R(11, 15) * sc;
       const T = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r); T.addColorStop(0, '#ffb24a'); T.addColorStop(1, '#d9660f');
       g.fillStyle = T; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill(); }
-  } else if (sp.id === 'palmera') {    // hoja de palmera: raquis central y foliolos que se abren hacia arriba (u a lo ancho, v a lo largo)
-    g.strokeStyle = rgb(120, 125, 70); g.lineWidth = 7; g.beginPath(); g.moveTo(S / 2, 0); g.lineTo(S / 2, S); g.stroke();
-    for (let v = 6; v < S - 4; v += 7) { const t = v / S, len = S * 0.5 * Math.sin(Math.min(1, 0.15 + t) * 2.8) * R(0.85, 1);
-      for (const sd of [-1, 1]) { const gr = 85 + R(70); g.strokeStyle = rgb(gr * 0.6, gr, gr * 0.38); g.lineWidth = R(4, 6);
+  } else if (sp.id === 'palmera' || sp.id === 'phoenix') {   // hoja de palmera: raquis central y foliolos (u a lo ancho, v a lo largo)
+    const ph = sp.id === 'phoenix';                              // Phoenix: foliolos más finos y juntos, verde algo azulado
+    g.strokeStyle = ph ? rgb(150, 140, 80) : rgb(120, 125, 70); g.lineWidth = 7; g.beginPath(); g.moveTo(S / 2, 0); g.lineTo(S / 2, S); g.stroke();
+    for (let v = 6; v < S - 4; v += ph ? 5 : 7) { const t = v / S, len = S * 0.5 * Math.sin(Math.min(1, 0.15 + t) * 2.8) * R(0.85, 1);
+      for (const sd of [-1, 1]) { const gr = 85 + R(70); g.strokeStyle = ph ? rgb(gr * 0.58, gr * 0.95, gr * 0.55) : rgb(gr * 0.6, gr, gr * 0.38); g.lineWidth = ph ? R(2.5, 4) : R(4, 6);
         g.beginPath(); g.moveTo(S / 2, v); g.quadraticCurveTo(S / 2 + sd * len * 0.6, v + len * 0.12, S / 2 + sd * len, v + len * 0.35 + R(-6, 6)); g.stroke(); } }
   } else if (sp.id === 'jacaranda') {  // hoja bipinnada (foliolos menudos, verde claro) y racimos de flor lila
     for (let u = 0; u < (far ? 170 : 105); u++) { const [x, y] = disc(), a = R(6.28), L = R(40, 70) * sc, gr = 95 + R(70);
       for (let t = 0; t < 1; t += 0.09) { const px = x + Math.cos(a) * L * t, py = y + Math.sin(a) * L * t;
         for (const sd of [-1, 1]) ovalLeaf(g, px + Math.cos(a + sd * 1.3) * 6 * sc, py + Math.sin(a + sd * 1.3) * 6 * sc, 5.5 * sc, a + sd * 1.3 + 1.57, 0.45, [gr * 0.62, gr, gr * 0.42], 0.1); } }
-    for (let u = 0; u < (far ? 60 : 34); u++) { const [x, y] = disc();
-      for (let q = 0; q < 26; q++) { const f = R(6.28), r = R(18) * sc; g.fillStyle = rgb(150 + R(30), 115 + R(25), 205 + R(35)); g.beginPath(); g.arc(x + Math.cos(f) * r, y + Math.sin(f) * r, R(3.5, 6) * sc, 0, 6.29); g.fill(); } }
+    for (let u = 0; u < (far ? 170 : 60); u++) { const [x, y] = disc();   // flor: lila, densa (de lejos domina la copa)
+      for (let q = 0; q < 30; q++) { const f = R(6.28), r = R(20) * sc; g.fillStyle = rgb(172 + R(30), 118 + R(25), 222 + R(30)); g.beginPath(); g.arc(x + Math.cos(f) * r, y + Math.sin(f) * r, R(3.5, 6) * sc, 0, 6.29); g.fill(); } }
   } else if (sp.id === 'tipuana') {    // hoja pinnada: foliolos ovalados, verde amarillento
-    for (let u = 0; u < (far ? 240 : 150); u++) { const [x, y] = disc(), a = R(6.28), L = R(45, 75) * sc, gr = 100 + R(75);
-      for (let t = 0; t < 1; t += 0.12) { const px = x + Math.cos(a) * L * t, py = y + Math.sin(a) * L * t;
-        for (const sd of [-1, 1]) ovalLeaf(g, px + Math.cos(a + sd * 1.4) * 8 * sc, py + Math.sin(a + sd * 1.4) * 8 * sc, 8 * sc, a + sd * 1.4 + 1.57, 0.5, [gr * 0.74, gr, gr * 0.32], 0.1); } }
+    for (let u = 0; u < (far ? 420 : 280); u++) { const [x, y] = disc(), a = R(6.28), L = R(40, 66) * sc, gr = 105 + R(75);   // foliolos finos
+      for (let t = 0; t < 1; t += 0.09) { const px = x + Math.cos(a) * L * t, py = y + Math.sin(a) * L * t;
+        for (const sd of [-1, 1]) ovalLeaf(g, px + Math.cos(a + sd * 1.4) * 6 * sc, py + Math.sin(a + sd * 1.4) * 6 * sc, 5.5 * sc, a + sd * 1.4 + 1.57, 0.45, [gr * 0.76, gr, gr * 0.32], 0.12); } }
   } else if (sp.id === 'pi') {         // penachos de acículas largas, verde oscuro
     for (let u = 0; u < (far ? 270 : 170); u++) { const [x, y] = disc(), gr = 60 + R(65), L = R(30, 50) * sc;
       g.strokeStyle = rgb(gr * 0.55, gr, gr * 0.42); g.lineWidth = 3.2 * sc + 0.8;
@@ -279,18 +295,19 @@ function impCanvas(k) {
   const trunk = (yTop, r, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(px(-r), S); g.lineTo(px(r), S); g.lineTo(px(r * 0.6), py(yTop)); g.lineTo(px(-r * 0.6), py(yTop)); g.fill(); };
   const blob = (cx, cy, rx, ry, n, rad, col) => { for (let i = 0; i < n; i++) { const a = R(6.28), rr = Math.sqrt(R()), x = cx + Math.cos(a) * rr * rx, y = cy + Math.sin(a) * rr * ry, gr = col[3] + R(col[4]) + (cy - y) / ry * 18;
     g.fillStyle = rgb(gr * col[0], gr * col[1], gr * col[2]); g.beginPath(); g.arc(px(x), py(y), R(rad[0], rad[1]), 0, 6.3); g.fill(); } };
-  if (sp.id === 'palmera') {
-    trunk(sp.g.h, 0.32, '#6e5b45'); g.fillStyle = '#5a4934'; g.beginPath(); g.ellipse(px(0), py(sp.g.h - 0.8), S * 0.06, S * 0.07, 0, 0, 6.3); g.fill();
-    for (let f = 0; f < 22; f++) { const a = f * 2.39996, c = Math.cos(a), e = 0.9 - (f / 22) * 1.3, L = 3.4; let x = 0, y = sp.g.h + 0.2, el = e;
-      const gr = 85 + R(60); g.strokeStyle = rgb(gr * 0.6, gr, gr * 0.38); g.lineWidth = 6; g.beginPath(); g.moveTo(px(x), py(y));
-      for (let s = 0; s < 4; s++) { x += c * Math.cos(el) * L / 4; y += Math.sin(el) * L / 4; el -= 0.35; g.lineTo(px(x), py(y)); } g.stroke(); }
+  if (sp.id === 'palmera' || sp.id === 'phoenix') {
+    const ph = sp.id === 'phoenix', nf = ph ? 36 : 22;
+    trunk(sp.g.h, ph ? 0.46 : 0.32, ph ? '#7a6347' : '#6e5b45'); g.fillStyle = '#5a4934'; g.beginPath(); g.ellipse(px(0), py(sp.g.h - 0.8), S * (ph ? 0.08 : 0.06), S * 0.07, 0, 0, 6.3); g.fill();
+    for (let f = 0; f < nf; f++) { const a = f * 2.39996, c = Math.cos(a), e = (ph ? 1.2 - (f / nf) * 1.1 : 0.9 - (f / nf) * 1.3), L = ph ? 4.6 : 3.4; let x = 0, y = sp.g.h + 0.2, el = e;
+      const gr = 85 + R(60); g.strokeStyle = ph ? rgb(gr * 0.56, gr * 0.92, gr * 0.52) : rgb(gr * 0.6, gr, gr * 0.38); g.lineWidth = ph ? 5 : 6; g.beginPath(); g.moveTo(px(x), py(y));
+      for (let s = 0; s < 4; s++) { x += c * Math.cos(el) * L / 4; y += Math.sin(el) * L / 4; el -= ph ? 0.45 : 0.35; g.lineTo(px(x), py(y)); } g.stroke(); }
     return cv;
   }
-  const c = { lledoner: [0.66, 1, 0.46, 62, 70], taronger: [0.5, 1, 0.32, 52, 60], jacaranda: [0.64, 1, 0.44, 80, 70], tipuana: [0.74, 1, 0.34, 85, 75], pi: [0.56, 1, 0.42, 55, 55] }[sp.id];
-  const g0 = sp.g, top = { lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.8, pi: 11.4 }[sp.id];
-  if (sp.id === 'pi') { trunk(g0.h + 0.5, 0.3, '#6a4630'); blob(0.6, top - 1.1, hw * 0.92, 1.5, 900, [3, 8], c); }
+  const c = { lledoner: [0.62, 0.96, 0.5, 60, 66], taronger: [0.46, 0.98, 0.3, 50, 58], jacaranda: [0.68, 1, 0.46, 86, 70], tipuana: [0.82, 1, 0.32, 92, 75], pi: [0.5, 0.92, 0.5, 52, 50] }[sp.id];
+  const g0 = sp.g, top = { lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.0, pi: 11.0 }[sp.id];
+  if (sp.id === 'pi') { trunk(g0.h + 0.4, 0.33, '#7a4630'); blob(0.9, top - 1.0, hw * 0.94, 1.05, 1000, [3, 8], c); }
   else { trunk(g0.y0 + 0.5, g0.r, '#6d5a44'); const cy = (top + g0.y0) / 2 + 0.6, ry = (top - g0.y0) / 2 + 0.3; blob(0, cy, hw * 0.92, ry, 1100, [3, 8], c);
-    if (sp.id === 'jacaranda') blob(0, cy + ry * 0.2, hw * 0.75, ry * 0.7, 220, [3, 6], [0.78, 0.62, 1.0, 150, 50]);
+    if (sp.id === 'jacaranda') blob(0, cy + ry * 0.1, hw * 0.86, ry * 0.85, 900, [3, 7], [0.8, 0.58, 1.0, 175, 45]);
     if (sp.id === 'taronger') blob(0, cy, hw * 0.8, ry * 0.75, 70, [2, 3.5], [1, 0.55, 0.12, 200, 40]); }
   return cv;
 }
