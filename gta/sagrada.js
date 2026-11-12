@@ -207,7 +207,7 @@ function construir(B, h, L, q) {
     // SFD1: atrios de las fachadas laterales (modelo del usuario): explanada a la cota de las puertas delante del Naixement
     // (hacia Marina) y de la Passió (hacia Sardenya), con taludes a los dos extremos, escalinata central a la calle y pretil.
     // Quedan en SF.atrios (ejes locales, cotas relativas al suelo del templo) para el suelo a pie (BCN_GLORIA.floorAt)
-    if (MED) { const PAV = [212, 200, 178], PAVd = sh(PAV, 0.86), RMP = 9, A = [];
+    if (MED) { const PAV = [204, 186, 156], PAVd = sh(PAV, 0.86), RMP = 9, A = [];
       const qq = (p0, p1, p2, p3, col) => { L.q4(B, p0, p1, p2, p3, col, K.PIEDRA, aP); L.q4(B, p3, p2, p1, p0, col, K.PIEDRA, aP); };
       for (const sg of [-1, 1]) {
         const xi = sg < 0 ? -41 : 37, xo = sg < 0 ? -54 : 50.5, za = -45, zb = 4, zm = (za + zb) / 2, x0 = Math.min(xi, xo), x1 = Math.max(xi, xo);
@@ -251,7 +251,7 @@ function construir(B, h, L, q) {
     L.cubierta(B, (xN + xP) / 2, CZ, 48, xP - xN, 19.6, 12.5, { tipo: 'dos', ang: 90, col: sh(OCRE, 0.86), k: K.PIEDRA, colHastial: OCRE });
     // SFD1: la silueta lateral del modelo del usuario corona los muros con hastiales apuntados en diente de sierra, uno por
     // tramo de 7,5 m: sobre la cornisa de las naves laterales (33), del claristorio (48) y de los testeros del crucero
-    const hast = (x, z, y, w, hh, ang) => L.cubierta(B, x, z, y, w, 1.1, hh * 1.15, { tipo: 'dos', ang, col: sh(OCRE, 0.8), k: K.PIEDRA, aux: aP, colHastial: sh(OCRE, 1.08) });
+    const hast = (x, z, y, w, hh, ang) => L.cubierta(B, x, z, y, w, 1.1, hh * 1.15, { tipo: 'dos', ang, col: sh(OCRE, 0.7), k: K.PIEDRA, aux: aP, colHastial: sh(OCRE, 1.12) });   // SFD2: más contraste
     for (const s of [-1, 1]) {
       for (let z = CZ + 16.5 + 3.75; z < ZG - 2; z += 7.5) hast(AX + s * 24.6, z, 33, 6.2, 7.5, 90);           // naves laterales
       for (let z = CZ + 15; z < ZG - 3; z += 7.5) if (z - 3 > CZ + 9.5) hast(AX + s * 9.8, z, 48, 5.4, 7, 90);   // claristorio, entre pináculos
@@ -798,6 +798,70 @@ function haces(ctx, m) {
   SF.haces = mesh;
 }
 
+// ---- SFD2: luz y texturas propias de la basílica. Material derivado del de los hitos (mismo vértice y mismos tipos), con:
+// de día, piedra ocre dorada cálida, relieve en la normal, envejecimiento (chorreones y suciedad abajo; el Naixement más
+// oscuro), trencadís y cerámica blanca vidriados con brillo; de noche, en lugar del baño de focos uniforme: dorado cálido
+// desde cuatro focos bajos con dirección (cada cara con su luz, aristas marcadas), la retícula de huecos encendida (ya
+// emisiva) y luz fría azulada en pináculos y cubiertas. Para la escalinata de la Glòria (SFG) solo la noche, más apagada en
+// el suelo. Se construye una vez al cargar a partir del fuente del material de los hitos; si no encaja, se queda el original.
+const SF_DIA = `
+  { vec2 lx = vec2(vLoc.x*SFC - vLoc.z*SFS, vLoc.x*SFS + vLoc.z*SFC);
+#ifndef SFG
+    if (kind < 1.5) {
+      alb *= vec3(1.05, 0.95, 0.80);                                   // ocre dorado cálido (foto del usuario, de día)
+      if (!horiz) {
+        float dA = detAA(P.x*0.8);
+        vec2 g = vec2(vnoise(P*0.9 + 3.1), vnoise(P*0.9 + 11.7)) - 0.5;
+        N = normalize(N + (tg*g.x + vec3(0.0, g.y, 0.0))*0.45*dA);    // relieve de la piedra
+        float nx = smoothstep(-28.0, -44.0, lx.x), lo = exp(-max(y, 0.0)/22.0);
+        float st = smoothstep(0.42, 0.82, vnoise(vec2(P.x*0.5, P.y*0.025 + 5.0)));
+        alb *= 1.0 - (0.08 + 0.08*nx)*st - (0.06 + 0.08*nx)*lo*(0.5 + vnoise(P*0.12));   // chorreones y suciedad
+      } else { vec2 q = lx/1.8; float hv = hash21(floor(q));                // losas del pavimento (atrios, terrazas) en los ejes de la basílica
+        alb *= (0.84 + 0.22*hv)*(1.0 - 0.3*max(lnAA(q.x, 0.05), lnAA(q.y, 0.05))*detAA(q.x))*(0.9 + 0.1*vnoise(P*0.2)); }
+    } else if (kind > 6.5 && kind < 7.5) { rough = 0.14; metal = 0.12; }                   // trencadís vidriado
+    else if (kind > 1.5 && kind < 2.5 && min(alb.r, min(alb.g, alb.b)) > 0.75) rough = 0.2;  // cerámica blanca esmaltada
+    else if (kind > 10.5 && kind < 11.5 && vInfo.y > 0.5 && min(vCol.r, min(vCol.g, vCol.b)) > 0.8) {   // vidrio de la cruz: de día
+      alb = mix(vCol.rgb*0.9, alb, uDusk); rough = mix(0.15, rough, uDusk); }                         // blanco lechoso, no una banda gris
+#else
+    if (horiz) alb *= 1.0 - 0.5*uDusk;                                  // escalinata: de noche, el suelo no se quema
+#endif
+  }
+`;
+const SF_NOCHE = `
+      vec3 nl = vec3(n.x*SFC - n.z*SFS, n.y, n.x*SFS + n.z*SFC);
+      float hy = max(y, 0.0)/H, up = smoothstep(0.35, 0.85, n.y);
+      // cuatro focos bajos: Glòria-Naixement, Glòria-Passió, ábside-Naixement, ábside-Passió (pesos distintos: cada cara su luz)
+      float dl = max(max(1.0*max(dot(nl, vec3(-0.55, 0.30, 0.78)), 0.0), 0.8*max(dot(nl, vec3(0.70, 0.30, 0.65)), 0.0)),
+                     max(0.55*max(dot(nl, vec3(-0.80, 0.30, -0.52)), 0.0), 0.45*max(dot(nl, vec3(0.74, 0.30, -0.60)), 0.0)));
+      float ed = 0.45 + 0.55*pow(abs(dot(n, V)), 0.7);                 // aristas marcadas
+#ifdef SFG
+      float fl = (0.10 + 0.25*dl)*(1.0 - 0.85*up);
+#else
+      float fl = (0.14 + 0.86*exp(-hy/0.38))*(0.10 + 0.90*dl*dl)*ed*(1.0 - 0.7*up);
+#endif
+      emis += emit(alb*vec3(1.0, 0.68, 0.32), 1.0*fl*uDusk*(1.0 - 0.45*uLate));
+#ifndef SFG
+      float cold = smoothstep(0.30, 0.80, hy)*(0.35 + 0.65*ed)*(1.0 - 0.6*dl) + 0.9*up*smoothstep(0.12, 0.3, hy);
+      emis += emit(alb*vec3(0.46, 0.62, 1.0), 0.55*cold*uDusk*(1.0 - 0.35*uLate));
+#endif
+      emis += emit(wcol*win, 0.55*wl);
+    } else if (false) {`;
+function sfMat(ctx, rot, ids, sfg) {
+  const get = id => { const r = window.BCN.lm.get(id); return r && r.mesh ? r.mesh : null; };
+  const ms = ids.map(get).filter(Boolean); if (!ms.length) return null;
+  const mt0 = ms[0].material, sp = mt0 && (mt0.shaderPath || mt0._shaderPath); if (!sp || !sp.fragmentSource) return null;
+  const fs = sp.fragmentSource, i0 = fs.lastIndexOf('\nvarying vec3 vLoc; varying vec4 vCol;');
+  const A1 = '  // NOCHE (por hito)', A2 = 'if (mode > 0.5 && mode < 1.5) {';
+  if (i0 < 0 || fs.indexOf(A1) < 0 || fs.indexOf(A2) < 0) { console.info('Sagrada Família: material de los hitos sin las marcas de SFD2; luz original'); return null; }
+  const a = rot * PI / 180, defs = `#define SFC ${Math.cos(a).toFixed(6)}\n#define SFS ${Math.sin(a).toFixed(6)}\n` + (sfg ? '#define SFG\n' : '');
+  const body = defs + fs.slice(i0).replace(A1, SF_DIA + A1).replace(A2, A2 + SF_NOCHE);
+  const mat = ctx.mkMat(sfg ? 'sf_lm_g' : 'sf_lm', sp.vertexSource, body, ['position', 'color', 'uv', 'nrm'], ['uLmN', 'uLmH']);
+  mat.onBindObservable.add(mesh => { const e = mat.getEffect(), o = mesh && mesh.metadata && mesh.metadata.bcn && mesh.metadata.bcn.lm; if (!e || !o) return;
+    e.setFloat4('uLmN', o.n[0], o.n[1], o.n[2], o.n[3]); e.setFloat4('uLmH', o.h[0], o.h[1], 0, 0); });
+  for (const m of ms) m.material = mat;
+  return mat;
+}
+
 // la carga de los hitos espera al JSON; después se enganchan los niveles de detalle
 const LMS = window.BCN_LANDMARKS;
 if (LMS && LMS.init) { const init0 = LMS.init;
@@ -814,6 +878,9 @@ if (LMS && LMS.init) { const init0 = LMS.init;
       SF.trisVis = () => { const cam = ctx.scene && ctx.scene.activeCamera; if (!cam || !m) return null; const p = cam.globalPosition || cam.position;
         const d = Math.hypot(m.x - p.x, m.yb - p.y, m.z - p.z); return { d: Math.round(d), tris: (d < LOD.lejos ? SF.tris[1] : SF.tris[0]) + (d < LOD.cerca ? SF.tris[2] : 0) }; };
       if (m && m.mesh && SF.cruz && ctx.mkMat) haces(ctx, m);
+      if (ctx.mkMat && window.BCN && window.BCN.lm) {                                  // SFD2: luz y texturas propias
+        SF.mat = sfMat(ctx, fp.rot || 136, ['sagrada_familia', 'sagrada_familia_lluny', 'sagrada_familia_detall'], false);
+        SF.matG = sfMat(ctx, fp.rot || 136, ['sf_gloria', 'sf_gloria_detall'], true); }
       if (r && r.stats) { const st0 = r.stats; r.stats = () => Object.assign(st0(), { sf: SF.trisVis() }); }
     } catch (e) { console.warn('Sagrada Família: sin niveles de detalle', e); }
     return r;
