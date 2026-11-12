@@ -17,13 +17,18 @@ Rama `wt-n3-puerto`. Ficheros: `puerto.js` (bloque «PU2» y su declaración al 
 - [x] Capturas ANTES/DESPUÉS de día y a las 23:00, hojas `n3/pu2/hoja_dia.jpg` y `n3/pu2/hoja_noche.jpg`.
 
 ## Coste
-- Triángulos de los hitos: 353 218 (tras PU1) → ≈ 458 000 (medido en el navegador con `BCN.lm.stats().tris`).
+- Triángulos de los hitos: 353 218 (tras PU1) → 457 611 (medido en el navegador, `BCN.lm.stats().tris`): +104 393 netos.
   PU2 añade ≈ 122 000 (Mercabarna 29 k, playa de vías 23 k, ZAL Prat 18 k, ZAL Port 11 k, Zona Franca 4 × 12–14 k) y quita
   ≈ 17 000 de los depósitos. **Pasa del tope de 400 000 del §10.9** (ver «Flojo»).
 - 8 mallas y 8 llamadas de dibujo más, con sombra, siempre cargadas. 567 volúmenes del registro sustituidos por naves.
 - Construcción al arrancar (contador sin navegador, máquina compartida, ruidoso): 20–200 ms por ficha nueva.
 
 ## Flojo
+- De noche las cubiertas de las naves se ven bastante claras (gris azulado) frente a la ciudad, que queda más oscura: es el
+  sombreado nocturno de los hitos; las puertas de muelle y los lucernarios se encienden, pero de lejos domina la cubierta.
+- La vista a pie dentro de la terminal de contenedores (`cont_pie`) cae dentro de una pila: sigue faltando una buena vista
+  a pie en las terminales (pendiente de PU1).
+- Los depósitos con menos lados no se distinguen de los de PU1 desde el aire (`dep_aire`); de muy cerca, algo más facetados.
 - Sin niveles de detalle (son hitos siempre cargados) y por encima del tope de triángulos del §10.9. Las naves ya van
   ahorradas (≈ 200 triángulos cada una); para bajar más habría que dar a landmarks.js un nivel de detalle por ficha.
 - No hay datos del viario dentro del constructor de un hito: los camiones, remolques y vallas se colocan comprobando solo
