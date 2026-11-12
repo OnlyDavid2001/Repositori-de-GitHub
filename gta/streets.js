@@ -19,7 +19,7 @@ const TREE = new Set([2, 3, 4, 5, 6]);                      // calles arboladas 
 
 window.BCN_STREETS = { init: async function (ctx) {
   const { scene, engine, mkMat, reg, SEG, blobURL } = ctx;
-  const { ROADS, CS, NX, NZ, CAR, WALK, WSW, coverAt, nearestCar, roadY, walkY } = ctx.city;   // índices y consultas de facades.js
+  const { ROADS, CS, NX, NZ, CAR, WALK, WSW, coverAt, nearestCar, roadY, walkY, ALL, bget, inside } = ctx.city;   // índices y consultas de facades.js
   const { matB, mkMesh: mkMeshFrom } = ctx.detail;                                  // el mobiliario usa el shader de detalle
 
   // ---------------------------------------------------------------- texturas
@@ -368,7 +368,7 @@ void main(){
   }
 
   // ---------------------------------------------------------------- atlas del campo de aceras (una textura para todas las celdas)
-  const RES = 0.5, MG = 4, NT = Math.round(CS / RES) + 2 * MG, AT = 2048, SLOTS = Math.floor(AT / NT);
+  const EXT = 40, RES = 0.5, MG = 4, NT = Math.round(CS / RES) + 2 * MG, AT = 2048, SLOTS = Math.floor(AT / NT);
   const atlas = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
   atlas.wrapU = atlas.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
   // SUELOS: atlas gemelo (sin filtrar) con el modelo de acera (R = 40·modelo) y el desgaste (G) del tramo más cercano
@@ -406,6 +406,41 @@ void main(){
         } }
     }
     yield;
+    // S2 · nada sin pavimentar: la acera sigue más allá de los WSW m del bordillo (paseos, chaflanes anchos, explanadas delante
+    // de las fachadas) hasta EXT m, siempre que desde el bordillo se «vea» el punto (ningún edificio en medio: así no entra en
+    // los patios de manzana). También llevan acera a los lados las vías peatonales anchas (clase 7, semiancho ≥ 8: paseos y
+    // tramos de avenida). La cota de esos puntos es la de siempre (walkY con el tramo con calzada de la regla de near).
+    const dS2 = new Float32Array(NT * NT).fill(99), nS = new Int32Array(NT * NT).fill(-1);
+    for (let n = 0; n < segs.length; n++) {
+      const s = segs[n], o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4];
+      if (!WALK.has(cls) && !(cls === 7 && hw >= 8)) continue;
+      const ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz, reach = hw + EXT;
+      const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - reach - fx0) / RES)), i1 = Math.min(NT - 1, Math.ceil((Math.max(ax, bx) + reach - fx0) / RES));
+      const j0 = Math.max(0, Math.floor((Math.min(az, bz) - reach - fz0) / RES)), j1 = Math.min(NT - 1, Math.ceil((Math.max(az, bz) + reach - fz0) / RES));
+      for (let j = j0; j <= j1; j++) { const z = fz0 + (j + 0.5) * RES;
+        for (let i = i0; i <= i1; i++) { const x = fx0 + (i + 0.5) * RES;
+          let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const qx = x - ax - dx * t, qz = z - az - dz * t, e = Math.sqrt(qx * qx + qz * qz) - hw, q = j * NT + i;
+          if (e < dS2[q]) { dS2[q] = e; nS[q] = s; } } }
+      if (n % 20 === 19) yield;
+    }
+    const PV = new Float32Array(NT * NT), VIS = new Int8Array(NT * NT).fill(-1);
+    const seen = (i, j) => {   // ¿se ve el punto (centro de la muestra i, j) desde el bordillo de su calle?
+      const q = j * NT + i; if (VIS[q] >= 0) return VIS[q];
+      const s = nS[q], o = s * 6, x = fx0 + (i + 0.5) * RES, z = fz0 + (j + 0.5) * RES, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, l2 = dx * dx + dz * dz;
+      let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const cx = ax + dx * t, cz = az + dz * t, ex = x - cx, ez = z - cz, el = Math.sqrt(ex * ex + ez * ez) || 1, hw = SEG[o + 4];
+      const kx = cx + ex / el * (hw + 1), kz = cz + ez / el * (hw + 1); let ok = 1;
+      for (const f of [0.15, 0.4, 0.65, 0.88]) if (coverAt(kx + (x - kx) * f, kz + (z - kz) * f, -1) > -1e8) { ok = 0; break; }
+      VIS[q] = ok; return ok;
+    };
+    let nExt = 0;
+    for (let j = 0; j < NT; j++) { for (let i = 0; i < NT; i++) { const q = j * NT + i;
+        let pv = Math.max(WSW - dS[q], 0.6 - dP[q]);
+        if (pv <= 0.3 && dS2[q] < EXT && dA[q] > 0.3 && seen(i & ~1, j & ~1)) { if (pv <= 0) nExt++; pv = Math.max(pv, 0.8); if (nW[q] < 0) nW[q] = nS[q]; }
+        PV[q] = pv; }
+      if (j % 24 === 23) yield; }
+    cell.ext = nExt;
     // árboles de la celda y vecinas (para los alcorques)
     const pits = [];
     for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const T = treesOf(j * NX + i); for (let k = 0; k < T.length; k += 7) pits.push(T[k], T[k + 2], T[k + 5]); }
@@ -413,7 +448,7 @@ void main(){
     // campo → RGBA
     const F = new Uint8Array(NT * NT * 4);
     for (let q = 0; q < NT * NT; q++) {
-      const a = dA[q], pv = Math.max(WSW - dS[q], 0.6 - dP[q]);
+      const a = dA[q], pv = PV[q];
       F[q * 4] = Math.max(0, Math.min(255, (a + 2) * 20));
       F[q * 4 + 1] = Math.max(0, Math.min(255, pv * 20 + 128));
       F[q * 4 + 2] = Math.max(0, Math.min(255, 128 + Math.min(0.6 - dP[q], dS[q] - 2.5) * 30));   // > 128: losa de granito (peatonal)
@@ -433,7 +468,7 @@ void main(){
     const W = new GB(ox, oz), G = Math.round(CS), gx0 = 0, gz0 = 0;
     const P = [], UV = [], I = [], vid = new Int32Array((G + 1) * (G + 1)).fill(-1);
     const fieldAt = (x, z) => { const i = Math.min(NT - 1, Math.max(0, Math.round((x - fx0) / RES - 0.5))), j = Math.min(NT - 1, Math.max(0, Math.round((z - fz0) / RES - 0.5))); return j * NT + i; };
-    const keep = q => dA[q] > -0.7 && Math.max(WSW - dS[q], 0.6 - dP[q]) > -0.7;
+    const keep = q => dA[q] > -0.7 && PV[q] > -0.7;
     const keepAround = (x, z) => { for (const [a, b] of [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5], [-0.5, 0], [0, -0.5]]) if (keep(fieldAt(x + a, z + b))) return true; return false; };
     const vert = (gi, gj) => {
       const k = gj * (G + 1) + gi; if (vid[k] >= 0) return vid[k];
@@ -458,13 +493,36 @@ void main(){
       const k0 = j * NT + i, a0 = dA[k0] >= 0, a1 = dA[k0 + 1] >= 0, a2 = dA[k0 + NT + 1] >= 0, a3 = dA[k0 + NT] >= 0;
       if (a0 === a1 && a1 === a2 && a2 === a3) continue;
       const q = [k0, k0 + 1, k0 + NT + 1, k0 + NT], v = q.map(k => dA[k]), pos = [a0, a1, a2, a3];
-      if (!q.some(k => dA[k] >= 0 && Math.max(WSW - dS[k], 0.6 - dP[k]) > 0)) continue;
+      if (!q.some(k => dA[k] >= 0 && PV[k] > 0)) continue;
       const cxs = [[0, 0], [1, 0], [1, 1], [0, 1]], pts = [];
       for (let e = 0; e < 4; e++) { const a = e, b = (e + 1) % 4; if (pos[a] !== pos[b]) { const t = v[a] / (v[a] - v[b]);
         pts.push([fx0 + (i + 0.5 + cxs[a][0] + (cxs[b][0] - cxs[a][0]) * t) * RES, fz0 + (j + 0.5 + cxs[a][1] + (cxs[b][1] - cxs[a][1]) * t) * RES]); } }
       const s = near[q.find(k => near[k] >= 0) ?? q[0]], sw = nW[q.find(k => nW[k] >= 0) ?? q[0]], kk = sw >= 0 ? kindOf(sw) : [0, 0.3];
       for (let e = 0; e + 1 < pts.length; e += 2) curb(pts[e][0], pts[e][1], pts[e + 1][0], pts[e + 1][1], s, -(2 + kk[0] + 0.9 * Math.min(kk[1], 0.99)));
     }
+    yield;
+    // S2 · encuentro de la fachada con la acera: donde la base de un edificio (y0) queda por encima de la acera que tiene
+    // delante (la calle se ha allanado o el relieve baja), un faldón de piedra a lo largo de la línea de fachada, 2 cm por
+    // fuera, desde 8 cm bajo la acera hasta 10 cm por encima de la base. Solo las aristas cuyo punto medio cae en esta celda.
+    let nSk = 0;
+    for (let k = ALL.start[ci]; k < ALL.start[ci + 1]; k++) {
+      const b = ALL.list[k], d = bget(b), r = d.rings[0], m = r.length / 2; if (m < 3) continue;
+      for (let e = 0; e < m; e++) {
+        const Ax = r[e * 2], Az = r[e * 2 + 1], Bx = r[(e + 1) % m * 2], Bz = r[(e + 1) % m * 2 + 1], dx = Bx - Ax, dz = Bz - Az, L = Math.sqrt(dx * dx + dz * dz);
+        if (L < 0.6) continue;
+        const Mx = (Ax + Bx) / 2, Mz = (Az + Bz) / 2; if (Mx < ox || Mx >= ox + CS || Mz < oz || Mz >= oz + CS) continue;
+        let nx = dz / L, nz = -dx / L; if (inside(d, Mx + nx * 0.3, Mz + nz * 0.3)) { nx = -nx; nz = -nz; }
+        const qm = fieldAt(Mx + nx * 0.8, Mz + nz * 0.8); if (!(dA[qm] > 0.3 && PV[qm] > 0)) continue;
+        const qa = fieldAt(Ax + nx * 0.3, Az + nz * 0.3), qb = fieldAt(Bx + nx * 0.3, Bz + nz * 0.3);
+        const wa = walkY(near[qa], Ax + nx * 0.3, Az + nz * 0.3), wb = walkY(near[qb], Bx + nx * 0.3, Bz + nz * 0.3), gap = d.y0 - Math.min(wa, wb);
+        if (gap < 0.02 || gap > 3) continue;
+        const kk = nW[qm] >= 0 ? kindOf(nW[qm]) : [0, 0.3], cu = -(2 + kk[0] + 0.9 * Math.min(kk[1], 0.99)), base = P.length / 3, px = nx * 0.02, pz = nz * 0.02;
+        P.push(Ax + px - ox, wa - 0.08, Az + pz - oz, Bx + px - ox, wb - 0.08, Bz + pz - oz, Bx + px - ox, Math.max(d.y0 + 0.1, wb + 0.02), Bz + pz - oz, Ax + px - ox, Math.max(d.y0 + 0.1, wa + 0.02), Az + pz - oz);
+        UV.push(cu, 0, cu, 0, cu, 1, cu, 1); I.push(base, base + 1, base + 2, base, base + 2, base + 3); nSk++;
+      }
+      if ((k & 31) === 31) yield;
+    }
+    cell.skirts = nSk;
     yield;
     // mobiliario (furniture.js) y marcas viales (ground.js)
     const cc = cellCtx(ci, W, ox, oz); cc.pools = [];
@@ -674,7 +732,7 @@ void main(){
   // para las vistas de prueba: ¿es (x, z) suelo libre (ni dentro de un edificio ni en mitad de la calzada)?
   const free = (x, z) => coverAt(x, z, -1) < -1e8 && nearestCar(x, z)[1] > 0.3;
   const api = { update, setRange, flush, busy, findTree, free, lastCam: null,
-    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
+    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length, ext: [...cells.values()].reduce((a, c) => a + (c.ext || 0), 0), skirts: [...cells.values()].reduce((a, c) => a + (c.skirts || 0), 0) }) };
   return api;
 } };
 })();

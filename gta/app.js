@@ -35,14 +35,14 @@ async function loadContainer(url) {
 }
 
 setMsg('Descargando relieve…', 0.03);
-const [terr, metaRes] = await Promise.all([loadContainer('data/terrain.png'), fetch('data/meta.json').then(r => r.json())]);
+const [terr, metaRes, roadsC] = await Promise.all([loadContainer('data/terrain.png'), fetch('data/meta.json').then(r => r.json()), loadContainer('data/roads.png')]);
 const M = terr.meta, META = metaRes;
 const WX = M.WX, WZ = M.WZ, CELL = M.CELL, CH = M.CH, NCX = M.NCX, NCZ = M.NCZ, CPC = M.CPC, GW = M.GW, GH = M.GH;
 const Hraw = new Int16Array(terr.sec('H')), S = new Uint8Array(terr.sec('S'));
 const H = new Float32Array(Hraw.length);
 for (let i = 0; i < H.length; i++) H[i] = Hraw[i] / 10;
 
-function heightAt(x, z) {
+function heightAt0(x, z) {
   if (x < 0) x = 0; else if (x > WX - 1e-3) x = WX - 1e-3;
   if (z < 0) z = 0; else if (z > WZ - 1e-3) z = WZ - 1e-3;
   const cx = (x / CH) | 0, cz = (z / CH) | 0, s = S[cz * NCX + cx], cs = CELL * s, n = CPC / s;
@@ -52,6 +52,20 @@ function heightAt(x, z) {
   const h00 = H[o], h10 = H[o + s], h01 = H[o + s * GW], h11 = H[o + s * GW + s];
   return fx >= fz ? h00 + (h10 - h00) * fx + (h11 - h10) * fz : h00 + (h11 - h01) * fx + (h01 - h00) * fz;
 }
+// S2 (suelos): calles planas. BCN_SUELOS.allanar rehace la cota bajo las calles (relieve suavizado solo con el suelo de las
+// calzadas, rejilla de 5 m) y heightAt la devuelve: calzada, aceras, bordillos, árboles, mobiliario y vistas a pie la siguen.
+// La malla del terreno se hunde lo justo (FLAT.low) para no asomar por encima de las calles. Sin suelos.js, el relieve tal cual.
+let FLAT = null;
+if (window.BCN_SUELOS && window.BCN_SUELOS.allanar) try {
+  const t0 = performance.now(), dv = roadsC.view('data'), polys = [];
+  for (const bk of roadsC.meta.buckets) { let p = bk[2]; const end = bk[2] + bk[3];
+    while (p < end) { const cls = dv.getUint8(p), w = dv.getUint8(p + 1) / 4, n = dv.getUint16(p + 2, true); let x = dv.getInt32(p + 4, true) / 10, z = dv.getInt32(p + 8, true) / 10; p += 12;
+      const xs = [x], zs = [z]; for (let k = 1; k < n; k++, p += 4) { x += dv.getInt16(p, true) / 10; z += dv.getInt16(p + 2, true) / 10; xs.push(x); zs.push(z); }
+      polys.push({ cls, hw: w / 2, xs, zs }); } }
+  FLAT = window.BCN_SUELOS.allanar(heightAt0, polys, WX, WZ, GW, GH, CELL);
+  console.log('calles planas (S2):', Math.round(performance.now() - t0), 'ms', JSON.stringify(FLAT.stats));
+} catch (e) { FLAT = null; console.log('calles planas (S2) desactivadas:', e && e.message); }
+function heightAt(x, z) { return FLAT ? FLAT.h(x, z) : heightAt0(x, z); }
 
 // ------------------------------------------------------------------ motor
 const canvas = $('c');
@@ -1042,6 +1056,12 @@ await tick();
     const cx = dv.getUint8(p), cz = dv.getUint8(p + 1), nV = dv.getUint32(p + 4, true), nI = dv.getUint32(p + 8, true); p += 12;
     const pos = new Float32Array(nV * 3);
     for (let v = 0; v < nV; v++, p += 6) { pos[v * 3] = dv.getUint16(p, true) / 10; pos[v * 3 + 1] = dv.getInt16(p + 2, true) / 10; pos[v * 3 + 2] = dv.getUint16(p + 4, true) / 10; }
+    // S2: hunde los nudos bajo los que alguna calle quedó más baja que el relieve (FLAT.low, nudos de 20 m; en los trozos
+    // simplificados, el mínimo en todo el triángulo que cubre el vértice), y 5 cm más, para que el terreno no asome
+    if (FLAT) { const sc = S[cz * NCX + cx] || 1, ox = cx * CH, oz = cz * CH;
+      for (let v = 0; v < nV; v++) { const gi = Math.round((pos[v * 3] + ox) / CELL), gj = Math.round((pos[v * 3 + 2] + oz) / CELL); let lo = 0;
+        for (let b = gj - sc + 1; b <= gj + sc - 1; b++) for (let a = gi - sc + 1; a <= gi + sc - 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH) { const l = FLAT.low[b * GW + a]; if (l < lo) lo = l; }
+        if (lo < 0) pos[v * 3 + 1] += lo - 0.05; } }
     if ((nV * 6) % 4) p += 2;
     const idx = new Uint16Array(nI);
     for (let v = 0; v < nI; v++, p += 2) idx[v] = dv.getUint16(p, true);
@@ -1127,7 +1147,7 @@ let roadTris = 0;
 const SUELOS = window.BCN_SUELOS || null; if (SUELOS) SUELOS._barris = META.barris;   // suelos.js: aún no hay BCN_BARRI
 const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fachadas, aceras, árboles y mobiliario
 {
-  const rd = await loadContainer('data/roads.png');
+  const rd = roadsC;   // cargado al principio (S2: calles planas)
   const dv = rd.view('data');
   const xs = [], zs = [];
   function sub(x0, z0, h0, x1, z1, h1, depth) {
