@@ -71,3 +71,8 @@ final para el usuario con lo mejor del día (de día y de noche) en
   al moverse), y ground.webp se descodifica dos veces (nature.js y transporte.js): comparte la descodificación si es fácil.
   Falta una vista de dron de un cruce con boca y marquesina (la de T2 mira a una azotea). Una estación sigue sin boca y
   dos con menos de las que tocan (`count.noSite`, `count.short`).
+- **Ciutat Vella sin árboles (petición expresa)**: tras ARB4 aún queda en el Gòtic un alcorque con reja y un árbol adulto
+  (`arb4/dgo_tp_gotic.jpg`), porque `streetKind` (streets.js) cuenta como «ancho» un tramo con un lado sin edificios. En
+  Ciutat Vella exige edificios a los dos lados o calzada de semiancho ≥ 5 m para ser ancho (sus ramblas y paseos siguen la
+  regla de media densidad). Haz lo mismo fuera de Ciutat Vella si el tramo solo es «ancho» por dar a un solar o a una plaza.
+  Y quita la rama muerta del alcorque en FS_WALK (`step(0.84, f.a)`): ahora los alcorques son instancias.
