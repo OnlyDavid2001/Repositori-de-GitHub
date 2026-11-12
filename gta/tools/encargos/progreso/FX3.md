@@ -14,13 +14,14 @@ galerías, casas bajas/patios/pendientes, hoja final por calle típica). Sigue a
   Altura total ~1,0 m.
 - **Terrazas corridas con peto de obra** (eix_60, sg_terrasses, lc_terrasses, hg_terrassa, nb_terrassa, per_terrassa,
   sar_pedra): peto de 0,45 m y 9 cm con albardilla fina y barandilla calada (lattice K.IRON, un quad) hasta ~1 m;
-  losa de 16 cm; balconeras más anchas (×1,3) y altas (hasta 2,5 m) detrás; más macetas (≥55 %) y otra al fondo.
+  losa de 16 cm; balconeras más anchas (×1,3) y altas (hasta 2,5 m) detrás; a veces (22 %) una segunda maceta al fondo
+  (las macetas cuestan ~250 triángulos: subir más su probabilidad disparaba la capa ORNAMENTO).
 - **Forjados de balcón**: 14 cm (antes 18) y cara inferior oscura (`env.losaV`: piedra a la sombra, gris o verde oscuro,
   por edificio, 5.º número del ámbito (b, 6, 1)); ménsulas más pequeñas y oscuras.
 - **Galerías**: carpintería de aluminio claro o lacado (`env.galM`, por edificio), travesaño, vierteaguas, persianas
-  enrollables a distintas alturas en ~55 % de las hojas (`env.galP`), alguna maceta; cara inferior oscura.
+  enrollables a distintas alturas en ~55 % de las hojas (`env.galP`), alguna maceta (10 %); cara inferior oscura.
 - **Alero** (casas bajas): canto de teja calado sobre tablero pintado o de madera, canecillos.
-- Depuración: `BCN.fx.calle(x, z, side, dir, giro)` → vista a pie a lo largo de la calle más cercana (en la acera, mirando
+- `BCN.fx.calle(x, z, side, dir, giro)` → vista a pie a lo largo de la calle más cercana (en la acera, mirando
   a lo largo y algo hacia la acera de enfrente).
 
 ## Cómo se prueba

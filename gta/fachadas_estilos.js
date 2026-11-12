@@ -89,7 +89,7 @@ const FAM = {
     { id: 'eix_pedra', bay: 3.8, acab: 'piedra', princ: 'corrido', bar: 'balaustre', carp: 'porticon', carpCol: MARRON, recerc: 3,
       imposta: 2, pil: true, coron: 'balaustrada', trib: 0.3, mac: 0.2, remate: 0.35 },
     { id: 'eix_60', bay: 3.3, hp: 2.95, hueco: 'mixto', bal: 'terraza', bar: 'obra', vuelo: 1.1, carp: 'enrollable', carpCol: ALU,
-      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.5, remate: 0.25 }],
+      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.35, remate: 0.25 }],
   // Gràcia: casas de 3–5 plantas, más estrechas, balcones corridos de forja sencilla, colores vivos, lamas
   gracia: [
     { id: 'gra_corrido', bay: 3.1, hp: 3.0, bal: 'corrido', vuelo: 0.75, carp: 'librillo', carpCol: VERDE, recerc: 1, imposta: 1,

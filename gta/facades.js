@@ -616,7 +616,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       for (let q = 0; q <= n; q++) { const x = e0 + 0.02 + (e1 - e0 - 0.1) * q / n; box(W1, F, x, x + 0.06, g0, g1, dg, dg + 0.05, mc, K.METAL, 4); }
       box(W1, F, e0, e1, g0, g0 + 0.06, dg, dg + 0.05, mc, K.METAL, 1); box(W1, F, e0, e1, tr, tr + 0.05, dg, dg + 0.05, mc, K.METAL, 3);
       box(W1, F, e0, e1, g1 - 0.06, g1, dg, dg + 0.05, mc, K.METAL, 2);
-      if (rr[11] < 0.3) planter(W1, F, e0 + 0.3 + rr[4] * Math.max(0, e1 - e0 - 0.7), dg + 0.02, g0, rr[5], rr[2], rr[6]);   // maceta en el vierteaguas
+      if (rr[11] < 0.1) planter(W1, F, e0 + 0.3 + rr[4] * Math.max(0, e1 - e0 - 0.7), dg + 0.02, g0, rr[5], rr[2], rr[6]);   // maceta en el vierteaguas
     }
     wr(W0, F, a, e0, k, P, wc, kw); wr(W0, F, e1, a + bw, k, P, wc, kw);
   }
@@ -710,8 +710,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr, Vw);
         if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.07, k - 0.2, lb, 0, jt * 0.5, shade(sub, 1.15), KS, 5);
         if (rr[9] < V.ropa) ropa(W0, F, e0, e1, k + 1.08, jt + 0.03, rr[10]);
-        if (W1 && rr[3] < (ter ? Math.max(0.55, V.mac) : V.mac) && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
-        if (W1 && ter && rr[11] < 0.45 && e1 - e0 > 1.6) planter(W1, F, e1 - 0.75 - rr[1] * 0.3, Math.max(0.3, jt - 0.6), k + 0.12, rr[6], rr[4], rr[1]);   // terraza: otra maceta al fondo
+        if (W1 && rr[3] < V.mac && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
+        if (W1 && ter && rr[11] < 0.22 && e1 - e0 > 1.6) planter(W1, F, e1 - 0.75 - rr[1] * 0.3, Math.max(0.3, jt - 0.6), k + 0.12, rr[6], rr[4], rr[1]);   // terraza: otra maceta al fondo
       }
     }
   }
@@ -808,10 +808,16 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const run = (px, pz, ux, uz, mx) => { let t = 0; while (t < mx && free(px + ux * (t + 0.5), pz + uz * (t + 0.5))) t += 0.5; return t; };
     let best = 0, ba = 0;
     for (let a = 0; a < Math.PI; a += Math.PI / 72) { const ux = Math.cos(a), uz = Math.sin(a), l = run(bx, bz, ux, uz, 120) + run(bx, bz, -ux, -uz, 120); if (l > best) { best = l; ba = a; } }
-    const ux = Math.cos(ba) * (dir || 1), uz = Math.sin(ba) * (dir || 1), px = -uz * (side || 1), pz = ux * (side || 1);
-    const w = run(bx, bz, px, pz, 30), ex = bx + px * Math.max(0, w - 1.8), ez = bz + pz * Math.max(0, w - 1.8);
-    const g = (giro === undefined ? 0.22 : giro), vx = ux * Math.cos(g) - px * Math.sin(g), vz = uz * Math.cos(g) - pz * Math.sin(g);
-    return { x: ex, z: ez, walk: true, yaw: Math.atan2(vx, vz), pitch: 0.1, ancho: w + run(bx, bz, -px, -pz, 30), largo: best, fam: (b => b < 0 ? null : famOf(b))(nearestB(ex + px * 2.5, ez + pz * 2.5)) };
+    const wl = run(bx, bz, -Math.sin(ba), Math.cos(ba), 30), wr2 = run(bx, bz, Math.sin(ba), -Math.cos(ba), 30), Wt = wl + wr2;
+    for (const [dd, gg] of [[dir || 1, giro], [-(dir || 1), giro], [dir || 1, 0], [-(dir || 1), 0]]) {
+      const ux = Math.cos(ba) * dd, uz = Math.sin(ba) * dd, px = -uz * (side || 1), pz = ux * (side || 1);
+      const w = run(bx, bz, px, pz, 30), o = Wt < 9 ? Wt / 2 : Math.min(3.4, Wt * 0.22);   // estrecha: en medio; ancha: en la acera
+      const ex = bx + px * (w - o), ez = bz + pz * (w - o);
+      const g = gg === undefined ? (Wt < 9 ? 0.12 : 0.26) : gg, vx = ux * Math.cos(g) - px * Math.sin(g), vz = uz * Math.cos(g) - pz * Math.sin(g);
+      if (run(ex, ez, vx, vz, 40) < 14 && gg !== 0) continue;
+      return { x: ex, z: ez, walk: true, yaw: Math.atan2(vx, vz), pitch: Wt < 9 ? -0.36 : -0.24, ancho: Wt, largo: best, fam: (b => b < 0 ? null : famOf(b))(nearestB(ex + px * o, ez + pz * o)) };
+    }
+    return { x: bx, z: bz, walk: true, yaw: Math.atan2(Math.cos(ba), Math.sin(ba)), pitch: -0.2 };
   }
   function nearestB(x, z) { let b = -1; rangeCells(x - 3, z - 3, x + 3, z + 3, c => { for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) { const n = ALL.list[k]; if (b < 0 && BB[n * 4] < x + 3 && BB[n * 4 + 2] > x - 3 && BB[n * 4 + 1] < z + 3 && BB[n * 4 + 3] > z - 3) b = n; } }); return b; }
 
