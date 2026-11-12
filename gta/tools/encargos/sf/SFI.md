@@ -50,7 +50,7 @@ aproximado) y empieza tus arreglos por las diferencias más visibles en las fach
 capturar más fotos, el método está en la cabecera de esos INDEX.md (Firecrawl: captura de la página y descarga desde
 storage.googleapis.com).
 
-## La cruz: modelo 3D del usuario (SFR, prioridad máxima; si SFI tiene margen, hazlo ya en SFI)
+## La cruz: modelo 3D del usuario (si SFI tiene margen, hazlo ya en SFI; si no, lo hace SFD2)
 El usuario ha pasado un modelo 3D de la cruz de la torre de Jesucrist. Está convertido en **`gta/data/sf_cruz.json`**
 (lo genera `gta/tools/stl_cruz.py` desde su STL; 6 649 vértices y 13 708 triángulos, ya escalado a las medidas reales:
 17 m de alto y 13,5 m de ancho; Y arriba; base del fuste en y = 0 y centrado en el eje; brazos a lo largo de ±X y ±Z;
@@ -63,3 +63,10 @@ de cerámica blanca esmaltada con brillo y vidrio, y de noche que brille en blan
 luz**. Niveles de detalle: la malla del usuario a menos de ~1 500 m; más lejos, la cruz procedimental (o nada si no se
 distingue). Mide el coste y comprueba a mediodía y a las 23:00, desde los remates y desde el dron. Publica también
 `data/sf_cruz.json` (lo hace el coordinador).
+
+## Orden de las etapas tras el modelo 3D del usuario
+Después de SFI van **SFD1 y SFD2** (`SFD.md`: contrastar con el modelo 3D de la basílica que ha pasado el usuario y con las
+fotos; la cruz del usuario la pone SFD2 si SFI no lo hizo) y al final **SFR**. SFR: lee los informes de SFD1 y SFD2 en tu
+encargo, revisa con dureza lo que hayan dejado (empieza por la noche desde el dron, que salía casi blanca y uniforme, y por
+lo que digan flojo) y monta la hoja final, con una vista parecida a cada foto del usuario y otra a cada alzado de su
+modelo (`scratchpad/sf/ref_modelo/`).
