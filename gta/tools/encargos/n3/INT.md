@@ -61,3 +61,9 @@ final para el usuario con lo mejor del día (de día y de noche) en
   cálida en el paseo y blanca en el puerto, y la ciudad se duplica en el mar cerca de la orilla. Añade en FS_SEA esas
   estelas (por ejemplo, muestreando la máscara de luz de noche de la costa a lo largo de la vertical de la pantalla, con
   rizado del oleaje) y un brillo suave del agua bajo la ciudad, sin quemar. Comprueba con las tres vistas de esa carpeta.
+- **Paseos de PLAZAS y árboles de ÁRBOLES 3**: P2 equipa los andenes centrales y laterales de paseos y ramblas (teselas de
+  160 m en plazas.js). Tras fusionar, comprueba que los árboles que ponga plazas.js en esos andenes no se suman a los de
+  streets.js y que el total respeta la regla de ÁRBOLES 3 (adultos a media densidad en avenidas, ramblas y paseos; nada
+  de duplicados). Mira la Diagonal y el Passeig de Gràcia desde el dron y a pie en tercera persona.
+- **Plaça de la Vila de Gràcia a pie** (`p2/d1_gracia_pie.jpg`): hay un bloque blanco liso en medio de la plaza (¿la
+  base del campanario o un volumen del registro?); revísalo.
