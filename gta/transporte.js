@@ -57,6 +57,24 @@ window.BCN_TRANSPORTE = { LINES, async init(ctx) {
   const WX = ctx.WX, WZ = ctx.WZ;
   const data = await (await fetch('data/transporte_metro.json')).json();
 
+  // ---------------------------------------------------------------- césped y parterres (ortofoto data/ground.webp, 5 m/px)
+  // Solo lectura y por baldosas de 64 px que se descodifican al pedirlas (las de las paradas y las de alrededor de cada
+  // estación, todas al cargar; luego se suelta la imagen). Mismo criterio que nature.js: verde claro (parque o prado) es
+  // césped; el verde oscuro de las copas de los árboles de calle no cuenta.
+  const GPX = 5, GT = 64, lawnT = new Map(); let gBmp = null, gW = 0, gH = 0, gCv = null, gG = null;
+  try { const url = await ctx.blobURL('data/ground.webp'); gBmp = await createImageBitmap(await (await fetch(url)).blob()); URL.revokeObjectURL(url);
+    gW = gBmp.width; gH = gBmp.height; gCv = document.createElement('canvas'); gCv.width = gCv.height = GT; gG = gCv.getContext('2d', { willReadFrequently: true }); }
+  catch (e) { gBmp = null; }
+  function lawnTile(ti, tj) { const k = tj * 1000 + ti; let T = lawnT.get(k); if (T !== undefined) return T;
+    T = null;
+    if (gBmp) { gG.clearRect(0, 0, GT, GT); gG.drawImage(gBmp, -ti * GT, -tj * GT); const D = gG.getImageData(0, 0, GT, GT).data; T = new Uint8Array(GT * GT);
+      for (let q = 0; q < GT * GT; q++) { const r = D[q * 4], g = D[q * 4 + 1], b = D[q * 4 + 2], V = g - Math.max(r, b); T[q] = V >= 6 && !(V >= 22 && g < 132) ? 1 : 0; } }
+    lawnT.set(k, T); return T; }
+  const lawnAt = (x, z) => { const i = Math.floor(x / GPX), j = Math.floor((WZ - z) / GPX); if (i < 0 || j < 0 || i >= gW || j >= gH) return false;
+    const T = lawnTile(i / GT | 0, j / GT | 0); return !!(T && T[(j % GT) * GT + (i % GT)]); };
+  // ¿algún punto del rectángulo del marco (con margen) sobre césped?
+  const lawnRect = (F, u0, u1, d0, d1, m) => { for (let a = 0; a <= 3; a++) for (let b = 0; b <= 2; b++) { const [x, z] = toL(F, u0 - m + (u1 - u0 + 2 * m) * a / 3, d0 - m + (d1 - d0 + 2 * m) * b / 2); if (lawnAt(x, z)) return true; } return false; };
+
   // ---------------------------------------------------------------- atlas de rótulos (8×8 celdas de 128 px)
   const tex = new BABYLON.DynamicTexture('trSign', { width: 1024, height: 1024 }, scene, true);
   tex.wrapU = tex.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
@@ -140,8 +158,8 @@ void main(){
   vec3 alb = vCol.rgb; float rough = 0.7, metal = 0.0; vec3 c;
   if (pat > 0.5 && pat < 1.5) { vec2 g = abs(fract(P/0.15) - 0.5); float gr = smoothstep(0.43, 0.48, max(g.x, g.y))*(1.0 - smoothstep(20.0, 60.0, length(D)));
     alb *= mix(1.0, 0.62, gr)*(0.96 + 0.08*hash21(floor(P/0.15))); rough = mix(0.22, 0.8, gr); }
-  else if (pat > 1.5 && pat < 2.5) { alb *= 0.86 + 0.24*vnoise(P*11.0); rough = 0.82; }
-  else if (pat > 3.5 && pat < 4.5) { rough = 0.32; metal = 1.0; }
+  else if (pat > 1.5 && pat < 2.5) { alb *= 0.96 + 0.06*vnoise(P*3.0); rough = 0.75; }
+  else if (pat > 3.5 && pat < 4.5) { rough = 0.5; metal = 0.0; }
   if (pat > 2.5 && pat < 3.5) c = emit(vec3(0.95, 0.93, 0.86), mix(1.25, 2.3, fN));
   else c = shade(alb*mix(0.4, 1.0, ab), n, V, rough, metal, mix(0.5, 1.0, ab)) + emit(alb*mix(0.55, 1.0, ab), lampF*mix(0.8, 1.05, fN));
   FRAG(c); }`, ['position', 'color', 'uv', 'nrm'], ['uOp', 'uVP'], []) : null;
@@ -158,8 +176,8 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
 
   // acabados
   const STEEL = pbrAux(0.32, 1, 0, 0), PAINT = pbrAux(0.45, 0, 0, 0), GRAN = pbrAux(0.8, 0, 0, 0), MATTE = pbrAux(0.85, 0, 0, 0), RUB = pbrAux(0.9, 0, 0, 0);
-  const DGLASS = pbrAux(0.1, 0, 0, 0), LITW = pbrAux(0.5, 0, 0, 1);
-  const C_STEEL = [176, 180, 184], C_DARK = [58, 62, 66], C_GRAN = [150, 146, 138], C_TILE = [226, 224, 214], C_STEP = [140, 138, 132], C_NOSE = [70, 70, 72];
+  const DGLASS = pbrAux(0.1, 0, 0, 0), LITW = pbrAux(0.5, 0, 0, 1), BRUSH = pbrAux(0.5, 0.2, 0, 0);
+  const C_STEEL = [176, 180, 184], C_DARK = [58, 62, 66], C_GRAN = [150, 146, 138], C_TILE = [226, 224, 214], C_STEP = [200, 194, 182], C_NOSE = [58, 58, 56];
   const tin = (pat, ao, lamp) => [pat, Math.round(ao * 255), Math.round(lamp * 255), 0];   // (en el interior, con el id de boca en w)
 
   // ---------------------------------------------------------------- utilidades de marco y piezas
@@ -228,19 +246,24 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   for (const l in LINES) count.byLine[l] = { st: 0, ent: 0 };
 
   // ---------------------------------------------------------------- paradas de bus (al iniciar: retícula global por calle)
+  // Dos pasadas: 1) marquesinas en las calles principales (calzada ancha); 2) postes solo en algunas calles secundarias con
+  // bus (≈ 1 de cada 4 rectas, elegidas por recta: la calle entera la lleva o no), cada 350 m alternando acera y nunca a
+  // menos de 160 m de una marquesina. No hay datos de líneas reales: la elección es estable pero no sigue recorridos.
+  const SHL = new Map(), shKey = (x, z) => Math.floor(x / 200) + ',' + Math.floor(z / 200);
+  const shNear = (x, z, r) => { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = SHL.get((Math.floor(x / 200) + i) + ',' + (Math.floor(z / 200) + j)); if (L) for (let k = 0; k < L.length; k += 2) if (Math.hypot(L[k] - x, L[k + 1] - z) < r) return true; } return false; };
   { const t0 = performance.now();
-    for (let s = 0; s < NSEG; s++) {
-      const o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4]; if (!WALK.has(cls) || hw < 3) continue;
+    for (const pass of [0, 1]) for (let s = 0; s < NSEG; s++) {
+      const o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4]; if (!WALK.has(cls) || hw < 3 || (hw >= 4.5) !== (pass === 0)) continue;
       const ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L = Math.hypot(dx, dz); if (L < 30) continue;
       const tx = dx / L, tz = dz / L, px = -tz, pz = tx, a0 = ax * tx + az * tz, big = hw >= 4.5, both = hw >= 8;
       // fase por calle: misma recta (distancia al origen y rumbo) → misma fase
-      const cc = Math.round((ax * px + az * pz) / 18), ab = Math.round(((Math.atan2(tz, tx) + 6.2832) % 3.1416) * 20), SP = 380, ph = GEO.hash2(cc, ab) * SP;
+      const cc = Math.round((ax * px + az * pz) / 18), ab = Math.round(((Math.atan2(tz, tx) + 6.2832) % 3.1416) * 20), SP = big ? 380 : 350, ph = GEO.hash2(cc, ab) * SP;
+      if (!big && (hw < 3.5 || GEO.hash2(cc + 7919, ab + 104) > 0.26)) continue;           // calle secundaria sin bus
       for (let u = Math.ceil((a0 - ph) / SP) * SP + ph - a0; u < L; u += SP) {
         const n = Math.round((a0 + u - ph) / SP);
         for (const sd of both ? [1, -1] : [n % 2 ? 1 : -1]) {
           seed(151, s, n * 2 + (sd > 0 ? 1 : 0));
           const rn = [R(), R(), R(), R(), R()];
-          if (!big && rn[3] > 0.45) continue;                       // no todas las calles secundarias llevan bus
           // centro entre dos árboles (retícula de 10,5 m de streets.js), probando el hueco más cercano y los dos vecinos
           const ub = u + (sd !== (n % 2 ? 1 : -1) ? SP / 2 : 0);
           let ok = null;
@@ -248,12 +271,13 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
             const uu = Math.round((a0 + ub - 5.25) / 10.5) * 10.5 + 5.25 - a0 + k * 10.5;
             if (uu < 12 || uu > L - 12) continue;
             const cx = ax + tx * uu + px * sd * hw, cz = az + tz * uu + pz * sd * hw;
-            if (!inWorld(cx, cz) || nearJ(cx, cz, 16) || furnNear(a0, uu, sd, hw, cls, big ? 3.2 : 1.2)) continue;
+            if (!inWorld(cx, cz) || nearJ(cx, cz, 16) || furnNear(a0, uu, sd, hw, cls, big ? 3.2 : 1.2) || (!big && shNear(cx, cz, 160))) continue;
             const ang = Math.atan2(tz * sd, tx * sd) , F = { x: cx, z: cz, tx: tx * sd, tz: tz * sd, nx: -tz * sd, nz: tx * sd };
             // d (izquierda de t·sd) = hacia la acera de ese lado (px·sd)
             const r = big ? 3.4 : 1.0;
             if (!occFree(cx + px * sd * 1.2, cz + pz * sd * 1.2, r)) continue;
             if (big ? !freeRect(F, -2.9, 2.4, 0.25, 2.15, 0.7, 0.2, 0) : !freeRect(F, -0.3, 0.3, 0.2, 0.6, 0.3, 0.15, 0)) continue;
+            if (big ? lawnRect(F, -2.9, 2.4, 0.25, 2.15, 0.6) : lawnRect(F, -0.3, 0.3, 0.2, 0.6, 0.4)) continue;
             ok = { uu, cx, cz, ang, F }; break;
           }
           if (!ok) continue;
@@ -261,7 +285,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
           const y = walkAt(ok.cx + px * sd * 1.2, ok.cz + pz * sd * 1.2);
           addItem({ t: big ? 'S' : 'P', x: ok.cx, z: ok.cz, a: ok.ang, y, lines, v: rn[4] });
           occAdd(ok.cx + px * sd * 1.2, ok.cz + pz * sd * 1.2, big ? 3.4 : 1.0);
-          if (big) count.shelters++; else count.poles++;
+          if (big) { count.shelters++; const kk = shKey(ok.cx, ok.cz); if (!SHL.has(kk)) SHL.set(kk, []); SHL.get(kk).push(ok.cx, ok.cz); } else count.poles++;
         }
       }
     }
@@ -272,7 +296,9 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   const ST = data.st.filter(st => inWorld(st.p[0], st.p[1]));
   const placed = new Uint8Array(ST.length);
   const PED = new Set([7, 9, 15, 16]);
-  function placeStation(si) {
+  // La colocación de una estación es un generador: cede el paso (yield) cada pocos tramos y cada pocos sitios probados, y la
+  // cola del fotograma la reanuda con su presupuesto de 3 ms (antes eran ~55 ms de golpe por estación: un tirón).
+  function* placeGen(si) {
     placed[si] = 1;
     const st = ST[si], nL = st.l.length, want = nL === 1 ? 2 : nL === 2 ? 3 : 4, isNew = st.l.some(l => /L9|L10|L11/.test(l));
     seed(150, si, 0); const rs = []; for (let k = 0; k < 24; k++) rs.push(R());
@@ -281,7 +307,9 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     for (let j = Math.floor((st.p[1] - RAD) / CS); j <= Math.floor((st.p[1] + RAD) / CS); j++) for (let i = Math.floor((st.p[0] - RAD) / CS); i <= Math.floor((st.p[0] + RAD) / CS); i++) {
       if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const ci = j * NX + i; for (let k = ROADS.start[ci]; k < ROADS.start[ci + 1]; k++) segs.add(ROADS.list[k]); }
     const cand = [];
+    let nY = 0;
     for (const s of segs) {
+      if (++nY % 2 === 0) { PH = 'seg'; yield; }
       const o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4], ped = PED.has(cls); if (!(CAR.has(cls) || ped) || hw < 1.5) continue;
       const ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L = Math.hypot(dx, dz); if (L < 8) continue;
       const tx = dx / L, tz = dz / L, px = -tz, pz = tx, a0 = ax * tx + az * tz;
@@ -293,32 +321,51 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
         cand.push([dt + (oi % 5) * 1.5 + (ped ? 0 : 0), s, u, off, x, z, a0, cls, hw]);
       }
     }
+    PH = 'pre'; yield;
     cand.sort((a, b) => a[0] - b[0]);
-    const got = [];
-    // dos pasadas: primero lejos de las fachadas (≥ 3,1 m: fuera de las terrazas de bares, que llegan a 2,9 m), luego, si faltan,
-    // a 1 m de ellas (ahí puede tocar alguna terraza)
-    for (const MARG of [3.1, 1.0]) for (const c of cand) {
+    PH = 'sort' + cand.length; yield;
+    const got = [], MARG = 3.1;
+    // siempre a ≥ 3,1 m de las fachadas: las terrazas de bar (interiors.js) llegan a 2,9 m de la fachada y no se publican; la
+    // pasada de antes a 1 m de la fachada caía encima de alguna (Bogatell) y se ha quitado. Lejos de los cruces (13 m: pasos de
+    // cebra y sus bolardos) y fuera del césped y los parterres (ortofoto).
+    for (const c of cand) {
       if (got.length >= want) break;
       const [, s, u, off, x, z, a0, cls, hw] = c;
       if (got.some(g => Math.hypot(g.x - x, g.z - z) < 28)) continue;
-      if (nearJ(x, z, 11) || !occFree(x, z, 4.2)) continue;
+      if (nearJ(x, z, 13) || !occFree(x, z, 4.2)) continue;
+      if (++nY % 2 === 0) { PH = 'test'; yield; }
       const o = s * 6, L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]), tx = (SEG[o + 2] - SEG[o]) / L, tz = (SEG[o + 3] - SEG[o + 1]) / L;
       const k = got.length, dir = rs[k] < 0.5 ? 1 : -1, ang = Math.atan2(tz * dir, tx * dir), F = { x, z, tx: Math.cos(ang), tz: Math.sin(ang), nx: -Math.sin(ang), nz: Math.cos(ang) };
       if (!PED.has(cls) && furnNear(a0, u, off > 0 ? 1 : -1, hw, cls, 4.2)) continue;
       { if (coverAt(x, z, -1) > -1e8) continue; const nc = nearestCar(x, z); if (nc[0] >= 0 && (nc[1] < 2.9 || (nc[1] > 9 && !(roadDist(x, z) < 0)))) continue; }
       if (got.some(g => g.x === x && g.z === z) || !freeRect(F, -3.7, 3.0, -1.3, 1.3, MARG, 1.85, 9)) continue;
       const [lo, hi] = yRange(F, -2.7, 2.7, -0.9, 0.9); if (hi - lo > 0.4) continue;
+      if (lawnRect(F, -3.7, 3.0, -1.3, 1.3, 4.5)) continue;
       // tótem del lado de la calzada (el que se ve desde la calle)
       const [qx, qz] = toL(F, 0, 1), sideT = (nearestCar(qx, qz)[1] < nearestCar(...toL(F, 0, -1))[1]) ? 1 : -1;
-      let lift = false; if (k === 0 && rs[10] < 0.55 && freeRect(F, 2.8, 5.6, -1.2, 1.2, 0.6, 1.85, 9)) lift = true;
+      let lift = false; if (k === 0 && rs[10] < 0.55 && freeRect(F, 2.8, 5.0, -1.0, 1.0, 0.6, 1.85, 9) && !lawnRect(F, 2.8, 5.0, -1.0, 1.0, 4.0)) lift = true;
       const canopy = rs[12 + k] < (isNew ? 0.6 : 0.2);
       got.push({ t: 'M', x, z, a: ang, y: hi, si, lines: st.l, sideT, lift, canopy, v: rs[18 + k] });
-      if (MARG < 3) count.nearFacade = (count.nearFacade || 0) + 1;
     }
     for (const g of got) { addItem(g); occAdd(g.x, g.z, g.lift ? 5.2 : 4.2); }
     count.stations++; count.entrances += got.length; for (const g of got) { if (g.lift) count.lifts++; if (g.canopy) count.canopies++; }
     for (const l of st.l) if (count.byLine[l]) { count.byLine[l].st++; count.byLine[l].ent += got.length; }
     if (!got.length) count.noSite = (count.noSite || 0) + 1;
+    if (got.length < want) count.short = (count.short || 0) + 1;
+  }
+  // césped: descodifica ya las baldosas de alrededor de cada estación y suelta la imagen (nada de esto en mitad del juego)
+  for (const st of ST) for (let dx = -220; dx <= 220; dx += 110) for (let dz = -220; dz <= 220; dz += 110) lawnAt(st.p[0] + dx, st.p[1] + dz);
+  if (gBmp) { gBmp.close && gBmp.close(); gBmp = null; }
+  // cola de colocación: reanuda la estación en curso dentro del presupuesto; mide el paso más largo
+  let cur = null, PH = '';
+  function stepPlace(t0, ms) {
+    while (performance.now() - t0 < ms) {
+      if (!cur) { if (!placeQ.length) return true; const si = placeQ.shift()[1]; if (placed[si]) continue; cur = placeGen(si); }
+      const a = performance.now(), done = cur.next().done, d = performance.now() - a; if (d > (count.maxStepMs || 0)) count.maxStepMs = +d.toFixed(2);
+      count.nSteps = (count.nSteps || 0) + 1; if (d > 8) (count.slow = count.slow || []).push(+d.toFixed(1) + ':' + PH);
+      if (done) cur = null;
+    }
+    return !cur && !placeQ.length;
   }
 
   // ---------------------------------------------------------------- geometría: boca de metro
@@ -326,7 +373,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   function entrance(it, B, Bi, Bl, Bg, lvl, ox, oz) {
     const F = mkF(it.x, it.z, it.a, ox, oz), y0 = it.y, yb = y0 - NS * RISE, st = it.sideT, oid = Bl ? Bl.n : 0;
     const tin = (pat, ao, lamp) => [pat, Math.round(ao * 255), Math.round(lamp * 255), oid], MET = [4, 255, 0, oid];
-    const rail = it.v < 0.3 ? [150, 152, 150] : it.v < 0.65 ? [72, 82, 80] : C_DARK, RA = it.v < 0.3 ? pbrAux(0.55, 0.5, 0, 0) : PAINT;
+    const rail = it.v < 0.3 ? [168, 170, 170] : it.v < 0.65 ? [72, 82, 80] : C_DARK, RA = it.v < 0.3 ? BRUSH : PAINT;
     if (lvl === 1) {
       // --- interior (grupo 3)
       const aoAt = y => Math.max(0, Math.min(1, 1 - (y0 - y) / 3.3));
@@ -335,7 +382,8 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       for (let i = 0; i < NS; i++) { const ua = US + i * RUN, ub = ua + RUN, yt = y0 - (i + 1) * RISE, a = tin(2, aoAt(yt), 0.45);
         jamb(Bi, F, ua, yt, yt + RISE, -HWI, HWI, shade(C_STEP, 0.9), K.TRIN, a);
         hpl(Bi, F, ua, ub, yt, -HWI, HWI, C_STEP, K.TRIN, a);
-        jamb(Bi, F, ua - 0.003, yt + RISE - 0.04, yt + RISE, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3)); }
+        jamb(Bi, F, ua - 0.003, yt + RISE - 0.03, yt + RISE, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3));
+        hpl(Bi, F, ub - 0.06, ub, yt + 0.003, -HWI + 0.06, HWI - 0.06, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3)); }   // borde antideslizante
       hpl(Bi, F, U0, US, y0 - 0.004, -HWI, HWI, C_STEP, K.TRIN, tin(2, 1, 0.3));                       // rellano de arriba
       hpl(Bi, F, US + NS * RUN, UE, yb, -HWI, HWI, [118, 116, 110], K.TRIN, tin(2, 0, 0.5));           // rellano del fondo
       hpl(Bi, F, U1, UE, y0 - 0.35, -HWI, HWI, [150, 150, 146], K.TRIN, tin(0, 0.2, 0.3));            // techo bajo la losa
@@ -396,21 +444,34 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
         jamb(Bg, F, U1 + 0.12, y0 + 1.05, h0 - 0.1, -HWI - 0.12, HWI + 0.12, [140, 165, 160], K.PBR); }
       else quad(B, F, U0 - 0.2, h0 + 0.12, -HWI - 0.3, U1 + 0.3, h1, -HWI - 0.3, U1 + 0.3, h1, HWI + 0.3, U0 - 0.2, h0 + 0.12, HWI + 0.3, [70, 86, 88], K.PBR, DGLASS);
     }
-    // --- ascensor de cristal junto al fondo
+    // --- ascensor: caja de vidrio claro (1,5 × 1,5 × 2,6 m) con montantes de acero cepillado, techo con canto y luz, travesaño
+    // a media altura, botonera junto a la puerta (lado de la calle, u = ub) y la cabina dentro: suelo, techo con plafón,
+    // montantes finos, pasamanos y el panel de fondo de acero hasta media altura
     if (it.lift) {
-      const ua = U1 + 0.8, ub = ua + 1.9, da = -0.95, db = 0.95, hy = y0 + 2.9, [lx, lz] = toL(F, 0, 0);
-      bx(B, F, ua - 0.05, ub + 0.05, y0 - 0.05, y0 + 0.12, da - 0.05, db + 0.05, C_GRAN, K.PBR, GRAN);
-      bx(B, F, ua - 0.05, ub + 0.05, hy, hy + 0.3, da - 0.05, db + 0.05, C_DARK, K.PBR, PAINT);
-      for (const [u, d] of [[ua, da], [ua, db], [ub, da], [ub, db]]) bx(B, F, u - 0.05, u + 0.05, y0 + 0.12, hy, d - 0.05, d + 0.05, C_DARK, K.PBR, PAINT);
+      const ua = U1 + 0.75, ub = ua + 1.5, da = -0.75, db = 0.75, hy = y0 + 2.6, SC = [184, 186, 186], GLC = [196, 214, 214];
+      bx(B, F, ua - 0.06, ub + 0.06, y0 - 0.05, y0 + 0.1, da - 0.06, db + 0.06, C_GRAN, K.PBR, GRAN);                           // zócalo
+      bx(B, F, ua - 0.05, ub + 0.05, hy, hy + 0.16, da - 0.05, db + 0.05, SC, K.PBR, BRUSH);                                    // techo
+      for (const [u, d] of [[ua, da], [ua, db], [ub, da], [ub, db]]) bx(B, F, u - 0.035, u + 0.035, y0 + 0.1, hy, d - 0.035, d + 0.035, SC, K.PBR, BRUSH);
       if (lvl === 1) {
-        for (const d of [da, db]) rect(Bg, F, ua + 0.05, ub - 0.05, y0 + 0.12, hy, d, [150, 175, 172], K.PBR);
-        jamb(Bg, F, ua, y0 + 0.12, hy, da + 0.05, db - 0.05, [150, 175, 172], K.PBR); jamb(Bg, F, ub, y0 + 0.12, hy, da + 0.05, db - 0.05, [150, 175, 172], K.PBR);
-        bx(B, F, ua + 0.3, ub - 0.3, y0 + 0.12, y0 + 2.25, da + 0.3, db - 0.3, [214, 212, 204], K.PBR, PAINT);             // cabina
-        bx(B, F, ua + 0.3, ub - 0.3, y0 + 2.3, y0 + 2.36, da + 0.25, db - 0.25, [250, 246, 236], K.PBR, LITW);            // luz de cabina
-        hpl(B, F, ua - 0.05, ub + 0.05, hy - 0.01, da - 0.05, db + 0.05, [240, 238, 230], K.TRIN, tin(3, 1, 1));
-        sign(B, F, ua - 0.052, -1, -0.4, 0.4, hy + 0.05, hy + 0.25, UV_METRO, true);
-      } else bx(B, F, ua, ub, y0 + 0.12, hy, da, db, [80, 98, 100], K.PBR, DGLASS);
-      void lx; void lz;
+        for (const d of [da, db]) { rect(Bg, F, ua + 0.035, ub - 0.035, y0 + 0.1, hy, d, GLC, K.PBR);
+          bx(B, F, ua, ub, y0 + 1.02, y0 + 1.06, d - 0.02, d + 0.02, SC, K.PBR, BRUSH); }
+        for (const u of [ua, ub]) { jamb(Bg, F, u, y0 + 0.1, hy, da + 0.035, db - 0.035, GLC, K.PBR);
+          if (u === ua) bx(B, F, u - 0.02, u + 0.02, y0 + 1.02, y0 + 1.06, da, db, SC, K.PBR, BRUSH); }
+        bx(B, F, ub - 0.02, ub + 0.02, y0 + 0.1, hy, -0.02, 0.02, SC, K.PBR, BRUSH);                                         // junta de las hojas
+        // cabina dentro
+        const ca = ua + 0.14, cb = ub - 0.14, cd0 = da + 0.14, cd1 = db - 0.14, yc = y0 + 0.16, yh = y0 + 2.3;
+        bx(B, F, ca, cb, y0 + 0.1, yc, cd0, cd1, [92, 94, 96], K.PBR, MATTE);                                                   // suelo
+        bx(B, F, ca, cb, yh, yh + 0.06, cd0, cd1, SC, K.PBR, BRUSH);                                                           // techo
+        hpl(B, F, ca + 0.25, cb - 0.25, yh - 0.005, cd0 + 0.25, cd1 - 0.25, [250, 246, 236], K.TRIN, tin(3, 1, 1));          // plafón
+        for (const [u, d] of [[ca, cd0], [ca, cd1], [cb, cd0], [cb, cd1]]) bx(B, F, u - 0.015, u + 0.015, yc, yh, d - 0.015, d + 0.015, SC, K.PBR, BRUSH);
+        bx(B, F, ca, ca + 0.03, yc, y0 + 1.15, cd0, cd1, [196, 198, 198], K.PBR, BRUSH);                                       // fondo de acero
+        tube(B, F, [[ca + 0.06, y0 + 0.95, cd0 + 0.05], [ca + 0.06, y0 + 0.95, cd1 - 0.05]], 0.015, 4, SC, K.PBR, { aux: BRUSH });
+        // botonera en el montante de la puerta (fuera), con el pulsador encendido
+        bx(B, F, ub + 0.035, ub + 0.075, y0 + 0.95, y0 + 1.3, db - 0.2, db - 0.08, [70, 72, 74], K.PBR, BRUSH);
+        jamb(B, F, ub + 0.078, y0 + 1.08, y0 + 1.16, db - 0.17, db - 0.11, [240, 238, 230], K.TRIN, tin(3, 1, 1));
+        hpl(B, F, ua + 0.05, ub - 0.05, hy - 0.006, da + 0.05, db - 0.05, [210, 210, 206], K.PBR, PAINT);
+        sign(B, F, ua - 0.052, -1, -0.4, 0.4, hy + 0.0, hy + 0.15, UV_METRO, true);
+      } else bx(B, F, ua, ub, y0 + 0.1, hy, da, db, [118, 136, 138], K.PBR, DGLASS);
     }
   }
 
@@ -502,21 +563,21 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   function work(P, ms) {
     if (!lastP || Math.abs(P.x - lastP[0]) + Math.abs(P.z - lastP[2]) + Math.abs(P.y - lastP[1]) > 12) { lastP = [P.x, P.y, P.z]; plan(P); }
     const t0 = performance.now();
-    while (placeQ.length && performance.now() - t0 < ms) placeStation(placeQ.shift()[1]);
-    if (placeQ.length) return;
+    if (!stepPlace(t0, ms)) return;
     if (dirty.size) { for (const k of dirty) for (let l = 1; l <= 2; l++) if (want.has(k * 4 + l) && queue.indexOf(k * 4 + l) < 0) queue.unshift(k * 4 + l); dirty.clear(); }
-    while (queue.length && performance.now() - t0 < ms) { const key = queue.shift(), l = want.get(key); if (l) build(key >> 2, l); }
+    while (queue.length && performance.now() - t0 < ms) { const key = queue.shift(), l = want.get(key), a = performance.now(); if (l) build(key >> 2, l);
+      const d = performance.now() - a; if (d > (count.maxBuildMs || 0)) count.maxBuildMs = +d.toFixed(1); }
   }
   dirty.clear();
   return {
     update(P) { work(P, 3); },
-    busy: () => placeQ.length > 0 || queue.length > 0,
+    busy: () => !!cur || placeQ.length > 0 || queue.length > 0,
     flush(P) { lastP = null; work(P, 1e9); },
     stats: () => { const n = [{ M: 0, S: 0, P: 0 }, { M: 0, S: 0, P: 0 }]; for (const c of cells.values()) for (const t in c.nIt) n[c.lvl - 1][t] += c.nIt[t];
-      return { cells: cells.size, near: n[0], far: n[1], nearFacade: count.nearFacade || 0, trisNear: Math.round(tris[0]), trisFar: Math.round(tris[1]), trisIn: Math.round(tris[2]), trisGlass: Math.round(tris[3]), queue: queue.length + placeQ.length }; },
+      return { cells: cells.size, near: n[0], far: n[1], maxStepMs: count.maxStepMs || 0, trisNear: Math.round(tris[0]), trisFar: Math.round(tris[1]), trisIn: Math.round(tris[2]), trisGlass: Math.round(tris[3]), queue: queue.length + placeQ.length }; },
     info: () => count,
     // todas las estaciones (para el recuento): coloca las que falten, sin construir mallas
-    placeAll() { for (let si = 0; si < ST.length; si++) if (!placed[si]) placeStation(si); return count; },
+    placeAll() { if (cur) { while (!cur.next().done); cur = null; } for (let si = 0; si < ST.length; si++) if (!placed[si]) { const g = placeGen(si); while (!g.next().done); } return count; },
     entrances: () => { const o = []; for (const L of items.values()) for (const it of L) if (it.t === 'M') o.push([ST[it.si].n, it.lines.join('+'), +it.x.toFixed(1), +it.z.toFixed(1), +it.a.toFixed(2), it.lift ? 'asc' : it.canopy ? 'marq' : '']); return o; },
     stops: () => { const o = []; for (const L of items.values()) for (const it of L) if (it.t !== 'M') o.push([it.t, +it.x.toFixed(1), +it.z.toFixed(1), +it.a.toFixed(2)]); return o; },
   };
