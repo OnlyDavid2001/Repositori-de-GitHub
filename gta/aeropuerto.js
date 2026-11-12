@@ -177,6 +177,26 @@ else {
     const ola = (x, z) => 17.2 + 1.9 * Math.cos((x * 0.9135 + z * 0.4067) / 36 * 2 * Math.PI);
     L.prisma(B, loc, -1.5, 15.2, VI, K.CORTINA, { aux: L.aux.cortina(4.6, 2.4, 0.18), sinTecho: true });
     L.prisma(B, L.mover(loc, 0, 0, 0, 1), 15.2, ola, CU, K.METAL, { aux: L.aux.panel(3, 0.06, 0), techo: CU, kTecho: K.METAL });
+    // lado tierra: en los frentes largos que miran al oeste-suroeste (rumbo 246°), el bordillo de llegadas a pie de calle
+    // (acera elevada y marquesina) y, encima, el viaducto de salidas con su bordillo cubierto a la altura del vestíbulo
+    const sg = areaS(loc) > 0 ? 1 : -1, HOR = [196, 194, 188], AS = [70, 70, 74];
+    for (let i = 0; i < loc.length; i++) { const a = loc[i], b = loc[(i + 1) % loc.length], Ld = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (Ld < 90) continue; const t = unit(b[0] - a[0], b[1] - a[1]), n = [t[1] * sg, -t[0] * sg];
+      if (-n[0] * 0.9135 - n[1] * 0.4067 < 0.8) continue;
+      const ang = hdg(t[0], t[1]), P = (u, o) => [a[0] + t[0] * u + n[0] * o, a[1] + t[1] * u + n[1] * o], m = Ld / 2, c = P(m, 0);
+      const at = (u, o) => P(u, o);
+      let q = at(m, 5); L.caja(B, q[0], q[1], -1, 10, Ld - 10, 1.18, ang, HOR, K.LISO, { aux: L.aux.liso(1.2) });             // acera de llegadas
+      q = at(m, 12.5); L.caja(B, q[0], q[1], -1, 5, Ld - 10, 1.0, ang, AS, K.LISO);                                            // carril de parada
+      q = at(m, 18); L.caja(B, q[0], q[1], -1, 0.5, Ld - 30, 1.35, ang, HOR, K.LISO);                                           // isleta
+      q = at(m, 13); L.caja(B, q[0], q[1], 7.2, 22, Ld - 20, 1.4, ang, [176, 174, 168], K.LISO);                                // tablero del viaducto
+      q = at(m, 6); L.caja(B, q[0], q[1], 8.6, 8, Ld - 20, 0.25, ang, HOR, K.LISO);                                            // acera de salidas
+      q = at(m, 2.5); L.caja(B, q[0], q[1], 8.85, 0.12, Ld - 26, 3.0, ang, [120, 140, 156], K.CORTINA, { aux: L.aux.cortina(3, 1.5, 0.05) });   // mampara
+      q = at(m, 9); L.caja(B, q[0], q[1], 13.4, 15, Ld - 20, 0.6, ang, [230, 232, 232], K.METAL, { aux: L.aux.panel(2.4, 0.05, 0) });          // marquesina
+      q = at(m, 24); L.caja(B, q[0], q[1], 8.6, 0.4, Ld - 20, 1.1, ang, [200, 200, 196], K.LISO);                                // pretil
+      for (let u = 16; u < Ld - 10; u += 24) for (const o of [9, 20]) { q = at(u, o); L.tambor(B, q[0], q[1], -1, 7.3, 0.7, { lados: 8, col: [186, 184, 178], k: K.LISO }); }
+      for (let u = 14; u < Ld - 10; u += 18) { q = at(u, 15.2); L.caja(B, q[0], q[1], 8.6, 0.25, 0.25, 4.9, 0, [140, 144, 150], K.METAL); }   // pilares de la marquesina
+      for (let u = 30; u < Ld - 20; u += 40) { q = at(u, 4.2); L.caja(B, q[0], q[1], 0, 1.6, 4, 3.4, ang, [220, 220, 216], K.METAL); } // accesos (cortavientos)
+    }
     for (const s of stands()) if (s.pas && inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.4);
   };
   const inT1 = p => p[1] < 4200;                                         // la T2 queda toda al norte de z = 4400
