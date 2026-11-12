@@ -122,7 +122,12 @@ void main(){
   vec4 kd = texture2D(tKind, vUV); float mdl = floor(kd.r*255.0/40.0 + 0.5), wr = kd.g;
   if (uSF.y > 0.5) { mdl = uSF.y - 1.0; wr = clamp((uSF.x - 1.0)/4.0, 0.0, 1.0); }   // muestras forzadas (depuración, S3)
   float tfw0 = fwidth(P.x) + fwidth(P.y);
-  if (dA < 0.3) {                                       // bordillo: pieza de granito de 30 cm
+  if (mdl > 5.5) {                                      // REV4: arcén de tierra y grava (carreteras de montaña)
+    vec3 tx = texture2D(tGrD, P*0.9).rgb; float gr = vnoise(P*7.0), gc = vnoise(P*0.35);
+    alb = vec3(0.50, 0.43, 0.33)*mix(0.78, 1.12, gc)*mix(0.85, 1.12, gr)*mix(0.9, 1.1, dot(tx, vec3(0.33))*1.8);
+    alb = mix(alb, vec3(0.30, 0.33, 0.20), 0.45*smoothstep(0.6, 1.3, dA)*smoothstep(0.4, 0.75, vnoise(P*0.6 + 2.0)));   // matas en el borde
+    alb *= mix(0.86, 1.0, smoothstep(0.0, 0.25, dA));
+  } else if (dA < 0.3) {                                // bordillo: pieza de granito de 30 cm
     vec3 tx = texture2D(tGrD, P*0.6).rgb;
     alb = (mdl > 4.5 ? vec3(0.67, 0.67, 0.66) : mdl > 3.5 ? vec3(0.56, 0.55, 0.52) : mdl > 0.5 ? vec3(0.64, 0.63, 0.60) : vec3(0.60, 0.59, 0.56))*mix(0.72, 1.2, dot(tx, vec3(0.33))*1.8);
     alb *= 1.0 - 0.22*wr*smoothstep(0.5, 0.8, vnoise(P*2.3));
@@ -372,6 +377,23 @@ void main(){
     v = { wide, cv, rambla };
     wideCache.set(s, v); return v;
   }
+  // REV4: tramo fuera del tejido urbano (carreteras de montaña: Vallvidrera, Arrabassada, Montjuïc). Rural si en dos de tres
+  // puntos del tramo no hay ningún edificio a 60 m a ninguno de los dos lados, o si hay un lado abierto y la ladera es fuerte
+  // (desnivel transversal > 15 % a ±20 m o pendiente del tramo > 7 %). Ahí: ni acera ensanchada (S2) ni árboles, alcorques o
+  // plantones de calle, y la acera se queda en un arcén de tierra y grava de 1,3 m (modelo 6 del campo, sin bordillo)
+  const ruralCache = new Map(), HAT = ctx.heightAt;
+  function ruralSeg(s) {
+    let v = ruralCache.get(s); if (v !== undefined) return v;
+    const o = s * 6, hw = SEG[o + 4], ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3], L = Math.hypot(bx - ax, bz - az) || 1;
+    const tx = (bx - ax) / L, tz = (bz - az) / L; let open2 = 0, open1 = 0, cross = 0;
+    for (const f of [0.2, 0.5, 0.8]) { const cx = ax + (bx - ax) * f, cz = az + (bz - az) * f; let no = 0;
+      for (const sd of [-1, 1]) { let op = 1; for (let d = hw + 0.5; d < 60; d += 2.5) if (coverAt(cx - tz * sd * d, cz + tx * sd * d, -1) > -1e8) { op = 0; break; } no += op; }
+      if (no === 2) open2++; if (no >= 1) open1++;
+      if (HAT) cross = Math.max(cross, Math.abs(HAT(cx - tz * (hw + 20), cz + tx * (hw + 20)) - HAT(cx + tz * (hw + 20), cz - tx * (hw + 20))) / (2 * hw + 40)); }
+    const slope = HAT && L > 8 ? Math.abs(HAT(bx, bz) - HAT(ax, az)) / L : 0;
+    v = open2 >= 2 || open1 >= 2 && (cross > 0.15 || slope > 0.07);
+    ruralCache.set(s, v); return v;
+  }
   const treeCache = new Map(), PLZ = window.BCN_PLAZAS;
   function treesOf(ci) {
     let t = treeCache.get(ci); if (t) return t;
@@ -384,6 +406,7 @@ void main(){
       const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 10.5, a0 = ax * tx + az * tz;
       const spc = TR.pick(s, ax, az, SEG[o + 2], SEG[o + 3], hw, rambla);   // especie: la misma en toda la calle o tramo
       const K = streetKind(s); if (K.cv && !K.wide) continue;              // Ciutat Vella: fuera árboles y alcorques
+      if (ruralSeg(s)) continue;                                           // REV4: carretera de montaña: nada de calle
       // reparto de alcorques vacíos y plantones, estable por calle (la misma clave de recta y tramo de 320 m que la especie)
       const th = Math.round(((Math.atan2(tz, tx) + 6.2832) % 3.1416) / 0.05), ln = Math.round((-ax * tz + az * tx) / 18) * (tz < 0 || tz === 0 && tx < 0 ? -1 : 1);
       const kS = hash2(th * 131 + 7, ln * 17 + 3), fSap = 0.18 + 0.27 * kS, grate = hash2(th * 71 + 1, ln * 29 + 5) < 0.6;
@@ -430,7 +453,7 @@ void main(){
   const atlasK = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
   atlasK.wrapU = atlasK.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; matW.setTexture('tKind', atlasK);
   const SU = window.BCN_SUELOS, kindCache = new Map();
-  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
+  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = ruralSeg(s) ? [6, 0.6] : SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
   matW.setTexture('tField', atlas); matW.setTexture('tPanD', tPanD); matW.setTexture('tPanN', tPanN); matW.setTexture('tGrD', tGrD); matW.setTexture('tGrN', tGrN);
   const freeSlots = []; for (let k = SLOTS * SLOTS - 1; k >= 0; k--) freeSlots.push(k);
 
@@ -468,7 +491,7 @@ void main(){
     const dS2 = new Float32Array(NT * NT).fill(99), nS = new Int32Array(NT * NT).fill(-1);
     for (let n = 0; n < segs.length; n++) {
       const s = segs[n], o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4];
-      if (!WALK.has(cls) && !(cls === 7 && hw >= 8)) continue;
+      if (!WALK.has(cls) && !(cls === 7 && hw >= 8) || ruralSeg(s)) continue;   // REV4: ni en las carreteras de montaña
       const ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz, reach = hw + EXT;
       const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - reach - fx0) / RES)), i1 = Math.min(NT - 1, Math.ceil((Math.max(ax, bx) + reach - fx0) / RES));
       const j0 = Math.max(0, Math.floor((Math.min(az, bz) - reach - fz0) / RES)), j1 = Math.min(NT - 1, Math.ceil((Math.max(az, bz) + reach - fz0) / RES));
@@ -492,6 +515,7 @@ void main(){
     let nExt = 0;
     for (let j = 0; j < NT; j++) { for (let i = 0; i < NT; i++) { const q = j * NT + i;
         let pv = Math.max(WSW - dS[q], 0.6 - dP[q]);
+        if (nW[q] >= 0 && dP[q] > 0.6 && ruralSeg(nW[q])) pv = Math.min(pv, 1.3 - dS[q]);   // REV4: arcén de 1,3 m
         if (pv <= 0.3 && dS2[q] < EXT && dA[q] > 0.3 && seen(i & ~1, j & ~1)) { if (pv <= 0) nExt++; pv = Math.max(pv, 0.8); if (nW[q] < 0) nW[q] = nS[q]; }
         PV[q] = pv; }
       if (j % 24 === 23) yield; }
@@ -553,6 +577,7 @@ void main(){
       for (let e = 0; e < 4; e++) { const a = e, b = (e + 1) % 4; if (pos[a] !== pos[b]) { const t = v[a] / (v[a] - v[b]);
         pts.push([fx0 + (i + 0.5 + cxs[a][0] + (cxs[b][0] - cxs[a][0]) * t) * RES, fz0 + (j + 0.5 + cxs[a][1] + (cxs[b][1] - cxs[a][1]) * t) * RES]); } }
       const s = near[q.find(k => near[k] >= 0) ?? q[0]], sw = nW[q.find(k => nW[k] >= 0) ?? q[0]], kk = sw >= 0 ? kindOf(sw) : [0, 0.3];
+      if (kk[0] === 6) continue;                                   // REV4: arcén de tierra, sin bordillo
       for (let e = 0; e + 1 < pts.length; e += 2) curb(pts[e][0], pts[e][1], pts[e + 1][0], pts[e + 1][1], s, -(2 + kk[0] + 0.9 * Math.min(kk[1], 0.99)));
     }
     yield;

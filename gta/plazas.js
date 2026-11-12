@@ -967,6 +967,8 @@ window.BCN_PLAZAS = { async init(ctx) {
   // plataforma (la tapa del hueco queda bajo el pavimento levantado y la boca se ve enterrada: Plaça de Catalunya)
   window.BCN_PLAZAS.pavAt = (x, z) => { for (const o of PL) { if (o.tile || o.noPav || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
       if (o.excl && o.excl.some(q => inPoly(q.r, x, z))) continue; return true; } return false; };
+  // REV4: ¿alguna plaza con pavimento toca el rectángulo? (nature.js lo pregunta por celda antes de usar pavAt planta a planta)
+  window.BCN_PLAZAS.pavAny = (x0, z0, x1, z1) => PL.some(o => !o.tile && !o.noPav && o.bb[0] < x1 && o.bb[2] > x0 && o.bb[1] < z1 && o.bb[3] > z0);
   const R_SIMPLE = [600, 680], R_HI = [90, 115], R_OBJ = 300;
   let trisOn = 0;
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;

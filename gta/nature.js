@@ -407,6 +407,14 @@ window.BCN_NATURE = { async init(ctx) {
   const cells = new Map();             // ci → [por tipo: Float32Array (x, y, z, s, sy, rot, r, g, b, azar)]
   const hasRoad = (x, z, r) => city && city.roadDist(x, z) < r;
   const inBld = (x, z) => city && city.coverAt(x, z, -1) > -1e8;
+  // REV4: pistas de tierra (clase 9: Carretera de les Aigües y caminos del monte) despejadas de copas: los pinos se plantan a
+  // 7,5 m del borde de las pistas anchas (semiancho ≥ 1,5) y a 3,8 de las estrechas, para que la pista se lea entre el bosque
+  const SEGS = ctx.SEG;
+  const trackNear = (x, z, wide, narrow) => { if (!city || !SEGS) return false; const c = city.cellOf(x, z), R = city.ROADS;
+    for (let k = R.start[c]; k < R.start[c + 1]; k++) { const o = R.list[k] * 6; if (SEGS[o + 5] !== 9) continue;
+      const ax = SEGS[o], az = SEGS[o + 1], dx = SEGS[o + 2] - ax, dz = SEGS[o + 3] - az, l2 = dx * dx + dz * dz; let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      if (Math.hypot(x - ax - dx * t, z - az - dz * t) - SEGS[o + 4] < (SEGS[o + 4] >= 1.5 ? wide : narrow)) return true; }
+    return false; };
   // probabilidades por muestra y clase: [pinea, halep, ilex, bush, grass, reed, rock]
   const PROB = {
     [C_FOREST]: [0.05, 0.11, 0.08, 0.12, 0.08, 0, 0.008],
@@ -457,6 +465,7 @@ window.BCN_NATURE = { async init(ctx) {
     const EX = EXC.filter(e => { const R = e.r !== undefined ? e.r : Math.hypot(e.hx, e.hz); return e.x + R + 4 > x0 && e.x - R - 4 < x0 + CS && e.z + R + 4 > z0 && e.z - R - 4 < z0 + CS; });
     _s = (ci * 2654435761) | 0; rnd();
     const out = TYPES.map(() => []), tmp = [0, 0, 0];
+    const PZ = window.BCN_PLAZAS, PAV = PZ && PZ.pavAt && (!PZ.pavAny || PZ.pavAny(x0 - 1, z0 - 1, x0 + CS + 1, z0 + CS + 1)) ? PZ.pavAt : null;
     const n = Math.floor(CS / STEP);
     for (let b = 0; b < n; b++) for (let a = 0; a < n; a++) {
       const x = x0 + (a + rnd()) * STEP, z = z0 + (b + rnd()) * STEP, u = rnd();
@@ -475,6 +484,10 @@ window.BCN_NATURE = { async init(ctx) {
       const gx = heightAt(x + 2, z) - heightAt(x - 2, z), gz = heightAt(x, z + 2) - heightAt(x, z - 2), sl = Math.hypot(gx, gz) / 4;
       if (t <= 3 && sl > 0.85) { if (rnd() < 0.5) t = 6; else continue; }
       if (t === 6 && sl < 0.15 && k !== C_SCRUB && rnd() < 0.6) continue;
+      // REV4: pistas de tierra despejadas y nada plantado sobre el pavimento de las plazas (plataforma de plazas.js: el tronco
+      // en la explanada de Catalunya). Al final, sobre las plantas ya aceptadas, porque pavAt recorre la lista de plazas
+      if (t <= 3 && trackNear(x, z, t <= 2 ? 7.5 : 1.8, t <= 2 ? 3.8 : 0.9)) continue;
+      if (PAV && PAV(x, z)) continue;
       const T = TYPES[t], s = rnd(T.sc[0], T.sc[1]);
       colAt(x, z, tmp, 0);
       out[t].push(x, y - (t === 6 ? 0.25 * s : 0.05), z, s, s * rnd(0.85, 1.15), rnd(6.2832), tmp[0], tmp[1], tmp[2], rnd());
