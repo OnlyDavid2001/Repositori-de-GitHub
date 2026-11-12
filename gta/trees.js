@@ -208,7 +208,7 @@ function frondGeo(sp, far) {
 }
 function impGeo(sp) {
   const [hwid, h] = sp.imp, P = [], N = [], U = [], I = [];
-  for (const a of [0, Math.PI / 2]) { const c = Math.cos(a) * hwid, s = Math.sin(a) * hwid, base = P.length / 3;
+  for (const a of [0, Math.PI / 3, 2 * Math.PI / 3]) { const c = Math.cos(a) * hwid, s = Math.sin(a) * hwid, base = P.length / 3;
     for (const [w, y, u, v] of [[-1, 0, 0, 0], [1, 0, 1, 0], [1, h, 1, 1], [-1, h, 0, 1]]) { P.push(c * w, y, s * w); N.push(-s / hwid, 0.3, c / hwid); U.push(u, v); }
     I.push(base, base + 1, base + 2, base, base + 2, base + 3); }
   return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
@@ -348,21 +348,30 @@ function leafCanvas(k, far) {
   }
   return cv;
 }
-// impostor (silueta lejana): tronco y masa de copa con manchas de luz y sombra
+// impostor (silueta lejana). G1V1: la copa son ramilletes con claroscuro (luz arriba, sombra abajo y dentro) y borde de
+// hojas sueltas, sobre unas ramas que asoman; antes, ~1 100 puntos de color al azar que de lejos centelleaban («pixelado»)
 function impCanvas(k) {
-  const sp = SP[k];
-  if (k === 0) {
-    const S = 512, [cv, g] = canvas(S); seedRaw(63);
-    g.fillStyle = '#6d5a44'; g.beginPath(); g.moveTo(S * 0.47, S); g.lineTo(S * 0.53, S); g.lineTo(S * 0.515, S * 0.45); g.lineTo(S * 0.485, S * 0.45); g.fill();
-    for (let i = 0; i < 1400; i++) { const a = R(6.28), rr = Math.sqrt(R()); const x = S / 2 + Math.cos(a) * rr * S * 0.46, y = S * 0.36 + Math.sin(a) * rr * S * 0.3;
-      const gr = 70 + R(90); g.fillStyle = `rgb(${gr * 0.72 | 0},${gr | 0},${gr * 0.3 | 0})`; g.beginPath(); g.arc(x, y, R(5, 13), 0, 6.3); g.fill(); }
-    return cv;
-  }
-  const S = 256, [cv, g] = canvas(S); seed(1010 + k);
+  const sp = SP[k], S = k === 0 ? 512 : 256, [cv, g] = canvas(S); seed(1010 + k, 7);
   const [hw, h] = sp.imp, px = m => S / 2 + m / hw * S / 2, py = m => S - m / h * S;   // metros → píxeles
   const trunk = (yTop, r, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(px(-r), S); g.lineTo(px(r), S); g.lineTo(px(r * 0.6), py(yTop)); g.lineTo(px(-r * 0.6), py(yTop)); g.fill(); };
-  const blob = (cx, cy, rx, ry, n, rad, col) => { for (let i = 0; i < n; i++) { const a = R(6.28), rr = Math.sqrt(R()), x = cx + Math.cos(a) * rr * rx, y = cy + Math.sin(a) * rr * ry, gr = col[3] + R(col[4]) + (cy - y) / ry * 18;
-    g.fillStyle = rgb(gr * col[0], gr * col[1], gr * col[2]); g.beginPath(); g.arc(px(x), py(y), R(rad[0], rad[1]), 0, 6.3); g.fill(); } };
+  const clumps = (cx, cy, rx, ry, n, rc, col, under) => {
+    const L = [];
+    for (let i = 0; i < n; i++) { const a = R(6.28), rr = Math.sqrt(R()) * 0.86, x = cx + Math.cos(a) * rr * rx, y = cy + Math.sin(a) * rr * ry * (under && Math.sin(a) < 0 ? 0.8 : 1);
+      const r = R(rc[0], rc[1]); L.push([Math.max(-hw + r, Math.min(hw - r, x)), Math.min(h - r * 0.95, y), r]); }
+    L.sort((a, b) => a[1] - b[1]);
+    const sc = S / 2 / hw;
+    for (const [x, y, r] of L) {
+      const hi = 0.62 + 0.5 * ((y - cy) / ry * 0.5 + 0.5) + R(-0.08, 0.08), X = px(x), Y = py(y), rp = r * sc;
+      const T = g.createRadialGradient(X - rp * 0.3, Y - rp * 0.4, rp * 0.05, X, Y, rp);
+      T.addColorStop(0, rgb(col[0] * col[3] * hi * 1.3, col[1] * col[3] * hi * 1.3, col[2] * col[3] * hi * 1.3));
+      T.addColorStop(1, rgb(col[0] * col[3] * hi * 0.55, col[1] * col[3] * hi * 0.55, col[2] * col[3] * hi * 0.55));
+      g.fillStyle = T; g.beginPath(); g.ellipse(X, Y, rp * 0.8, rp * 0.74, R(3.14), 0, 6.3); g.fill();
+      for (let q = 0; q < 12; q++) { const a = R(6.28), d = rp * R(0.62, 0.95), gr = col[3] * hi * R(0.6, 1.25);
+        g.fillStyle = rgb(col[0] * gr, col[1] * gr, col[2] * gr); g.beginPath(); g.ellipse(X + Math.cos(a) * d, Y + Math.sin(a) * d, rp * 0.16, rp * 0.09, a, 0, 6.3); g.fill(); }
+    } };
+  const branches = (y0, y1, n, col) => { g.strokeStyle = col; g.lineCap = 'round';
+    for (let i = 0; i < n; i++) { const a = (i / n - 0.5) * 2.2 + R(-0.15, 0.15); g.lineWidth = S * 0.012; g.beginPath(); g.moveTo(px(0), py(y0));
+      g.quadraticCurveTo(px(Math.sin(a) * hw * 0.25), py((y0 + y1) / 2), px(Math.sin(a) * hw * 0.62), py(y1 - Math.abs(a) * 0.8)); g.stroke(); } };
   if (sp.id === 'palmera' || sp.id === 'phoenix') {
     const ph = sp.id === 'phoenix', nf = ph ? 36 : 22;
     trunk(sp.g.h, ph ? 0.46 : 0.32, ph ? '#7a6347' : '#6e5b45'); g.fillStyle = '#5a4934'; g.beginPath(); g.ellipse(px(0), py(sp.g.h - 0.8), S * (ph ? 0.08 : 0.06), S * 0.07, 0, 0, 6.3); g.fill();
@@ -371,12 +380,14 @@ function impCanvas(k) {
       for (let s = 0; s < 4; s++) { x += c * Math.cos(el) * L / 4; y += Math.sin(el) * L / 4; el -= ph ? 0.45 : 0.35; g.lineTo(px(x), py(y)); } g.stroke(); }
     return cv;
   }
-  const c = { lledoner: [0.62, 0.96, 0.5, 60, 66], taronger: [0.46, 0.98, 0.3, 50, 58], jacaranda: [0.68, 1, 0.46, 86, 70], tipuana: [0.82, 1, 0.32, 92, 75], pi: [0.5, 0.92, 0.5, 52, 50] }[sp.id];
-  const g0 = sp.g, top = { lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.0, pi: 11.0 }[sp.id];
-  if (sp.id === 'pi') { trunk(g0.h + 0.4, 0.33, '#7a4630'); blob(0.9, top - 1.0, hw * 0.94, 1.05, 1000, [3, 8], c); }
-  else { trunk(g0.y0 + 0.5, g0.r, '#6d5a44'); const cy = (top + g0.y0) / 2 + 0.6, ry = (top - g0.y0) / 2 + 0.3; blob(0, cy, hw * 0.92, ry, 1100, [3, 8], c);
-    if (sp.id === 'jacaranda') blob(0, cy + ry * 0.1, hw * 0.86, ry * 0.85, 900, [3, 7], [0.8, 0.58, 1.0, 175, 45]);
-    if (sp.id === 'taronger') blob(0, cy, hw * 0.8, ry * 0.75, 70, [2, 3.5], [1, 0.55, 0.12, 200, 40]); }
+  const c = { platan: [0.7, 1, 0.34, 120], lledoner: [0.62, 0.96, 0.5, 100], taronger: [0.46, 0.98, 0.3, 82], jacaranda: [0.68, 1, 0.46, 128], tipuana: [0.82, 1, 0.32, 132], pi: [0.5, 0.92, 0.5, 86] }[sp.id];
+  const g0 = sp.g, top = { platan: 12.2, lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.0, pi: 11.0 }[sp.id];
+  if (sp.id === 'pi') { trunk(g0.h + 0.4, 0.33, '#7a4630'); branches(g0.h - 0.6, top - 1.2, 5, '#5e3a28'); clumps(0.9, top - 1.0, hw * 0.92, 1.05, 34, [0.9, 1.5], c, true); }
+  else { trunk(g0.y0 + 0.5, g0.r, k === 0 ? '#8a7a62' : '#6d5a44'); const cy = (top + g0.y0) / 2 + 0.6, ry = (top - g0.y0) / 2 + 0.3;
+    branches(g0.y0, cy + ry * 0.2, 5, k === 0 ? '#7a6a54' : '#5e4c3a');
+    clumps(0, cy, hw * 0.9, ry, k === 0 ? 70 : 52, k === 2 ? [0.45, 0.8] : [0.9, 1.6], c, true);
+    if (sp.id === 'jacaranda') clumps(0, cy + ry * 0.15, hw * 0.8, ry * 0.8, 24, [0.45, 0.85], [0.8, 0.58, 1.0, 170], false);
+    if (sp.id === 'taronger') { g.fillStyle = '#e07a1c'; for (let i = 0; i < 60; i++) { const a = R(6.28), rr = Math.sqrt(R()) * 0.8; g.beginPath(); g.arc(px(Math.cos(a) * rr * hw * 0.8), py(cy + Math.sin(a) * rr * ry * 0.75), R(1.6, 2.6), 0, 6.3); g.fill(); } } }
   return cv;
 }
 
@@ -451,5 +462,16 @@ function pitGeo() {
   return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
 }
 
-window.BCN_TREES = { SP, pick, build, sapling, leafCanvas, impCanvas, familyOf, stakeCanvas, flatCanvas, pitCanvas, pitGeo };
+// G1V1 · viento en el vértice (VS_TREE de streets.js): balanceo de la copa que crece con la altura sobre el fuste, racha lenta
+// que recorre la calle y, en las hojas (uKind 1), temblor de cada tarjeta. Fase por ejemplar (posición de la instancia)
+const WIND_GLSL = `
+vec3 treeWind(vec3 p, mat4 W, float kind){
+  vec2 o = W[3].xz; float ph = dot(o, vec2(0.113, 0.071));
+  float gust = 0.6 + 0.4*sin(uTime*0.41 + o.x*0.006 + o.y*0.004), h = max(p.y - 2.2, 0.0);
+  vec3 d = vec3(sin(uTime*1.07 + ph) + 0.3*sin(uTime*2.3 + ph*1.7), 0.0, 0.6*sin(uTime*0.83 + ph*1.3))*0.0021*h*h*gust;
+  if (kind > 0.5 && kind < 1.5) d += vec3(sin(uTime*6.3 + dot(p, vec3(3.1, 2.3, 1.7)) + ph), 0.6*sin(uTime*7.1 + dot(p, vec3(1.3, 2.9, 2.1))),
+    sin(uTime*5.7 + dot(p, vec3(2.2, 1.1, 3.3))))*0.03*gust*min(h*0.35, 1.0);
+  return d;
+}`;
+window.BCN_TREES = { WIND_GLSL, SP, pick, build, sapling, leafCanvas, impCanvas, familyOf, stakeCanvas, flatCanvas, pitCanvas, pitGeo };
 })();

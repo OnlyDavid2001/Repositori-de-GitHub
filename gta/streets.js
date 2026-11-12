@@ -200,11 +200,12 @@ void main(){
   const VS_TREE = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>
-uniform mat4 viewProjection;
+uniform mat4 viewProjection; uniform float uTime; uniform float uKind;
 varying vec3 vPos; varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
+` + (TR.WIND_GLSL || 'vec3 treeWind(vec3 p, mat4 W, float k){ return vec3(0.0); }') + `
 void main(){
 #include<instancesVertex>
-  vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
+  vec4 wp = finalWorld*vec4(position, 1.0); wp.xyz += treeWind(position, finalWorld, uKind); vPos = wp.xyz;   // G1V1: viento (trees.js) vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
   vH = fract(sin(dot(finalWorld[3].xz, vec2(12.9898, 78.233)))*43758.5453);
   gl_Position = viewProjection*wp; }`;
   // farolas de una celda a partir de sus charcos (cc.pools, furniture.js): cada charco son 1–3 quads con uv = (du, q − lo)/Rp,
