@@ -253,7 +253,7 @@ function construir(B, h, L, q) {
   // fuste cuadrado hasta la fachada, huso parabólico con huecos en espiral y pináculo de mosaico veneciano: anillo de bolas
   // blancas, cuerpo dorado y rojo, mitra con cruz y báculo; estatua sentada del apóstol mirando a la calle
   function apostol(t, cara, piedra, hs) {
-    const { x, z, H } = t, yp = 0.76 * H, r0 = 3.8, rp = 2.1, { P, f } = parab(r0, hs, rp, yp, FAR ? 4 : 12);
+    const { x, z, H } = t, yp = 0.76 * H, r0 = 3.8, rp = 2.55, { P, f } = parab(r0, hs, rp, yp, FAR ? 4 : 12);
     if (BASE) {
       L.caja(B, x, z, yLo, 2 * r0 + 0.3, 2 * r0 + 0.3, hs - yLo, 0, piedra, K.PIEDRA, { aux: aP, techo: sh(piedra, 0.8) });
       rv(x, z, P.map(p => [p[0], p[1]]).concat([[rp + 0.35, yp], [rp + 0.35, yp + 1.2], [rp, yp + 1.2]]), n(16), piedra, K.PIEDRA, { aux: aP, cap: 0 });
