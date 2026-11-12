@@ -162,7 +162,7 @@ void main(){
   else if (pat > 1.5 && pat < 2.5) { alb *= 0.96 + 0.06*vnoise(P*3.0); rough = 0.75; }
   else if (pat > 3.5 && pat < 4.5) { rough = 0.5; metal = 0.0; }
   if (pat > 2.5 && pat < 3.5) c = emit(vec3(0.95, 0.93, 0.86), mix(1.25, 2.3, fN));
-  else c = shade(alb*mix(0.4, 1.0, ab), n, V, rough, metal, mix(0.5, 1.0, ab)) + emit(alb*mix(0.55, 1.0, ab), lampF*mix(0.8, 1.05, fN));
+  else c = shade(alb*mix(0.55, 1.0, ab), n, V, rough, metal, mix(0.6, 1.0, ab)) + emit(alb*mix(0.55, 1.0, ab), lampF*mix(0.8, 1.05, fN));
   FRAG(c); }`, ['position', 'color', 'uv', 'nrm'], ['uOp', 'uVP'], []) : null;
   if (matIn) matIn.onBindObservable.add(mesh => { const e = matIn.getEffect(), o = mesh.metadata && mesh.metadata.op;
     if (e && o) { e.setArray4('uOp', o); e.setMatrix('uVP', scene.getTransformMatrix()); } });
@@ -205,6 +205,23 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   function nearJ(x, z, r) { const i0 = Math.floor((x - r) / JS), i1 = Math.floor((x + r) / JS), j0 = Math.floor((z - r) / JS), j1 = Math.floor((z + r) / JS);
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const L = JB.get(i + ',' + j); if (!L) continue;
       for (let k = 0; k < L.length; k += 2) if (Math.hypot(L[k] - x, L[k + 1] - z) < r) return true; } return false; }
+  // pasos de cebra: los mismos que pinta ground.js (extremo de tramo de clase 2–6 que llega a un cruce, de back a back + 4 m
+  // del nudo, back = ancho del otro tramo + 2,2). Se guarda el centro, el eje y el semiancho de la calzada; zebraNear dice si
+  // un punto cae en el paso o en sus aceras de llegada (3,5 m más allá del bordillo) con un margen r.
+  const jSegs = new Map(), ZB = new Map();
+  for (let s = 0; s < NSEG; s++) { if (!CAR.has(SEG[s * 6 + 5])) continue;
+    for (const e of [0, 2]) { const k = Math.round(SEG[s * 6 + e] * 2) + ',' + Math.round(SEG[s * 6 + e + 1] * 2); if (!jSegs.has(k)) jSegs.set(k, []); jSegs.get(k).push(s); } }
+  for (let s = 0; s < NSEG; s++) { const o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4]; if (cls < 2 || cls > 6 || hw < 2) continue;
+    const L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]); if (L < 1) continue; const tx = (SEG[o + 2] - SEG[o]) / L, tz = (SEG[o + 3] - SEG[o + 1]) / L;
+    for (const [e, dir] of [[0, 1], [2, -1]]) { const jx = SEG[o + e], jz = SEG[o + e + 1], k = Math.round(jx * 2) + ',' + Math.round(jz * 2), Ls = jSegs.get(k);
+      if (!Ls || Ls.length < 3 || cls === 6 && hw < 3) continue;
+      let back = 3; for (const s2 of Ls) if (s2 !== s) back = Math.max(back, SEG[s2 * 6 + 4] + 2.2);
+      if (back + 4 > L) continue;
+      const mx = jx + tx * dir * (back + 2), mz = jz + tz * dir * (back + 2), kk = Math.floor(mx / JS) + ',' + Math.floor(mz / JS);
+      if (!ZB.has(kk)) ZB.set(kk, []); ZB.get(kk).push(mx, mz, tx, tz, hw); } }
+  function zebraNear(x, z, r) { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const Lz = ZB.get((Math.floor(x / JS) + i) + ',' + (Math.floor(z / JS) + j)); if (!Lz) continue;
+    for (let k = 0; k < Lz.length; k += 5) { const dx = x - Lz[k], dz = z - Lz[k + 1], a = dx * Lz[k + 2] + dz * Lz[k + 3], b = -dx * Lz[k + 3] + dz * Lz[k + 2];
+      if (Math.abs(a) < 2 + r && Math.abs(b) < Lz[k + 4] + 3.5 + r) return true; } } return false; }
   const OCC = new Map();                                              // huellas ocupadas: [x, z, radio]
   const occKey = (x, z) => Math.floor(x / JS) + ',' + Math.floor(z / JS);
   function occFree(x, z, r) { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = OCC.get((Math.floor(x / JS) + i) + ',' + (Math.floor(z / JS) + j)); if (!L) continue;
@@ -279,6 +296,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
             if (!occFree(cx + px * sd * 1.2, cz + pz * sd * 1.2, r)) continue;
             if (big ? !freeRect(F, -2.9, 2.4, 0.25, 2.15, 0.7, 0.2, 0) : !freeRect(F, -0.3, 0.3, 0.2, 0.6, 0.3, 0.15, 0)) continue;
             if (big ? lawnRect(F, -2.9, 2.4, 0.25, 2.15, 0.6) : lawnRect(F, -0.3, 0.3, 0.2, 0.6, 0.4)) continue;
+            if (zebraNear(cx, cz, big ? 3.5 : 1.5)) continue;
             ok = { uu, cx, cz, ang, F }; break;
           }
           if (!ok) continue;
@@ -342,6 +360,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       if (got.some(g => g.x === x && g.z === z) || !freeRect(F, -3.7, 3.0, -1.3, 1.3, MARG, 1.85, 9)) continue;
       const [lo, hi] = yRange(F, -2.7, 2.7, -0.9, 0.9); if (hi - lo > 0.4) continue;
       if (lawnRect(F, -3.7, 3.0, -1.3, 1.3, 4.5)) continue;
+      if ([-3.7, 0, 3.0].some(uu => { const [qx, qz] = toL(F, uu, 0); return zebraNear(qx, qz, 2.5); })) continue;
       // tótem del lado de la calzada (el que se ve desde la calle)
       const [qx, qz] = toL(F, 0, 1), sideT = (nearestCar(qx, qz)[1] < nearestCar(...toL(F, 0, -1))[1]) ? 1 : -1;
       let lift = false; if (k === 0 && rs[10] < 0.55 && freeRect(F, 2.8, 5.0, -1.0, 1.0, 0.6, 1.85, 9) && !lawnRect(F, 2.8, 5.0, -1.0, 1.0, 4.0)) lift = true;
@@ -377,14 +396,15 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     const rail = it.v < 0.3 ? [168, 170, 170] : it.v < 0.65 ? [72, 82, 80] : C_DARK, RA = it.v < 0.3 ? BRUSH : PAINT;
     if (lvl === 1) {
       // --- interior (grupo 3)
-      const aoAt = y => Math.max(0, Math.min(1, 1 - (y0 - y) / 3.3));
+      const aoAt = y => Math.max(0, Math.min(1, 1 - (y0 - y) / 4.2));
       for (let k = 0; k < 4; k++) { const ya = yb - 0.05 + k * (y0 - yb + 0.05) / 4, yc = yb - 0.05 + (k + 1) * (y0 - yb + 0.05) / 4, a = tin(1, aoAt((ya + yc) / 2) * (k === 3 ? 1 : 0.9), 0.35 + 0.15 * k);
         rect(Bi, F, U0, UE, ya, yc, HWI, C_TILE, K.TRIN, a); rect(Bi, F, U0, UE, ya, yc, -HWI, C_TILE, K.TRIN, a); }
       for (let i = 0; i < NS; i++) { const ua = US + i * RUN, ub = ua + RUN, yt = y0 - (i + 1) * RISE, a = tin(2, aoAt(yt), 0.45);
-        jamb(Bi, F, ua, yt, yt + RISE, -HWI, HWI, shade(C_STEP, 0.9), K.TRIN, a);
-        hpl(Bi, F, ua, ub, yt, -HWI, HWI, C_STEP, K.TRIN, a);
-        jamb(Bi, F, ua - 0.003, yt + RISE - 0.03, yt + RISE, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3));
-        hpl(Bi, F, ub - 0.06, ub, yt + 0.003, -HWI + 0.06, HWI - 0.06, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3)); }   // borde antideslizante
+        // sin piezas superpuestas: con la profundidad llevada al plano del hueco, dos caras a 3 mm se pelean (el «grano»)
+        jamb(Bi, F, ua, yt, yt + RISE - 0.03, -HWI, HWI, shade(C_STEP, 0.88), K.TRIN, a);
+        jamb(Bi, F, ua, yt + RISE - 0.03, yt + RISE, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3));
+        hpl(Bi, F, ua, ub - 0.06, yt, -HWI, HWI, C_STEP, K.TRIN, a);
+        hpl(Bi, F, ub - 0.06, ub, yt, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3)); }   // borde antideslizante
       hpl(Bi, F, U0, US, y0 - 0.004, -HWI, HWI, C_STEP, K.TRIN, tin(2, 1, 0.3));                       // rellano de arriba
       hpl(Bi, F, US + NS * RUN, UE, yb, -HWI, HWI, [118, 116, 110], K.TRIN, tin(2, 0, 0.5));           // rellano del fondo
       hpl(Bi, F, U1, UE, y0 - 0.35, -HWI, HWI, [150, 150, 146], K.TRIN, tin(0, 0.2, 0.3));            // techo bajo la losa
