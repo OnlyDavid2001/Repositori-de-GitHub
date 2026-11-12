@@ -476,7 +476,7 @@ lmLater({ id: 'rellotge_gracia', nombre: 'Torre del Rellotge (Gràcia)', nivel: 
     const KK = window.BCN_LM.K, ST = [198, 186, 162], BR = [164, 112, 84], WH = [236, 232, 220];
     L.caja(B, 0, 0, -0.5, 5.0, 5.0, 3.5, 0, ST, KK.PIEDRA);
     L.caja(B, 0, 0, 3.0, 4.2, 4.2, 0.5, 0, ST, KK.PIEDRA);
-    L.caja(B, 0, 0, 3.5, 3.6, 3.6, 18.5, 0, BR, KK.LADRILLO);
+    L.caja(B, 0, 0, 3.5, 3.6, 3.6, 18.5, 0, BR, KK.PIEDRA, { aux: L.aux.piedra(0.5, 1.0) });
     for (const yy of [8.5, 15]) L.caja(B, 0, 0, yy, 3.8, 3.8, 0.35, 0, ST, KK.PIEDRA);
     L.caja(B, 0, 0, 22.0, 4.1, 4.1, 3.6, 0, ST, KK.PIEDRA);                       // cuerpo del reloj
     for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, c = Math.cos(a), s = Math.sin(a), o = 2.08, w = 1.25;
