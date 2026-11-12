@@ -41,11 +41,12 @@ GEO.regKind('TEJA', 120, `
     ao = mix(1.0, 0.82, ed*fs);`);
 
 // n3 E3 · suelo de los interiores de manzana con textura propia: aux.x = tipo (1 grava · 2 baldosa · 3 césped · 4 terrazo ·
-// 5 hormigón · 6 sauló). Patrón en coordenadas de mundo, apagado cuando baja de ~2 píxeles. De noche, algo más oscuro que las
+// 5 hormigón · 6 sauló; 7 charco de luz de un farol o una guirnalda: aux.yz = coordenadas en el disco, aux.w = suelo de debajo). Patrón en coordenadas de mundo, apagado cuando baja de ~2 píxeles. De noche, algo más oscuro que las
 // cubiertas (antes salía más claro: el suelo claro del patio recibe la misma penumbra que una losa)
 GEO.regKind('PATIO', 121, `
     rough = 0.9;
-    float ty = floor(vInfo.x*255.0 + 0.5);
+    float ty = floor(vInfo.x*255.0 + 0.5), glow = 0.0;
+    if (ty > 6.5) { vec2 uv = vInfo.yz*2.0 - 1.0; if (dot(uv, uv) > 1.0) discard; glow = 1.0 - dot(uv, uv); glow *= glow; ty = floor(vInfo.w*255.0 + 0.5); }   // n3 E4: charco de luz
     vec2 q = vPos.xz;
     float pw = max(length(fwidth(q)), 1e-4), f1 = 1.0 - smoothstep(0.03, 0.12, pw), f2 = 1.0 - smoothstep(0.15, 0.6, pw);
     float tx = (vnoise(q*0.35) - 0.5)*0.16;
@@ -58,7 +59,8 @@ GEO.regKind('PATIO', 121, `
     else if (ty < 5.5) { vec2 f = fract(q/3.0); float j = 1.0 - smoothstep(0.004, 0.012, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
       tx += (vnoise(q*0.6) - 0.5)*0.22*f2 - j*0.35*f2 + (hash21(floor(q/3.0)) - 0.5)*0.1*f2; }
     else tx += (hash21(floor(q*10.0)) - 0.5)*0.14*f1 + (vnoise(q*0.8) - 0.5)*0.18*f2;
-    alb *= (1.0 + tx)*(1.0 - 0.55*uNight);`);
+    alb *= (1.0 + tx)*(1.0 - 0.55*uNight);
+    emis += vec3(1.0, 0.70, 0.40)*glow*uDusk*(0.30 + 0.25*alb.r);`);
 
 window.BCN_ROOFTOPS = { init(ctx) {
   const { city, detail, reg, BREC, bldChunks, scene } = ctx;
@@ -286,8 +288,10 @@ window.BCN_ROOFTOPS = { init(ctx) {
     if (area > 40 && g[24] < 0.12) { const p = spot(2.2, 5); if (p) items.push({ t: 'pool', x: p[0], z: p[1], y, a: ang, l: 3 + g[25] * 1.4, w: 1.8 + g[26] * 0.8, on: true }); }
     if (g[27] < 0.35) { const p = spot(0.5, 6); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: y + 0.45, a: 0, sp: 3, h: 1.6 + g[28], r: 0.7 + g[29] * 0.4, pot: true }); }
     // n3 E3: luz cálida de terraza (guirnalda de bombillas entre dos esquinas abiertas, o un farol de pared) — de noche se ve
-    if (open.length && g[31] < 0.55) { const [A, B, nx, nz] = open[0]; items.push({ t: 'guir', ax: A[0] - nx * 0.3, az: A[1] - nz * 0.3, bx: B[0] - nx * 0.3, bz: B[1] - nz * 0.3, y, x: A[0], z: A[1], a: 0, sag: 0.25 + g[32 % 40] * 0.2 }); }
-    else if (g[33] < 0.6) { const p = spot(0.4, 7); if (p) items.push({ t: 'lamp', x: p[0], z: p[1], y, a: 0, h: 1.9 }); }
+    const gfl = g[30] < 0.6 ? 2 : 4;
+    if (open.length && g[31] < 0.55) { const [A, B, nx, nz] = open[0]; items.push({ t: 'guir', ax: A[0] - nx * 0.3, az: A[1] - nz * 0.3, bx: B[0] - nx * 0.3, bz: B[1] - nz * 0.3, y, x: A[0], z: A[1], a: 0, sag: 0.25 + g[32 % 40] * 0.2 });
+      const L = Math.hypot(B[0] - A[0], B[1] - A[1]); items.push({ t: 'glow', x: (A[0] + B[0]) / 2 - nx * 1.4, z: (A[1] + B[1]) / 2 - nz * 1.4, y: y + 0.045, r: Math.min(3.2, 1.2 + L * 0.3, edgeDist(P, (A[0] + B[0]) / 2 - nx * 1.4, (A[1] + B[1]) / 2 - nz * 1.4) + 0.2), col: fc, g: gfl, a: 0 }); }
+    else if (g[33] < 0.6) { const p = spot(0.4, 7); if (p) { items.push({ t: 'lamp', x: p[0], z: p[1], y, a: 0, h: 1.9 }); items.push({ t: 'glow', x: p[0], z: p[1], y: y + 0.045, r: Math.min(2.2, edgeDist(P, p[0], p[1]) + 0.2), col: fc, g: gfl, a: 0 }); } }
     return items;
   }
   function MZ_area(P) { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
@@ -302,6 +306,10 @@ window.BCN_ROOFTOPS = { init(ctx) {
     let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const p of sp.inner) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
     let kk = 1;
     const spot = rr => { const r = takeS(src, kk++, 40); for (let t = 0; t < 20; t++) { const x = x0 + (x1 - x0) * r[t * 2], z = z0 + (z1 - z0) * r[t * 2 + 1]; if (ok(x, z, rr)) { used.push([x, z, rr]); return [x, z]; } } return null; };
+    // n3 E4: un sitio libre dentro del polígono Q (la parcela de una finca o el jardín común), lejos de su borde
+    const spotQ = (Q, rr, key) => { let qx0 = 1e9, qz0 = 1e9, qx1 = -1e9, qz1 = -1e9; for (const p of Q) { qx0 = Math.min(qx0, p[0]); qx1 = Math.max(qx1, p[0]); qz0 = Math.min(qz0, p[1]); qz1 = Math.max(qz1, p[1]); }
+      const r = takeS(src, key, 40); for (let t = 0; t < 20; t++) { const x = qx0 + (qx1 - qx0) * r[t * 2], z = qz0 + (qz1 - qz0) * r[t * 2 + 1];
+        if (inPoly(Q, x, z) && edgeDist(Q, x, z) >= rr + 0.35 && ok(x, z, rr)) { used.push([x, z, rr]); return [x, z]; } } return null; };
     // eje de la manzana (la arista exterior más larga)
     let ang = 0, bl = 0; for (let i = 0; i < sp.outer.length; i++) { const a = sp.outer[i], b = sp.outer[(i + 1) % sp.outer.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; ang = Math.atan2(b[1] - a[1], b[0] - a[0]); } }
     // suelo: el interior entero (bajo las cubiertas no se ve) en tierra, sauló, césped o baldosa según el tipo
@@ -309,6 +317,78 @@ window.BCN_ROOFTOPS = { init(ctx) {
       publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[160, 146, 120], [150, 144, 132]] }[tipo];
     const GT = { talleres: [5, 1, 5], jardines: [1, 6, 4], mixto: [2, 5, 1], publico: [6, 1], aparcamiento: [5, 5, 1] }[tipo], gt = GT[Math.floor(g[31] * GT.length)];
     items.push({ t: 'ground', P: sp.inner, col: shade(GC[Math.floor(g[0] * GC.length)], 0.78), x: C[0], z: C[1], y: 0, a: 0, g: gt });
+    // n3 E4 · EL INTERIOR REPARTIDO POR FINCAS, como en la realidad: cada finca tiene su trozo de patio, de su trasera hacia el
+    // centro (un sector entre las dos tapias que la separan de sus vecinas), y cada trozo es distinto: jardincito con árboles y
+    // setos, patio de baldosa con macetas y mesa, taller con claraboyas y palés, piscinita con tumbonas, aparcamiento, grava
+    // con caseta y bicis, huerto. Solo algunos patios (los públicos y unos pocos de jardines) guardan un jardín común en el centro.
+    const PF = (() => {
+      if (!C || !sp.rad || sp.rad.length < 3) return null;
+      const rs = sp.rad.map(p => [p[0], p[1], Math.atan2(p[1] - C[1], p[0] - C[0])]).sort((a, b) => a[2] - b[2]);
+      const out = [];
+      for (let k = 0; k < rs.length; k++) { const a = rs[k], b = rs[(k + 1) % rs.length]; let da = b[2] - a[2]; if (da <= 0) da += 6.2832;
+        if (da > 2.8 || da < 0.05) continue;
+        const ax = a[0] - C[0], az = a[1] - C[1], bx = b[0] - C[0], bz = b[1] - C[1], la = Math.hypot(ax, az), lb = Math.hypot(bx, bz); if (la < 4 || lb < 4) continue;
+        let Q = hclip(sp.inner, C[0], C[1], -az / la, ax / la, 0); if (Q) Q = hclip(Q, C[0], C[1], bz / lb, -bx / lb, 0);
+        if (!Q || Math.abs(MZ_area(Q)) < 25) continue;
+        const ux = ax / la + bx / lb, uz = az / la + bz / lb, lu = Math.hypot(ux, uz) || 1;
+        out.push({ Q, u: [ux / lu, uz / lu], D: (la + lb) / 2, a, b }); }
+      return out.length >= 3 ? out : null; })();
+    if (PF) {
+      const pub = tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.3), core = pub ? 0.42 : 0;
+      // jardín común en el centro (solo en algunos): césped en cuatro parterres, árboles, bancos y juegos
+      if (pub) { const L = sp.inner.map(p => [C[0] + (p[0] - C[0]) * core, C[1] + (p[1] - C[1]) * core]), ca = Math.cos(ang), sa = Math.sin(ang);
+        for (let q = 0; q < 4; q++) { const s1 = q & 1 ? 1 : -1, s2 = q & 2 ? 1 : -1;
+          let Q = hclip(L, C[0], C[1], ca * s1, sa * s1, 0.8); if (Q) Q = hclip(Q, C[0], C[1], -sa * s2, ca * s2, 0.8);
+          if (Q && Q.length >= 3) items.push({ t: 'ground', P: Q, col: shade(LAWN[Math.floor(g[20 + q] * LAWN.length)], 0.92 + g[24 + q] * 0.14), x: C[0], z: C[1], y: 0, a: 0, up: 0.16, g: 3 }); }
+        for (let i = 0; i < 5 + Math.floor(g[2] * 5); i++) { const r = takeS(src, 300 + i, 6), p = spotQ(L, 2.2, 1300 + i); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: gY(p[0], p[1]), a: r[2] * 6.28, sp: r[1] < 0.7 ? 0 : 1, h: 6 + r[3] * 5, r: 2.4 + r[0] * 1.6, c: r[5] }); }
+        for (let i = 0; i < 4; i++) { const r = takeS(src, 500 + i, 12), p = spotQ(L, r[0] < 0.6 ? 1.2 : 3.2, 1350 + i); if (!p) continue;
+          items.push(r[0] < 0.6 ? { t: 'bench', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[1] < 0.5 ? 0 : Math.PI / 2) } : { t: 'play', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, pl: r.slice(2, 12) }); } }
+      // tapias entre fincas: de la trasera hasta el centro (o hasta el jardín común)
+      for (let k = 0; k < sp.rad.length; k++) { const a = sp.rad[k], dx = C[0] - a[0], dz = C[1] - a[1], D = Math.hypot(dx, dz), r = takeS(src, 200 + k, 4), L = D * (pub ? 1 - core - 0.04 : 0.985); if (L < 2) continue;
+        items.push({ t: 'tapia', x: a[0] + dx / D * L / 2, z: a[1] + dz / D * L / 2, y: gY(a[0], a[1]), a: Math.atan2(dz, dx), l: L, h: 2.0 + r[2] * 0.7, col: shade([[206, 196, 178], [196, 180, 160], [214, 206, 194], [178, 150, 128]][Math.floor(r[1] * 4)], 0.85 + r[3] * 0.2) }); }
+      const W8 = { talleres: [3, 1, 2, 0.5, 2, 1.5, 0.3], jardines: [0.5, 3, 2, 1.6, 0.4, 1.2, 1], mixto: [2, 2, 2, 1, 1, 1.2, 0.8], publico: [0.3, 2, 2.5, 0.6, 0.3, 1.2, 1.2], aparcamiento: [1.5, 1.5, 1.5, 0.6, 3, 1, 0.3] }[tipo];
+      const TY = ['taller', 'jardin', 'baldosa', 'piscina', 'parking', 'grava', 'huerto'], WS = W8.reduce((s, v) => s + v, 0);
+      const CARC = [[200, 200, 196], [60, 62, 66], [150, 30, 28], [40, 70, 120], [220, 220, 214], [120, 124, 128]];
+      let prev = -1;
+      PF.forEach((pf, k) => {
+        let Q = pf.Q; if (pub) Q = hclip(Q, C[0], C[1], pf.u[0], pf.u[1], pf.D * core * 0.98) || Q;
+        const r = takeS(src, 900 + k, 40); let x = r[0] * WS, ty = 0; for (; ty < 6 && x > W8[ty]; ty++) x -= W8[ty];
+        if (ty === prev) ty = (ty + 1 + Math.floor(r[1] * 5)) % 7; prev = ty; const T = TY[ty];
+        const pa = Math.atan2(pf.u[1], pf.u[0]);           // eje del sector (de la trasera al centro)
+        const sQ = (rr, i) => spotQ(Q, rr, 1000 + k * 40 + i);
+        const flo = { taller: [[5, [150, 148, 142]], [5, [166, 160, 150]]], jardin: [[3, LAWN[Math.floor(r[2] * 5)]], [6, [176, 156, 120]]], baldosa: [[2, FLOORC[Math.floor(r[2] * 5)]], [4, [196, 186, 168]]],
+          piscina: [[4, [214, 206, 190]], [2, [196, 184, 166]]], parking: [[5, [128, 128, 126]], [5, [146, 142, 136]]], grava: [[1, [176, 168, 150]], [6, [168, 150, 118]]], huerto: [[6, [132, 104, 76]], [1, [160, 150, 132]]] }[T][r[3] < 0.6 ? 0 : 1];
+        items.push({ t: 'ground', P: Q, col: shade(flo[1], 0.8 + r[4] * 0.12), x: pf.a[0], z: pf.a[1], y: 0, a: 0, up: 0.12 + (k % 3) * 0.01, g: flo[0] });
+        const tree = (i, sp2) => { const p = sQ(sp2 === 2 ? 1 : 1.8, i); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: gY(p[0], p[1]), a: r[i] * 6.28, sp: sp2, h: sp2 === 1 ? 6 + r[i + 1] * 5 : sp2 === 2 ? 5 + r[i + 1] * 3 : sp2 === 3 ? 2.6 + r[i + 1] : 4 + r[i + 1] * 4, r: sp2 === 3 ? 1.5 : 1.8 + r[i + 2] * 1.4, c: r[i + 3] }); };
+        const pots = (n, i0) => { for (let i = 0; i < n; i++) { const p = sQ(0.5, i0 + i); if (p) items.push({ t: 'pot', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.05, a: 0, r: 0.25 + r[(i0 + i) % 40] * 0.25, col: POTC[(i + k) % 4], pc: PLANTC[(i * 3 + k) % 6], tall: r[(i0 + i + 7) % 40] < 0.35 }); } };
+        const table = i => { const p = sQ(1.4, i); if (p) items.push({ t: 'table', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.05, a: pa + r[i], n: 2 + Math.floor(r[i + 1] * 3), round: r[i + 2] < 0.5, umb: r[i + 3] < 0.6 ? AWN[Math.floor(r[i + 4] * AWN.length)] : null, col: r[i + 5] < 0.5 ? [236, 236, 230] : [92, 70, 52] }); };
+        if (T === 'jardin') { tree(5, r[9] < 0.6 ? 0 : 3); if (r[10] < 0.7) tree(11, r[12] < 0.5 ? 2 : 0); if (r[13] < 0.4) tree(14, 1);
+          const p = sQ(2, 18); if (p) items.push({ t: 'hedge', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa + Math.PI / 2, l: 3 + r[19] * 3, w: 0.7, h: 0.8 + r[20] * 0.6 });
+          pots(2 + Math.floor(r[21] * 3), 22); if (r[26] < 0.5) table(27); }
+        else if (T === 'baldosa') { pots(5 + Math.floor(r[5] * 5), 6); table(16); if (r[22] < 0.5) { const p = sQ(1.8, 23); if (p) items.push({ t: 'perg', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 3 + r[24] * 1.5, w: 2.4 + r[25], wood: r[26] < 0.6, awn: r[27] < 0.6 ? AWN[Math.floor(r[28] * AWN.length)] : null, pl: r.slice(28, 38) }); }
+          if (r[29] < 0.5) { const p = sQ(1.3, 30); if (p) { const cl = []; for (let q = 0; q < 12; q++) cl.push([r[(q + 3) % 40] < 0.68, CLOTHES[Math.floor(r[(q + 11) % 40] * CLOTHES.length) % CLOTHES.length], 0.3 + r[(q + 17) % 40] * 0.5, 0.3 + r[(q + 5) % 40] * 0.45]); items.push({ t: 'cloth', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 2.4, cl }); } }
+          if (r[31] < 0.4) tree(32, 3); }
+        else if (T === 'taller') { for (let i = 0; i < 2 + Math.floor(r[5] * 3); i++) { const p = sQ(1.4, 6 + i); if (p) items.push({ t: 'skyg', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 1.6 + r[6 + i] * 1.4, w: 1 + r[7 + i] * 0.8 }); }
+          for (let i = 0; i < 2 + Math.floor(r[12] * 3); i++) { const p = sQ(1, 13 + i); if (p) items.push({ t: 'pal', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa + r[13 + i] * 0.4, n: 1 + Math.floor(r[14 + i] * 6) }); }
+          if (r[20] < 0.6) { const p = sQ(2.2, 21); if (p) items.push({ t: 'bin', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, col: [[230, 170, 40], [200, 80, 40], [60, 110, 160], [90, 130, 80]][Math.floor(r[22] * 4)] }); }
+          if (r[23] < 0.5) { const p = sQ(2.6, 24); if (p) items.push({ t: 'car', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 5, col: CARC[Math.floor(r[25] * 6)] }); } }
+        else if (T === 'piscina') { const l = 4 + r[5] * 3, w = 2.4 + r[6] * 1.4, p = sQ(Math.hypot(l, w) / 2 + 0.6, 7);
+          if (p) { items.push({ t: 'pool', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l, w, on: false });
+            for (let q = 0; q < 2; q++) { const u = -l / 2 + 0.8 + q * 1.0, v = w / 2 + 1.2, X = p[0] + Math.cos(pa) * u - Math.sin(pa) * v, Z = p[1] + Math.sin(pa) * u + Math.cos(pa) * v;
+              items.push({ t: 'lounger', x: X, z: Z, y: gY(X, Z) + 0.05, a: pa + Math.PI / 2, col: r[8] < 0.5 ? [236, 236, 228] : [60, 120, 170] }); } }
+          pots(3, 10); if (r[14] < 0.6) tree(15, 1); }
+        else if (T === 'parking') { for (let i = 0; i < 2 + Math.floor(r[5] * 3); i++) { const p = sQ(2.4, 6 + i); if (p) items.push({ t: 'car', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa + (r[11 + i] < 0.8 ? 0 : Math.PI / 2), l: r[16 + i] < 0.25 ? 5 : 4.2, col: CARC[Math.floor(r[21 + i] * 6)] }); }
+          if (r[27] < 0.4) { const p = sQ(2.6, 28); if (p) items.push({ t: 'carcov', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, h: 0, c: r[29], col: [150, 156, 166] }); } }
+        else if (T === 'grava') { const p = sQ(1.4, 5); if (p) items.push({ t: 'shed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 1.6 + r[6], w: 1.2 + r[7] * 0.6, col: r[8] < 0.5 ? [196, 198, 196] : [150, 120, 92] });
+          for (const [t, rr, i] of [['bikes', 1.3, 9], ['dog', 0.9, 10], ['tramp', 2.2, 11], ['ping', 2.4, 12], ['inv', 2.2, 13]]) if (r[i + 10] < 0.35) { const q = sQ(rr, i); if (q) items.push({ t, x: q[0], z: q[1], y: gY(q[0], q[1]), a: pa, h: 0, c: r[i], col: [[200, 60, 50], [60, 130, 190], [230, 190, 60], [90, 160, 90]][(i + k) % 4] }); }
+          tree(26, r[27] < 0.5 ? 0 : 3); pots(2, 30); if (r[34] < 0.4) table(34); }
+        else { for (let i = 0; i < 2 + Math.floor(r[5] * 3); i++) { const p = sQ(1.8, 6 + i); if (p) items.push({ t: 'bed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 2.6, w: 1.1, pl: r.slice(10 + i, 20 + i) }); }
+          tree(22, 3); if (r[24] < 0.6) tree(25, 3); const p = sQ(1.3, 28); if (p) items.push({ t: 'shed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 1.5, w: 1.2, col: [150, 120, 92] }); }
+        if (r[36] < 0.45) { const p = sQ(0.5, 37); if (p) { items.push({ t: 'lamp', x: p[0], z: p[1], y: gY(p[0], p[1]), a: 0, h: 2.4 });
+          items.push({ t: 'glow', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.15 + (k % 3) * 0.01, r: Math.min(2.6, edgeDist(Q, p[0], p[1]) + 0.1), col: shade(flo[1], 0.8 + r[4] * 0.12), g: flo[0], a: 0 }); } }
+      });
+      return items;
+    }
     if (tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.6)) {           // césped en el centro (jardín)
       // césped partido en cuatro parterres por dos paseos (de 1,6 m) que se cruzan en el centro, cada uno con su tono
       const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.78, C[1] + (p[1] - C[1]) * 0.78]), ca = Math.cos(ang), sa = Math.sin(ang);
@@ -556,11 +636,13 @@ window.BCN_ROOFTOPS = { init(ctx) {
           vq(W, loc(it, -0.85, v, ox, oz), loc(it, 0.85, v, ox, oz), y + 0.05, y + 0.7, [34, 34, 36], A_MATTE); vq(W, loc(it, -0.4, v, ox, oz), loc(it, 0.45, v, ox, oz), y + 0.55, y + 0.95, C2, A_PAINT); } return true; }
       case 'carcov': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 4.2, 1.8, 0.95, it.a, [146, 156, 168], A_CLOTH);
         const [cx, cz] = loc(it, -0.2, 0, ox, oz); bx(W, cx, cz, y + 0.95, 2.4, 1.6, 0.5, it.a, [140, 150, 162], A_CLOTH); return true; }
+      case 'glow': { if (lvl !== 1) return true; const x = it.x - ox, z = it.z - oz, r = it.r, g = it.g || 2, Y = it.y;
+        quad(W, F0, x - r, Y, z - r, x + r, Y, z - r, x + r, Y, z + r, x - r, Y, z + r, it.col, K.PATIO, [7, 0, 0, g, 7, 255, 0, g, 7, 255, 255, g, 7, 0, 255, g]); return true; }
       case 'lamp': { if (lvl !== 1) return true; const x = it.x - ox, z = it.z - oz, h = it.h || 1.9; post(W, x, z, y, y + h, 0.06, 0, [40, 40, 42], A_GALV);
         GEO.sphere(W, F0, x, y + h + 0.12, z, 0.16, 5, 3, [255, 196, 120], K.PBR, A_WARM, 1); return true; }
       case 'guir': { if (lvl !== 1) return true; const n = Math.max(3, Math.min(14, Math.round(Math.hypot(it.bx - it.ax, it.bz - it.az) / 0.7)));
         for (let k = 0; k <= n; k++) { const t = k / n, px = it.ax + (it.bx - it.ax) * t - ox, pz = it.az + (it.bz - it.az) * t - oz, py = y + 2.3 - it.sag * 4 * t * (1 - t);
-          GEO.sphere(W, F0, px, py, pz, 0.07, 4, 2, [255, 206, 140], K.PBR, A_WARM, 1); }
+          GEO.sphere(W, F0, px, py, pz, 0.1, 4, 2, [255, 206, 140], K.PBR, A_WARM, 1); }
         post(W, it.ax - ox, it.az - oz, y, y + 2.35, 0.05, 0, [50, 50, 52], A_GALV); post(W, it.bx - ox, it.bz - oz, y, y + 2.35, 0.05, 0, [50, 50, 52], A_GALV); return true; }
       case 'bench': { if (lvl !== 1) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.42, 1.8, 0.45, 0.06, it.a, [140, 100, 62], A_MATTE);
         const [bx0, bz0] = loc(it, 0, 0.22, ox, oz); bx(W, bx0, bz0, y + 0.5, 1.8, 0.06, 0.42, it.a, [140, 100, 62], A_MATTE);

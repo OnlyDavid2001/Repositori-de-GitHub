@@ -423,7 +423,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const tipo = BREC.tipo ? BREC.tipo[b] : 0;       // n3 E1: 0 vivienda · 1 nave · 2 equipamiento u oficinas (app.js)
     const cls6 = d.cls === 6 || tipo > 0;              // naves y equipamientos: sobrios y sin comercios, como la clase 6
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
-    const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [150, 138, 120], 0.6), 0.92);
+    const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [170, 160, 146], 0.3), 0.88);   // n3 E4: la piedra de la planta baja, del tono de la fachada
     const shut = pick(SHUTTERS), persi = shade(shut, 1.5), wood = pick(WOODS), iron = [20, 20, 23];
     const porticones = R() < 0.55, tribunaOK = style !== 'sobrio' && R() < 0.5, balusters = style !== 'sobrio' && R() < 0.75;
     const shops = !cls6 && H >= 10;

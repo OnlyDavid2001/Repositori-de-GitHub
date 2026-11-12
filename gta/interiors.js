@@ -718,7 +718,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // Azar: cada vano siembra su ámbito, env.rnd(2, tramo, vano), y cada comercio el suyo, env.rnd(10, tramo, primer vano), y
   // sacan de golpe sus números: las capas BASE y ORNAMENTO ven los mismos, y nada depende de los demás vanos ni módulos.
   function groundFloor(env, run) {
-    const { W0, W1, F1, y0, u, stone, iron, shops, shopsHere, windowHole } = env;
+    const { W0, W1, F1, y0, u, stone, iron, shops, shopsHere, windowHole } = env, KSB = K.FXPIEDRA !== undefined ? K.FXPIEDRA : K.STONE;   // n3 E4: sillería sin teñir (el tono, el de la fachada)
     const { F, cover, street, nb, bw, N, wallC, gnd } = run;
     if (F1 <= cover + 0.3) return;                            // tapado por el vecino
     const yB = Math.max(y0, cover - 0.3), gls = [];
@@ -733,7 +733,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       // ventana de planta baja (con reja si da a la calle)
       const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
       const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
-      const gc = street && shops ? stone : wallC, gk = street && shops ? K.STONE : K.STUCCO;
+      const gc = street && shops ? stone : wallC, gk = street && shops ? KSB : K.STUCCO;
       if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk); continue; }
       windowHole(W0, F, a, a + bw, tt, ct, yB, F1, st, yt, street ? 0.3 : 0.2, gc, gk, rr[0] < 0.6 ? 0.2 + rr[1] * 0.5 : 0);
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
@@ -788,9 +788,10 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   function shopCols(env) {
     if (env._shopC) return env._shopC;
     const p = env.p, h = ((Math.imul(env.b ^ 0x5bd1e995, 0x9e3779b1) >>> 0) >> 8) % 3;
-    // n3 E3: más cerca del color de la fachada (antes, piedra oscura y marcos casi negros: no se distinguía de un edificio a otro)
-    const sc = h === 0 ? shade(sat(p, 1.3), 0.94) : h === 1 ? shade(sat(p, 1.6), 0.84) : shade(sat(p, 1.45), 0.74);
-    const met = shade(sat(p, 2.1), h === 2 ? 0.42 : 0.52);
+    // n3 E4: el MISMO tono de la fachada (sin subir la saturación, que lo llevaba a otro color): igual algo más oscuro, más
+    // piedra (algo de gris cálido) o más oscuro; marcos y faja del rótulo, un tono oscuro de ese mismo color
+    const sc = h === 0 ? shade(p, 0.92) : h === 1 ? shade(mixc(p, [176, 166, 150], 0.28), 0.9) : shade(sat(p, 1.15), 0.8);
+    const met = shade(sat(p, 1.35), h === 2 ? 0.34 : 0.4);
     return (env._shopC = { sc, met, kS: K.FXPIEDRA !== undefined ? K.FXPIEDRA : KS });
   }
   // un vano de comercio: machones y dintel de piedra y, dentro, el escaparate o la puerta de vidrio de la tienda
@@ -798,10 +799,10 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const { W0, W1, F1 } = env, { F, bw } = run;
     const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
     const SC = shopCols(env), KS = SC.kS;
-    const top = topOf(env, gl), sill = gl + 0.5, sc = SC.sc, dk = shade(sc, 0.55), base = shade(sc, 0.85), met = SC.met;
+    const top = topOf(env, gl), sill = gl + 0.5, sc = SC.sc, dk = shade(sc, 0.78), base = shade(sc, 0.86), met = SC.met;
     rect(W0, F, a, B_, yB, F1, 0, sc, KS); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS); rect(W0, F, B_, V_, top, F1, 0, sc, KS);
     jamb(W0, F, B_, sill, top, -0.4, 0, dk, KS); jamb(W0, F, V_, sill, top, -0.4, 0, dk, KS);
-    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), KS);
+    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.68), KS);
     if (W !== s.door) {
       rect(W0, F, B_, V_, yB, sill, 0, base, KS); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       glassQuad(W0, F, B_, V_, sill, top, -0.36, s, false);
@@ -922,13 +923,13 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   }
   // portal: puerta de madera con montante de vidrio, recercado de piedra y farol
   function portalBay(env, run, a, c, gl, yB, rr) {
-    const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run;
+    const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run, KSB = K.FXPIEDRA !== undefined ? K.FXPIEDRA : K.STONE;   // n3 E4: sillería sin teñir
     const dw = Math.min(1.2, bw / 2 - 0.35), dtop = Math.min(F1 - 0.55, gl + 3.5), x0 = c - dw, x1 = c + dw, sc = stone;
-    rect(W0, F, a, x0, yB, F1, 0, sc, K.STONE); rect(W0, F, x1, a + bw, yB, F1, 0, sc, K.STONE); rect(W0, F, x0, x1, dtop, F1, 0, sc, K.STONE);
+    rect(W0, F, a, x0, yB, F1, 0, sc, KSB); rect(W0, F, x1, a + bw, yB, F1, 0, sc, KSB); rect(W0, F, x0, x1, dtop, F1, 0, sc, KSB);
     // umbral a ras del peldaño y zócalo debajo: sin huecos aunque la acera baje por un lado (calle en cuesta)
-    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, K.STONE); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), K.STONE);
-    jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), K.STONE);
-    hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), K.STONE);
+    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, KSB); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), KSB);
+    jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB);
+    hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), KSB);
     // puerta de dos hojas de vidrio con reja de forja (la dibuja el shader K.HOMEWIN) y, detrás, el zaguán: estrecho, ~3,3 m
     // de alto y 9 m de fondo. Marco y zócalo de madera, travesaño del montante, tirador de latón
     if (API.log) API.log.push(['P', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz]);
@@ -942,11 +943,11 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     box(W0, F, x0, x1, tr - 0.06, tr + 0.06, -0.43, -0.36, fr, K.WOOD, 3);                             // travesaño del montante
     box(W0, F, x0, x1, dtop - 0.08, dtop, -0.43, -0.37, fr, K.WOOD, 2);
     box(W0, F, x0, x1, zt - 0.05, zt + 0.03, -0.43, -0.37, fr, K.WOOD, 1);
-    box(W0, F, x0 - 0.25, x1 + 0.25, gl - 0.2, gl + 0.12, 0, 0.55, shade(sc, 1.15), K.STONE);
+    box(W0, F, x0 - 0.25, x1 + 0.25, gl - 0.2, gl + 0.12, 0, 0.55, shade(sc, 1.15), KSB);
     if (W1) {
-      box(W1, F, x0 - 0.34, x0, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE); box(W1, F, x1, x1 + 0.34, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), K.STONE);
-      box(W1, F, x0 - 0.44, x1 + 0.44, dtop + 0.1, dtop + 0.3, 0, 0.4, shade(sc, 1.08), K.STONE);
-      box(W1, F, c - 0.24, c + 0.24, dtop - 0.08, dtop + 0.42, 0, 0.5, shade(sc, 1.15), K.STONE);
+      box(W1, F, x0 - 0.34, x0, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), KSB); box(W1, F, x1, x1 + 0.34, gl + 0.3, dtop + 0.1, 0, 0.28, shade(sc, 1.05), KSB);
+      box(W1, F, x0 - 0.44, x1 + 0.44, dtop + 0.1, dtop + 0.3, 0, 0.4, shade(sc, 1.08), KSB);
+      box(W1, F, c - 0.24, c + 0.24, dtop - 0.08, dtop + 0.42, 0, 0.5, shade(sc, 1.15), KSB);
       for (const [l0, l1] of [[x0 + 0.1, c - 0.06], [c + 0.06, x1 - 0.1]])                           // plafones del zócalo
         box(W1, F, l0 + 0.06, l1 - 0.06, gl + 0.2, zt - 0.1, -0.42, -0.39, shade(wood, 1.12), K.WOOD, 7);
       const LATON = pbrAux(0.3, 1, 0, 0), brass = [196, 152, 70];
