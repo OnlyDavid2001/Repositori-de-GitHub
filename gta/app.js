@@ -379,7 +379,6 @@ void main(){
     float pw = max(length(fwidth(q)), 1e-4);                  // metros por píxel
     float tx = 0.0;                                           // relieve de la textura (media cero)
     if (rt > -0.5) {
-      float gf = 1.0 - smoothstep(0.30, 0.65, pw/0.45);       // ¿se distingue el motivo fino?
       if (rt < 0.5 || rt > 3.5) {
         // rasilla (28 × 14 cm, a soga) o baldosa clara (40 cm): juntas claras y algo de tono por pieza
         vec2 sz = rt < 0.5 ? vec2(0.28, 0.14) : vec2(0.40, 0.40);
@@ -387,23 +386,23 @@ void main(){
         vec2 f = abs(fract(g) - 0.5)*sz;                       // distancia al centro de la pieza (m)
         float jw = 0.012, lj = 1.0 - smoothstep(-0.5, 0.5, (min(sz.x*0.5 - f.x, sz.y*0.5 - f.y) - jw)/max(pw, 1e-4));
         float jf = 2.0*jw*(1.0/sz.x + 1.0/sz.y);               // fracción media de junta
-        float fs = 1.0 - smoothstep(0.3, 0.7, pw/sz.y);
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/sz.y);
         tx = (0.10*(hash21(floor(g) + seed*7.0) - 0.5) + 0.22*(lj - jf))*fs;
       } else if (rt < 1.5) {
         // teja árabe: canales de 22 cm a lo largo del eje y cursos de 40 cm (borde de cada teja, en sombra)
         float cu = q.x/0.22, co = q.y/0.40 + 0.5*step(1.0, mod(floor(cu), 2.0));
-        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.22);
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.22);
         float sh = sin(6.2832*cu)*0.16, cv = (smoothstep(0.80, 0.95, fract(co)) - 0.15)*-0.16;
         tx = (sh + cv + 0.12*(hash21(vec2(floor(cu), floor(co)) + seed*5.0) - 0.5))*fs;
       } else if (rt < 2.5) {
         // tela asfáltica: rollos de 1 m solapados (junta clara) y algún tono distinto por rollo
         float rl = q.y/1.0, fr = fract(rl);
-        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.5);
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.5);
         tx = ((smoothstep(0.90, 0.94, fr) - smoothstep(0.97, 1.0, fr) - 0.045)*0.20 + 0.07*(hash21(vec2(floor(rl), seed*3.0)) - 0.5))*fs;
       } else {
         // grava
-        float fs = 1.0 - smoothstep(0.3, 0.7, pw/0.12);
-        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.3, 0.7, pw/0.6));
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.12);
+        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.45, 0.9, pw/0.6));
       }
       // manchas de uso y de humedad (escala de metros), también de media cero
       tx += 0.07*(vnoise(q*0.21) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/3.0));

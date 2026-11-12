@@ -131,7 +131,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   function peto(W, it, ox, oz, cap) {
     const t = 0.22, ax = it.ax - ox, az = it.az - oz, bx = it.bx - ox, bz = it.bz - oz, ix = it.nx * t, iz = it.nz * t, y = it.y, yt = y + it.h;
     quad(W, F0, ax + ix, y, az + iz, bx + ix, y, bz + iz, bx + ix, yt, bz + iz, ax + ix, yt, az + iz, shade(it.col, 0.93), K.PBR, A_MATTE);   // cara interior
-    quad(W, F0, ax, y - 0.3, az, bx, y - 0.3, bz, bx, yt, bz, ax, yt, az, it.col, K.PBR, A_MATTE);                                             // cara exterior (sigue el muro)
+    if (cap) quad(W, F0, ax, y - 0.3, az, bx, y - 0.3, bz, bx, yt, bz, ax, yt, az, it.col, K.PBR, A_MATTE);                                   // cara exterior (sigue el muro; de lejos basta la interior, que se ve por las dos caras)
     const e = cap ? 0.04 : 0;                                                                                                                    // albardilla
     quad(W, F0, ax - it.nx * e, yt, az - it.nz * e, bx - it.nx * e, yt, bz - it.nz * e, bx + ix + it.nx * e, yt, bz + iz + it.nz * e, ax + ix + it.nx * e, yt, az + iz + it.nz * e, shade(it.col, 1.1), K.PBR, A_MATTE);
   }

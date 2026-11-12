@@ -28,8 +28,25 @@ especialmente esos rombos extraños en vez de ceñirse a las cuadrículas».
   por azotea según el área. Tres niveles: completo ≤ 300 m, cajas + peto + manchas de ropa ≤ 650 m, casetas/depósitos/
   pérgolas ≤ 1100 m. La distancia usa la altura sobre el SUELO (antes sobre el mar: en Gràcia se recortaba).
 
+## Coste (BCN.detailStats().roof, vistas de prueba)
+- AZ: 40–220 mil triángulos cerca (≤ 250 m) + 33–61 mil lejos (≤ 700 m).
+- AZ2: 280–535 mil cerca (≤ 260 m) + 270–300 mil medio (peto y cajas, ≤ 650 m) + 40–75 mil lejos (≤ 1100 m); ~120 000
+  elementos en ~430 celdas (cuenta cada tramo de peto como un elemento). Unas 3–4 veces lo de AZ: es caro.
+- Volúmenes: +2 bytes por vértice (eje del edificio). Shader de cubierta: una textura + unas pocas cuentas, sin bucles.
+
+## Verificado (hojas en el scratchpad `n2/az2/`)
+- `hoja_az2_secuencia.jpg` (1500/600/200/50 m, 10:30): mismo color de cubierta y fachada a cualquier distancia, sin rombos.
+- `hoja_az2_azoteas.jpg` (roof_eix, roof_gra, roof_cv en el Gòtic, roof_gra_lo, roof_e150): cubiertas lisas por edificio,
+  peto, más elementos.
+- `hoja_az2_aereo_noche.jpg`: «aereo» sin la gran sombra; noche a las 23:00 igual que antes. Sin errores ni avisos.
+
 ## Pendiente / flojo
-(ver informe final más abajo)
+- La textura fina (rasilla, teja, rollos, grava) apenas se distingue en capturas de 640×360: solo en la azotea más cercana.
+- La teja árabe sigue siendo una losa PLANA naranja (sin faldones ni cumbrera): es lo que más desentona de cerca.
+- Coste de triángulos alto (ver arriba); si hace falta, bajar RN a 200 m o quitar el peto del nivel medio.
+- Desde 150 m los elementos siguen leyéndose pequeños (son a escala real); antenas y cuerdas son subpíxel.
+- Paso de nivel cercano → medio sin fundido (salto a 260 m), como en AZ.
+- DESARROLLO.md (layer `roof`, `uv2` de los volúmenes, rango de sombras variable) sin actualizar: petición al carril común.
 
 ## Cómo se prueba
 `node tools/shot.js <prefijo> @all.json` (vistas en el scratchpad `n2/az2/all.json`: secuencia d1500/d600/d200/d50,
