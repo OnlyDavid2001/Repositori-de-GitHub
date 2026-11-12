@@ -8,8 +8,26 @@ de Nominatim) y dos `<script>` en `index.html`.
 - [x] Lectura de comun.md, PUERTO.md, DESARROLLO §2, §3, §6, §7.6, §10.
 - [x] Nominatim: muelles, terminales (APM/Moll Sud, BEST/Moll Prat), Moll Adossat, marina, Maremàgnum, Aquàrium, Enagás.
 - [x] Maqueta generada a partir de la ortofoto (máscara de agua), el registro de edificios (`BCN.lm.near`) y Nominatim.
-- [x] `puerto.js`: 8 fichas de hitos (ver abajo), 229 000 triángulos.
-- [ ] Capturas ANTES/DESPUÉS de día y a las 23:00, hoja, ajustes.
+- [x] `puerto.js`: 9 fichas de hitos (ver abajo), 241 000 triángulos (hitos en total: 112 262 → 353 218, tope del §10.9: 400 000).
+- [x] Capturas ANTES/DESPUÉS de día (10:30) y a las 23:00, cero errores y avisos: hojas en el scratchpad
+  `n3/pu1/hoja_dia.jpg` y `n3/pu1/hoja_noche.jpg` (Port Vell, cruceros, Moll Sud desde el aire y desde el agua, depósitos,
+  Moll Prat, faros de la bocana, a pie en el Moll de la Fusta).
+
+## Coste
+- Triángulos: +241 000 en 9 mallas (9 llamadas de dibujo, siempre cargadas, con sombra): Moll Sud 74 k, Moll Prat 77 k,
+  depósitos 67 k + 9 k, Port Vell 9 k, el resto < 2 k cada una. Construcción al arrancar medida en el navegador
+  (`window.BCN_PUERTO.t`): ≈ 0,4 s en total (depósitos 0,2 s, Moll Prat 0,1 s). La carga del arnés (35–70 s) la domina la
+  máquina compartida: la versión ANTES tardó 49 s en la misma tanda.
+- Volúmenes ocultos: 754 (746 depósitos, 5 terminales de cruceros, la terminal F2, el Maremàgnum).
+
+## Flojo / pendiente
+- Sin niveles de detalle: son hitos (siempre cargados). Los contenedores son una caja por pila (el tono cambia cada 2,59 m
+  por el patrón de paneles, pero el color de fondo es el de la pila).
+- De noche la explanada de contenedores queda algo uniformemente iluminada (el aura de calle de los hitos baña lo bajo).
+- Los cruceros y los portacontenedores son genéricos y de caja (sin curvatura de casco); los yates pequeños se ven bien
+  desde el aire pero a pie son prismas sencillos.
+- Las grúas pórtico no se han revisado de muy cerca (vista a nivel del agua a ~400 m sí).
+- PU2 (ZAL, Zona Franca, playa de vías de mercancías, Mercabarna) no está hecho: es la otra etapa.
 
 ## Cómo está hecho (para DESARROLLO.md)
 ### Puerto (`puerto.js`, etapa PU1)
