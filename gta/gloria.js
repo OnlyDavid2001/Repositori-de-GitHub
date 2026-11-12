@@ -20,8 +20,8 @@
   // cotas absolutas: suelo del templo (como sagrada.js: la más alta bajo el ábside y el crucero) y calle de Mallorca
   const LV = {};
   function niveles(h) {
-    const yb = h.yb, yA = h.y(-1.9, -55) + yb, yC = h.y(-1.9, -18.4) + yb, yM = h.y(0, 50.6) + yb;
-    LV.yF = Math.max(yA, yC); LV.yM = yM;
+    const yb = h.yb, yA = h.y(-2.5, -55) + yb, yC = h.y(-2.5, -20.5) + yb, yM = h.y(0, 50.6) + yb;
+    LV.yF = Math.max(yA, yC); LV.yM = yM; LV.yb = yb;
     // el proyecto pone el pórtico 4-5 m sobre Mallorca; con la losa a +5,5 quedan ~4,1 m libres bajo los nervios del paso
     LV.yS = Math.max(LV.yF, yM + 5.5); return LV;
   }
@@ -46,8 +46,9 @@
     for (const z of D.losa.pilas_Z) for (const x of D.losa.pilas_X) {
       const y0 = G(x, z) - 0.3; L.tambor(B, x, z, y0, yT - canto - 0.6, 0.62, { lados: 12, col: STd, k: K.PIEDRA, aux: aP });
       L.tambor(B, x, z, yT - canto - 0.6, yT - canto, 0.62, { r1: 1.15, lados: 12, col: ST, k: K.PIEDRA }); }
-    // pasarela de enlace con el nártex si el suelo del templo queda por debajo de la losa (peldaños de subida, z 41-46)
-    if (yS - yF > 0.2) { const n = Math.ceil((yS - yF) / 0.16), rz = 5.0 / n;
+    // SFI: el enlace con el templo ya no va aquí: sagrada.js sube el zócalo del bosque de columnas a la cota de la losa (yS) y
+    // baja al suelo del templo con su propia escalera bajo el nártex (z 34,6-41), así que no hay peldaños entre las columnas
+    if (false && yS - yF > 0.2) { const n = Math.ceil((yS - yF) / 0.16), rz = 5.0 / n;
       for (let i = 0; i < n; i++) L.caja(B, 0, zl0 + 0.1 + (i + 0.5) * rz, Y(yF) - 0.3, 2 * XW - 6, rz, (i + 1) * (yS - yF) / n + 0.3, 0, ST, K.PIEDRA, { aux: aG }); }
     // --- terraza (macizo hasta el suelo) y su pavimento
     const yG0 = Math.min(G(-XW, zt0), G(XW, zt0), G(-XW, zt1), G(XW, zt1), G(0, ze1)) - 1.2;
@@ -160,7 +161,18 @@
 
   // ------------------------------------------------------------ el init de los hitos espera al JSON y elige los volúmenes
   const LMS = window.BCN_LANDMARKS, STAT = { ocultos: 0, lod: 0 };
-  window.BCN_GLORIA = { stats: () => Object.assign({ yS: LV.yS, yF: LV.yF, yM: LV.yM, peldanos: LV.nTot, contrahuella: LV.rise, rellano: LV.land }, STAT) };
+  // SFI: cota del suelo transitable de la losa, la terraza, la escalinata y la escalera del nártex (null fuera): la usa app.js
+  // para el jugador a pie (la losa es hueca: quien llega por la calle de Mallorca pasa por debajo; el resto es macizo)
+  const floorAt = (x, z, feet) => { if (!D || !LV.steps || LV.yb === undefined) return null;
+    const e = D.ejes, dx = x - e.centro[0], dz = z - e.centro[1], X = dx * e.vecX[0] + dz * e.vecX[1], Z = dx * e.vecZ[0] + dz * e.vecZ[1];
+    if (Z < 34.6 || Z > D.escalinata.Z[1] + 0.5) return null;
+    if (Z < 41) { if (Math.abs(X + 2.5) > 28) return null; return LV.yF + (LV.yS - LV.yF) * Math.min(1, (Z - 34.6) / 6.4); }   // escalera del nártex
+    if (Math.abs(X) > D.franja_X) return Z < 46.7 && Math.abs(X + 2.5) < 37 ? LV.yS : null;                                     // zócalo de las columnas
+    if (Z <= D.losa.Z[1]) return feet !== undefined && feet < LV.yS - 0.9 ? null : LV.yS;                          // losa hueca: por debajo, Mallorca
+    if (Z <= D.terraza.Z[1]) return LV.yS;
+    for (const [z0, z1, yy] of LV.steps) if (Z >= z0 - 1e-6 && Z <= z1 + 1e-6) return yy + LV.yb;
+    return null; };
+  window.BCN_GLORIA = { floorAt, stats: () => Object.assign({ yS: LV.yS, yF: LV.yF, yM: LV.yM, peldanos: LV.nTot, contrahuella: LV.rise, rellano: LV.land }, STAT) };
   if (LMS && LMS.init) { const init0 = LMS.init;
     LMS.init = async function (ctx) {
       const d = await dataP; const fx = id => LM.fichas.find(f => f.id === id);

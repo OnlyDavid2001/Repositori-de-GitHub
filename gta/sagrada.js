@@ -70,6 +70,9 @@ function construir(B, h, L, q) {
   let yF = 0, yLo = 0;
   { const S = [[AX, -55], [AX, CZ], [AX, 30], [-40, -60], [36, -60], [-40, 30], [36, 30], [AX, 46], [-30, 46], [25, 46]];
     yF = Math.max(h.y(AX, -55), h.y(AX, CZ)); for (const [x, z] of S) yLo = Math.min(yLo, h.y(x, z) - yF); yLo -= 1.5; }
+  // SFI: el pórtico de la Glòria va a la cota de la losa de ENTORNO sobre Mallorca (Mallorca + 5,5, como gloria.js), por encima
+  // del suelo del templo: el zócalo del bosque de columnas sube a esa cota y una escalera bajo el nártex baja hasta las puertas
+  const dS = Math.max(0.6, h.y(0, 50.6) + 5.5 - yF);
   const aP = L.aux.piedra(0.7, 1.4);
   const OCRE = mix(sh(c.naves, 0.9), [206, 168, 116], 0.25), NAIX = c.naix, PASS = sh(c.pass, 0.92), BL = c.blanco;
   const TOR = mix(sh(c.torres, 0.94), [214, 170, 112], 0.45);         // SF3: piedra de las torres ocre dorada (foto del usuario)
@@ -500,7 +503,11 @@ function construir(B, h, L, q) {
     }
     // basamento: solo un zócalo bajo el bosque de columnas (z 39 → 47). Delante pasa Mallorca: la losa y la escalinata
     // sobre la calle son de ENTORNO (véase el progreso SF3)
-    if (BASE) L.caja(B, gx, (39.3 + zL2 + 3) / 2, yLo, 74, zL2 + 3 - 39.3, 0.6 - yLo, 0, sh(OCRE, 1.02), K.PIEDRA, { aux: aP, techo: sh(OCRE, 0.95) });
+    if (BASE) { const zS = 41, zE = zL2 + 3, ST0 = 34.6, nS = Math.max(1, Math.round(dS / 0.16)), tz = (zS - ST0) / nS;
+      L.caja(B, gx, (zS + zE) / 2, yLo, 74, zE - zS, dS - yLo, 0, sh(OCRE, 1.02), K.PIEDRA, { aux: aP, techo: sh(OCRE, 0.95) });
+      for (const sg of [-1, 1]) L.caja(B, gx + sg * 32.5, (39.3 + zS) / 2, yLo, 9, zS - 39.3, dS - yLo, 0, sh(OCRE, 1.02), K.PIEDRA, { aux: aP, techo: sh(OCRE, 0.95) });
+      if (!FAR) for (let i = 0; i < nS; i++) L.caja(B, gx, ST0 + (i + 0.5) * tz, yLo, 56, tz, (i + 1) * dS / nS - yLo, 0, sh(OCRE, i % 2 ? 1.0 : 1.04), K.PIEDRA, { aux: aP });   // escalera del nártex
+      else L.caja(B, gx, (ST0 + zS) / 2, yLo, 56, zS - ST0, dS / 2 - yLo, 0, sh(OCRE, 1.02), K.PIEDRA); }
     if (MED) [-13.5, -9, -4.5, 0, 4.5, 9, 13.5].forEach((dx, i) => {      // siete puertas de bronce (la central, 4,7 × 5 m)
       const w = i === 3 ? 4.7 : 3.6, hh = i === 3 ? 7.5 : 6.2;
       L.caja(B, gx + dx, zD + 2.45, 0, w, 0.1, hh, 0, [92, 76, 52], K.METAL, { aux: L.aux.panel(0.6, 0.3, 0) }); });
@@ -632,7 +639,7 @@ function construir(B, h, L, q) {
 
     // ---- Glòria (+Z): las siete columnas (pecados abajo, virtudes arriba), nubes con el Credo en las linternas, marcos de las puertas
     { const gx = AX, zD = R.zG, zN = R.zG + 7.5, zL1 = zN + 0.5, zL2 = zN + 4.2, GC = sh(TOR, 1.04), NUB = [234, 232, 226];
-      for (const dx of [-27, -18, -9, 0, 9, 18, 27]) { const x = gx + dx, z = zL2 + 1, yb = Math.min(0, yG(x, z));
+      for (const dx of [-27, -18, -9, 0, 9, 18, 27]) { const x = gx + dx, z = zL2 + 1, yb = dS;   // SFI: sobre el zócalo a la cota de la losa
         L.tambor(B, x, z, yb, yb + 1.6, 1.7, { lados: 10, col: sh(GC, 0.92), k: K.PIEDRA });
         figura(x, yb + 1.6, z + 1.15, 0, 1.7, { col: sh(GC, 0.82), sentada: true, pose: 'rezar' });            // el pecado, encogido
         L.tambor(B, x, z, 10.5, 11.2, 1.45, { lados: 10, col: GC, k: K.PIEDRA }); figura(x, 11.2, z + 0.85, 0, 2.6, { col: sh(GC, 1.06), pose: 'arriba', alas: true });   // la virtud

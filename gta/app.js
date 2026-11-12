@@ -1649,6 +1649,14 @@ canvas.addEventListener('pointermove', e => {
 const pend = e => { touches.delete(e.pointerId); pinch = 0; };
 canvas.addEventListener('pointerup', pend); canvas.addEventListener('pointercancel', pend);
 function fwd() { const cp = Math.cos(st.pitch); return [Math.sin(st.yaw) * cp, -Math.sin(st.pitch), Math.cos(st.yaw) * cp]; }
+// SFI: a pie, el suelo puede ser una plataforma de las plazas (talud del estanque de la Plaça de Gaudí: BCN_PLAZAS.floorAt) o la
+// losa y la escalinata de la Glòria (BCN_GLORIA.floorAt); la losa solo si se llega desde arriba (por Mallorca se pasa por debajo)
+function walkFloor(x, z, g, feet) {
+  const PZ = window.BCN_PLAZAS, GL = window.BCN_GLORIA;
+  const f1 = PZ && PZ.floorAt ? PZ.floorAt(x, z) : null; if (f1 != null && f1 > g) g = f1;
+  const f2 = GL && GL.floorAt ? GL.floorAt(x, z, feet) : null; if (f2 != null && f2 > g) g = f2;
+  return g;
+}
 function groundY(x, z) { return (x >= 0 && x <= WX && z >= 0 && z <= WZ) ? heightAt(x, z) : 0; }
 function dolly(k) { const f = fwd(), alt = Math.max(20, cam.position.y - groundY(cam.position.x, cam.position.z)), s = k * alt; cam.position.x += f[0] * s; cam.position.y += f[1] * s; cam.position.z += f[2] * s; st.fly = null; }
 canvas.addEventListener('wheel', e => { e.preventDefault(); dolly(-Math.sign(e.deltaY) * Math.min(0.5, Math.abs(e.deltaY) / 400 + 0.08)); }, { passive: false });
@@ -1682,7 +1690,7 @@ function update(dt) {
     else { const f = fwd(); P.x += f[0] * mz * sp + cy * mx * sp; P.y += f[1] * mz * sp + my * sp; P.z += f[2] * mz * sp - sy * mx * sp; }
   }
   const g = groundY(P.x, P.z);
-  if (st.walk && !st.fly) P.y = g + 1.75; else if (P.y < g + 1.6) P.y = g + 1.6;
+  if (st.walk && !st.fly) P.y = walkFloor(P.x, P.z, g, P.y - 1.75) + 1.75; else if (P.y < g + 1.6) P.y = g + 1.6;
   if (P.y > 60000) P.y = 60000;
   cam.rotation.set(st.pitch, st.yaw, 0);
   const alt = P.y - g;
