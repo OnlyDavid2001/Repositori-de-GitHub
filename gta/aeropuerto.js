@@ -313,13 +313,15 @@ else {
       // accesos: vestíbulos cortavientos de vidrio con marco oscuro, abajo (llegadas) y arriba (salidas)
       for (let u = 30; u < Ld - 20; u += 40) for (const y0 of [0.18, 8.85]) { q = at(u, 1.3);
         // AE4: vidrio claro reflectante (antes se leía como caja negra), montantes de aluminio y puerta corredera de dos hojas
-        L.caja(B, q[0], q[1], y0, 2.5, 6.2, 2.9, ang, [214, 230, 238], K.CORTINA, { aux: L.aux.cortina(2.9, 1.24, 0.03), techo: [168, 172, 176], kTecho: K.METAL });
+        // (cuerpo de vidrio claro mate, que no refleja el techo oscuro del viaducto, y una lámina reflectante en el frente)
+        L.caja(B, q[0], q[1], y0, 2.5, 6.2, 2.9, ang, [182, 206, 216], K.LISO, { aux: L.aux.liso(1.24), techo: [168, 172, 176], kTecho: K.METAL });
+        q = at(u, 2.575); L.caja(B, q[0], q[1], y0 + 2.3, 0.03, 6.2, 0.6, ang, [214, 230, 238], K.CORTINA, { aux: L.aux.cortina(0.6, 1.24, 0.03) });
         for (let e = -3.1; e <= 3.11; e += 1.24) { if (Math.abs(e) < 1) continue; q = at(u + e, 2.56); L.caja(B, q[0], q[1], y0, 0.07, 0.07, 2.9, ang, [176, 180, 186], K.METAL); }   // montantes del frente
         for (const e of [-3.12, 3.12]) for (const o of [0.65, 1.3, 1.95]) { q = at(u + e, o); L.caja(B, q[0], q[1], y0, 0.07, 0.07, 2.9, ang, [176, 180, 186], K.METAL); }   // y de los costados
         for (const yy of [0, 2.3]) { q = at(u, 2.56); L.caja(B, q[0], q[1], y0 + yy, 0.08, 6.2, 0.08, ang, [176, 180, 186], K.METAL); }
         q = at(u, 1.3);
-        q = at(u, 1.3); L.caja(B, q[0], q[1], y0 + 2.9, 2.7, 6.4, 0.3, ang, [62, 66, 72], K.METAL);                             // dintel
-        for (const e of [-3.1, 3.1]) { q = at(u + e, 1.3); L.caja(B, q[0], q[1], y0, 2.5, 0.12, 2.9, ang, [62, 66, 72], K.METAL); }   // jambas
+        q = at(u, 1.3); L.caja(B, q[0], q[1], y0 + 2.9, 2.7, 6.4, 0.3, ang, [120, 124, 130], K.METAL);                             // dintel
+        for (const e of [-3.1, 3.1]) for (const o of [0.1, 2.5]) { q = at(u + e, o); L.caja(B, q[0], q[1], y0, 0.12, 0.12, 2.9, ang, [120, 124, 130], K.METAL); }   // esquineros (AE4: antes, chapas oscuras que tapaban los costados)
         for (const e of [-0.48, 0.48]) { q = at(u + e, 2.6); L.caja(B, q[0], q[1], y0, 0.05, 0.92, 2.3, ang, [196, 216, 226], K.CORTINA, { aux: L.aux.cortina(2.3, 0.92, 0.02) });   // hojas de la puerta
           for (const f of [-0.44, 0.44]) { q = at(u + e + f, 2.62); L.caja(B, q[0], q[1], y0, 0.06, 0.06, 2.3, ang, [90, 94, 100], K.METAL); } }
         q = at(u, 2.63); L.caja(B, q[0], q[1], y0 + 2.3, 0.1, 2.0, 0.22, ang, [90, 94, 100], K.METAL);              // carril de la puerta
@@ -590,8 +592,11 @@ else {
   const edifBuild = (B, h, L) => {
     for (const e of h.edif) { const P = e.plantas[0]; if (!P || P.length < 3) continue;
       let cx = 0, cz = 0; for (const p of P) { cx += p[0]; cz += p[1]; } cx /= P.length; cz /= P.length;
-      const A = Math.abs(areaS(P)), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
-      if (e.y0 > 2.5) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
+      let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of P) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+      // AE4: el área de la planta puede venir mal (planta en varias piezas): manda también el tamaño de su recuadro
+      const A = Math.max(Math.abs(areaS(P)), (x1 - x0) * (z1 - z0) * 0.5), y0 = Math.min(h.y(cx, cz), 0) - 1, top = Math.max(e.alto, y0 + 4), H = top - y0;
+      // AE4: solo es marquesina si el volumen elevado es delgado; el bloque blanco de pie_lejos (elevado y de 15 m) no lo es
+      if (e.y0 > 2.5 && top - e.y0 < 6) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
       // AE4: el bloque blanco de ventanas al este del P1 es el parque de bomberos del sur (C. I. Sur, data/aero_carga.json)
       if (DATA.c && DATA.c.bomberosSur && Math.hypot(cx + h.x - 3866, cz + h.z - 2826) < 70) { bomberos(B, L, P, y0, Math.max(top, y0 + 9), h); continue; }
       if (A > 1500 && H >= 10) {                                                                    // AE4: oficinas de hormigón con huecos
