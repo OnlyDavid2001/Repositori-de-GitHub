@@ -24,6 +24,16 @@ const dataP = SF.d ? Promise.resolve(SF.d) : (typeof fetch === 'function'
     .catch(e => { console.warn('Sagrada Família: sin data/sf_ref.json, valores por defecto', e); return null; })
   : Promise.resolve(null));
 
+// SFI: la cruz de la torre de Jesucrist es el modelo 3D del usuario (data/sf_cruz.json, tools/stl_cruz.py): pos Int16 en mm,
+// idx Uint16, base del fuste en y = 0, brazos por ±X y ±Z. Se usa en la malla media (< LOD.lejos); lejos, la procedural.
+const b64 = t => { if (typeof atob === 'function') { const bin = atob(t), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  return Uint8Array.from(Buffer.from(t, 'base64')).buffer; };
+const cruzOf = d => { try { return { pos: new Int16Array(b64(d.pos)), idx: new Uint16Array(b64(d.idx)) }; } catch (e) { console.warn('Sagrada Família: sf_cruz.json ilegible', e); return null; } };
+const cruzP = window.BCN_SF_CRUZ ? Promise.resolve(SF.cruzM = cruzOf(window.BCN_SF_CRUZ)) : (typeof fetch === 'function'
+  ? fetch('data/sf_cruz.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => (SF.cruzM = cruzOf(d)))
+    .catch(e => { console.warn('Sagrada Família: sin data/sf_cruz.json, cruz procedural', e); return null; })
+  : Promise.resolve(null));
+
 // ------------------------------------------------------------------ referencia (sf_ref.json o, sin él, lo mismo a mano)
 const v = (o, d) => (o && o.v !== undefined ? o.v : (o !== undefined && o !== null && typeof o !== 'object' ? o : d));
 function ref() {
@@ -300,7 +310,10 @@ function construir(B, h, L, q) {
     if (BASE) facetas(AX, CZ, [[4.3, yB], [4.0, yB + 4], [3.4, yB + 8.5], [2.6, yW], [1.8, yW + 0.6]], 12, BL, K.TRENCADIS, { a0: 15, sinTecho: false, techo: BL });
     // cruz: vidrio y cerámica blanca, 17 m de alto y 13,5 de ancho; brazos tridimensionales que se ensanchan hacia la punta
     const CR = [248, 248, 244], yX = yW + 10.6, s = FAR ? 2.6 : 2.3;
-    if (BASE) {
+    const CU = MED && SF.cruzM;                                          // SFI: la malla del usuario en la calidad media
+    if (CU) { const P = CU.pos, I = CU.idx, sy = (R.Hjc - yW) / 17, V = i => [AX + P[i * 3] * 0.001, yW + P[i * 3 + 1] * 0.001 * sy, CZ + P[i * 3 + 2] * 0.001];
+      for (let t = 0; t + 2 < I.length; t += 3) L.poly(B, [V(I[t]), V(I[t + 1]), V(I[t + 2])], CR, K.LISO); }
+    else if (BASE) {
       L.caja(B, AX, CZ, yW, s, s, R.Hjc - yW, 0, CR, K.LISO);
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         if (FAR) { L.caja(B, AX + dx * 3.4, CZ + dz * 3.4, yX - 1.3, dx ? 6.8 : s, dz ? 6.8 : s, 2.6, 0, CR, K.LISO); continue; }
@@ -750,7 +763,7 @@ function haces(ctx, m) {
 const LMS = window.BCN_LANDMARKS;
 if (LMS && LMS.init) { const init0 = LMS.init;
   LMS.init = async function (ctx) {
-    await dataP;
+    await dataP; await cruzP;
     const r = await init0.call(this, ctx);
     try {
       const api = window.BCN && window.BCN.lm, get = id => api && api.get ? api.get(id) : null;

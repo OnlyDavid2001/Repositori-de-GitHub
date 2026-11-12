@@ -1791,7 +1791,8 @@ Pl. de la Sagrada Família).
   separado de la interpretación.
 - `data/sf_ent_plazas.json` (ENT1, generador `scratchpad/sf/ent1/gen/plazas_gen.py`) y `data/sf_ent_gloria.json` (ENT2,
   `scratchpad/sf/ent2/gen/gloria_gen.py`): trazado de las plazas y de la escalinata y el eje, en ejes locales.
-- `data/sf_cruz.json` (malla del modelo 3D del usuario para la cruz, `tools/stl_cruz.py`): aún sin usar (SFD2).
+- `data/sf_cruz.json` (malla del modelo 3D del usuario para la cruz, `tools/stl_cruz.py`): la carga `sagrada.js` (`cruzP`) y la
+  pone en la malla media (< 1500 m) con sombreado plano; lejos, la cruz procedural.
 - **La línea de la fachada de la Glòria** no está en z +71 (como decía el encargo): puertas en z 32-34,5, nártex hasta 39,3
   (línea de manzana), bosque de columnas en z ≈ 44,7 y zócalo hasta 46,7; la losa de ENTORNO empieza en z 41.
 

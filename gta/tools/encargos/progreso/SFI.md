@@ -23,5 +23,13 @@
 3. **A pie**: el jugador sube al talud del estanque de Gaudí, a la escalera del nártex, al zócalo, a la losa, a la terraza
    y a los peldaños; la losa es hueca y desde Mallorca se pasa por debajo.
 
+## Cruz del usuario (hecha en SFI)
+`sagrada.js` carga `data/sf_cruz.json` antes de construir (`cruzP`, junto a `sf_ref.json`) y, en la malla media (0-1500 m),
+pone sus 13 708 triángulos con `L.poly` (sombreado plano: se leen las aristas) en cerámica blanca `K.LISO`, con la base
+del fuste en la cota de arranque de la cruz (155,5 m) y los brazos por los ejes de la basílica. Lejos (> 1500 m) sigue la
+cruz procedural. Se conservan las franjas de vidrio que se encienden de noche y los haces. Malla media 40 426 → 54 022
+triángulos (+13 596).
+
 ## Pendiente / flojo
-- La cruz del modelo del usuario (`sf_cruz.json`) no se ha puesto en SFI: queda para SFD2.
+- La cruz del modelo del usuario ya está (ver «Cruz»); faltan los miradores de las puntas (procedurales, en DET) por
+  casar con su forma.
