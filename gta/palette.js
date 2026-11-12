@@ -4,7 +4,7 @@
    edificio tiene el mismo color a 1500 m que a 50 m.
    window.BCN_PAL = {
      init(n)                       reserva el registro para n edificios (lo llama app.js antes de leerlos)
-     pick(b, cls, seed, x, z, Hm)  decide y guarda el color del edificio b (centro x, z; altura Hm); devuelve [r, g, b] con
+     pick(b, cls, seed, x, z, Hm, area, fill)  decide y guarda el color del edificio b (centro x, z; altura Hm); devuelve [r, g, b] con
                                    el índice de cubierta (0–63) metido en los 2 bits bajos de cada canal
      wall(b) → [r, g, b] | null    color horneado del edificio (null si no lo decide la paleta: torres, naves…)
      roof(b) → 0–63 | -1           índice de cubierta; roofType(i): 0 azotea transitable · 1 teja árabe · 2 tela asfáltica · 3 grava
@@ -121,7 +121,7 @@ window.BCN_PAL = {
   FAMS, ROOF, roofType,
   init(n) { COL = new Uint8Array(n * 3); RF = new Int8Array(n).fill(-1); FM = new Uint8Array(n); famCache.clear(); },
   famAt,
-  pick(b, cls, seed, x, z, Hm) {
+  pick(b, cls, seed, x, z, Hm, area, fill) {
     const fam = famAt(x, z); FM[b] = fam;
     if (cls !== 0 && cls !== 2 && cls !== 6) return null;
     const ws = WF[fam], e = ws[wpick(ws, hb(b, seed, 1), 3)];
@@ -132,8 +132,11 @@ window.BCN_PAL = {
     // cubierta: tipo por familia (las casas bajas, cls 6, con más teja; las torres altas, sin teja)
     const w = RWF[fam].slice();
     if (cls === 6) w[1] *= 3; if (Hm > 32) w[1] *= 0.15; if (Hm < 8) w[1] *= 1.6;
-    const ws4 = w.map(v => [v]), t = wpick(ws4, hb(b, seed, 4), 0);
-    const ri = t * 16 + Math.floor(hb(b, seed, 5) * 16);
+    const ws4 = w.map(v => [v]);
+    let t = wpick(ws4, hb(b, seed, 4), 0), ri = t * 16 + Math.floor(hb(b, seed, 5) * 16);
+    // la teja árabe es un tejado con pendiente (rooftops.js) y solo cabe en casas pequeñas y bajas de planta casi rectangular;
+    // en las grandes o de planta irregular, azotea transitable de rasilla (lo normal en Barcelona)
+    if (t === 1 && area !== undefined && (area > 420 || fill < 0.8 || Hm > 17)) { t = 0; ri = Math.floor(hb(b, seed, 5) * 8); }
     RF[b] = ri;
     const q = v => Math.max(0, Math.min(252, Math.round(v))) & 252;
     const c = [q(r) | (ri & 3), q(g) | ((ri >> 2) & 3), q(bl) | ((ri >> 4) & 3)];

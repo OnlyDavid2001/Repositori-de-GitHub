@@ -1005,13 +1005,20 @@ const BREC = { dv: [], n: 0 };
         for (let k = 0; k < flat.length; k += 2) { const x = flat[k], z = flat[k + 1]; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (z < bz0) bz0 = z; if (z > bz1) bz1 = z; }
         // color horneado: el de la paleta por familia de barrio (palette.js) o, en las clases sin paleta, el de PAL
         const pal = PAL[cls] || PAL[0], a = (cls << 4) | (seed & 15);
-        const c3 = (PALJ && PALJ.pick(bi, cls, seed, (bx0 + bx1) / 2 + ox, (bz0 + bz1) / 2 + oz, Ht / 10)) || pal[seed % pal.length];
         // eje del edificio (para alinear la textura de su cubierta con sus muros): media de la dirección de las aristas del
         // anillo exterior, ponderada por longitud, con el ángulo ×4 (así las aristas a 0°, 90°, 180° y 270° suman a lo mismo)
         let s4c = 0, s4s = 0;
         for (let k = 0, m0 = rsz[0]; k < m0; k++) { const j = (k + 1) % m0, dx = flat[j * 2] - flat[k * 2], dz = flat[j * 2 + 1] - flat[k * 2 + 1], L = Math.hypot(dx, dz);
           if (L > 0.05) { const a4 = 4 * Math.atan2(dz, dx); s4c += L * Math.cos(a4); s4s += L * Math.sin(a4); } }
         const axA = Math.atan2(s4s, s4c) / 4, axC = Math.round(Math.cos(axA) * 127), axS = Math.round(Math.sin(axA) * 127);
+        // planta: área (anillo exterior) y cuánto llena su rectángulo mínimo orientado con ese eje (la teja con pendiente solo
+        // va en plantas casi rectangulares: palette.js lo decide con estos dos números)
+        let pA = 0, u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9;
+        { const ca = Math.cos(axA), sa = Math.sin(axA);
+          for (let k = 0, m0 = rsz[0]; k < m0; k++) { const j = (k + 1) % m0, x = flat[k * 2], z = flat[k * 2 + 1], u = x * ca + z * sa, w = z * ca - x * sa;
+            pA += x * flat[j * 2 + 1] - flat[j * 2] * z; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < w0) w0 = w; if (w > w1) w1 = w; } }
+        pA = Math.abs(pA) / 2;
+        const c3 = (PALJ && PALJ.pick(bi, cls, seed, (bx0 + bx1) / 2 + ox, (bz0 + bz1) / 2 + oz, Ht / 10, pA, pA / Math.max(1, (u1 - u0) * (w1 - w0)))) || pal[seed % pal.length];
         let rs = 0; holes.length = 0;
         for (let r = 0; r < rsz.length; r++) {
           const m = rsz[r]; if (r > 0) holes.push(rs);
