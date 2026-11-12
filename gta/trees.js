@@ -462,13 +462,16 @@ function pitGeo() {
   return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
 }
 
-// G1V1 · viento en el vértice (VS_TREE de streets.js): balanceo de la copa que crece con la altura sobre el fuste, racha lenta
-// que recorre la calle y, en las hojas (uKind 1), temblor de cada tarjeta. Fase por ejemplar (posición de la instancia)
+// G1V1 · viento en el vértice (VS_TREE de streets.js): balanceo de las hojas que crece con la altura sobre el fuste, racha
+// lenta que recorre la calle y temblor de cada tarjeta de hojas (uKind 1). Fase por ejemplar (posición de la instancia)
 const WIND_GLSL = `
 vec3 treeWind(vec3 p, mat4 W, float kind){
+  // el fuste y las ramas, quietos: el mapa de sombras (lighting.js) es estático y una corteza que se mueve se sombrea a sí
+  // misma (tronco negro). Solo se mueven las hojas y el impostor, poco (≤ 10 cm), por la misma razón
+  if (kind < 0.5) return vec3(0.0);
   vec2 o = W[3].xz; float ph = dot(o, vec2(0.113, 0.071));
   float gust = 0.6 + 0.4*sin(uTime*0.41 + o.x*0.006 + o.y*0.004), h = max(p.y - 2.2, 0.0);
-  vec3 d = vec3(sin(uTime*1.07 + ph) + 0.3*sin(uTime*2.3 + ph*1.7), 0.0, 0.6*sin(uTime*0.83 + ph*1.3))*0.0021*h*h*gust;
+  vec3 d = vec3(sin(uTime*1.07 + ph) + 0.3*sin(uTime*2.3 + ph*1.7), 0.0, 0.6*sin(uTime*0.83 + ph*1.3))*0.0012*h*h*gust;
   if (kind > 0.5 && kind < 1.5) d += vec3(sin(uTime*6.3 + dot(p, vec3(3.1, 2.3, 1.7)) + ph), 0.6*sin(uTime*7.1 + dot(p, vec3(1.3, 2.9, 2.1))),
     sin(uTime*5.7 + dot(p, vec3(2.2, 1.1, 3.3))))*0.03*gust*min(h*0.35, 1.0);
   return d;

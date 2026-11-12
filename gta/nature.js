@@ -209,7 +209,7 @@ void main(){
     // una racha que recorre el monte; fase por instancia (sin trabajo en la CPU)
     if (color.a > 2.5 && color.a < 6.5 && (color.a > 5.5 || color.a < 4.5)) {
       vec2 o = finalWorld[3].xz; float ph = dot(o, vec2(0.071, 0.053)), gust = 0.65 + 0.35*sin(uTime*0.37 + o.x*0.004 + o.y*0.003);
-      float amp = (color.a > 5.5 ? 0.11 : 0.07)*color.g*color.g*gust*min(length(finalWorld[1].xyz), 1.6);
+      float amp = (color.a > 5.5 ? 0.07 : 0.07)*color.g*color.g*gust*min(length(finalWorld[1].xyz), 1.6);
       wp.x += amp*(sin(uTime*1.7 + ph) + 0.45*sin(uTime*3.9 + ph*2.3 + position.y));
       wp.z += amp*0.7*(sin(uTime*1.3 + ph*1.4) + 0.4*sin(uTime*4.4 + ph + position.x));
       if (color.a > 5.5) wp.y += amp*0.25*sin(uTime*5.1 + ph*3.0 + position.x*2.0);
