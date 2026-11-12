@@ -441,6 +441,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       Object.assign(env, { V, kw: KW[V.acab], uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
         marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
         galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
+        cwSp: V.cw ? [[92, 108, 122], [112, 120, 126], [84, 100, 108], [120, 130, 138]][(r[3] * 4) | 0] : null, cwMt: V.cw ? [[178, 182, 186], [150, 156, 160], [196, 198, 200]][(r[2] * 3) | 0] : null,
         losaV: r[4] < 0.55 ? shade(mixc(p, [92, 88, 82], 0.7), 0.62) : r[4] < 0.8 ? [72, 70, 66] : [58, 66, 62] });   // bajo la losa: piedra a la sombra, gris o verde oscuro
     }
 
@@ -625,6 +626,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     wr(W0, F, a, e0, k, P, wc, kw); wr(W0, F, e1, a + bw, k, P, wc, kw);
   }
   const planter = (...a) => { if (D.planter) D.planter(...a); };   // maceta de details.js
+  const CW_SP = GEO.pbrAux ? GEO.pbrAux(0.18, 0.55, 0, 0) : undefined;   // antepecho del muro cortina: vidrio opaco satinado
   // pisos de un tramo según la variante
   function pisosV(env, run) {
     const { W0, W1, V, kw, uV, iron, F1, nF, m, y0, shutV, marcoV, windowHole } = env;
@@ -641,6 +643,17 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const corr = tipo === 'corrido' || tipo === 'terraza';
       if (D > 1 && V.imposta === 3 && k > cover) box(W0, F, 0, L, k - 0.24, k + 0.06, 0, 0.05, env.forjV, 19, 3);   // canto de forjado visto
       else if (D > 1 && V.imposta && k > cover) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, (V.imposta > 1 ? 0.16 : 0.07) * (street ? 1 : 0.6), uV, K.STUCCO);
+      // n3 E4 · MURO CORTINA (torres de vidrio, V.cw): por planta, antepecho de vidrio opaco (bandas de forjado) y paño de visión
+      // de forjado a forjado (el vidrio del núcleo: reflejo del cielo, interiores y, de noche, alguna luz), montantes finos cada
+      // medio vano y travesaño; canto de forjado fino de aluminio
+      if (V.cw && k >= cover - 0.2) { const sp = Math.min(1.0, m * 0.28), mc = env.cwMt;
+        rect(W0, F, 0, L, k, k + sp, -0.02, env.cwSp, K.PBR, CW_SP);
+        rect(W0, F, 0, L, k + sp, P - 0.08, -0.06, env.glass, K.GLASS);
+        box(W0, F, 0, L, k - 0.06, k + 0.06, -0.02, 0.06, mc, K.METAL, 1);
+        if (W1) { const nv = Math.max(2, Math.round(L / (V.bay / 2)));
+          for (let q = 0; q <= nv; q++) { const x = Math.min(L - 0.04, Math.max(0.04, L * q / nv)); box(W1, F, x - 0.035, x + 0.035, k, P, -0.06, 0.07, mc, K.METAL, 4); }
+          box(W1, F, 0, L, k + sp - 0.03, k + sp + 0.03, -0.06, 0.05, mc, K.METAL, 1); }
+        continue; }
       for (let W = 0; W < nb; W++) {
         const a = W * bw, c = a + bw / 2;
         env.rnd(3, run.i, W * 64 + D);

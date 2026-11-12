@@ -60,7 +60,7 @@ GEO.regKind('PATIO', 121, `
       tx += (vnoise(q*0.6) - 0.5)*0.22*f2 - j*0.35*f2 + (hash21(floor(q/3.0)) - 0.5)*0.1*f2; }
     else tx += (hash21(floor(q*10.0)) - 0.5)*0.14*f1 + (vnoise(q*0.8) - 0.5)*0.18*f2;
     alb *= (1.0 + tx)*(1.0 - 0.55*uNight);
-    emis += vec3(1.0, 0.70, 0.40)*glow*uDusk*(0.30 + 0.25*alb.r);`);
+    emis += vec3(1.0, 0.70, 0.40)*glow*uDusk*(0.55 + 0.3*alb.r);`);
 
 window.BCN_ROOFTOPS = { init(ctx) {
   const { city, detail, reg, BREC, bldChunks, scene } = ctx;
@@ -321,18 +321,40 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // centro (un sector entre las dos tapias que la separan de sus vecinas), y cada trozo es distinto: jardincito con árboles y
     // setos, patio de baldosa con macetas y mesa, taller con claraboyas y palés, piscinita con tumbonas, aparcamiento, grava
     // con caseta y bicis, huerto. Solo algunos patios (los públicos y unos pocos de jardines) guardan un jardín común en el centro.
+    // Reparto: cada arista del contorno interior se queda con lo que tiene más cerca (en un patio convexo, la intersección de
+    // semiplanos «más cerca de mi arista que de las demás»: las franjas se encuentran en la línea central y en las diagonales de
+    // las esquinas, como las tapias de verdad); cada franja se corta en perpendicular a su arista por los límites entre fincas.
     const PF = (() => {
-      if (!C || !sp.rad || sp.rad.length < 3) return null;
-      const rs = sp.rad.map(p => [p[0], p[1], Math.atan2(p[1] - C[1], p[0] - C[0])]).sort((a, b) => a[2] - b[2]);
+      const I = sp.inner; if (!C || !I || I.length < 3 || !sp.rad || sp.rad.length < 3) return null;
+      const sg = MZ_area(I) > 0 ? 1 : -1, E = [];
+      for (let i = 0; i < I.length; i++) { const p = I[i], q = I[(i + 1) % I.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 0.5) continue;
+        const tx = (q[0] - p[0]) / L, tz = (q[1] - p[1]) / L, nx = -tz * sg, nz = tx * sg; E.push({ p, q, L, tx, tz, nx, nz, c: nx * p[0] + nz * p[1], rads: [] }); }
+      for (let i = 0; i < E.length; i++) { const e = E[i], f = E[(i + 1) % E.length]; if (e.tx * f.nx + e.tz * f.nz > 0.05) return null; }   // no convexo: sin reparto
+      for (const r of sp.rad) { let bi = -1, bd = 1e9, bt = 0; E.forEach((e, i) => { const t = (r[0] - e.p[0]) * e.tx + (r[1] - e.p[1]) * e.tz, d = Math.abs((r[0] - e.p[0]) * e.nx + (r[1] - e.p[1]) * e.nz);
+        if (t > 1 && t < e.L - 1 && d < bd) { bd = d; bi = i; bt = t; } }); if (bi >= 0 && bd < 3) E[bi].rads.push(bt); }
       const out = [];
-      for (let k = 0; k < rs.length; k++) { const a = rs[k], b = rs[(k + 1) % rs.length]; let da = b[2] - a[2]; if (da <= 0) da += 6.2832;
-        if (da > 2.8 || da < 0.05) continue;
-        const ax = a[0] - C[0], az = a[1] - C[1], bx = b[0] - C[0], bz = b[1] - C[1], la = Math.hypot(ax, az), lb = Math.hypot(bx, bz); if (la < 4 || lb < 4) continue;
-        let Q = hclip(sp.inner, C[0], C[1], -az / la, ax / la, 0); if (Q) Q = hclip(Q, C[0], C[1], bz / lb, -bx / lb, 0);
-        if (!Q || Math.abs(MZ_area(Q)) < 25) continue;
-        const ux = ax / la + bx / lb, uz = az / la + bz / lb, lu = Math.hypot(ux, uz) || 1;
-        out.push({ Q, u: [ux / lu, uz / lu], D: (la + lb) / 2, a, b }); }
-      return out.length >= 3 ? out : null; })();
+      E.forEach((e, i) => {
+        let S = I; for (let j = 0; j < E.length && S; j++) { if (j === i) continue; const f = E[j], mx = f.nx - e.nx, mz = f.nz - e.nz, L = Math.hypot(mx, mz); if (L < 1e-6) continue;
+          S = hclip(S, 0, 0, mx / L, mz / L, (f.c - e.c) / L); }
+        if (!S || Math.abs(MZ_area(S)) < 20) return;
+        let dm = 0; for (const p of S) dm = Math.max(dm, e.nx * p[0] + e.nz * p[1] - e.c);
+        const cuts = [-1e9].concat(e.rads.sort((x, y) => x - y), [1e9]);
+        for (let k = 0; k + 1 < cuts.length; k++) {
+          let Q = S; if (cuts[k] > -1e8) Q = hclip(Q, e.p[0], e.p[1], e.tx, e.tz, cuts[k]); if (Q && cuts[k + 1] < 1e8) Q = hclip(Q, e.p[0], e.p[1], -e.tx, -e.tz, -cuts[k + 1]);
+          if (!Q || Math.abs(MZ_area(Q)) < 15) continue;
+          const tm = cuts[k] > -1e8 && cuts[k + 1] < 1e8 ? (cuts[k] + cuts[k + 1]) / 2 : cuts[k] > -1e8 ? Math.min(e.L, cuts[k] + 4) : Math.max(0, cuts[k + 1] - 4);
+          out.push({ Q, u: [e.nx, e.nz], e, dm, a: [e.p[0] + e.tx * tm, e.p[1] + e.tz * tm] }); }
+        // tapias: los cortes entre fincas (en perpendicular, de la trasera hasta el fondo de la franja)
+        for (const t of e.rads) { const ax = e.p[0] + e.tx * t, az = e.p[1] + e.tz * t; let l = 0; while (l < 60 && inPoly(S, ax + e.nx * (l + 0.5), az + e.nz * (l + 0.5))) l += 0.5;
+          if (l > 1.5) out.push({ tap: [ax, az, Math.atan2(e.nz, e.nx), l] }); }
+        // y la tapia del fondo, donde se encuentran las franjas (línea central y diagonales)
+        for (let k = 0; k < S.length; k++) { const p = S[k], q = S[(k + 1) % S.length], mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2, L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          if (L < 1.5 || e.nx * mx + e.nz * mz - e.c < 0.5) continue; out.push({ tap: [mx, mz, Math.atan2(q[1] - p[1], q[0] - p[0]), L, 1] }); }
+      });
+      const P2 = out.filter(o => o.Q); if (P2.length < 3) return null;
+      // tapias del fondo: cada una la comparten dos franjas, se pone una vez
+      const seenT = new Set(); P2.taps = out.filter(o => o.tap && (!o.tap[4] || (k => !seenT.has(k) && seenT.add(k))(Math.round(o.tap[0]) + ',' + Math.round(o.tap[1])))).map(o => o.tap);
+      return P2; })();
     if (PF) {
       const pub = tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.3), core = pub ? 0.42 : 0;
       // jardín común en el centro (solo en algunos): césped en cuatro parterres, árboles, bancos y juegos
@@ -343,15 +365,18 @@ window.BCN_ROOFTOPS = { init(ctx) {
         for (let i = 0; i < 5 + Math.floor(g[2] * 5); i++) { const r = takeS(src, 300 + i, 6), p = spotQ(L, 2.2, 1300 + i); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: gY(p[0], p[1]), a: r[2] * 6.28, sp: r[1] < 0.7 ? 0 : 1, h: 6 + r[3] * 5, r: 2.4 + r[0] * 1.6, c: r[5] }); }
         for (let i = 0; i < 4; i++) { const r = takeS(src, 500 + i, 12), p = spotQ(L, r[0] < 0.6 ? 1.2 : 3.2, 1350 + i); if (!p) continue;
           items.push(r[0] < 0.6 ? { t: 'bench', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[1] < 0.5 ? 0 : Math.PI / 2) } : { t: 'play', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, pl: r.slice(2, 12) }); } }
-      // tapias entre fincas: de la trasera hasta el centro (o hasta el jardín común)
-      for (let k = 0; k < sp.rad.length; k++) { const a = sp.rad[k], dx = C[0] - a[0], dz = C[1] - a[1], D = Math.hypot(dx, dz), r = takeS(src, 200 + k, 4), L = D * (pub ? 1 - core - 0.04 : 0.985); if (L < 2) continue;
-        items.push({ t: 'tapia', x: a[0] + dx / D * L / 2, z: a[1] + dz / D * L / 2, y: gY(a[0], a[1]), a: Math.atan2(dz, dx), l: L, h: 2.0 + r[2] * 0.7, col: shade([[206, 196, 178], [196, 180, 160], [214, 206, 194], [178, 150, 128]][Math.floor(r[1] * 4)], 0.85 + r[3] * 0.2) }); }
+      // tapias entre fincas (2–2,7 m) y, más bajas, las del fondo; con jardín común, solo hasta su borde
+      PF.taps.forEach((t, k) => { const r = takeS(src, 200 + k, 4), back = !!t[4];
+        let l = t[3]; if (pub && !back) l = Math.min(l, l * 0.62);
+        if (pub && back) return;
+        const x = back ? t[0] : t[0] + Math.cos(t[2]) * l / 2, z = back ? t[1] : t[1] + Math.sin(t[2]) * l / 2;
+        items.push({ t: 'tapia', x, z, y: gY(x, z), a: t[2], l, h: back ? 1.7 + r[2] * 0.4 : 2.0 + r[2] * 0.7, col: shade([[206, 196, 178], [196, 180, 160], [214, 206, 194], [178, 150, 128]][Math.floor(r[1] * 4)], 0.85 + r[3] * 0.2) }); });
       const W8 = { talleres: [3, 1, 2, 0.5, 2, 1.5, 0.3], jardines: [0.5, 3, 2, 1.6, 0.4, 1.2, 1], mixto: [2, 2, 2, 1, 1, 1.2, 0.8], publico: [0.3, 2, 2.5, 0.6, 0.3, 1.2, 1.2], aparcamiento: [1.5, 1.5, 1.5, 0.6, 3, 1, 0.3] }[tipo];
       const TY = ['taller', 'jardin', 'baldosa', 'piscina', 'parking', 'grava', 'huerto'], WS = W8.reduce((s, v) => s + v, 0);
       const CARC = [[200, 200, 196], [60, 62, 66], [150, 30, 28], [40, 70, 120], [220, 220, 214], [120, 124, 128]];
       let prev = -1;
       PF.forEach((pf, k) => {
-        let Q = pf.Q; if (pub) Q = hclip(Q, C[0], C[1], pf.u[0], pf.u[1], pf.D * core * 0.98) || Q;
+        let Q = pf.Q; if (pub) Q = hclip(Q, 0, 0, -pf.u[0], -pf.u[1], -(pf.e.c + pf.dm * 0.62)) || Q;
         const r = takeS(src, 900 + k, 40); let x = r[0] * WS, ty = 0; for (; ty < 6 && x > W8[ty]; ty++) x -= W8[ty];
         if (ty === prev) ty = (ty + 1 + Math.floor(r[1] * 5)) % 7; prev = ty; const T = TY[ty];
         const pa = Math.atan2(pf.u[1], pf.u[0]);           // eje del sector (de la trasera al centro)
@@ -384,6 +409,16 @@ window.BCN_ROOFTOPS = { init(ctx) {
           tree(26, r[27] < 0.5 ? 0 : 3); pots(2, 30); if (r[34] < 0.4) table(34); }
         else { for (let i = 0; i < 2 + Math.floor(r[5] * 3); i++) { const p = sQ(1.8, 6 + i); if (p) items.push({ t: 'bed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 2.6, w: 1.1, pl: r.slice(10 + i, 20 + i) }); }
           tree(22, 3); if (r[24] < 0.6) tree(25, 3); const p = sQ(1.3, 28); if (p) items.push({ t: 'shed', x: p[0], z: p[1], y: gY(p[0], p[1]), a: pa, l: 1.5, w: 1.2, col: [150, 120, 92] }); }
+        // parcelas grandes: más cosas, según su área (una cada ~70 m² más allá de los primeros 90)
+        const aQ = Math.abs(MZ_area(Q)), RL = ['pot', 'pot', 'tree', 'table', 'bikes', 'shed', 'dog', 'hedge', 'pal', 'cloth'];
+        for (let i = 0; i < Math.min(8, Math.floor((aQ - 90) / 70)); i++) { const rr = takeS(src, 1600 + k * 10 + i, 6), t = RL[Math.floor(rr[0] * RL.length)];
+          if (t === 'pot') pots(2 + Math.floor(rr[1] * 3), 2 + i * 3); else if (t === 'tree') tree(3 + i, rr[1] < 0.5 ? 0 : 3); else if (t === 'table') table(4 + i);
+          else { const p = sQ(t === 'shed' ? 1.4 : t === 'hedge' ? 2 : 1.1, 200 + i); if (!p) continue; const yy = gY(p[0], p[1]);
+            if (t === 'shed') items.push({ t, x: p[0], z: p[1], y: yy, a: pa, l: 1.6 + rr[2], w: 1.2 + rr[3] * 0.6, col: rr[4] < 0.5 ? [196, 198, 196] : [150, 120, 92] });
+            else if (t === 'hedge') items.push({ t, x: p[0], z: p[1], y: yy, a: pa + Math.PI / 2, l: 2.5 + rr[2] * 3, w: 0.7, h: 0.8 + rr[3] * 0.5 });
+            else if (t === 'pal') items.push({ t, x: p[0], z: p[1], y: yy, a: pa + rr[2] * 0.4, n: 1 + Math.floor(rr[3] * 6) });
+            else if (t === 'cloth') { const cl = []; for (let q = 0; q < 12; q++) cl.push([r[(q + 3) % 40] < 0.68, CLOTHES[Math.floor(r[(q + 11) % 40] * CLOTHES.length) % CLOTHES.length], 0.3 + r[(q + 17) % 40] * 0.5, 0.3 + r[(q + 5) % 40] * 0.45]); items.push({ t, x: p[0], z: p[1], y: yy, a: pa, l: 2.4, cl }); }
+            else items.push({ t, x: p[0], z: p[1], y: yy, a: pa + rr[2], h: 0, c: rr[3], col: [[200, 60, 50], [60, 130, 190], [230, 190, 60], [90, 160, 90]][Math.floor(rr[4] * 4)] }); } }
         if (r[36] < 0.45) { const p = sQ(0.5, 37); if (p) { items.push({ t: 'lamp', x: p[0], z: p[1], y: gY(p[0], p[1]), a: 0, h: 2.4 });
           items.push({ t: 'glow', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.15 + (k % 3) * 0.01, r: Math.min(2.6, edgeDist(Q, p[0], p[1]) + 0.1), col: shade(flo[1], 0.8 + r[4] * 0.12), g: flo[0], a: 0 }); } }
       });

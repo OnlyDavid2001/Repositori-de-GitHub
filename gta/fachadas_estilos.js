@@ -306,14 +306,15 @@ const TIPO = {
       carpCol: VERDEIND.concat(BLANCO), marco: BLANCO, recerc: 1, imposta: 2, ultimo: 'normal', coron: 'cornisa', mac: 0, remate: 0.55 },
     { id: 'eq_oficina', bay: 2.7, hp: 3.6, win: 2.1, alto: 0.62, hueco: 'ventana', bal: 'ninguno', acab: 'gresite', carp: 'ninguna',
       marco: GRAFITO, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.3 }],
+  // n3 E4: cw = 1, muro cortina de verdad (facades.js pisosV): antepecho opaco, paño de forjado a forjado, montantes finos.
   // n3 E3 · torres de vidrio y oficinas (clases 3 y 12): muro cortina aproximado con el ventanal de taller (paño de vidrio casi
   // de forjado a forjado con retícula de montantes), bandas de forjado (imposta) y acabado de hormigón o gresite oscuro
   vidrio: [
-    { id: 'cw_gris', bay: 3.0, hp: 3.7, win: 2.85, alto: 0.86, hueco: 'taller', bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+    { id: 'cw_gris', bay: 3.0, hp: 3.7, win: 2.85, alto: 0.86, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
       marco: GRAFITO, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.1 },
-    { id: 'cw_alu', bay: 3.2, hp: 3.8, win: 3.0, alto: 0.9, hueco: 'taller', bal: 'ninguno', acab: 'gresite', carp: 'ninguna',
+    { id: 'cw_alu', bay: 3.2, hp: 3.8, win: 3.0, alto: 0.9, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'gresite', carp: 'ninguna',
       marco: ALU, recerc: 0, imposta: 2, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.1 },
-    { id: 'cw_bandas', bay: 2.8, hp: 3.6, win: 2.6, alto: 0.7, hueco: 'taller', bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
+    { id: 'cw_bandas', bay: 2.8, hp: 3.6, win: 2.6, alto: 0.7, hueco: 'taller', cw: 1, bal: 'ninguno', acab: 'hormigon', carp: 'ninguna',
       marco: ALU, recerc: 0, imposta: 3, ultimo: 'normal', coron: 'peto', mac: 0, remate: 0.15 }] };
 
 // variantes completas (BASE + propias), congeladas
