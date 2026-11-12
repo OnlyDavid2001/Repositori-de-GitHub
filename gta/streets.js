@@ -453,7 +453,8 @@ void main(){
   const atlasK = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
   atlasK.wrapU = atlasK.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; matW.setTexture('tKind', atlasK);
   const SU = window.BCN_SUELOS, kindCache = new Map();
-  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = ruralSeg(s) ? [6, 0.6] : SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
+  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = SEG[o + 5] === 9 || ruralSeg(s) ? [6, 0.6] :   // G1S1: las pistas (clase 9) son de tierra siempre, también en parques
+       SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
   matW.setTexture('tField', atlas); matW.setTexture('tPanD', tPanD); matW.setTexture('tPanN', tPanN); matW.setTexture('tGrD', tGrD); matW.setTexture('tGrN', tGrN);
   const freeSlots = []; for (let k = SLOTS * SLOTS - 1; k >= 0; k--) freeSlots.push(k);
 
