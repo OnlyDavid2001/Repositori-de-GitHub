@@ -221,6 +221,11 @@ window.BCN_ROOFTOPS = { init(ctx) {
   const inPoly = (P, x, z) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const xi = P[i][0], zi = P[i][1], xj = P[j][0], zj = P[j][1]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) ins = !ins; } return ins; };
   const edgeDist = (P, x, z) => { let m = 1e9; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1;
     const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); m = Math.min(m, Math.hypot(a[0] + dx * t - x, a[1] + dz * t - z)); } return m; };
+  const LAWN = [[92, 112, 60], [84, 104, 54], [100, 116, 66], [110, 118, 70], [78, 98, 52]];
+  function hclip(P, ax, az, nx, nz, d) { const out = [], f = p => (p[0] - ax) * nx + (p[1] - az) * nz - d;
+    for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], fp = f(p), fq = f(q); if (fp >= 0) out.push(p);
+      if ((fp >= 0) !== (fq >= 0)) { const t = fp / (fp - fq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); } }
+    return out.length >= 3 ? out : null; }
   const gY = (x, z) => (ctx.heightAt ? ctx.heightAt(x, z) || 0 : 0);
   const PLANTC = [[64, 104, 52], [84, 122, 60], [52, 88, 46], [104, 132, 70], [70, 110, 80], [120, 140, 64]];
   const POTC = [[176, 110, 84], [160, 96, 70], [200, 196, 186], [120, 122, 124]];
@@ -276,12 +281,15 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // eje de la manzana (la arista exterior más larga)
     let ang = 0, bl = 0; for (let i = 0; i < sp.outer.length; i++) { const a = sp.outer[i], b = sp.outer[(i + 1) % sp.outer.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; ang = Math.atan2(b[1] - a[1], b[0] - a[0]); } }
     // suelo: el interior entero (bajo las cubiertas no se ve) en tierra, sauló, césped o baldosa según el tipo
-    const GC = { talleres: [[150, 146, 138], [138, 132, 122]], jardines: [[96, 124, 62], [112, 132, 70], [150, 136, 108]], mixto: [[146, 140, 130], [104, 128, 66]],
-      publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[104, 126, 64], [150, 144, 132]] }[tipo];
+    const GC = { talleres: [[150, 146, 138], [138, 132, 122]], jardines: [[150, 136, 108], [170, 150, 118], [140, 132, 120]], mixto: [[146, 140, 130], [164, 150, 122]],
+      publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[160, 146, 120], [150, 144, 132]] }[tipo];
     items.push({ t: 'ground', P: sp.inner, col: GC[Math.floor(g[0] * GC.length)], x: C[0], z: C[1], y: 0, a: 0 });
     if (tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.6)) {           // césped en el centro (jardín)
-      const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.72, C[1] + (p[1] - C[1]) * 0.72]);
-      items.push({ t: 'ground', P: L, col: tipo === 'publico' ? [98, 128, 62] : [90, 122, 58], x: C[0], z: C[1], y: 0, a: 0, up: 0.04 });
+      // césped partido en cuatro parterres por dos paseos (de 1,6 m) que se cruzan en el centro, cada uno con su tono
+      const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.78, C[1] + (p[1] - C[1]) * 0.78]), ca = Math.cos(ang), sa = Math.sin(ang);
+      for (let q = 0; q < 4; q++) { const s1 = q & 1 ? 1 : -1, s2 = q & 2 ? 1 : -1;
+        let Q = hclip(L, C[0], C[1], ca * s1, sa * s1, 0.8); if (Q) Q = hclip(Q, C[0], C[1], -sa * s2, ca * s2, 0.8);
+        if (Q && Q.length >= 3) items.push({ t: 'ground', P: Q, col: shade(LAWN[Math.floor(g[20 + q] * LAWN.length)], 0.92 + g[24 + q] * 0.14), x: C[0], z: C[1], y: 0, a: 0, up: 0.05 }); }
     }
     // tapias entre fincas (de la trasera hacia el centro), salvo en el jardín público
     if (tipo !== 'publico') for (let k = 0; k < sp.rad.length; k++) { const r = takeS(src, 200 + k, 4); if (r[0] < 0.25) continue;
