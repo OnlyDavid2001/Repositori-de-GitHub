@@ -70,7 +70,7 @@ void main(){
     vec3 bg = r < 16.4 ? cG : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 43.6 ? (s16 > 0.5 ? cW : mix(cL, cG, 0.4)) : r < 44.2 ? cW : r < 45.0 ? cR : r < 45.8 ? cK : cR;
     // P4: campo con incrustaciones: anillos rojos ribeteados de negro, líneas radiales negras entre sectores y greca roja y blanca
     if (r > 18.5 && r < 43.6) { float rl = abs(fract((r - 18.5)/6.3 + 0.5) - 0.5)*6.3; if (rl < 0.24) bg = cR; else if (rl < 0.36) bg = cK;
-      float la = abs(fract(th/(PI4*0.5) + 0.5) - 0.5)*PI4*0.5*r; if (la < 0.1 + 0.002*r) bg = cK;
+      float la = abs(fract(th/(PI4*0.5) + 0.5) - 0.5)*PI4*0.5*r; if (la < 0.06 + 0.0012*r) bg = cK;
       if (r > 27.2 && r < 28.8) { float ck = mod(floor((th/6.2832 + 0.5)*220.0) + floor((r - 27.2)/0.8), 2.0); bg = r < 27.4 || r > 28.6 ? cK : (ck > 0.5 ? cR : cW); }
       if (r > 36.0 && r < 37.0) bg = mix(cG, cK, 0.35); }
     vec3 c = mix(bg, star, inS*step(r, Rp));
@@ -218,7 +218,7 @@ function pond(B, F, y, r) {
 }
 // monumento a Macià (Plaça de Catalunya): escalera invertida de piedra, cada peldaño más ancho que el de abajo, y busto
 function macia(B, F, y) {
-  const st = [182, 174, 160];
+  const st = [150, 140, 124];
   box(B, F, -4.4, 4.4, y - 0.4, y + 0.18, -3.6, 3.6, shade(st, 0.84), K.FURN, 7, A0.STONE);
   box(B, F, -3.8, 3.8, y + 0.18, y + 0.36, -3.0, 3.0, shade(st, 0.9), K.FURN, 7, A0.STONE);
   box(B, F, -2.7, 2.7, y + 0.36, y + 1.4, -1.5, 1.5, shade(st, 0.95), K.FURN, 7, A0.STONE);
@@ -298,7 +298,7 @@ function figX(B, F, b, col, ac, pose, S) { const o = { aux: ac };
 const P3PIECE = {
   figure(B, F, y, h, ex) { figure(B, F, y, ex.bronze ? [88, 72, 52] : [214, 206, 190], ex.bronze ? A0.BRONZE : A0.STONE, ex.pose || 0, ex.sc || 1.05, (ex.pose === 5 ? 0.9 : 1.5) + h * 0.5); },
   // fuente de la plaza: vaso de piedra moldurado, lámina de agua, grupo escultórico central, chorros en arco desde los lados y surtidores
-  fontC(B, F, y, h, ex) { const L = ex.L, Wd = ex.W, rim = [196, 190, 176], wa = [0, 255, 0, 0], w4 = wa.concat(wa, wa, wa), jc = [214, 230, 238];
+  fontC(B, F, y, h, ex) { const L = ex.L, Wd = ex.W, rim = [196, 190, 176], wa = [0, 200, 0, 0], w4 = wa.concat(wa, wa, wa), jc = [214, 230, 238];
     for (const [u0, u1, d0, d1] of [[-L / 2 - 0.6, L / 2 + 0.6, -Wd / 2 - 0.6, -Wd / 2], [-L / 2 - 0.6, L / 2 + 0.6, Wd / 2, Wd / 2 + 0.6], [-L / 2 - 0.6, -L / 2, -Wd / 2, Wd / 2], [L / 2, L / 2 + 0.6, -Wd / 2, Wd / 2]]) {
       box(B, F, u0, u1, y - 0.2, y + 0.5, d0, d1, rim, K.FURN, 7, A0.STONE); box(B, F, u0 - 0.06, u1 + 0.06, y + 0.5, y + 0.62, d0 - 0.06, d1 + 0.06, shade(rim, 1.06), K.FURN, 7, A0.STONE); }
     box(B, F, -L / 2, L / 2, y - 0.2, y + 0.05, -Wd / 2, Wd / 2, [70, 92, 98], K.FURN, 1, A0.STONE);
@@ -316,7 +316,7 @@ const P3PIECE = {
       rev(B, F, s * (L / 2 - 2.2), 0, [[0.7, y + 0.42], [0.45, y + 0.7], [0.15, y + 1.0], [0, y + 1.05]], 7, [236, 242, 244], K.PLZ_WATER, { aux: wa, cap: 0 }); }
     return 1.4; },
   // la Deessa (Clarà) en su estanque redondo: borde de piedra, agua, roca y figura; surtidores alrededor
-  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 255, 0, 0];
+  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 190, 0, 0];
     rev(B, F, 0, 0, [[r + 0.55, y - 0.2], [r + 0.55, y + 0.45], [r + 0.7, y + 0.55], [r + 0.2, y + 0.6]], 32, [196, 190, 176], K.FURN, { aux: A0.STONE, cap: 0 });
     rev(B, F, 0, 0, [[0, y + 0.4], [r + 0.2, y + 0.4]], 32, C.water, K.PLZ_WATER, { aux: wa });
     box(B, F, -1.9, 1.9, y + 0.3, y + 1.15, -0.9, 0.9, [150, 144, 132], K.FURN, 7, A0.STONE); box(B, F, -2.0, 2.0, y + 1.15, y + 1.25, -1.0, 1.0, [170, 164, 152], K.FURN, 7, A0.STONE);
@@ -460,7 +460,7 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4, lampGrid: true,
     const POSE = [0, 7, 6, 3, 1, 8, 2, 4, 5, 6, 3, 7, 2, 1, 8, 0, 4, 3, 6, 2];
     CAT.art.forEach(([x, z], k) => W('figure', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2, { pose: POSE[k], bronze: k % 3 !== 0, sc: 1 + 0.25 * hash2(k, 71) }));
     W('pondC', CAT.deessa[0], CAT.deessa[1], 0, { r: 6 });
-    W('macia', CAT.macia[0], CAT.macia[1], Math.atan2(c[1] - CAT.macia[1], c[0] - CAT.macia[0]) - Math.PI / 2);
+    W('macia', CAT.macia[0], CAT.macia[1], Math.atan2(c[1] - CAT.macia[1], c[0] - CAT.macia[0]) - Math.PI / 2, { force: 1 });
     W('kiosk', 12250, 14112, 0.8); W('kiosk', 12160, 14000, -0.7);
     W('canaletes', 12196, 14004, 0); W('canaletes', 12240, 14100, 0);
     // escalinatas en las esquinas (bajan de la plataforma a la acera cuando hay desnivel)
@@ -488,9 +488,11 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4, lampGrid: true,
     // P4: setos bajos recortados que cierran los parterres nuevos
     for (const [rr, n] of [[51.6, 120], [61.6, 140]]) for (let k = 0; k < n; k++) { const a = (k + 0.5) / n * 2 * Math.PI, x = c[0] + Math.cos(a) * rr, z = c[1] + Math.sin(a) * rr, zz = S.zone(x, z);
       if (zz && zz[0] === 5) W('hedge', x, z, a + Math.PI / 2, { len: 2 * Math.PI * rr / n - 0.15, hh: 0.42, w: 0.3 }); }
+    // P4: farolas entre los árboles de los parterres (de noche alumbran las copas por debajo: sin manchas negras)
     // árboles: hileras de plátanos en el perímetro y grupos sueltos en los parterres (no en retícula)
     S.grid(8.5, 3, (u, v, x, z, e, zz) => { if (!zz || zz[0] !== 5 || zz[1] !== C.grass || e < 5 || Math.hypot(x - c[0], z - c[1]) < 64) return; const h = hash2(Math.round(x), Math.round(z));
-      if (e < 11 || h < 0.3) S.put('tree', u + (h - 0.5) * 2, v, 0, { sp: e < 11 ? 'platan' : h < 0.12 ? 'pi' : h < 0.22 ? 'lledoner' : 'platan' }); });
+      if ((e < 11 || h < 0.3) && S.put('tree', u + (h - 0.5) * 2, v, 0, { sp: e < 11 ? 'platan' : h < 0.12 ? 'pi' : h < 0.22 ? 'lledoner' : 'platan' }) && hash2(Math.round(z), Math.round(x)) < 0.55)
+        S.put('lampC', u + (h - 0.5) * 2 + 2.4, v + 1.2, 0); });   // P4: farola bajo los árboles (de noche alumbra la copa por debajo)
     S.grid(18, 5, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && S.put('lampC', u, v, 0));
     S.grid(13, 2, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && hash2(Math.round(x), Math.round(z)) < 0.5 && S.put('bench', u, v, hash2(Math.round(z), 3) * 6.28));
   } });
@@ -961,7 +963,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     const fits = (x, z, r) => { if (!free(o, x, z)) return false; for (const [a, b] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!free(o, x + a, z + b)) return false;
       for (const q of occ) if (Math.hypot(q[0] - x, q[1] - z) < q[2] + r) return false; return true; };
     const RAD = { cring: 0.1, flock: 0.1, cart: 1.2, hedge: 0, figure: 1.0, fontC: 0, pondC: 0, stairs: 0, pigeons: 0, bin: 0.5, pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
-    const put = (t, u, v, a, x) => { const [wx, wz] = U2W(u, v), r = t in P2RAD ? P2RAD[t] : RAD[t] || 1; if (r > 0 && !fits(wx, wz, r)) return false; occ.push([wx, wz, r]); items.push([t, wx, wz, a + o.ang, x || {}, u, v]); return true; };
+    const put = (t, u, v, a, x) => { const [wx, wz] = U2W(u, v), r = t in P2RAD ? P2RAD[t] : RAD[t] || 1; if (r > 0 && !(x && x.force) && !fits(wx, wz, r)) return false; occ.push([wx, wz, r]); items.push([t, wx, wz, a + o.ang, x || {}, u, v]); return true; };
     // zona de juegos genérica (se decide antes del pavimento: lleva caucho)
     if (!o.sg && (o.t === 'gran' || o.t === 'mitjana')) {
       for (let k = 0; k < 40 && !o.play; k++) { const u = (R() * 2 - 1) * o.hu * 0.7, v = (R() * 2 - 1) * o.hv * 0.7, [wx, wz] = U2W(u, v);
