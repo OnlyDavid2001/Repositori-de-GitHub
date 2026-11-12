@@ -506,6 +506,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
         else {
           let i0 = (r * L.length) | 0;
+          if (bget(b).cls === 6) {                    // clase 6 (sin comercios): si la familia tiene nave o fábrica, esa
+            const T = []; L.forEach((v, k) => { if (v.hueco === 'taller') T.push(k); }); if (T.length) { i0 = T[(r * T.length) | 0]; dep = 400; }
+          }
           if ((dep | 0) < 400) {                      // no repetir la variante de los vecinos pegados (los de índice menor)
             const usados = vecinos(b).map(n => { const v = varOf(n, (dep | 0) + 1); return v && v.id; });
             for (let t = 0; t < L.length; t++) { const k = (i0 + t) % L.length; if (usados.indexOf(L[k].id) < 0) { i0 = k; break; } }

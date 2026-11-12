@@ -24,7 +24,8 @@ se añade una familia).
   1. `MEZCLA[fam] = { f, p }`: con probabilidad p (12–25 %) un edificio toma una variante de la familia hermana.
   2. Ningún edificio repite la variante de un vecino pegado (cajas a < 1,5 m) de índice menor: coloreado voraz por índice,
      NO depende del orden de carga de las celdas (recursión acotada a 400).
-  3. Cada edificio desplaza su ritmo de vanos (±7 %), vuelo (±10 %), altura de planta (±3 %) y tono de remates (±0,08).
+  3. Edificios de clase 6 (sin comercios) en familias con nave o fábrica (poblenou, sant_andreu): variante `'taller'`.
+  4. Cada edificio desplaza su ritmo de vanos (±7 %), vuelo (±10 %), altura de planta (±3 %) y tono de remates (±0,08).
 - Arreglos generales (afectan también a las familias de FX1):
   - galerías: solo 2 de cada 3 vanos (el tercero, ventana) → los bloques ya no parecen oficinas acristaladas;
   - barandilla de obra: antepecho de 0,62 m + pasamanos de tubo con montantes (antes 1,02 m de obra: tapaba los huecos),
@@ -53,4 +54,13 @@ Consola: sin errores ni avisos en las ejecuciones finales (hoja, fix, pie, calle
 - `spot()` elige edificios altos (11–30 m) y a menudo bloques: las casas bajas (alero, frontis) casi no salen en las hojas;
   el frontis y el alero solo se ven bien desde lejos.
 - Barandilla de vidrio: sigue siendo un paño opaco gris.
-- `cls6` (edificios de clase 6) no se distingue: podría forzarse la variante de fábrica en Poblenou/Sant Andreu.
+- Barandilla de vidrio con terraza (sar_pedralbes, lc_vidre, pn_22, hg_nou, per_nou): desde la acera tapa casi todo el hueco.
+- Variedad: los vecinos pegados ya no repiten variante, pero un edificio muy largo (una manzana entera en un solo volumen)
+  sigue siendo una sola variante en toda la calle (calle2_sant_andreu).
+- Muchos de los puntos de `spot()` quedan bajo árboles de la acera (las hojas de Sarrià, Poblenou, Sant Andreu y Horta).
+
+## Capturas (scratchpad `n2/fx2/`)
+`ANTES_DESPUES.jpg` (Poblenou, Nou Barris, Sants), hojas por familia a las 10:30 (`hoja_sants_lescorts.jpg`,
+`hoja_sarria_poblenou.jpg`, `hoja_santandreu_horta.jpg`, `hoja_noubarris_periferia.jpg`), `hoja_pie.jpg` (una vista a pie
+por familia), `hoja_noche.jpg` (23:00), `hoja_calle.jpg` (calles en diagonal, para la variedad). `v1/`: primera tanda, antes
+de los arreglos de galerías y terrazas.
