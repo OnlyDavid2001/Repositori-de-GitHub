@@ -276,9 +276,19 @@ const VS_NRM = `precision highp float;
 attribute vec3 position; attribute vec3 normal; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vN;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_Position = viewProjection*wp; }`;
 
+// n3 E1 · PENUMBRA DE AZOTEAS DE NOCHE: lo que mira al cielo recibe de noche la luz de la luna y del cielo nocturno, que en una
+// ciudad es el resplandor anaranjado-violáceo de su propio alumbrado reflejado en la bruma. Sin él, cubiertas y piezas de
+// azotea salían casi negras («no digo que se vean, pero que no quede tan oscuro»). Lo usan FS_BLD (cubiertas) y rooftops.js
+// (piezas y tejados, con la misma constante: igual de cerca que de lejos). up = componente vertical de la normal.
+// Se atenúa algo de madrugada (uLate: el alumbrado ornamental se apaga y la bruma refleja menos)
+const ROOF_NIGHT = `vec3 roofNight(vec3 alb, float up){
+  return alb*vec3(0.105, 0.100, 0.118)*(uNight*(1.0 - 0.25*uLate)*(0.35 + 0.65*clamp(up, 0.0, 1.0)));
+}`;
+window.BCN_ROOF_NIGHT = ROOF_NIGHT;
 const FS_BLD = `
 varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx; uniform vec2 uFx;
 uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uRoofPal;
+` + ROOF_NIGHT + `
 void main(){
   vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc)));
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
@@ -420,9 +430,10 @@ void main(){
       tx += (0.09*(step(0.72, zk) - 0.28) - 0.07*(step(zk, 0.12) - 0.12))*(1.0 - smoothstep(0.3, 0.6, pw/3.4))
           + 0.11*(vnoise(q*0.13 + seed*5.0) - 0.5)*(1.0 - smoothstep(0.35, 0.7, pw/7.0));
     }
-    base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
-    // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
-    base *= 1.0 - 0.55*uNight;
+    base = roof*(1.0 + tx*(1.0 - 0.5*uNight));
+    // de noche las cubiertas quedan en penumbra (n3 E1: antes, casi negras): algo menos de oscurecimiento que antes y, más
+    // abajo, el reflejo del cielo nocturno y del resplandor de la ciudad (ROOFN), igual de cerca que de lejos
+    base *= 1.0 - 0.35*uNight;
   }
   // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
   // DIA: de lejos (sin mapa de sombras) la parte baja de los muros queda en la sombra de la acera de enfrente: calle de
@@ -430,6 +441,7 @@ void main(){
   if (abs(n.y) < 0.5) { float hs = clamp(19.0 - 14.0*sunTan(), 0.0, 19.0), so = shOut()*(1.0 - uNight);
     if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
+  if (abs(n.y) >= 0.5) c += roofNight(base, n.y);
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
@@ -1170,7 +1182,7 @@ const BREC = { dv: [], n: 0 };
   let nTot = 0;
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
-  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot);
+  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot);
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
@@ -1232,9 +1244,22 @@ const BREC = { dv: [], n: 0 };
         bldCount++;
         BREC.v1[bi] = vp;
         BREC.bb[bi * 4] = bx0 + ox; BREC.bb[bi * 4 + 1] = bz0 + oz; BREC.bb[bi * 4 + 2] = bx1 + ox; BREC.bb[bi * 4 + 3] = bz1 + oz;
-        // ¿vivienda susceptible de fachada de detalle? (ni torres, ni naves, ni volúmenes elevados)
+        // ¿lleva fachada de detalle? (n3 E1: ya no quedan cubos) y con qué tipología (BREC.tipo, la leen facades.js y rooftops.js):
+        //   0 vivienda de su familia de barrio (clases 0 y 6: también las casas de una planta y las torres de pisos) ·
+        //   1 nave (naves bajas y grandes de la clase 0 y las clases 1 y 5, industria y almacenes) ·
+        //   2 equipamiento u oficinas (clases 2, 8, 9, 11 y 13: escuelas, ambulatorios, oficinas, mercados; y las 1 y 5 altas)
+        // Fuera: casetas mínimas (< 3,8 m o < 35 m² de caja), volúmenes elevados (partes altas de otro edificio), los de más
+        // de 16 000 m² de caja (manzanas y complejos enteros: etapa E2), vidrio (3, 12), cristal y pilares (4), los muy
+        // grandes de la clase 10 (centros comerciales, aeropuerto) y los invernaderos y templos (14, 15). Los hitos los quitan.
         const Hm = Ht / 10, area = (bx1 - bx0) * (bz1 - bz0);
-        BREC.elig[bi] = ((cls === 0 && Hm >= 6 && Hm <= 45) || (cls === 6 && Hm >= 5 && Hm <= 16)) && hb < 15 && area < 16000 && !(Hm < 9 && area > 1800) && rsz[0] >= 3 ? 1 : 0;
+        let tp = -1;
+        if (hb < 15 && area >= 35 && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
+          if (cls === 0) tp = Hm < 9 && area > 1800 ? 1 : Hm <= 110 ? 0 : -1;
+          else if (cls === 6) tp = Hm <= 30 ? (Hm < 9 && area > 2500 ? 1 : 0) : -1;
+          else if (cls === 1 || cls === 5) tp = Hm <= 14 ? 1 : Hm <= 60 ? 2 : -1;
+          else if (cls === 2 || cls === 8 || cls === 9 || cls === 11 || cls === 13) tp = Hm <= 60 ? 2 : -1;
+        }
+        BREC.elig[bi] = tp >= 0 ? 1 : 0; BREC.tipo[bi] = tp >= 0 ? tp : 0;
       }
       const infBuf = inf.subarray(0, vp * 4);
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);

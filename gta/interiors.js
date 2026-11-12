@@ -779,16 +779,30 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [s.Wb, s.tb + (door ? 64 : 0), s.seed], K.SHOPWIN,
       [X(u0), Y(y0), h, dd, X(u1), Y(y0), h, dd, X(u1), Y(y1), h, dd, X(u0), Y(y1), h, dd]);
   }
+  // n3 E1 · COLOR DE LOS BAJOS FUNDIDO CON SU FACHADA. Los machones, el dintel, el zócalo, los marcos y la faja del rótulo de
+  // cada comercio toman tonos derivados del color de su edificio (d.col, el de la paleta): una de tres versiones estables por
+  // edificio (la misma en todos sus bajos): piedra del mismo tono algo más oscura, el tono más saturado y oscuro, o un tono
+  // muy oscuro del color (carpintería pintada a juego). Sillería solo en luminancia (K.FXPIEDRA): no cambia el tono. Los
+  // interiores, los rótulos, los toldos y los escaparates no se tocan.
+  const sat = (c, k) => { const l = (c[0] + c[1] + c[2]) / 3; return c.map(v => Math.max(0, Math.min(255, Math.round(l + (v - l) * k)))); };
+  function shopCols(env) {
+    if (env._shopC) return env._shopC;
+    const p = env.p, h = ((Math.imul(env.b ^ 0x5bd1e995, 0x9e3779b1) >>> 0) >> 8) % 3;
+    const sc = h === 0 ? shade(sat(p, 1.15), 0.80) : h === 1 ? shade(sat(p, 1.55), 0.66) : shade(sat(p, 1.3), 0.52);
+    const met = shade(sat(p, 1.8), h === 2 ? 0.30 : 0.20);
+    return (env._shopC = { sc, met, kS: K.FXPIEDRA !== undefined ? K.FXPIEDRA : KS });
+  }
   // un vano de comercio: machones y dintel de piedra y, dentro, el escaparate o la puerta de vidrio de la tienda
   function shopBay(env, run, W, gl, yB, s) {
-    const { W0, W1, F1, stone } = env, { F, bw } = run;
+    const { W0, W1, F1 } = env, { F, bw } = run;
     const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
-    const top = topOf(env, gl), sill = gl + 0.5, sc = stone, dk = shade(sc, 0.55), base = shade(sc, 0.85), met = FRAME;
-    rect(W0, F, a, B_, yB, F1, 0, sc, K.STONE); rect(W0, F, V_, a + bw, yB, F1, 0, sc, K.STONE); rect(W0, F, B_, V_, top, F1, 0, sc, K.STONE);
-    jamb(W0, F, B_, sill, top, -0.4, 0, dk, K.STONE); jamb(W0, F, V_, sill, top, -0.4, 0, dk, K.STONE);
-    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), K.STONE);
+    const SC = shopCols(env), KS = SC.kS;
+    const top = topOf(env, gl), sill = gl + 0.5, sc = SC.sc, dk = shade(sc, 0.55), base = shade(sc, 0.85), met = SC.met;
+    rect(W0, F, a, B_, yB, F1, 0, sc, KS); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS); rect(W0, F, B_, V_, top, F1, 0, sc, KS);
+    jamb(W0, F, B_, sill, top, -0.4, 0, dk, KS); jamb(W0, F, V_, sill, top, -0.4, 0, dk, KS);
+    hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.5), KS);
     if (W !== s.door) {
-      rect(W0, F, B_, V_, yB, sill, 0, base, K.STONE); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
+      rect(W0, F, B_, V_, yB, sill, 0, base, KS); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       glassQuad(W0, F, B_, V_, sill, top, -0.36, s, false);
       box(W0, F, B_ + Uw * 0.5 - 0.03, B_ + Uw * 0.5 + 0.03, sill, top, -0.38, -0.3, met, K.METAL);
       box(W0, F, B_, V_, sill, sill + 0.08, -0.4, -0.3, met, K.METAL);
@@ -797,10 +811,10 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     } else {
       // puerta de vidrio centrada, con vidrios fijos a los lados y montante encima. El umbral baja hasta la acera
       const dc = (B_ + V_) / 2, x0 = dc - 0.55, x1 = dc + 0.55, th = gl + 0.03, dt = Math.min(top - 0.3, th + 2.25);
-      rect(W0, F, B_, x0, yB, sill, 0, base, K.STONE); rect(W0, F, x1, V_, yB, sill, 0, base, K.STONE); rect(W0, F, x0, x1, yB, th, 0, base, K.STONE);
-      hpl(W0, F, B_, x0, sill, -0.4, 0, shade(sc, 0.72), K.STONE); hpl(W0, F, x1, V_, sill, -0.4, 0, shade(sc, 0.72), K.STONE);
-      jamb(W0, F, x0, th, sill, -0.4, 0, dk, K.STONE); jamb(W0, F, x1, th, sill, -0.4, 0, dk, K.STONE);
-      hpl(W0, F, x0, x1, th, -0.4, 0, shade(sc, 0.9), K.STONE);
+      rect(W0, F, B_, x0, yB, sill, 0, base, KS); rect(W0, F, x1, V_, yB, sill, 0, base, KS); rect(W0, F, x0, x1, yB, th, 0, base, KS);
+      hpl(W0, F, B_, x0, sill, -0.4, 0, shade(sc, 0.72), KS); hpl(W0, F, x1, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
+      jamb(W0, F, x0, th, sill, -0.4, 0, dk, KS); jamb(W0, F, x1, th, sill, -0.4, 0, dk, KS);
+      hpl(W0, F, x0, x1, th, -0.4, 0, shade(sc, 0.9), KS);
       glassQuad(W0, F, B_, x0, sill, top, -0.36, s, false); glassQuad(W0, F, x1, V_, sill, top, -0.36, s, false);
       glassQuad(W0, F, x0, x1, th, dt, -0.36, s, true); glassQuad(W0, F, x0, x1, dt, top, -0.36, s, false);
       box(W0, F, x0 - 0.04, x0 + 0.03, th, top, -0.38, -0.3, met, K.METAL); box(W0, F, x1 - 0.03, x1 + 0.04, th, top, -0.38, -0.3, met, K.METAL);
@@ -826,7 +840,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     if (s.sign && hmax > 0.22) {
       const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
       quad(W0, F, uc - w / 2, y, 0.07, uc + w / 2, y, 0.07, uc + w / 2, y + h, 0.07, uc - w / 2, y + h, 0.07, [255, 255, 255], K.SIGN, signAux(s.type));
-      box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, [30, 30, 32], K.METAL);
+      box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, shopCols(env).met, K.METAL);   // faja del rótulo, a juego
     }
     if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
       box(W0, F, uc - 0.04, uc + 0.04, y - 0.11, y + 0.11, 0.2, 0.86, g, K.PBR, 7, NEON); box(W0, F, uc - 0.04, uc + 0.04, y - 0.33, y + 0.33, 0.42, 0.64, g, K.PBR, 7, NEON);

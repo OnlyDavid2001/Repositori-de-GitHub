@@ -36,7 +36,7 @@ GEO.regKind('TEJA', 120, `
     float sh = sin(6.2832*cu), ed = smoothstep(0.78, 0.96, fract(co));
     float tx = (sh*0.13 - (ed - 0.18)*0.20 + 0.16*(hash21(vec2(floor(cu), floor(co)) + vInfo.x*13.0) - 0.5))*fs
              + 0.08*(vnoise(q*0.45) - 0.5)*fm;
-    alb *= (1.0 + tx*(1.0 - 0.7*uNight))*(1.0 - 0.55*uNight);
+    alb *= (1.0 + tx*(1.0 - 0.5*uNight))*(1.0 - 0.35*uNight);
     N = normalize(n + vec3(-dd.y, 0.0, dd.x)*cos(6.2832*cu)*0.55*fs);
     ao = mix(1.0, 0.82, ed*fs);`);
 
@@ -62,7 +62,12 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // como las fachadas de detalle
   const ALB = 'vec3 alb = vCol.rgb;';
   let fsrc = sp.fragmentSource.replace(OLD, 'if (dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;');
-  if (fsrc.indexOf(ALB) >= 0) fsrc = fsrc.replace(ALB, ALB + ' alb *= 1.0 - 0.7*uNight*smoothstep(150.0, 330.0, dist);');
+  if (fsrc.indexOf(ALB) >= 0) fsrc = fsrc.replace(ALB, ALB + ' alb *= 1.0 - 0.45*uNight*smoothstep(150.0, 330.0, dist);');
+  // n3 E1: la misma penumbra nocturna que las cubiertas de FS_BLD (app.js, ROOF_NIGHT), para que piezas y tejados no queden negros
+  const SHD = 'vec3 c = shade(alb, N, V, rough, metal, ao) + emis;';
+  if (window.BCN_ROOF_NIGHT && fsrc.indexOf(SHD) >= 0) {
+    fsrc = fsrc.replace('void main(){', window.BCN_ROOF_NIGHT + '\nvoid main(){').replace(SHD, SHD + ' c += roofNight(alb, N.y);');
+  } else console.warn('rooftops: sin penumbra nocturna (no encuentro la salida del shader de detalle)');
   const op = mb.options;
   const matR = new BABYLON.ShaderMaterial('roofDet', scene, { vertexSource: sp.vertexSource, fragmentSource: fsrc },
     { attributes: op.attributes.slice(), uniforms: op.uniforms.slice(), samplers: op.samplers.slice(), defines: op.defines.slice(), needAlphaBlending: false });
@@ -120,12 +125,14 @@ window.BCN_ROOFTOPS = { init(ctx) {
     return items;
   }
   function plan(b) {
-    const d = bget(b); if (d.cls !== 0 && d.cls !== 2 && d.cls !== 6) return null;
+    // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
+    const tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
+    const d = bget(b); if (d.cls !== 0 && d.cls !== 2 && d.cls !== 6 && !(BREC.elig[b] && tipo > 0)) return null;
     const y = roofY(b); if (y === null) return null;
-    if (!PAL.flat(b)) return planTeja(b, d, y);
+    if (PAL.roof(b) >= 0 && !PAL.flat(b)) return planTeja(b, d, y);
     const x0 = city.BB[b * 4], z0 = city.BB[b * 4 + 1], x1 = city.BB[b * 4 + 2], z1 = city.BB[b * 4 + 3];
     const Hm = y - d.yb, area = (x1 - x0) * (z1 - z0);
-    if (Hm < 6 || area < 50 || area > 14000) return null;
+    if (Hm < 3.6 || area < 40 || area > 14000) return null;      // n3 E1: también las casas de una planta (antes, desde 6 m)
     const fam = PAL.FAMS[PAL.fam(b)];
     const ang = axis(d.rings[0]);
     // ¿cabe un rectángulo l × w (girado a) con centro (x, z), a 0,7 m del borde (dentro del peto)?
@@ -158,21 +165,24 @@ window.BCN_ROOFTOPS = { init(ctx) {
     let nAnt = 0;
     // 1 · caseta de escalera (casi todos los edificios de pisos; dos en los muy grandes), con puerta, rejilla y, a veces,
     // barandilla en su terrado y escalera de gato
-    const nCas = !big ? 0 : g[0] < 0.9 ? (area > 1100 && g[7] < 0.6 ? 2 : 1) : 0;
+    const nCas = !big || tipo === 1 ? 0 : g[0] < 0.9 ? (area > 1100 && g[7] < 0.6 ? 2 : 1) : 0;
     for (let ci = 0; ci < nCas; ci++) { const rr = take(b, 1 + ci * 40, 40), l = 2.6 + rr[36] * 1.6, w = 2.2 + rr[37] * 0.9, h = 2.4 + rr[38] * 0.5, p = spot(l, w, rr);
       if (p) items.push({ t: 'caseta', x: p[0], z: p[1], y, a: ang, l, w, h, col: shade(mixc(wall, [226, 220, 208], 0.35), 0.97), door: rr[39] < 0.5 ? 1 : -1,
         rail: rr[35] < 0.45, ladder: rr[34] < 0.5, doorC: [[96, 74, 54], [70, 92, 84], [120, 52, 40], [64, 66, 70]][Math.floor(rr[33] * 4)] }); }
     // 2 · terraza con pérgola, jardineras y toldo (barrios de terrados habitados)
-    if (big && TERRACE.has(fam) && g[8] < 0.32) { const rr = take(b, 3, 40), l = 3 + rr[36] * 2.5, w = 2.6 + rr[37] * 1.4, p = spot(l, w + 1.2, rr);
+    if (big && tipo === 0 && TERRACE.has(fam) && g[8] < 0.32) { const rr = take(b, 3, 40), l = 3 + rr[36] * 2.5, w = 2.6 + rr[37] * 1.4, p = spot(l, w + 1.2, rr);
       if (p) items.push({ t: 'perg', x: p[0], z: p[1], y, a: ang, l, w, wood: rr[38] < 0.6, awn: rr[39] < 0.55 ? AWN[Math.floor(rr[35] * AWN.length)] : null, pl: rr.slice(20, 30) }); }
     // 3 · placas solares (edificios modernos)
-    if (big && (MODERN.has(fam) || d.cls === 2 || Hm > 28) && g[9] < 0.38) { const rr = take(b, 4, 40), rows = 1 + Math.floor(rr[36] * 2.9), n = 3 + Math.floor(rr[37] * 6), p = spot(n * 1.05, rows * 2.4, rr);
+    if (big && (MODERN.has(fam) || d.cls === 2 || Hm > 28 || tipo > 0) && g[9] < (tipo > 0 ? 0.6 : 0.38)) { const rr = take(b, 4, 40), rows = 1 + Math.floor(rr[36] * 2.9), n = 3 + Math.floor(rr[37] * 6), p = spot(n * 1.05, rows * 2.4, rr);
       if (p) items.push({ t: 'pv', x: p[0], z: p[1], y, a: ang, n, rows }); }
     // 4 · el resto, por sorteo según el tamaño
     let k = 5, nIt = items.filter(it => it.t !== 'peto').length;
     while (nIt < nMax && k < 5 + 3 * nMax) {
       const r = take(b, k, 44); k++;
-      const tsel = r[43], n0 = items.length;
+      // naves: lucernarios, extractores, máquinas y algún depósito; equipamientos: máquinas de clima, ventilación, claraboyas
+      // y alguna antena. Ni ropa tendida, ni parabólicas, ni jardineras (se reasigna el sorteo a las franjas de abajo)
+      const t0 = r[43], tsel = tipo === 1 ? (t0 < 0.45 ? 0.76 : t0 < 0.65 ? 0.86 : t0 < 0.9 ? 0.65 : 0.07)
+        : tipo === 2 ? (t0 < 0.5 ? 0.65 : t0 < 0.7 ? 0.86 : t0 < 0.8 ? 0.76 : t0 < 0.9 ? 0.2 : 0.07) : t0, n0 = items.length;
       if (tsel < 0.15) {                              // depósitos de agua (1–3 en fila)
         const n = 1 + Math.floor(r[40] * 2.6), rad = 0.5 + r[41] * 0.35, h = 1.1 + r[42] * 0.7, fib = r[39] < 0.6, l = n * (rad * 2 + 0.3), w = rad * 2 + 0.3;
         const p = spot(l, w, r); if (p) items.push({ t: 'tank', x: p[0], z: p[1], y, a: ang, n, rad, h, legs: 0.45 + r[38] * 0.5, fib, col: fib ? shade([176, 172, 162], 0.9 + r[37] * 0.15) : [150, 156, 160] });
@@ -188,7 +198,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
         const n = 1 + Math.floor(r[40] * 4.9), l = n * 0.95, p = spot(l, 0.5, r);
         if (p) items.push({ t: 'ac', x: p[0], z: p[1], y, a: ang, n, col: r[41] < 0.8 ? [214, 214, 208] : [176, 178, 176] });
       } else if (tsel < 0.80) {                       // claraboya (de vidrio, a dos aguas o plana)
-        const s = 0.9 + r[40] * 1.0, p = spot(s, s * (1 + r[41]), r); if (p) items.push({ t: 'sky', x: p[0], z: p[1], y, a: ang, s, w: s * (1 + r[41]), pit: r[39] < 0.5 });
+        const s = (0.9 + r[40] * 1.0) * (tipo === 1 ? 2.3 : 1), p = spot(s, s * (1 + r[41]) * (tipo === 1 ? 1.8 : 1), r); if (p) items.push({ t: 'sky', x: p[0], z: p[1], y, a: ang, s, w: s * (1 + r[41]) * (tipo === 1 ? 1.8 : 1), pit: r[39] < 0.5 });
       } else if (tsel < 0.92) {                       // chimeneas de ventilación (2–6 en grupo, de obra o metálicas)
         const n = 2 + Math.floor(r[40] * 4.9), l = n * 0.6, p = spot(l, 0.6, r);
         if (p) items.push({ t: 'vent', x: p[0], z: p[1], y, a: ang, n, metal: r[41] < 0.3, h: 0.9 + r[42] * 0.9, hs: r.slice(10, 16), col: shade(mixc(wall, [200, 190, 176], 0.5), 0.92) });

@@ -420,7 +420,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const rnd = (i, j, k) => seed(b, i, j, k);
     const V = varOf(b);                               // variante de estilo por barrio (null: la fachada de antes, details.js)
     rnd();                                            // ámbito del edificio
-    const cls6 = d.cls === 6;
+    const tipo = BREC.tipo ? BREC.tipo[b] : 0;       // n3 E1: 0 vivienda · 1 nave · 2 equipamiento u oficinas (app.js)
+    const cls6 = d.cls === 6 || tipo > 0;              // naves y equipamientos: sobrios y sin comercios, como la clase 6
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
     const p = d.col, u = mixc(p, [232, 222, 204], 0.55), stone = shade(mixc(p, [150, 138, 120], 0.6), 0.92);
     const shut = pick(SHUTTERS), persi = shade(shut, 1.5), wood = pick(WOODS), iron = [20, 20, 23];
@@ -508,6 +509,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
         else {
           let i0 = (r * L.length) | 0;
+          const tp = BREC.tipo ? BREC.tipo[b] : 0, LT = tp > 0 && !fv && EST.TIPO && EST.TIPO[tp === 1 ? 'nave' : 'equip'];
+          if (LT) { V = LT[(r * LT.length) | 0]; const j0 = j[0], j3 = j[3];
+            return (VAR[b] = Object.assign({}, V, { bay: V.bay * (0.93 + j0 * 0.14), hp: V.hp * (0.97 + j3 * 0.06) })); }
           if (bget(b).cls === 6) {                    // clase 6 (sin comercios): si la familia tiene nave o fábrica, esa
             const T = []; L.forEach((v, k) => { if (v.hueco === 'taller') T.push(k); }); if (T.length) { i0 = T[(r * T.length) | 0]; dep = 400; }
           }
