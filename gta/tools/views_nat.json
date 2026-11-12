@@ -1,0 +1,14 @@
+[
+ {"name": "coll_aire", "x": 6300, "z": 15900, "y": 820, "yaw": 0.55, "pitch": 0.32},
+ {"name": "coll_pie", "x": 7350, "z": 17650, "walk": true, "yaw": 0.6, "pitch": 0.02, "eval": "(function(){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1;for(var i=0;i<S.length;i+=6){var mx=(S[i]+S[i+2])/2,mz=(S[i+1]+S[i+3])/2,d=Math.hypot(mx-7350,mz-17650);if(S[i+4]<3&&d<bd){bd=d;bi=i;}}var x=(S[bi]+S[bi+2])/2,z=(S[bi+1]+S[bi+3])/2;B.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=Math.atan2(S[bi+2]-S[bi],S[bi+3]-S[bi+1]);})()"},
+ {"name": "montjuic", "x": 10900, "z": 11000, "y": 360, "yaw": 1.1, "pitch": 0.28},
+ {"name": "carmel", "x": 11546, "z": 17644, "walk": true, "yaw": -2.2, "pitch": 0.12},
+ {"name": "aero_aire", "x": 2600, "z": 1200, "y": 700, "yaw": 0.9, "pitch": 0.3},
+ {"name": "playa_pie", "x": 13850, "z": 12640, "walk": true, "yaw": 1.75, "pitch": 0.12},
+ {"name": "orilla_pie", "x": 13893, "z": 12640, "walk": true, "yaw": 1.75, "pitch": 0.25},
+ {"name": "playa_dron", "x": 13700, "z": 12050, "y": 110, "yaw": 0.55, "pitch": 0.35},
+ {"name": "coll_media", "x": 8600, "z": 16200, "y": 260, "yaw": -0.75, "pitch": 0.12},
+ {"name": "mjc_lejos", "x": 13300, "z": 11200, "y": 420, "yaw": -1.45, "pitch": 0.17},
+ {"name": "delta_aire", "x": 3000, "z": 7400, "agl": 320, "yaw": 0.25, "pitch": 0.42},
+ {"name": "alcalde", "x": 12230, "z": 11930, "walk": true, "yaw": 1.2, "pitch": 0.05}
+]

@@ -423,7 +423,15 @@ void main(){
 
 const FS_TER = `
 uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
-uniform sampler2D uStreet; uniform vec4 uStreetR;
+uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uShore;
+// trama de copas (0–1) según el tamaño del píxel px: de cerca copas de ~3–9 m, a media distancia rodales de ~28 m y de lejos
+// (NAT2) bosquetes de 45–90 m, que siguen dando volumen hasta varios km sin centellear; muy lejos, nada
+float canopyW(vec2 q, float px){
+  float w = mix(vnoise(q*0.035 + 3.1), vnoise(q*0.11)*0.6 + vnoise(q*0.37)*0.4, 1.0 - smoothstep(3.0, 12.0, px));
+  float wf = vnoise(q*0.011 + 7.3)*0.7 + vnoise(q*0.022 + 1.7)*0.3;
+  w = mix(w, wf, smoothstep(14.0, 45.0, px));
+  return mix(w, 0.5, smoothstep(110.0, 300.0, px));
+}
 void main(){
   vec2 uv = vPos.xz/uSize;
   vec3 alb = texture2D(groundTex, uv).rgb;
@@ -443,14 +451,112 @@ void main(){
   // llano, verde medio (la mitad del cambio). De noche, como antes
   { float vg = clamp((alb.g - max(alb.r, alb.b))*9.0, 0.0, 1.0)*(1.0 - uNight), mt = smoothstep(60.0, 200.0, vPos.y);
     float px = length(fwidth(vPos.xz));
-    float cw = mix(vnoise(vPos.xz*0.035 + 3.1), vnoise(vPos.xz*0.11)*0.6 + vnoise(vPos.xz*0.37)*0.4, 1.0 - smoothstep(3.0, 12.0, px));
-    cw = mix(cw, 0.5, smoothstep(14.0, 45.0, px));
+    float cw = canopyW(vPos.xz, px);
     float l = dot(alb, vec3(0.30, 0.60, 0.10));
-    vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, 0.55 + 0.9*cw, mix(0.5, 1.0, mt));
-    alb = mix(alb, ol, vg*mix(0.55, 1.0, mt)); }
+    vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, mix(0.55 + 0.9*cw, 0.58 + 0.84*cw, smoothstep(14.0, 45.0, px)), mix(0.5, 1.0, mt));
+    alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
+    // NAT: relieve de copas. La misma trama de claros y oscuros (cw) se usa como altura de las copas (~6 m) y tuerce la
+    // normal: las copas se leen como bultos con su lado al sol y su lado en sombra. Se apaga donde la trama ya no se
+    // resuelve (píxel grande), así que de lejos no centellea
+    float kv = vg*(1.0 - smoothstep(110.0, 300.0, px));
+    if (kv > 0.001) {
+      float e = clamp(px*0.7, 1.5, 30.0);
+      vec2 q = vPos.xz;
+      float fs = 1.0 - smoothstep(3.0, 12.0, px);
+      float cx = canopyW(q + vec2(e, 0.0), px), cz = canopyW(q + vec2(0.0, e), px), c0 = cw;
+      float A = mix(mix(9.0, 5.0, fs), 22.0, smoothstep(14.0, 45.0, px));
+      n = normalize(n + vec3(-(cx - c0), 0.0, -(cz - c0))*(A/e)*kv);
+    } }
+  // NAT: arena de playa. La ortofoto pinta las playas de un crema liso: de cerca, grano fino, ondulaciones del viento,
+  // pasadas del rastrillo de limpieza y huellas; junto al agua, franja mojada más oscura y con brillo. Cada escala se apaga
+  // cuando el píxel ya no la resuelve (sin moiré de lejos)
+  // la ortofoto acaba la playa antes que el relieve: entre su línea de costa y el agua de verdad (y = 0) queda una franja
+  // pintada del color del mar. Si hay arena a menos de ~25 m, esa franja es arena mojada
+  vec3 g0 = texture2D(groundTex, uv).rgb;
+  vec3 SAND = vec3(0.882, 0.827, 0.655), SEA = vec3(0.588, 0.592, 0.420);
+  float sandC = 1.0 - smoothstep(0.035, 0.09, length(g0 - SAND)), seaC = 1.0 - smoothstep(0.02, 0.07, length(g0 - SEA));
+  float sandM = sandC, wet = 0.0, rough = 0.95;
+  // NAT2: distancia a la línea de agua (m, + en tierra) de la máscara de costa: la franja mojada va por distancia, continua
+  float sd = (texture2D(uShore, uv).r - 0.5)*80.0;
+  float sandish = smoothstep(0.07, 0.13, g0.r - g0.b)*step(g0.b, g0.g + 0.02);
+  if ((sandC + seaC > 0.01 || (sd < 30.0 && sandish > 0.01)) && vPos.y > -2.0) {
+    vec2 q = vPos.xz; float px = length(fwidth(q));
+    float sandN = 0.0, seaN = 0.0;
+    for (int k = 0; k < 8; k++) {
+      float a = float(k)*0.7854; vec2 dd = vec2(cos(a), sin(a))/uSize;
+      sandN = max(sandN, 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv + dd*24.0).rgb - SAND)));
+      sandN = max(sandN, 1.0 - smoothstep(0.035, 0.09, length(texture2D(groundTex, uv + dd*12.0).rgb - SAND)));
+      seaN = max(seaN, 1.0 - smoothstep(0.02, 0.07, length(texture2D(groundTex, uv + dd*10.0).rgb - SEA)));
+    }
+    sandM = max(sandC, seaC*max(sandN, 0.85)*(1.0 - smoothstep(2.0, 3.5, vPos.y)));
+    // la arena que la ortofoto pinta a manchas junto al agua (mojada, algas, sombras) también es playa: todo lo de tono
+    // arena a menos de ~25 m del agua y con arena cerca. Las escolleras (grises) no
+    sandM = max(sandM, sandish*sandN*(1.0 - smoothstep(18.0, 30.0, sd))*smoothstep(-1.5, 0.0, sd));
+    // franja mojada: una banda estrecha y continua junto a la línea de agua (3–7 m, con el ancho que cambia despacio) y,
+    // pegada al agua, la línea más oscura y brillante de la última ola. La espuma va en el mar (FS_SEA), en la misma línea
+    float wn = vnoise(q*0.045)*0.7 + vnoise(q*0.19)*0.3;
+    float ww = 3.5 + 5.0*wn;
+    wet = max(0.8*(1.0 - smoothstep(ww*0.5, ww, sd)), 1.0 - smoothstep(0.4, 1.6, sd + 0.6*(vnoise(q*0.5) - 0.5)));
+  }
+  if (sandM > 0.001) {
+    vec2 q = vPos.xz; float px = length(fwidth(q));
+    vec3 sa = mix(vec3(0.80, 0.71, 0.55), vec3(0.86, 0.78, 0.62), vnoise(q*0.03));
+    sa *= 0.93 + 0.1*vnoise(q*0.21) + 0.05*vnoise(q*1.3);
+    float g1 = 1.0 - smoothstep(0.004, 0.016, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
+    sa *= mix(1.0, 0.86 + 0.28*hash21(floor(q*60.0)), g1*0.6);
+    sa *= mix(1.0, 0.95 + 0.1*vnoise(q*11.0), g2);
+    // ondulaciones del viento y pasadas del rastrillo (en franjas, con dirección que cambia poco a poco)
+    float an = vnoise(q*0.012)*6.2832, ca = cos(an), sn = sin(an);
+    float w1 = dot(q, vec2(ca, sn)) + 1.5*vnoise(q*0.4);
+    float rip = sin(w1*10.5);
+    float rk = smoothstep(0.45, 0.6, vnoise(q*0.045 + 7.0))*(1.0 - wet);
+    float w2 = dot(q, vec2(-sn, ca));
+    float rake = sin(w2*25.1)*smoothstep(0.1, 0.4, abs(sin(w2*0.785)));
+    vec2 gdir = vec2(ca, sn)*rip*0.22*g3*(1.0 - rk)*(1.0 - wet) + vec2(-sn, ca)*rake*0.30*g2*rk;
+    sa *= 1.0 + 0.06*rip*g3*(1.0 - rk) + 0.08*rake*g2*rk;
+    // huellas: hoyos ovalados sueltos
+    vec2 fc = floor(q/0.8), ff = fract(q/0.8) - 0.5; float fh = hash21(fc);
+    float foot = step(0.86, fh)*(1.0 - smoothstep(0.12, 0.2, length(ff*vec2(1.0, 0.55) + (vec2(hash21(fc + 3.1), hash21(fc + 7.7)) - 0.5)*0.3)))*g2*(1.0 - wet);
+    sa *= 1.0 - 0.10*foot;
+    // franja mojada: más oscura y con brillo de agua
+    sa = mix(sa, sa*vec3(0.60, 0.59, 0.60), wet);
+    rough = mix(0.95, 0.45, wet);
+    alb = mix(alb, sa, sandM);
+    n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM);
+  }
+  // NAT: campos del delta y del Baix Llobregat. La ortofoto los pinta de un oliva liso: mosaico de parcelas (cada una con
+  // su tono y su cultivo) y, de cerca, surcos. De lejos solo queda el mosaico (los surcos se apagan con el píxel)
+  { vec3 a0 = texture2D(groundTex, uv).rgb;
+    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y));
+    if (farm > 0.01) {
+      vec2 q = vPos.xz; float px = length(fwidth(q));
+      // NAT2: la misma parcelación que usa nature.js para poner cañas y matas en las lindes (franjas de 70 m giradas
+      // 0,62 rad y parcelas de 95 m desplazadas por franja). Lindes: acequia y ribazo oscuros, visibles desde el aire
+      float fu0 = dot(q, vec2(0.81388, 0.58104)), fv0 = dot(q, vec2(-0.58104, 0.81388));
+      float row = floor(fv0/70.0), su = fu0 + fract(row*0.618034)*95.0, col = floor(su/95.0);
+      float fu = su - col*95.0, fv = fv0 - row*70.0, fe = min(min(fu, 95.0 - fu), min(fv, 70.0 - fv));
+      vec2 fc = vec2(col, row);
+      float h = hash21(fc), h2 = hash21(fc + 17.3);
+      vec3 tone = h < 0.18 ? vec3(1.14, 1.0, 0.78) : mix(vec3(0.80, 0.97, 0.74), vec3(1.08, 1.03, 0.82), h);
+      tone *= mix(0.80, 1.14, h2);
+      float a = h2*3.1416, st = sin(dot(q, vec2(cos(a), sin(a)))*4.2);
+      float lind = (1.0 - smoothstep(1.0, 2.8 + 0.6*vnoise(q*0.2), fe))*(1.0 - smoothstep(5.0, 14.0, px));
+      alb = mix(alb, alb*tone*(1.0 + 0.10*st*(1.0 - smoothstep(0.25, 1.0, px))), farm);
+      alb = mix(alb, alb*vec3(0.62, 0.70, 0.52), lind*farm*0.85);
+    } }
   // la ortofoto es de día: lo muy claro (hormigón del puerto, explanadas) lleva el sol «pintado». De noche se apaga algo
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
-  vec3 c = lit(alb, n)*(1.0 - 0.55*uNight);         // de noche, montaña, parques y patios casi negros
+  vec3 c = lit(alb, n);
+  if (sandM*wet > 0.001) c = mix(c, shade(alb, n, normalize(uCam - vPos), rough, 0.0, 1.0), sandM*wet*0.22);
+  // NAT2: espuma de la última ola sobre la propia arena, en la línea de agua (el relieve tapa el borde del mar: así la espuma
+  // de FS_SEA y la de aquí se tocan siempre). Mismo ruido animado que en FS_SEA
+  if (sandM > 0.001 && sd < 3.0) {
+    vec2 q = vPos.xz; float px = length(fwidth(q));
+    float br = vnoise(q*0.09 + vec2(uTime*0.2, -uTime*0.08))*0.6 + vnoise(q*0.35 - vec2(uTime*0.3, uTime*0.1))*0.4;
+    float fo = (1.0 - smoothstep(0.2, 0.9 + 1.1*br, sd))*smoothstep(0.3, 0.7, br + 0.15)*sandM;
+    c = mix(c, vec3(0.93, 0.95, 0.96)*(uSunCol*0.6 + uSkyCol)*(1.0 - 0.55*uNight), fo*0.75);
+  }
+  c *= 1.0 - 0.55*uNight;                           // de noche, montaña, parques y patios casi negros
   // aura nocturna: el suelo urbano (aceras, plazas) coge algo de la luz de las calles. Ni el verde ni el monte
   if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w*mix(0.15, 1.0, texture2D(uStreet, (vPos.xz - uStreetR.xy)*uStreetR.zw).r));
   FRAG(c);
@@ -548,7 +654,7 @@ void main(){
 }`;
 
 const FS_SEA = `
-uniform sampler2D coastTex; uniform vec2 uSize;
+uniform sampler2D coastTex; uniform vec2 uSize; uniform sampler2D uShore; uniform sampler2D groundTex;
 void main(){
   vec2 p = vPos.xz; vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   vec2 g = vec2(0.0); float t = uTime;
@@ -576,8 +682,27 @@ void main(){
   float sp = pow(max(dot(r,uSunDir),0.0), mix(260.0, 40.0, rough));
   // el brillo del sol en el agua, muy por encima de 1 (HDR): es lo que florece
   c += uSunCol*sp*mix(7.0, 0.35, rough)*sunVis();
-  float foam = (1.0 - smoothstep(0.0, 0.04, cd))*inside*(0.35 + 0.65*vnoise(p*0.12 + vec2(t*0.25, -t*0.1)));
-  c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.6);
+  // NAT: orilla. Agua somera clara sobre la arena y espuma suave: una línea pegada a la arena y dos o tres frentes de ola
+  // que llegan a la playa, rotos por ruido (nada de bandas rectas). Se apaga con el tamaño del píxel (sin moiré de lejos)
+  float sh = (1.0 - smoothstep(0.0, 0.05, cd))*inside;
+  c = mix(c, mix(vec3(0.20, 0.42, 0.40), vec3(0.06, 0.12, 0.13), uNight)*(uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y, 0.0)), sh*0.45*(1.0 - fres));
+  float br = vnoise(p*0.09 + vec2(t*0.2, -t*0.08))*0.6 + vnoise(p*0.35 - vec2(t*0.3, t*0.1))*0.4;
+  // NAT2: la espuma va por la máscara de costa (distancia a la línea de agua del relieve, la misma que la arena mojada):
+  // una línea pegada a la arena y dos o tres frentes de ola que llegan, solo frente a las playas (en los muelles, poca)
+  float ds = max(-mix(-40.0, (texture2D(uShore, uv).r - 0.5)*80.0, inside), 0.0), beach = 0.0;
+  if (ds < 32.0 && inside > 0.5) {
+    vec2 e = vec2(8.0, 0.0)/uSize;
+    vec2 gr = vec2(texture2D(uShore, uv + e.xy).r - texture2D(uShore, uv - e.xy).r, texture2D(uShore, uv + e.yx).r - texture2D(uShore, uv - e.yx).r);
+    vec2 dir = gr/max(length(gr), 1e-5);
+    vec3 SAND = vec3(0.882, 0.827, 0.655);
+    beach = max(1.0 - smoothstep(0.05, 0.12, length(texture2D(groundTex, uv + dir*(ds + 10.0)/uSize).rgb - SAND)),
+                1.0 - smoothstep(0.05, 0.12, length(texture2D(groundTex, uv + dir*(ds + 24.0)/uSize).rgb - SAND)));
+  }
+  float fr = fract(ds/11.0 + t*0.16 + 0.35*vnoise(p*0.03));
+  float waves = exp(-pow((fr - 0.5)*5.0, 2.0))*(1.0 - smoothstep(12.0, 30.0, ds))*smoothstep(2.0, 5.0, ds)*(1.0 - smoothstep(4.0, 18.0, px));
+  float edge = 1.0 - smoothstep(0.8, 3.5 + 3.0*br, ds);
+  float foam = clamp(edge*(0.6 + 0.4*br) + waves*smoothstep(0.35, 0.75, br)*0.75, 0.0, 1.0)*mix(0.2, 1.0, beach)*inside;
+  c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.8);
   FRAG(c);
 }`;
 
@@ -662,18 +787,20 @@ const matBld = mkMat('bld', VS_BLD, FS_BLD, ['position', 'color', 'uv', 'uv2'], 
 // tabla de colores de cubierta de palette.js (64 × 1, sin filtrar)
 if (window.BCN_PAL) matBld.setTexture('uRoofPal', BABYLON.RawTexture.CreateRGBATexture(window.BCN_PAL.ROOF, 64, 1, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE));
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
-const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet']);
+const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet', 'uShore']);
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
 for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
 const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph'], ['tAsD', 'tAsN']);
 matRoad.setVector2('uOrg', new BABYLON.Vector2(0, 0)); matRoad.setFloat('uAsph', 0);
 const matQuay = mkMat('quay', VS_BASIC, FS_QUAY, ['position']);
-const matSea = mkMat('sea', VS_BASIC, FS_SEA, ['position'], ['uSize'], ['coastTex']);
+const matSea = mkMat('sea', VS_BASIC, FS_SEA, ['position'], ['uSize'], ['coastTex', 'uShore', 'groundTex']);
 const matSky = mkMat('sky', VS_SKY, FS_SKY, ['position']);
 matTer.zOffset = 0; matTer.zOffsetUnits = 8;
 matOut.zOffset = 0; matOut.zOffsetUnits = 8;
 matSea.zOffset = 0; matSea.zOffsetUnits = 40;
+for (const m of [matTer, matSea]) m.setTexture('uShore', SH_NONE);
+matSea.setTexture('groundTex', SH_NONE);
 matSky.disableDepthWrite = true;
 
 const VB = BABYLON.VertexBuffer;
@@ -816,7 +943,8 @@ await tick();
   matTer.setTexture('normTex', normTex);
   matTer.setVector2('uSize', new BABYLON.Vector2(WX, WZ)); matTer.setVector2('uGrid', new BABYLON.Vector2(GW, GH)); matTer.setFloat('uCell', CELL);
   const groundTex = texOpts(new BABYLON.Texture(await blobURL('data/ground.webp'), scene, false, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE), 8);
-  matTer.setTexture('groundTex', groundTex);
+  matTer.setTexture('groundTex', groundTex); matSea.setTexture('groundTex', groundTex);
+  const COAST = [], EDG = new Map();    // NAT2: bordes del relieve en la costa: x0, z0, x1, z1, x y z del tercer vértice (lado de tierra)
   const dv = terr.view('meshes'); let p = 0, tris = 0;
   for (let k = 0; k < M.nMesh; k++) {
     const cx = dv.getUint8(p), cz = dv.getUint8(p + 1), nV = dv.getUint32(p + 4, true), nI = dv.getUint32(p + 8, true); p += 12;
@@ -827,7 +955,48 @@ await tick();
     for (let v = 0; v < nI; v++, p += 2) idx[v] = dv.getUint16(p, true);
     if ((nI * 2) % 4) p += 2;
     reg(mkMesh('t' + k, pos, idx, matTer, null, cx * CH, cz * CH), { cast: true, layer: 'terrain' }); tris += nI / 3;
+    // NAT2: la línea de agua (y = 0) que cruza los triángulos del escalón y, donde el relieve acaba por encima del agua, su
+    // borde. Solo cerca del nivel del mar (y < 8 m). Las aristas se casan por posición (no por índice: hay vértices
+    // repetidos en las costuras de un mismo trozo y entre trozos), así que solo quedan las del contorno de verdad
+    { const ox = cx * CH, oz = cz * CH, vk = q => Math.round((pos[q * 3] + ox) * 10) * 300000 + Math.round((pos[q * 3 + 2] + oz) * 10);
+      for (let t = 0; t < nI; t += 3) { const v = [idx[t], idx[t + 1], idx[t + 2]], y = v.map(q => pos[q * 3 + 1]);
+        if (Math.min(...y) > 8) continue;
+        for (let e = 0; e < 3; e++) { const a = v[e], b = v[(e + 1) % 3], ka = vk(a), kb = vk(b), key = ka < kb ? ka + ':' + kb : kb + ':' + ka;
+          const o = EDG.get(key); if (o) o[0] = 0; else EDG.set(key, [1, pos[a * 3] + ox, pos[a * 3 + 2] + oz, y[e], pos[b * 3] + ox, pos[b * 3 + 2] + oz, y[(e + 1) % 3], pos[v[(e + 2) % 3] * 3] + ox, pos[v[(e + 2) % 3] * 3 + 2] + oz]); }
+        if (Math.min(...y) >= 0 || Math.max(...y) <= 0) continue;
+        const P = [];
+        for (let e = 0; e < 3; e++) { const p = v[e], q = v[(e + 1) % 3], yp = y[e], yq = y[(e + 1) % 3]; if ((yp > 0) === (yq > 0)) continue;
+          const f = yp / (yp - yq); P.push(pos[p * 3] + (pos[q * 3] - pos[p * 3]) * f + ox, pos[p * 3 + 2] + (pos[q * 3 + 2] - pos[p * 3 + 2]) * f + oz); }
+        const up = v[y.findIndex(h => h > 0)];
+        if (P.length === 4) COAST.push(P[0], P[1], P[2], P[3], pos[up * 3] + ox, pos[up * 3 + 2] + oz); } }
   }
+  // NAT2 · máscara de costa: distancia con signo (m, + en tierra) al contorno del relieve en la costa (donde de verdad empieza
+  // el agua), en téxeles de 8 m: exacta a menos de 12 m de la línea (distancia a cada arista, lado de tierra el del tercer
+  // vértice) y por chaflán más allá, con el signo propagado. Lineal: la orilla sale continua y suave; la arena mojada
+  // (FS_TER) y la espuma (FS_SEA) van pegadas a ella. ±40 m en un byte
+  { const T = 8, SW = Math.ceil(WX / T), SZ = Math.ceil(WZ / T), N = SW * SZ, t0 = performance.now();
+    const onL = v => Math.abs(v / CH - Math.round(v / CH)) * CH < 0.06;     // aristas sobre la costura de dos trozos: fuera
+    for (const o of EDG.values()) if (o[0] && !((onL(o[1]) && onL(o[4])) || (onL(o[2]) && onL(o[5]))) && o[3] > 0.05 && o[6] > 0.05 && o[1] > 1 && o[2] > 1 && o[1] < WX - 1 && o[2] < WZ - 1) COAST.push(o[1], o[2], o[4], o[5], o[7], o[8]);
+    EDG.clear();
+    const D = new Uint16Array(N).fill(65535), sg = new Uint8Array(N).fill(1);    // D: medios metros
+    for (let e = 0; e < COAST.length; e += 6) {
+      const x0 = COAST[e], z0 = COAST[e + 1], x1 = COAST[e + 2], z1 = COAST[e + 3], dx = x1 - x0, dz = z1 - z0, L2 = dx * dx + dz * dz || 1e-6;
+      const side = Math.sign(dx * (COAST[e + 5] - z0) - dz * (COAST[e + 4] - x0));
+      const i0 = Math.max(0, Math.floor((Math.min(x0, x1) - 12) / T)), i1 = Math.min(SW - 1, Math.floor((Math.max(x0, x1) + 12) / T));
+      const j0 = Math.max(0, Math.floor((Math.min(z0, z1) - 12) / T)), j1 = Math.min(SZ - 1, Math.floor((Math.max(z0, z1) + 12) / T));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = (i + 0.5) * T - x0, pz = (j + 0.5) * T - z0, u = Math.max(0, Math.min(1, (px * dx + pz * dz) / L2));
+        const d = Math.round(Math.hypot(px - u * dx, pz - u * dz) * 2), o = j * SW + i;
+        if (d < D[o]) { D[o] = d; sg[o] = Math.sign(dx * pz - dz * px) === side ? 1 : 0; } } }
+    const W1 = 16, W2 = 23;
+    const rel = (o, q, w) => { const d = D[q] + w; if (d < D[o]) { D[o] = d; sg[o] = sg[q]; } };
+    for (let j = 1; j < SZ - 1; j++) for (let i = 1; i < SW - 1; i++) { const o = j * SW + i; rel(o, o - 1, W1); rel(o, o - SW, W1); rel(o, o - SW - 1, W2); rel(o, o - SW + 1, W2); }
+    for (let j = SZ - 2; j > 0; j--) for (let i = SW - 2; i > 0; i--) { const o = j * SW + i; rel(o, o + 1, W1); rel(o, o + SW, W1); rel(o, o + SW + 1, W2); rel(o, o + SW - 1, W2); }
+    const B8 = new Uint8Array(N);
+    for (let o = 0; o < N; o++) { const m = Math.min(D[o] * 0.5, 40) * 127.5 / 40; B8[o] = Math.round(127.5 + (sg[o] ? m : -m)); }
+    const shore = BABYLON.RawTexture.CreateLuminanceTexture(B8, SW, SZ, scene, true, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    texOpts(shore); matTer.setTexture('uShore', shore); matSea.setTexture('uShore', shore);
+    window.BCN_SHORE = { ms: Math.round(performance.now() - t0), edges: COAST.length / 6 }; }
   // muelles
   const qv = new Float32Array(terr.sec('quayV')), qi = new Uint32Array(terr.sec('quayI'));
   reg(mkMesh('quays', qv, qi, matQuay), { cast: true, layer: 'terrain' });
@@ -1112,6 +1281,11 @@ await tick();
 const STS = FXS ? await addMod('st', 'BCN_STREETS', 'calles de detalle') : null;
 // azoteas con detalle (rooftops.js): usa los índices de las fachadas y su shader de detalle
 if (FXS) await addMod('roof', 'BCN_ROOFTOPS', 'azoteas con detalle');
+// naturaleza: volumen en el monte, los parques grandes y el delta (necesita ctx.city de las fachadas para no invadir calles
+// ni edificios; sin él planta igual, solo por la máscara del suelo)
+setMsg('Plantando el monte…', 0.99);
+await tick();
+await addMod('nat', 'BCN_NATURE', 'vegetación de montaña');
 // iluminación: siempre el último
 const LIGHT = QS.get('nolight') === '1' ? null : await addMod('light', 'BCN_LIGHTING', 'módulo de iluminación');   // ?nolight=1: prueba del respaldo
 if (!LIGHT) setLDR();                                         // sin módulo de luz no hay postproceso: tono y gamma en los shaders
