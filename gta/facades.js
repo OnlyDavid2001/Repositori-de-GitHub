@@ -15,7 +15,7 @@
 (function () {
 'use strict';
 const GEO = window.BCN_GEO;
-const { K, GB, rect, jamb, hpl, box, lattice, latticeSide, pbrAux, shade, mixc, seed, R, pick } = GEO;
+const { K, GB, quad, rect, jamb, hpl, box, lattice, latticeSide, pbrAux, shade, mixc, seed, R, pick } = GEO;
 
 // paletas (de Transeúnte)
 const SHUTTERS = [[43, 77, 51], [84, 87, 69], [36, 59, 77], [107, 77, 48], [60, 92, 64], [120, 118, 104]];
@@ -92,16 +92,25 @@ void main(){
   float v = vInfo.x;
   if (kind < 0.5) {                                   // estuco fotografiado, con suciedad y churretes
     rough = 0.9;
-    vec3 tx = texture2D(tPlD, P*0.21).rgb; float lum = dot(tx, vec3(0.3,0.6,0.1));
+    // G1F1: dos escalas de la foto, giradas, mezcladas por un ruido ancho: sin mosaico que se repita cada 4,8 m
+    float tb = smoothstep(0.3, 0.7, vnoise(P*0.045 + 3.1));
+    vec2 P2 = mat2(0.80, -0.60, 0.60, 0.80)*P*0.133 + vec2(0.37, 0.71);
+    vec3 tx = mix(texture2D(tPlD, P*0.21).rgb, texture2D(tPlD, P2).rgb, tb); float lum = dot(tx, vec3(0.3,0.6,0.1));
     float grime = smoothstep(0.38, 0.85, vnoise(P*0.08)*0.65 + vnoise(P*0.55)*0.35);
+    alb *= mix(0.95, 1.05, vnoise(P*0.03 + 7.7));     // manos de pintura: paños algo más claros u oscuros
     alb *= mix(0.74, 1.16, smoothstep(0.15, 0.75, lum)) * mix(1.0, 0.82, grime);
     if (an.y < 0.7) { float s = vnoise(vec2(P.x*1.3, P.y*0.07))*0.75 + vnoise(vec2(P.x*3.1, P.y*0.15))*0.25; alb *= mix(1.02, 0.86, smoothstep(0.5, 0.9, s)); }
-    vec3 tn = texture2D(tPlN, P*0.21).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.75*nearF);
+    vec3 tn = mix(texture2D(tPlN, P*0.21).xyz, texture2D(tPlN, P2).xyz, tb)*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.75*nearF);
   } else if (kind < 1.5) {                            // sillar
     rough = 0.8;
     vec3 tx = texture2D(tAsD, P*vec2(0.30, 0.38)).rgb;
     alb *= tx*1.95*mix(0.88, 1.08, vnoise(P*0.6));
     alb *= mix(1.0, 0.8, smoothstep(0.45, 0.85, vnoise(vec2(P.x*0.9, P.y*0.04))));
+    // G1F1: arenisca de Montjuïc, cada sillar con su veta (ocre, gris o rosado) y alguna mancha de óxido
+    vec2 sb = floor(P*vec2(1.0/0.9, 1.0/0.5) + vec2(0.5*mod(floor(P.y/0.5), 2.0), 0.0));
+    float hs = hash21(sb + 0.71);
+    alb *= mix(vec3(1.0), hs < 0.33 ? vec3(1.06, 0.98, 0.86) : (hs < 0.66 ? vec3(0.95, 0.96, 0.97) : vec3(1.04, 0.95, 0.92)), 0.6*nearF + 0.2);
+    alb = mix(alb, alb*vec3(0.92, 0.74, 0.55), smoothstep(0.72, 0.9, vnoise(P*vec2(2.1, 0.7) + hs*9.0))*0.5);
     vec3 tn = texture2D(tAsN, P*vec2(0.30, 0.38)).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*1.1*nearF);
   } else if (kind < 2.5 || (kind > 10.5 && kind < 11.5)) {   // vidrio: reflejo del cielo, interior, cortinas
     vec2 cid = floor(P/vec2(1.35, 3.1)); float h = hash21(cid + 0.37), h2 = hash21(cid*1.7 + 4.1);
@@ -198,6 +207,13 @@ void main(){
       float mort = mix(1.0 - smoothstep(0.004, 0.009, dm), 0.2, far);
       vec3 brick = mix(alb*mix(0.8, 1.16, hash21(floor(q) + 0.5))*mix(0.92, 1.06, vnoise(P*5.0)), alb, far);
       alb = mix(brick, mix(alb, vec3(0.70, 0.67, 0.60), 0.6), mort)*mix(1.0, 0.84, grime);
+      // G1F1: llaga y tendel rehundidos (bisel en el canto de cada pieza), cara de la pieza algo alabeada y eflorescencias
+      float bx = (1.0 - smoothstep(0.0, 0.05, f.x)) - (1.0 - smoothstep(0.0, 0.05, 1.0 - f.x));
+      float by = (1.0 - smoothstep(0.0, 0.2, f.y)) - (1.0 - smoothstep(0.0, 0.2, 1.0 - f.y));
+      vec2 tilt = vec2(hash21(floor(q) + 3.3), hash21(floor(q) + 8.1)) - 0.5;
+      N = normalize(n + (T*(bx*0.7 + tilt.x*0.12) + Bv*(by*0.7 + tilt.y*0.12))*nearF*(1.0 - far));
+      alb = mix(alb, vec3(0.80, 0.78, 0.74), smoothstep(0.7, 0.95, vnoise(P*vec2(1.3, 3.0)))*0.25*(1.0 - mort));
+      rough = mix(0.82, 0.95, mort);
     } else if (kind < 17.5) {
       vec2 g = P/0.025, f = fract(g); float far = smoothstep(0.25, 0.6, fwidth(g.x));
       float joint = 1.0 - smoothstep(0.07, 0.15, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
@@ -219,6 +235,23 @@ void main(){
     }
   }` + GEO.kindsGLSL() + ` else {                                            // hojas
     alb *= 0.6 + 0.7*vnoise(P*9.0); N = normalize(n + vec3(vnoise(P*7.0) - 0.5, 0.0, vnoise(P*7.0 + 3.0) - 0.5)*1.4);
+  }
+  // G1F1 · desgaste de los paños de muro (canal auxiliar de wallAux en facades.js: x = bajo el borde de arriba /8 m, y = 255,
+  // z = altura sobre la acera +4 m /16 m): churretes bajo vuelos, losas y alféizares, y zócalo sucio con humedad y salpicaduras
+  if (vInfo.y > 0.99 && vInfo.w < 0.5 && (kind < 1.5 || (kind > 15.5 && kind < 19.5) || (kind > 99.5 && kind < 100.5))) {
+    float dTop = vInfo.x*8.0, hG = vInfo.z*16.0 - 4.0;
+    float wc = vnoise(vec2(P.x*2.3, 7.1))*0.7 + vnoise(vec2(P.x*7.9, 3.3))*0.3;
+    float wl = mix(0.2, 1.8, wc*wc);
+    float wst = (1.0 - smoothstep(0.0, wl, dTop + 0.15*vnoise(P*vec2(9.0, 1.5))))*smoothstep(0.3, 0.7, wc + 0.2);
+    wst *= 0.55 + 0.45*vnoise(vec2(P.x*16.0, P.y*0.8));
+    alb *= mix(vec3(1.0), vec3(0.72, 0.70, 0.67), wst*0.8);
+    float lim = 0.5 + 0.45*vnoise(vec2(P.x*0.8, 1.7)) + 0.1*vnoise(P*5.0);
+    float zc = 1.0 - smoothstep(lim - 0.15, lim + 0.04, hG);
+    float spl = smoothstep(0.55, 0.8, vnoise(P*11.0))*(1.0 - smoothstep(0.0, 0.4, hG));
+    alb *= mix(1.0, 0.70, zc)*mix(1.0, 0.82, spl);
+    alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.0, 0.97, 0.92), zc*0.4);
+    alb *= 1.0 + 0.12*(1.0 - smoothstep(0.0, 0.05, abs(hG - lim)));   // cerco claro de sales en el borde de la humedad
+    rough = mix(rough, 0.95, zc);
   }
   vec3 c = shade(alb, N, V, rough, metal, ao) + emis;
   // baño de sodio de las farolas en los bajos (de noche; los vidrios ya han salido: escaparates y ventanas no se tocan)
@@ -438,7 +471,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const shopsHere = shops && F1 - gHi > 3.6;
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
-      p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd };
+      p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd, wa: wallAux };
     if (V) {                                          // ámbito (b, 6): tonos y banderas de la variante
       rnd(6, 1); const r = [R(), R(), R(), R(), R()];
       Object.assign(env, { V, kw: KW[V.acab], uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
@@ -464,9 +497,11 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const gnd = c => walkAt(r.ax + r.tx * c + r.nx * 0.3, r.az + r.tz * c + r.nz * 0.3);
       const wallC = street ? p : shade(p, 0.95);
       run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd; run.rM = rM;
+      curGnd = gnd; curF = F;                         // G1F1: acera del tramo para el desgaste de los paños (wallAux)
       I.groundFloor(env, run);
       if (V) { pisosV(env, run); coronaV(env, run); }
       else { D.floors(env, run); D.crown(env, run); }
+      curGnd = null; curF = null;
     }
     return true;
 
@@ -474,13 +509,19 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     // hueco con derrame: paños de muro alrededor, jambas, dintel, alféizar, vidrio y persiana
     // gq (opcional): quien pinta el vidrio en lugar del K.GLASS de siempre, gq(W0, F, tt, ct, st, qt, d) (ventanas abiertas de details.js)
     function windowHole(W0, F, a0, a1, tt, ct, k, P, st, yt, dep, col, kind, se, gq) {
-      wr(W0, F, a0, tt, k, P, col, kind); wr(W0, F, ct, a1, k, P, col, kind);
-      wr(W0, F, tt, ct, yt, P, col, kind); if (st > k) wr(W0, F, tt, ct, k, st, col, kind);
+      wr(W0, F, a0, tt, k, P, col, kind, P); wr(W0, F, ct, a1, k, P, col, kind, P);
+      wr(W0, F, tt, ct, yt, P, col, kind, P); if (st > k) wr(W0, F, tt, ct, k, st, col, kind, P);
       const rc = shade(col, 0.62);
       jamb(W0, F, tt, st, yt, -dep, 0, rc, kind); jamb(W0, F, ct, st, yt, -dep, 0, rc, kind);
       hpl(W0, F, tt, ct, yt, -dep, 0, shade(col, 0.45), kind); hpl(W0, F, tt, ct, st, -dep, 0, shade(col, 0.8), kind);
       const qt = yt - se * (yt - st);
-      if (gq) gq(W0, F, tt, ct, st, qt, -dep); else rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
+      if (gq) gq(W0, F, tt, ct, st, qt, -dep);
+      else if (RQV() && ct - tt > 0.45 && qt - st > 0.35) {
+        // G1F1: toda ventana deja ver su habitación (interior mapping, K.HOMEWIN de interiors.js) tras el reflejo del cielo; las que
+        // no son «abiertas», con visillo más a menudo (bit veil). Suelo a la altura del forjado (o ~1 m bajo el alféizar si es alto)
+        const yF = Math.max(k + 0.02, st - 1.0), hs = Math.abs(Math.sin(F.x * 12.9898 + F.z * 78.233 + tt * 3.7 + st * 1.31) * 43758.5453) % 1;
+        RQV()(W0, F, tt, ct, st, qt, -dep, { x0: tt - 0.5, W: ct - tt + 1.0, yF, H: Math.max(2.5, Math.max(yt, P - 0.25) - yF), D: 3.6 + hs * 1.2, mode: 1, veil: 1, seed: 1 + ((hs * 254) | 0) });
+      } else rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
     }
   }
@@ -532,7 +573,22 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     return (VAR[b] = V);
   }
   // paño de muro: los acabados propios (16–19) se solapan 12 mm como el estuco y la piedra, para que no haya grietas
-  function wr(B, F, u0, u1, y0, y1, col, kw) { if (kw >= 16) { u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; } rect(B, F, u0, u1, y0, y1, 0, col, kw); }
+  function wr(B, F, u0, u1, y0, y1, col, kw, yTop) { if (!B || u1 - u0 < 1e-3 || y1 - y0 < 1e-3) return;
+    u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; const a = wallAux(F, u0, u1, y0, y1, yTop);
+    quad(B, F, u0, y0, 0, u1, y0, 0, u1, y1, 0, u0, y1, 0, col, kw, a); }
+  // G1F1 · desgaste de los paños de muro (estuco, piedra, 16–19, 100): canal auxiliar por vértice, en el orden de rect
+  // (u0,y0)(u1,y0)(u1,y1)(u0,y1): x = distancia bajo el borde de arriba del paño (/8 m: el borde es casi siempre un vuelo, una
+  // losa, un alféizar o una imposta, y bajo él escurre el agua) · y = 255 (bandera «paño con desgaste») · z = altura sobre la
+  // acera del tramo (+4 m, /16 m: el zócalo sucio) · w = 0 (el 255 lo reserva el sustituto). Fuera de un tramo, sin zócalo
+  let curGnd = null, curF = null;
+  // yTop (opcional): el borde de referencia, si no es el de arriba del paño (los cuatro paños de un hueco usan el mismo, el
+  // forjado de encima, para que en sus solapes de 12 mm el desgaste sea idéntico y no parpadee)
+  function wallAux(F, u0, u1, y0, y1, yTop) {
+    const yt = yTop === undefined ? y1 : yTop, top = v => Math.max(0, Math.min(255, Math.round((yt - v) / 8 * 255)));
+    const g = curGnd && F === curF ? [curGnd(u0), curGnd(u1)] : [-1e4, -1e4];
+    const hz = (v, j) => Math.max(0, Math.min(255, Math.round((v - g[j] + 4) / 16 * 255)));
+    return [top(y0), 255, hz(y0, 0), 0, top(y0), 255, hz(y0, 1), 0, top(y1), 255, hz(y1, 1), 0, top(y1), 255, hz(y1, 0), 0];
+  }
   const ROPA = [[232, 230, 222], [150, 62, 60], [64, 86, 132], [206, 190, 150], [118, 160, 190], [222, 168, 176], [96, 128, 96], [52, 52, 60], [240, 240, 236], [170, 150, 190]];
   const VID = [148, 158, 156], VIDA = pbrAux(0.32, 0.1, 0, 0), PERFIL = [176, 180, 182], RQV = () => window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;
   // auxiliar del vidrio de barandilla (K.FXVIDRIO, fachadas_estilos.js): u y v del panel, distancia al muro y medio ancho del hueco

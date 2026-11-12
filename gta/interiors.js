@@ -643,7 +643,7 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     float cw = 0.12 + 0.2*h2, fold = 0.82 + 0.18*cos(cp.x*38.0)*(1.0 - smoothstep(0.01, 0.04, px));
     float cm = max(shR(cp, vec2(0.25, 0.0), vec2(0.5 + cw, sz.y), px), shR(cp, vec2(sz.x - 0.5 - cw, 0.0), vec2(sz.x - 0.25, sz.y), px));
     vec3 cc = h1 > 0.5 ? vec3(0.92, 0.88, 0.80) : 0.55 + 0.25*cos(6.2832*(h3 + vec3(0.1, 0.4, 0.7)));
-    float sheer = step(0.7, h3)*0.35;
+    float sheer = mode > 1.5 ? step(0.42, h3)*mix(0.42, 0.62, h1) : step(0.7, h3)*0.35;   // G1F1: ventanas cerradas, más visillos
     c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk)), max(cm*0.92, sheer));
   } else {
     // zaguán: una planta grande en su maceta
@@ -679,7 +679,7 @@ vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px, f
   return c;
 }`;
 regKind('HOMEWIN', 21, `
-    float hw = vCol.r*16.0, hb = floor(vCol.g*255.0 + 0.5), hmode = mod(hb, 2.0);
+    float hw = vCol.r*16.0, hb = floor(vCol.g*255.0 + 0.5), hmode = mod(hb, 2.0) + step(3.5, hb);   // G1F1: 2 = piso tras visillo
     vec2 ho = vec2(vInfo.x*hw, vInfo.y*6.0 - 1.0);
     float hpx = max(max(fwidth(ho.x), fwidth(ho.y)), 1e-4);
     vec3 htu = T*(mod(floor(hb/2.0), 2.0) > 0.5 ? -1.0 : 1.0);
@@ -694,9 +694,13 @@ function roomQuad(B, F, u0, u1, y0, y1, d, rm) {
   const X = v => Math.max(0, Math.min(255, Math.round((v - rm.x0) / W * 255))), Y = v => Math.max(0, Math.min(255, Math.round((v - rm.yF + 1) / 6 * 255)));
   const h = Math.min(255, Math.round(rm.H / 8 * 255)), dd = Math.min(250, Math.round(rm.D / 16.32 * 255));
   const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;
-  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [Wb, rm.mode + 2 * dir, rm.seed], K.HOMEWIN,
+  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [Wb, rm.mode + 2 * dir + (rm.veil ? 4 : 0), rm.seed], K.HOMEWIN,
     [X(u0), Y(y0), h, dd, X(u1), Y(y0), h, dd, X(u1), Y(y1), h, dd, X(u0), Y(y1), h, dd]);
 }
+
+// G1F1: desgaste de los paños de muro de la planta baja (churretes bajo la faja y zócalo sucio): canal auxiliar de facades.js
+// (env.wa). Todos con el mismo borde de referencia, F1, para que los solapes de los paños den lo mismo
+const wa = (env, F, u0, u1, y0, y1) => env.wa ? env.wa(F, u0, u1, y0, y1, env.F1) : undefined;
 
 const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, paramSize: [PARW, PARH], roomQuad, log: null, init(ctx) {
   const { scene } = ctx;
@@ -734,7 +738,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
       const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
       const gc = street && shops ? stone : wallC, gk = street && shops ? KSB : K.STUCCO;
-      if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk); continue; }
+      if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk, wa(env, F, a, a + bw, yB, F1)); continue; }
       windowHole(W0, F, a, a + bw, tt, ct, yB, F1, st, yt, street ? 0.3 : 0.2, gc, gk, rr[0] < 0.6 ? 0.2 + rr[1] * 0.5 : 0);
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
@@ -800,11 +804,11 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
     const SC = shopCols(env), KS = SC.kS;
     const top = topOf(env, gl), sill = gl + 0.5, sc = SC.sc, dk = shade(sc, 0.78), base = shade(sc, 0.86), met = SC.met;
-    rect(W0, F, a, B_, yB, F1, 0, sc, KS); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS); rect(W0, F, B_, V_, top, F1, 0, sc, KS);
+    rect(W0, F, a, B_, yB, F1, 0, sc, KS, wa(env, F, a, B_, yB, F1)); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS, wa(env, F, V_, a + bw, yB, F1)); rect(W0, F, B_, V_, top, F1, 0, sc, KS, wa(env, F, B_, V_, top, F1));
     jamb(W0, F, B_, sill, top, -0.4, 0, dk, KS); jamb(W0, F, V_, sill, top, -0.4, 0, dk, KS);
     hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.68), KS);
     if (W !== s.door) {
-      rect(W0, F, B_, V_, yB, sill, 0, base, KS); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
+      rect(W0, F, B_, V_, yB, sill, 0, base, KS, wa(env, F, B_, V_, yB, sill)); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       glassQuad(W0, F, B_, V_, sill, top, -0.36, s, false);
       box(W0, F, B_ + Uw * 0.5 - 0.03, B_ + Uw * 0.5 + 0.03, sill, top, -0.38, -0.3, met, K.METAL);
       box(W0, F, B_, V_, sill, sill + 0.08, -0.4, -0.3, met, K.METAL);
@@ -813,7 +817,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     } else {
       // puerta de vidrio centrada, con vidrios fijos a los lados y montante encima. El umbral baja hasta la acera
       const dc = (B_ + V_) / 2, x0 = dc - 0.55, x1 = dc + 0.55, th = gl + 0.03, dt = Math.min(top - 0.3, th + 2.25);
-      rect(W0, F, B_, x0, yB, sill, 0, base, KS); rect(W0, F, x1, V_, yB, sill, 0, base, KS); rect(W0, F, x0, x1, yB, th, 0, base, KS);
+      rect(W0, F, B_, x0, yB, sill, 0, base, KS, wa(env, F, B_, x0, yB, sill)); rect(W0, F, x1, V_, yB, sill, 0, base, KS, wa(env, F, x1, V_, yB, sill)); rect(W0, F, x0, x1, yB, th, 0, base, KS, wa(env, F, x0, x1, yB, th));
       hpl(W0, F, B_, x0, sill, -0.4, 0, shade(sc, 0.72), KS); hpl(W0, F, x1, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       jamb(W0, F, x0, th, sill, -0.4, 0, dk, KS); jamb(W0, F, x1, th, sill, -0.4, 0, dk, KS);
       hpl(W0, F, x0, x1, th, -0.4, 0, shade(sc, 0.9), KS);
@@ -925,9 +929,9 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   function portalBay(env, run, a, c, gl, yB, rr) {
     const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run, KSB = K.FXPIEDRA !== undefined ? K.FXPIEDRA : K.STONE;   // n3 E4: sillería sin teñir
     const dw = Math.min(1.2, bw / 2 - 0.35), dtop = Math.min(F1 - 0.55, gl + 3.5), x0 = c - dw, x1 = c + dw, sc = stone;
-    rect(W0, F, a, x0, yB, F1, 0, sc, KSB); rect(W0, F, x1, a + bw, yB, F1, 0, sc, KSB); rect(W0, F, x0, x1, dtop, F1, 0, sc, KSB);
+    rect(W0, F, a, x0, yB, F1, 0, sc, KSB, wa(env, F, a, x0, yB, F1)); rect(W0, F, x1, a + bw, yB, F1, 0, sc, KSB, wa(env, F, x1, a + bw, yB, F1)); rect(W0, F, x0, x1, dtop, F1, 0, sc, KSB, wa(env, F, x0, x1, dtop, F1));
     // umbral a ras del peldaño y zócalo debajo: sin huecos aunque la acera baje por un lado (calle en cuesta)
-    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, KSB); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), KSB);
+    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, KSB); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), KSB, wa(env, F, x0, x1, yB, gl + 0.12));
     jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB);
     hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), KSB);
     // puerta de dos hojas de vidrio con reja de forja (la dibuja el shader K.HOMEWIN) y, detrás, el zaguán: estrecho, ~3,3 m
