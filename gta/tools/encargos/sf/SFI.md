@@ -49,3 +49,17 @@ muestra cada foto y qué hay que copiar. Si al empezar SFR ya existen, compara t
 aproximado) y empieza tus arreglos por las diferencias más visibles en las fachadas, las torres y los pináculos. Para
 capturar más fotos, el método está en la cabecera de esos INDEX.md (Firecrawl: captura de la página y descarga desde
 storage.googleapis.com).
+
+## La cruz: modelo 3D del usuario (SFR, prioridad máxima; si SFI tiene margen, hazlo ya en SFI)
+El usuario ha pasado un modelo 3D de la cruz de la torre de Jesucrist. Está convertido en **`gta/data/sf_cruz.json`**
+(lo genera `gta/tools/stl_cruz.py` desde su STL; 6 649 vértices y 13 708 triángulos, ya escalado a las medidas reales:
+17 m de alto y 13,5 m de ancho; Y arriba; base del fuste en y = 0 y centrado en el eje; brazos a lo largo de ±X y ±Z;
+caras orientadas hacia fuera). Formato: `pos` = Int16 en milímetros (x, y, z por vértice) en base64; `idx` = Uint16 en
+base64 (`idx_tipo`). **Sustituye la cruz procedimental de `sagrada.js` por esta malla** en su sitio exacto (sobre la
+corona de la torre de Jesucrist, `SF.cruz`), con los brazos alineados con los ejes de la basílica: cárgala con `fetch`
+antes de construir (como `aeropuerto.js` espera su JSON envolviendo `BCN_LANDMARKS.init`), crea la malla con
+`VertexData` (posiciones × 0,001) y sombreado plano o normales con ángulo de arista, para que se lean las aristas. Material
+de cerámica blanca esmaltada con brillo y vidrio, y de noche que brille en blanco como ahora, **conservando los haces de
+luz**. Niveles de detalle: la malla del usuario a menos de ~1 500 m; más lejos, la cruz procedimental (o nada si no se
+distingue). Mide el coste y comprueba a mediodía y a las 23:00, desde los remates y desde el dron. Publica también
+`data/sf_cruz.json` (lo hace el coordinador).
