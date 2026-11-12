@@ -1517,3 +1517,250 @@ Volumen en el verde que no es ciudad (Collserola, Montjuïc, el Carmel, parques 
 `aereo_eixample`, `aereo_alto` con `maxDist` 40000, `coll_pie`, `playa_pie`, la secuencia de PALETA `d1500`/`d600`/`d200`/
 `d50` y `roof_eix`, de día a las 10:30 y de noche a las 23:00). Vistas de cada carril: `tools/views_nat.json` y las de los
 scratchpads citadas en su progreso.
+
+## 12. Día 3: edificios y manzanas, suelos, árboles, transporte, plazas, puerto y aeropuerto
+
+Lo que dejaron las etapas del día 3 en sus progresos (`tools/encargos/progreso/<ETAPA>.md`, sección «Para DESARROLLO.md»), fusionado por la integración INT3. Orden de los `<script>` (index.html): … `nature.js`, `manzanas.js`, `transporte.js`, `plazas.js` (antes de los hitos: engancha sus fichas con un setter sobre `window.BCN_LM`), `lighting.js`, `landmarks*.js`, `data/puerto_pu1.js`, `data/puerto_pu2.js`, `puerto.js` y `aeropuerto.js` (después de `landmarks_e.js`: necesitan `BCN_LM`; aeropuerto.js sustituye el constructor de la ficha `aeroport`), `suelos.js` y `app.js`. `heightAt` es ahora la cota allanada bajo las calles (`FLAT.h`, S2); la cruda queda como `heightAt0` dentro de app.js. `data/mz_partidas.json` (manzanas partidas precalculadas) se relanza con `node tools/mz_partidas.js` cada vez que cambien los edificios, manzanas.js o la lista de hitos. El allanado es asíncrono (`await BCN_SUELOS.allanarPar`, con workers de Blob); FS_ROAD y FS_WALK declaran el uniforme de depuración `uSF`, que debe quedar a (0, 0). Ids de material (§6.7): 100–101 fachadas_estilos.js, 120–121 rooftops.js (121 = `K.PATIO`), 140–149 plazas.js, 150–151 transporte.js. Tiempos de carga por fase: `window.BCN_LOADT` (INT3).
+
+### 12.1 Edificios y manzanas enteras (E1–E4)
+
+#### E1
+
+- §11.2/§11.3: `BREC.tipo[b]` (Uint8: 0 vivienda, 1 nave, 2 equipamiento) junto a `BREC.elig`; criterios en app.js (carga de
+  edificios). rooftops.js planifica cualquier edificio elegible de tipo 1–2 aunque no tenga paleta (losa plana) y desde 3,6 m.
+- §11.4: `BCN_FX_ESTILOS.TIPO = { nave: [...], equip: [...] }`; varOf las usa por tipo antes que la familia (con `?fxv=` no).
+- §7.6/§11: penumbra de azoteas de noche `roofNight()` (`window.BCN_ROOF_NIGHT`); quien haga un material de cubierta nuevo,
+  que la sume para no quedar negro de noche.
+- §8.1: los bajos comerciales toman su piedra y su carpintería de `d.col` (`shopCols` en interiors.js).
+
+#### E2
+
+- §11.2: `manzanas.js` (sin init; lo usa app.js al cargar): `BCN_MZ.cand/split/encode`. Registro: `BREC.mzk`, `BREC.mz`.
+  Contenedor sintético al final de `BREC.dv`. Los hitos deben seguir referenciando índices del registro original (los trozos van
+  detrás); los volúmenes que un hito usa no se parten.
+- §11.3: rooftops.js `plan(b)` = `plan0(b)` + patio si b es el ancla de una manzana; `planTerraza(b)` para `mzk = 3`. Tipos de
+  elemento nuevos: floor, ground, rail, pot, table, pool, lounger, tree, tapia, hedge, bed, bench, play, car.
+
+#### E3
+
+- §11.2: `BCN_MZ.splitR(miembros, vecinos, semilla)` y `BCN_MZ.group(V)`; el plan lleva `raster: true` y puede no tener
+  patio (`inner = null`: solo fincas). `BREC.mz.nR` = manzanas partidas por trama. `BREC.vid[b]` = muro cortina.
+- §11.3: material `K.PATIO` (121, aux.x = tipo de suelo 1–6); piezas nuevas de patio listadas arriba.
+
+#### E4
+
+- §11.2: `data/mz_partidas.json` = { nB, ms, blocks: [{ f, skip, isR, sp }] }, lo genera `tools/mz_partidas.js`; `?mz=calc`
+  fuerza el cálculo. `BREC.mz.blocks[k].f/skip/isR`, `BREC.mz.ms`, `BREC.mz.cache`.
+- §11.3: `K.PATIO` tipo 7 (charco de luz); pieza `glow` { x, z, y, r, col, g }. planPatio: parcelas por finca (`PF`).
+- §6: variante de fachada `cw` (muro cortina) y env.cwSp / env.cwMt.
+
+### 12.2 Suelos: asfalto, aceras y calles allanadas (S, S2, S3)
+
+#### S
+
+##### Suelos (etapa S, `suelos.js`)
+- `window.BCN_SUELOS = { asfalto(cls, hw, x0, z0, x1, z1) → desgaste 0–4,99, acera(cls, hw, x0, z0, x1, z1) → [modelo, desgaste 0–1],
+  avenida(x0, z0, x1, z1) → 'diagonal' | 'granvia' | 'pgracia' | null, nivel(x, z), barri(x, z) }` y
+  `window.BCN_RENTA = { nivel(x, z) → 0 muy alto … 4 muy bajo (3,4 fuera de Barcelona; 1,8 al noroeste: Esplugues), barri, NIVEL }`.
+  Módulo de datos puro: se carga antes de `app.js`, que al trazar las calles aún no tiene `BCN_BARRI` y le pasa `META.barris`
+  en `BCN_SUELOS._barris`. Caché del nivel en rejilla de 100 m.
+- Asfalto: parte entera del desgaste = estado (0 nuevo · 1 seminuevo · 2 gastado normal · 3 bastante gastado · 4 muy gastado).
+  Base por nivel de barrio, ruido por zona (~260 m) y por tramo; vías principales −0,35, servicio +0,45, autopistas y rondas ~1,1;
+  Diagonal, Gran Via y Passeig de Gràcia ~1 (seminuevas); un 6 % de tramos recién asfaltados en cualquier barrio y un 5 % de
+  tramos dejados en barrios medios o humildes. Va por polilínea de `roads.png` en `uv.w` del vértice de calzada (`vInfo.w` en
+  `FS_ROAD`). En el shader: de lejos solo el tono (0,80 → 1,22 del color base y más gris), de cerca (`near`) los detalles, todos
+  con `lod` por tamaño de píxel (sin moiré). Las variables `crk` (oscurecimiento de grietas, se aplica después de la pintura) y
+  `mk0` (pintura sin desgastar) son de este bloque; el de `ground.js` no cambia.
+- Aceras: 0 panot de flor estándar · 1 hexagonal del Passeig de Gràcia (amonite, estrella y alga en relieve, gris verdoso,
+  25 cm) · 2 Diagonal (losa de 40 cm con estrías a 45°, interpretación: no he encontrado fuente del diseño real) · 3 panot nuevo y
+  limpio · 4 panot sucio y dejado (manchas, chicles, piezas rotas o remendadas, juntas negras) · 5 losas grandes de granito
+  80×40 a matajuntas (22@, Diagonal Mar, Vila Olímpica, Provençals). Por tramo con aceras (o peatonal), en un atlas gemelo
+  del campo de aceras (`tKind`, mismo hueco, NEAREST): R = 40·modelo, G = desgaste. El granito de plazas y peatonales coge el
+  desgaste. Bordillo (cara vertical): `uv.x = −(2 + modelo + 0,9·desgaste)` (antes −1; el shader acepta los dos). Alcorques:
+  reja de fundición (0, 1, 3), sauló claro sin reja (2, 5), tierra pisada sin reja (4).
+
+#### S2
+
+##### Calles planas (S2, `suelos.js` + `app.js`)
+- `BCN_SUELOS.allanar(h0, polys, WX, WZ, GW, GH, CELL) → { h(x, z), low: Float32Array(GW·GH), stats }`. `app.js` carga
+  `roads.png` junto con el relieve, llama a `allanar` con la cota cruda (`heightAt0`) y define `heightAt = FLAT.h`: todo lo que
+  se apoya con `heightAt` (calzada, `roadY`/`walkY`, aceras, árboles, mobiliario, vistas a pie) sigue la cota allanada. Los
+  edificios llevan su base horneada (`y0`): donde quedan por encima de la acera, `streets.js` pone el faldón.
+- `FLAT.low`: corrección mínima (≤ 0) alrededor de cada nudo de 20 m; la malla del terreno baja ese tanto más 5 cm.
+- Sin `suelos.js` (o si falla), `heightAt` es la cota cruda de siempre.
+##### Aceras (S2)
+- `EXT = 40` m: la acera llega más allá de `WSW` si se ve desde el bordillo (`coverAt` en 4 puntos del segmento bordillo–punto).
+  La cota de esos puntos es `walkY(-1)` = terreno + 0,2, la misma que da `city.walkAt` (no cambia la regla de `near`).
+- Faldón de fachada: en la malla de acera de la celda, con UV de bordillo.
+
+#### S3
+
+- `uSF` (vec2) en los materiales `road` y `walk`: fuerza estado de asfalto y modelo de acera (+1; 0 = normal). Solo depuración:
+  `BCN.scene.materials.forEach(m => { if (m.name === 'road' || m.name === 'walk') m.setVector2('uSF', new BABYLON.Vector2(a + 1, c + 1)); })`.
+- `BCN_SUELOS.allanarPar(h0, h0src, env, polys, WX, WZ, GW, GH, CELL, nW) → Promise<FLAT>` (app.js la espera; si falla, `allanar`).
+  `BCN_SUELOS.ms` = milisegundos que tardó.
+
+### 12.3 Árboles de calle, alcorques y plantones (ARB3, ARB4)
+
+#### ARB3
+
+§ árboles de calle: `streetKind`, códigos de `treesOf` (especie 0..NSP−1, plantón NSP/NSP+1, alcorque −1/−2), mallas
+`tNS*`, `findTree(k)` ampliado y `countAll()`.
+
+#### ARB4
+
+§ árboles de calle: alcorques como instancias `pitG`/`pitS` (`TR.pitGeo`, `TR.pitCanvas`, matrices `t.pm` por celda,
+fundido 60–75 m); el canal alfa del campo de aceras ya no se usa (la rama de alcorque de `FS_WALK` queda muerta);
+`findTree(−3|−4)`; tutores con atlas propio `TR.stakeCanvas`.
+
+### 12.4 Transporte: bocas de metro y paradas de bus (T, T2)
+
+#### T
+
+- `transporte.js`, `window.BCN_TRANSPORTE = { LINES, init(ctx) → { update, busy, flush, stats, info, placeAll, entrances, stops } }`.
+  Módulo de primer nivel con celdas propias de 200 m y dos niveles (1: ≤ 165 m, 2: 140–440 m) fundidos con `dith`.
+- Material: copia del shader de detalle (como `rooftops.js`) con dos tipos propios registrados al cargar:
+  `TRSIGN` (140, rótulo del atlas `tTrSign`, uv por vértice en `aux.xy`, `aux.z` = se enciende) y `TRIN` (141, regletas y
+  paños oscuros). Ids 140–149 reservados para transporte.
+- **El hueco de la boca sin tocar la acera** (técnica reutilizable para cualquier hueco en el suelo): el interior (escalera,
+  paredes, rellano) es una malla aparte con material propio `trIn`. Cada píxel calcula dónde corta el rayo cámara→píxel el
+  plano de la boca (`yTop` = acera + 0,11) y, si cae dentro del rectángulo del hueco, se pinta con la profundidad de ese
+  punto del plano adelantada 0–10 cm (según lo lejos que quede detrás: así se ordenan peldaños y paredes entre sí); si cae
+  fuera, `discard`. Así tapa la acera (que queda bajo el plano) y queda detrás de todo lo que se interpone. Hasta 16 bocas
+  por malla (`uOp`, dos vec4 por boca: centro, rumbo, semimedidas y cota; el índice va en `aux.w`). Primera prueba fallida
+  (apuntada para no repetirla): una tapa que escribe `gl_FragDepth = 1` NO sirve, porque la prueba de profundidad usa la
+  profundidad escrita y la tapa no pasa nunca.
+- Azar: `seed(150, estación, k)` y `seed(151, tramo, n)`.
+- Colocación: no pisa calzada (≥ 1,85 m del bordillo: fuera de alcorques, farolas, papeleras), edificios (margen 0,8 m),
+  cruces (11 m), bancos, buzones, parquímetros (misma retícula `along` que `furniture.js`), otras bocas ni paradas. Las
+  paradas van centradas entre dos árboles (retícula de 10,5 m de `streets.js`) y sin farola/papelera/banco encima.
+
+#### T2
+
+- `transporte.js` lee `data/ground.webp` por su cuenta (solo lectura) para no poner bocas ni paradas en césped. Si nature.js
+  publicara su `clsAt`, se podría quitar esa segunda descodificación.
+- La colocación de estaciones es un generador (`placeGen`) reanudado por la cola de 3 ms; `placeAll()` lo agota.
+- `stats()` da `maxStepMs` (paso de colocación más largo); `info()` da `maxBuildMs`, `nSteps`, `slow` (pasos > 8 ms).
+
+### 12.5 Plazas (P1, P2, P3)
+
+#### P1
+
+- `plazas.js`: `<script>` antes de `lighting.js`; `addMod('plz', 'BCN_PLAZAS', 'plazas')` tras `roof` (necesita
+  `ctx.city`, `ctx.detail` y `BCN_FURNITURE.parts`). Tipos de material 141 `PLZ_LEAF` (copas) y 142 `PLZ_WATER` (agua,
+  `aux.y` = focos bajo el agua de noche); el 140 queda reservado. Rango 140–149 para plazas.
+- Por plaza, tres mallas: `plp<i>` pavimento (material `plazaPav`, capa `walk`, sin sombra), `plo<i>` equipamiento y
+  mobiliario sencillo (`matB`, capa `furn`, proyecta sombra, `cell` propia para el relevo `uCellHi`) y `plh<i>` mobiliario
+  de detalle de `furniture.js` (a < 90 m; se quita a > 115 m). Capa sencilla a < 600 m, se quita a > 680 m.
+- Hitos desde un módulo que carga antes que `landmarks.js`: `plazas.js` engancha un *setter* en `window.BCN_LM` y da de
+  alta sus fichas en cuanto `landmarks.js` lo publica (antes de iniciarse los hitos).
+- `BCN.mods.plz.stats()` → `{ plazas, singulares, hechas, tris, trisHi }`; `BCN.mods.plz.list()` → estado por plaza.
+- Vistas: `tools/views_plazas.json` (cuatro singulares: dron y a pie a las 10:30, dron a las 23:00) y
+  `tools/views_plazas_gen.json` (diez genéricas).
+
+#### P2
+
+- `data/plazas_p2.json`: { paseos: {nombre: [polilínea…]}, puntos: {nombre: [x, z]}, poligonos: {nombre: [anillo…]} }.
+- En `plazas.js`: `SING` admite `near` (para nombres repetidos), `center`/`disc`, y `objs` puede ser un generador (cede).
+  `o.noPav` salta el pavimento; `o.rb` da radios de construcción propios; `o.excl` recorta contra otras plazas.
+- Piezas por nombre en `P2PIECE` (devuelven el alto de la luz si alumbran) con su radio en `P2RAD`.
+- `BCN.mods.plz.stats()` → ahora también `paseos` (teselas).
+
+### 12.6 Puerto y zona de mercancías (PU1–PU3)
+
+#### PU1
+
+##### Puerto (`puerto.js`, etapa PU1)
+- El puerto usa el **sistema de hitos** (§10): cada zona es una ficha `BCN_LM.add` declarada al cargar `puerto.js`, que va
+  **después de `landmarks_e.js` y antes de `app.js`** (no antes de `lighting.js` como un módulo normal: necesita `BCN_LM`
+  y declarar sus fichas antes de `BCN_LANDMARKS.init`). No hay `addMod`: el módulo `lm` ya construye todo.
+- Datos: `window.BCN_PUERTO_DATA` (`data/puerto_pu1.js`, copia de `data/puerto_pu1.json`), generado una vez fuera del
+  juego (script en el scratchpad de la etapa, `n3/pu1/gen.py`): máscara de agua de la ortofoto (`ground.webp`, 5 m/píxel:
+  agua = oliva (150, 151, 107) ± 22 o azul), bordes de muelle muestreados con rayos, bloques de apilamiento comprobados
+  contra tierra y contra las cajas de los edificios del registro, barcos encajados (rumbo y posición con el casco entero en
+  el agua y lo más pegado al muelle, sin solaparse), amarres de la marina a partir de los pantalanes de la ortofoto.
+- Todas las fichas llevan `y: 0` y `rot: 0`: las coordenadas locales son mundo − centro y la cota local es la absoluta
+  (el mar está a y = 0; los cascos bajan a −2 m). En tierra, `h.y(lx, lz)`.
+- Fichas:
+  | id | qué | sustituye |
+  | --- | --- | --- |
+  | `pu_portvell` | 91 yates (vela y motor de 9–20 m en los pantalanes, superyates de 28–70 m popa al Moll de la Barceloneta), 3 golondrinas de dos cubiertas en el Moll de Drassanes, Maremàgnum genérico sobre su planta | 64278, 64318 |
+  | `pu_bertran` | 2 ferris, 3 remolcadores, terminal F2 de vidrio sobre su planta, 3 tinglados con dientes de sierra | 63111 |
+  | `pu_creuers` | 5 terminales de cruceros nuevas sobre su planta (zócalo, vidrio, cubierta con vuelo), 2 cruceros (300 y 330 m) con pasarelas de embarque, norays, defensas, autocares | 43333, 36696, 43416, 43415, 36697 |
+  | `pu_dic` | espaldón y escollera por el borde exterior del dique, faros de la bocana sud (verde en el Dic de l'Est, rojo en el Dic Sud) | — |
+  | `pu_moll_sud` | terminal de contenedores del Moll Sud: 89 bloques de pilas (1–5 alturas), grúas de patio, 10 grúas pórtico (8 trabajando, 2 con la pluma levantada), 2 portacontenedores, carretillas pórtico, camiones, 4 vías con tren de plataformas, torres de focos, edificio de control | — |
+  | `pu_moll_prat` | terminal automatizada del Moll Prat: 42 bloques largos con 2 grúas de apilamiento sobre carriles, 15 grúas pórtico, 3 buques, vías, focos | — |
+  | `pu_energia`, `pu_contradic` | 694 depósitos rehechos sobre las plantas del registro (cilindros de chapa con cubierta cónica y anillo, los grandes de GNL con cúpula y balizas, escaleras, cubetos, tuberías con soportes entre vecinos, focos) | los 694 cilindros (cls 8) |
+- Noche: `noche: 'ventanas'` (los huecos `K.VENTANAS` de buques y terminales se encienden con `homeOn`); balizas rojas de
+  las grúas, girofaros, focos de los pórticos y de las torres y luces de los faros con `K.EMISIVO` (solo de noche, salvo
+  los faros). Los depósitos van con `noche: 'focos'`.
+- Sin marcas: contenedores de 15 colores lisos con paneles (`K.METAL`, `panel(2.59, 0.75)`: cada panel de 2,59 m cambia
+  de tono, así una pila parece de contenedores distintos), cascos sin nombres.
+
+#### PU2
+
+##### Zona de mercancías (`puerto.js`, etapa PU2)
+- Mismo sistema que el puerto (§10, fichas `BCN_LM.add` con `y: 0`, `rot: 0`): datos en `window.BCN_PUERTO2_DATA`
+  (`data/puerto_pu2.js`, copia de `data/puerto_pu2.json`), generado fuera del juego con Nominatim y el registro.
+  - `naves[zona] = { c, ext, b: [ids] }`: volúmenes del registro de ≥ 1 100 m², 3,5–24 m de alto, clases 0, 1, 2 y 5, dentro
+    de los recintos de Nominatim y no usados por otro hito.
+  - `cajas`: [cx, cz, semiancho, semifondo] de todos los edificios de los recintos (rejilla de 100 m en `rejilla(x, z)`),
+    para comprobar que camiones, vallas y vías no se meten en un edificio.
+  - `zonas`: contornos; `via`: centro y eje de la playa de vías; `aduanas`: [zona, x, z, rumbo, carriles].
+- Fichas: `pu_zal`, `pu_zal_prat`, `pu_mercabarna`, `pu_zf0`…`pu_zf3` (naves) y `pu_vias` (playa de vías).
+- Nave (`naveLog`): zócalo de hormigón, chapa grecada (`K.METAL`, `panel(0.9)`), franja de color o peto, cubierta de chapa de
+  7 tonos con lucernarios corridos y máquinas, o dientes de sierra en los pabellones grandes de Mercabarna; lado de muelles =
+  el lado largo con más sitio libre delante: banda de puertas seccionales (`K.VENTANAS`: de noche se encienden), marquesina,
+  tira de luz (`K.EMISIVO` solo de noche), andén, remolques atracados (furgonetas en Mercabarna), explanada de remolques en
+  batería (ZAL), torre de focos y valla del patio con puerta; oficinas en un testero.
+- Controles de acceso con aduana (marquesina, casetas, barreras) en la ZAL Port, la ZAL Prat y Mercabarna.
+- Playa de vías: vías cada 4,8 m recortadas al recinto, a las cajas y a la pendiente (tramos de 60 m), trenes de
+  plataformas con contenedores, cisternas, tolvas y vagones cerrados, locomotoras diésel genéricas, torres de focos y gabinete.
+
+#### PU3
+
+- `puerto.js` envuelve `BCN_LANDMARKS.init` (sin editar landmarks.js): guarda el contexto (para `ctx.SEG`) mientras se
+  construyen las fichas y, al terminar, monta (1) el material nocturno de las fichas industriales y (2) las mallas de lo pequeño.
+- Noche industrial (`NOCHE_IND`: terminales de contenedores, playa de vías, ZAL, Mercabarna, Zona Franca, depósitos): copia
+  del shader de los hitos (como hace rooftops.js con el de detalle) que de noche desatura y oscurece el albedo (−74 % en lo
+  horizontal, −60 % en muros, como las azoteas de la ciudad), quita el aura de calle y suma la luz de una textura de charcos
+  (`LUCES` → luminancia de 4 m/píxel): blanca, más en lo horizontal, hasta ~50 m de altura. Cada torre de focos, grúa pórtico
+  (bajo el pórtico y bajo la pluma), grúa de patio, muelle de carga y aduana aporta su charco (`luz(h, x, z, radio, I)`).
+- Piezas pequeñas (`peq(h, x, z)` devuelve un constructor por celda de 250 m y ficha): camiones, remolques, carretillas
+  pórtico, vagones y locomotoras, contenedores sueltos, norays, defensas, autocares, soportes de tubería y vallas. Cada celda
+  es una malla con `addLODLevel(700, null)`: a más de 700 m no se dibuja. Medida en `window.BCN_PUERTO.peq`.
+- Cascos (`casco`): loft por secciones (fondo estrecho y proa recogida bajo el agua, abanico y proa lanzada en la cubierta,
+  espejo de popa con vuelo), regala con arrufo, franjas de color; `sup` (superestructura con frente achaflanado, en terrazas)
+  y `cabina` (parabrisas inclinado) para cruceros, ferris, portacontenedores, remolcadores, golondrinas y yates.
+- Aduanas: en la entrada real del recinto (`entrada()`: la calle más ancha de `ctx.SEG` que cruza el contorno de Nominatim),
+  30 m hacia dentro, orientadas a la calle y con carriles según su anchura. `libre()` y la playa de vías descartan la calzada.
+
+### 12.7 Aeropuerto (AE1–AE4)
+
+#### AE1
+
+- Módulo `BCN_AERO` (`addMod('aero')`) y hitos `aero_*`; `window.BCN_AERO_STANDS()` da los puestos (morro, rumbo, tipo,
+  pasarela). Envoltorio de `BCN_LANDMARKS.init` en aeropuerto.js (espera al JSON y rellena `edificios`).
+
+#### AE2
+
+- `data/aero_lado_tierra.json`; `masts()` en aeropuerto.js (torres de focos, compartidas por hitos y luces).
+- Material `aero_luces` (mezcla, puntos de luz con radio mínimo en píxeles, uniformes `uEye`, `uPx`) y
+  `aero_charcos` (charcos que multiplican en HDR). `BCN.mods.aero.stats()` → luces, charcos, trisLuces, focos.
+
+#### AE3
+
+- `data/aero_cesped.json` (filas de celdas de 6 m en el marco de las pistas; script en scratchpad n3/ae3/ces.py).
+- aeropuerto.js: `curbFrame(d)` (recta del bordillo de la T1), `procT1/procT2` (recorte por semiplanos `clipHP`),
+  `offs()` (desplazamiento de polígonos). Fichas nuevas: `aero_t1_menudo`, `aero_p1_coches`, `aero_edificis`,
+  `aero_veh_<celda>` y `aero_focos_<celda>` (celdas de 450 m, creadas en el init de los hitos). Tras los hitos,
+  `addLODLevel(d, null)` a lo pequeño (tabla `LODD`). Material `aero_rotulos` (atlas de texto, retroiluminado de noche).
+  En la malla de marcas, color.a = 128 es césped (rw.x/rw.y = distancia a pista/rodaje).
+
+#### AE4
+
+- `data/aero_cesped.json` lleva `sdf` (distancia con signo, 128 + 16·m, fila 0 = v0) además de `filas`.
+- `data/aero_carga.json` (Nominatim): combustible, bomberosSur, recuadros carga/mantenimiento, cargueros.
+- Fichas nuevas `aero_carga`, `aero_combustible`, `aero_hangars` (creadas en el init de los hitos, reclaman los
+  volúmenes del registro de su recinto); `window.BCN_AERO_ZONAS` da cuántos.
+
