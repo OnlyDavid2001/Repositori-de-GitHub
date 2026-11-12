@@ -1,83 +1,91 @@
-# Etapa INTEGRACIÓN, REVISIÓN y ARREGLOS (INT, REV) · Día 3
+# Etapas INTEGRACIÓN (INT3), ARREGLOS ENTRE CARRILES (FIX3) y REVISIÓN (REV3) · Día 3
 
-## INT
-Worktree `/home/user/wt/n3-int`, rama `wt-n3-int` (desde la rama principal). Fusiona, por este orden: `wt-n3-edif`,
-`wt-n3-suelos`, `wt-n3-arb` (ÁRBOLES 3: solo toca `trees.js` y la colocación de árboles de `streets.js`), `wt-n3-transp`, `wt-n3-plazas`, `wt-n3-puerto` y `wt-n3-aero` (`git merge --no-edit`, identidad y pie de
-`comun.md`). Conflictos esperables en `app.js` (líneas `addMod`, `FS_BLD` de EDIFICIOS frente a `FS_ROAD` de SUELOS),
-`index.html` (scripts nuevos antes de `lighting.js`) y `streets.js`: resuélvelos conservando la intención de las dos
-partes. Lee los informes de las etapas (en tu encargo) y sus «peticiones a otros carriles» (haz las pequeñas).
-Comprueba que las plazas, las bocas de metro y paradas, el mobiliario y las terrazas no se pisan entre sí ni con el
-pavimento nuevo, y que el puerto y el aeropuerto no chocan con la vegetación ni con los hitos.
-Prueba: `node --check`; arnés a las 10:30 y a las 23:00 en Plaça de Catalunya, una calle del Eixample con tiendas, una
-boca de metro, el puerto, el aeropuerto desde el aire, una manzana del Eixample desde el dron y la ciudad desde el aire;
-cero errores y avisos de consola; mide el coste frente a la rama principal y dilo. Escribe en DESARROLLO.md una sección
-«12. Día 3» con lo que dejaron las etapas en sus progresos (sección «Para DESARROLLO.md»). Sube la rama.
+Las tres trabajan, una detrás de otra, en el worktree `/home/user/wt/n3-int`, rama `wt-n3-int` (creada desde la rama
+principal `gta-barcelona-fachadas-detalle`). Identidad y pie de los commits: los de `comun.md`. Lee las «Notas del
+revisor» de abajo: cada etapa tiene las suyas, y son obligatorias para esa etapa.
 
-## REV
-En el mismo worktree: mira las hojas con dureza contra lo que pidió el usuario (`comun.md`), lista los 10 defectos más
-visibles y arregla todos los que puedas (puedes tocar cualquier fichero), volviendo a capturar. Sube. Monta una hoja
-final para el usuario con lo mejor del día (de día y de noche) en
+## INT (etapa INT3)
+Fusiona, por este orden: `wt-n3-edif`, `wt-n3-suelos`, `wt-n3-arb`, `wt-n3-transp`, `wt-n3-plazas`, `wt-n3-puerto` y
+`wt-n3-aero` (`git merge --no-edit`). Cada rama trae también lo que hicieron sus repasos: E3 y E4 (edificios), S2 y S3
+(suelos), ARB4 (árboles), T2 (transporte), PU3 (puerto), AE3 y AE4 (aeropuerto). Resuelve los conflictos conservando
+la intención de las dos partes (los informes de las etapas están en tu encargo). Haz las peticiones pequeñas de los
+carriles que sean de fusión. Prueba: `node --check`; arnés a las 10:30 y a las 23:00 en Plaça de Catalunya, una calle
+del Eixample con tiendas, una boca de metro, el puerto, el aeropuerto desde el aire, una manzana del Eixample desde el
+dron y la ciudad desde el aire; cero errores y avisos de consola; mide el coste (triángulos dibujados y tiempo de carga)
+frente a la rama principal y dilo. Escribe en DESARROLLO.md una sección «12. Día 3» con lo que dejaron las etapas en sus
+progresos (secciones «Para DESARROLLO.md»). Sube la rama.
+
+## FIX (etapa FIX3)
+Haz los arreglos entre carriles de las notas «Para FIX3», que solo se pueden hacer con todo fusionado. Captura ANTES y
+DESPUÉS de cada uno, confirma y sube.
+
+## REV (etapa REV3)
+Mira las hojas con dureza contra lo que pidió el usuario (`comun.md`), lista los 10 defectos más visibles (empieza por
+las notas «Para REV3») y arregla todos los que puedas (puedes tocar cualquier fichero), volviendo a capturar. Sube.
+Monta una hoja final para el usuario con lo mejor del día (de día y de noche: plazas, manzanas y patios, calles con su
+asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
 `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/rev/hoja_final.jpg`.
 
-## Notas del revisor (mirando las hojas de las etapas): REV las tiene en cuenta en sus 10 defectos
-- **Puerto de noche** (`pu1/hoja_noche.jpg`): la explanada de contenedores sale con sus colores saturados, como de día y
-  con luz uniforme (el aura de calle de los hitos la baña). De noche debe quedar en penumbra, con charcos de luz blanca
-  bajo las torres de focos y las grúas. Los cruceros iluminados están bien.
-- **Puerto de cerca**: buques y yates son cajas. Al menos proa afilada y popa en cruceros, ferris y portacontenedores,
-  y yates con casco en cuña vistos a pie desde el Moll de la Fusta.
-- **Tiendas fundidas con su fachada** (`e1/hoja_cubos.jpg`, fila «tiendas»): antes y después casi no se distinguen.
-  Compruébalo en fachadas de colores distintos (crema, rosa, gris, ladrillo) y que se note sin mirar dos veces, sin tocar
-  rótulos ni escaparates.
-- **Cubos que quedan**: desde el dron, las naves grandes de la Zona Franca y las torres de vidrio (clases 3 y 12) siguen
-  como cajas pintadas. Un muro cortina sencillo y lucernarios o placas en las cubiertas grandes valen.
-- **Aeropuerto**: las notas para AE2 están en AERO.md. Comprueba que se hicieron (T1 a pie, procesador con su cubierta
-  ondulada desde el aire, nada de fachadas de vivienda en el aeropuerto).
-- **Calles de rodaje con farolas** (`ae2/hoja_antes_despues.jpg`, `aereo_noche` y `t1_dron_noche`): el resplandor naranja
-  de calzada de app.js y streets.js pinta las calles de rodaje y los viales de servicio del aeropuerto como calles con
-  farolas, y choca con las balizas azules. Dentro del campo de vuelo (`aero_campo`, el rectángulo girado 66°, centro
-  5089,3984, 2100 × 3740 m, que ya respeta nature.js) y en las plataformas, esas calles no llevan farolas ni resplandor.
-- **Presupuesto de hitos**: puerto (unos 345 k triángulos) y aeropuerto (unos 230 k) llegan cada uno por su lado cerca del
-  tope de 400 k del §10.9. Juntos lo pasan de largo. Las etapas de repaso PU3 y AE3 ocultan lo pequeño a distancia; mide
-  el total integrado (desde el aire y a pie) y, si hace falta, sube el tope con criterio o añade un nivel de detalle por
-  ficha en landmarks.js, y dilo.
-- **Etapas de repaso**: además de las 12 etapas, hay PU3 (puerto) y AE3 (aeropuerto), en las mismas ramas `wt-n3-puerto` y
-  `wt-n3-aero`. Sus informes van también en int_args.json.
-- **PU3 dejó sin revisar** (su informe lo dice): las aduanas recolocadas (capturas `D_vB2_*` en `scratchpad/n3/pu3/`) y
-  las vistas a pie `sts_cerca2`, `dep_pie2` y `cru_pie2` (tanda `DE_vE`). Míralas y, si la aduana de la ZAL Prat cae sobre
-  una vía pública, fíjala a mano en la entrada del recinto. La noche industrial y los cascos sí están vistos y bien
-  (`pu3/hoja_noche.jpg`, `pu3/hoja_buques.jpg`).
-- **Árboles de las plazas** (`p1/hoja_antes_despues.jpg`, fila `les_pie`; `p1/hoja_genericas.jpg`): plazas.js planta
-  copas de elipsoide facetado («piruletas») y demasiados árboles en plazas que en la realidad son duras (Sol, Diamant,
-  Virreina, Revolució, Lesseps). Usa las especies de trees.js, con muchos menos árboles, y respeta la tercera persona
-  (ÁRBOLES 3 quitó árboles de las calles por eso). Las plazas duras de Gràcia van casi sin árboles, con alguno en el borde.
-- **Plaça de Catalunya a pie**: el granito es demasiado uniforme. **Fuente de Espanya**: los grupos escultóricos son
-  bultos. **Canòpia de Glòries**: los pilares con bola verde quedan raros.
-- **Aeropuerto (tras AE4)**: queda un bloque blanco liso (`lm_aero_edificis`, hacia 3777, 2759; vista `pie_lejos` de
-  `ae4/`) sin fachada, el techo del viaducto de la T1 muy oscuro de noche y ningún carguero visible en la plataforma de
-  carga. Arréglalo solo si cabe entre los 10 defectos más visibles.
-- **El mar de noche (prioritario, lo ha pedido ver el usuario)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
-  `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces
-  de la costa. En las fotos de referencia de noche, cada foco de la orilla deja una estela vertical temblorosa en el agua,
-  cálida en el paseo y blanca en el puerto, y la ciudad se duplica en el mar cerca de la orilla. Añade en FS_SEA esas
-  estelas (por ejemplo, muestreando la máscara de luz de noche de la costa a lo largo de la vertical de la pantalla, con
-  rizado del oleaje) y un brillo suave del agua bajo la ciudad, sin quemar. Comprueba con las tres vistas de esa carpeta.
-- **Paseos de PLAZAS y árboles de ÁRBOLES 3**: P2 equipa los andenes centrales y laterales de paseos y ramblas (teselas de
-  160 m en plazas.js). Tras fusionar, comprueba que los árboles que ponga plazas.js en esos andenes no se suman a los de
-  streets.js y que el total respeta la regla de ÁRBOLES 3 (adultos a media densidad en avenidas, ramblas y paseos; nada
-  de duplicados). Mira la Diagonal y el Passeig de Gràcia desde el dron y a pie en tercera persona.
-- **Plaça de la Vila de Gràcia a pie** (`p2/d1_gracia_pie.jpg`): hay un bloque blanco liso en medio de la plaza (¿la
-  base del campanario o un volumen del registro?); revísalo.
-- **Transporte (tras T2)**: la construcción de una celda de 200 m de transporte.js tarda hasta ~45 ms sin trocear (tirón
-  al moverse), y ground.webp se descodifica dos veces (nature.js y transporte.js): comparte la descodificación si es fácil.
-  Falta una vista de dron de un cruce con boca y marquesina (la de T2 mira a una azotea). Una estación sigue sin boca y
-  dos con menos de las que tocan (`count.noSite`, `count.short`).
-- **Ciutat Vella sin árboles (petición expresa)**: tras ARB4 aún queda en el Gòtic un alcorque con reja y un árbol adulto
-  (`arb4/dgo_tp_gotic.jpg`), porque `streetKind` (streets.js) cuenta como «ancho» un tramo con un lado sin edificios. En
-  Ciutat Vella exige edificios a los dos lados o calzada de semiancho ≥ 5 m para ser ancho (sus ramblas y paseos siguen la
-  regla de media densidad). Haz lo mismo fuera de Ciutat Vella si el tramo solo es «ancho» por dar a un solar o a una plaza.
-  Y quita la rama muerta del alcorque en FS_WALK (`step(0.84, f.a)`): ahora los alcorques son instancias.
-- **Manzanas precalculadas (crítico)**: E4 precalcula la partición de manzanas en `data/mz_partidas.json` (carga 0,2 s
-  en vez de ~9 s). Depende de los edificios, de manzanas.js y de la lista de hitos (las fichas de hitos excluyen
-  manzanas). Al terminar TODAS las fusiones (PUERTO, AERO y PLAZAS añaden fichas que ocultan volúmenes), relanza
-  `node tools/mz_partidas.js`, confirma el JSON nuevo y comprueba en el arnés que `BREC.mz.ms` es pequeño (no recalcula)
-  y que no hay manzanas partidas bajo hitos.
+## Notas del revisor
+
+### Para INT3 (al fusionar; obligatorias)
+1. **Orden de los `<script>` en index.html**: `suelos.js` antes de `app.js`; `manzanas.js` donde lo dejó EDIFICIOS;
+   `transporte.js` antes de `lighting.js`; `plazas.js` donde lo dejó PLAZAS (engancha los hitos con un setter sobre
+   `window.BCN_LM`); `data/puerto_pu1.js`, `data/puerto_pu2.js` y `puerto.js` después de `landmarks_e.js`; `aeropuerto.js`
+   después de `landmarks_e.js` (sustituye el constructor de la ficha `aeroport`).
+2. **Conflictos esperables**: app.js (FS_ROAD de SUELOS; `heightAt` = cota allanada `FLAT.h` de S2, con `heightAt0` de
+   respaldo; bloque MANZANAS ENTERAS de E2–E4 con `data/mz_partidas.json`; `roofNight` de E1; `addMod` de transp, plz y
+   aero), streets.js (aceras y `tKind` de SUELOS; árboles, alcorques como instancias y plantones de ARB3–ARB4; acera hasta
+   40 m y faldón de S2), facades.js, rooftops.js, interiors.js, trees.js, fachadas_estilos.js.
+3. **FS_WALK**: ARB3 tocó la línea de la reja del alcorque y ARB4 pasó los alcorques a instancias; esa rama de FS_WALK
+   (`step(0.84, f.a)`) ya no sirve: quítala al fusionar.
+4. **Manzanas precalculadas (crítico)**: `data/mz_partidas.json` depende de los edificios, de manzanas.js y de la lista
+   de hitos (las fichas que ocultan volúmenes excluyen manzanas). Al terminar TODAS las fusiones, relanza
+   `node tools/mz_partidas.js`, confirma el JSON nuevo y comprueba en el arnés que `BREC.mz.ms` es pequeño (no recalcula
+   al cargar) y que no hay manzanas partidas bajo hitos.
+5. **Cota allanada**: con `heightAt` allanado, comprueba que puerto, aeropuerto, plazas, bocas de metro y paradas no
+   quedan flotando ni enterrados (4 vistas a pie).
+6. **Tiempo de carga**: mídelo (desde la página hasta el primer fotograma jugable) en la rama principal y en la integrada.
+   Si sube más de un 15 %, busca qué lo sube (allanar, manzanas, plazas, transporte) y dilo.
+
+### Para FIX3 (arreglos entre carriles; obligatorios)
+1. **Ciutat Vella sin árboles (petición expresa del usuario)**: en el Gòtic aún queda un alcorque con reja y un árbol
+   adulto (`scratchpad/n3/arb4/dgo_tp_gotic.jpg`) porque `streetKind` (streets.js) cuenta como «ancho» un tramo con un lado
+   sin edificios. En Ciutat Vella, ancho solo si hay edificios a los dos lados a más de 36 m o calzada de semiancho ≥ 5 m
+   (sus ramblas y paseos siguen la regla de media densidad). Fuera de Ciutat Vella, que un solar o una plaza a un lado no
+   haga «ancha» una calle normal.
+2. **Árboles de las plazas**: plazas.js planta copas de elipsoide facetado («piruletas») y demasiados árboles (Sol,
+   Diamant, Virreina, Revolució, Lesseps, Joanic, Sants…). Añade en streets.js un punto de entrada para árboles por celda
+   desde otro módulo (p. ej. `ctx.extraTrees(ci)` concatenado en `treesOf`) y que plazas.js plante ahí las especies de
+   trees.js, con muchos menos árboles: las plazas duras casi sin árboles (alguno en el borde), las de parque con los
+   suyos. Y comprueba que los andenes de paseo de plazas.js no duplican los árboles de streets.js: la regla de ÁRBOLES 3
+   (adultos a media densidad en avenidas, ramblas y paseos) manda. Mira la Diagonal y el Passeig de Gràcia desde el dron
+   y en tercera persona.
+3. **Rodajes del aeropuerto sin farolas**: el resplandor naranja de calzada (`uGlow`, app.js y streets.js) pinta las
+   calles de rodaje y los viales de servicio del campo de vuelo como calles con farolas y choca con las balizas azules.
+   Dentro de `aero_campo` (rectángulo girado 66°, centro 5089,3984, 2100 × 3740 m, que ya respeta nature.js; también lo
+   publica aeropuerto.js en `BCN_AERO_ZONAS`) y en las plataformas, sin farolas ni resplandor. Vista `aereo_noche`.
+4. **Presupuesto de hitos integrado**: mide `BCN.lm.stats().tris` con todo junto (puerto, aeropuerto, plazas…). El tope
+   del §10.9 es 400 000; si se pasa, añade un nivel de detalle por ficha en landmarks.js (ocultar a distancia las fichas
+   pequeñas) o justifica subir el tope con medidas de triángulos dibujados desde el aire y a pie.
+5. **Tirones**: la construcción de una celda de transporte.js tarda hasta ~45 ms sin trocear; trocéala. ground.webp se
+   descodifica dos veces (nature.js y transporte.js): compártelo si es fácil.
+
+### Para REV3 (defectos visibles; empieza por estos)
+1. **El mar de noche (prioritario: el usuario lo pidió ver)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
+   `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces de
+   la costa. Cada foco de la orilla debe dejar una estela vertical temblorosa en el agua, cálida en el paseo y blanca en
+   el puerto, y la ciudad se debe intuir duplicada cerca de la orilla. Añádelo en FS_SEA (por ejemplo, muestreando la
+   máscara de luz de noche de la costa a lo largo de la vertical de la pantalla, con el rizado del oleaje) más un brillo
+   suave del agua bajo la ciudad, sin quemar. Comprueba con las tres vistas de esa carpeta.
+2. **Suelos a pie**: que los 5 estados de asfalto y los 6 modelos de acera se distingan en calles reales (lo trabajó S3;
+   compruébalo con todo junto, de día y de noche).
+3. **Plazas**: el granito de Plaça de Catalunya a pie es demasiado uniforme; los grupos escultóricos de la fuente de
+   Espanya son bultos; los pilares con bola verde de la Canòpia de Glòries quedan raros; el Gat de Botero son esferas en
+   fila.
+4. **Patios de manzana**: desde el dron las tapias diagonales se leen como líneas claras muy marcadas; el vidrio de las
+   torres de oficinas queda muy oscuro de día.
+5. **Aeropuerto**: queda un bloque blanco liso (`lm_aero_edificis`, hacia 3777, 2759; vista `pie_lejos` de
+   `scratchpad/n3/ae4/`) y el techo del viaducto de la T1 muy oscuro de noche.
+6. **Puerto**: PU3 dejó sin revisar las aduanas recolocadas (`scratchpad/n3/pu3/D_vB2_*`) y las vistas a pie
+   `sts_cerca2`, `dep_pie2` y `cru_pie2`; si la aduana de la ZAL Prat cae sobre una vía pública, fíjala en la entrada.
