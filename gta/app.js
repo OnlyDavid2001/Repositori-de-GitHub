@@ -65,8 +65,14 @@ if (window.BCN_SUELOS && window.BCN_SUELOS.allanar) try {
       polys.push({ cls, hw: w / 2, xs, zs }); } }
   // S3: en paralelo en workers (2–4 según los núcleos); si no hay workers o fallan, en el hilo principal como antes
   const nW = Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2)));
-  try { FLAT = await window.BCN_SUELOS.allanarPar(heightAt0, heightAt0.toString(), { WX, WZ, CH, CELL, NCX, CPC, GW, H, S }, polys, WX, WZ, GW, GH, CELL, nW); }
+  // FIX3: primero la corrección precalculada (data/allanado.bin.gz, ~0,1 s); si falta o su clave no coincide, se calcula
+  const QS0 = new URLSearchParams(location.search), SU = window.BCN_SUELOS, clave = SU.preClave ? SU.preClave(polys, heightAt0, WX, WZ) : 0; SU.clave = clave; SU.pre = false;
+  if (SU.unpack && typeof DecompressionStream !== 'undefined' && QS0.get('noprecalc') !== '1') try {
+    const r = await fetch('data/allanado.bin.gz'); if (r.ok) { const ab = await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      FLAT = SU.unpack(ab, clave, heightAt0, WX, WZ); SU.pre = !!FLAT; if (!FLAT) console.log('calles planas: allanado.bin.gz no coincide con las calles o el relieve; se recalcula'); } } catch (e) { FLAT = null; }
+  if (!FLAT) try { FLAT = await window.BCN_SUELOS.allanarPar(heightAt0, heightAt0.toString(), { WX, WZ, CH, CELL, NCX, CPC, GW, H, S }, polys, WX, WZ, GW, GH, CELL, nW); }
   catch (e) { FLAT = window.BCN_SUELOS.allanar(heightAt0, polys, WX, WZ, GW, GH, CELL); }
+  if (QS0.get('dumpflat') === '1') window.BCN_FLATPACK = SU.pack(FLAT, clave);   // para tools/allanado.sh
   window.BCN_SUELOS.ms = Math.round(performance.now() - t0);
   console.log('calles planas (S2):', window.BCN_SUELOS.ms, 'ms', JSON.stringify(FLAT.stats));
 } catch (e) { FLAT = null; console.log('calles planas (S2) desactivadas:', e && e.message); }

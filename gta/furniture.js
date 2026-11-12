@@ -6,9 +6,7 @@
      · K.FURN  superficie genérica (rugosidad, metal, patrón) — como K.PBR, más el nivel de detalle;
      · K.FDEC  «calcomanía»: un quad con uv propias y un dibujo procedural (adhesivos con pictograma, bocas, radios, chapa
                perforada, pantalla, focos).
-   // FIX3: campo de vuelo del aeropuerto (ficha aero_campo, como aeroIn del preludio de app.js): rodajes y viales sin farolas
-function aeroIn(x, z) { const dx = x - 5089, dz = z - 3984, a = dx * 0.4067 - dz * 0.9135, b = dx * 0.9135 + dz * 0.4067; return Math.abs(a) < 1050 && Math.abs(b) < 1870; }
-window.BCN_FURNITURE = { init(ctx) → { build(cell), buildHi(cell), hiRange, poolMat } }. Contrato de cell/seg: DESARROLLO.md
+   window.BCN_FURNITURE = { init(ctx) → { build(cell), buildHi(cell), hiRange, poolMat } }. Contrato de cell/seg: DESARROLLO.md
    §6.10; catálogo, niveles y cómo añadir un objeto: §9. */
 (function () {
 'use strict';
@@ -438,6 +436,8 @@ void main(){
 }`;
 
 // `parts` deja las piezas a mano para pruebas sin navegador (contar triángulos: ver DESARROLLO.md §9)
+// FIX3: campo de vuelo del aeropuerto (ficha aero_campo, como aeroIn del preludio de app.js): rodajes y viales sin farolas
+function aeroIn(x, z) { const dx = x - 5089, dz = z - 3984, a = dx * 0.4067 - dz * 0.9135, b = dx * 0.9135 + dz * 0.4067; return Math.abs(a) < 1050 && Math.abs(b) < 1870; }
 window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, bike, dock, totem, signal, bollard, mailbox, meter, scooter, MOTO, loft, cdec, slab, levels: [AS, AH] }, init(ctx) {
   const { SEG } = ctx, { walkY, roadY, nearestCar, coverAt } = ctx.city;
   for (const m of ctx.detail.mats) m.setVector2('uFurnHi', new BABYLON.Vector2(HI[0], HI[1]));

@@ -192,7 +192,36 @@ function finish(R, h0, WX, WZ) {
     const X = i * CS, Z = j * CS;
     return ((h0(X, Z) + a * Q) * (1 - u) + (h0(X + CS, Z) + b * Q) * u) * (1 - v) + ((h0(X, Z + CS) + c * Q) * (1 - u) + (h0(X + CS, Z + CS) + d * Q) * u) * v;
   }
-  return { h, low, stats: { nodes: st.nodes, moved: st.moved, mean: st.moved ? st.sum / st.moved : 0, max: st.max, tiles: tiles.filter(Boolean).length } };
+  return { h, low, raw: R, stats: { nodes: st.nodes, moved: st.moved, mean: st.moved ? st.sum / st.moved : 0, max: st.max, tiles: tiles.filter(Boolean).length } };
+}
+// FIX3: corrección precalculada (data/allanado.bin.gz; la genera tools/allanado.sh con el arnés). Formato (little endian):
+// Uint32 [magia 'FLAT', clave, nº de teselas posibles, nº de teselas, nº de nudos de low ≠ 0, largo de low], Float64 stats×4,
+// Int32 claves de tesela, Int16 teselas (52×52 cada una, en pasos de 2 cm), Int16 low entero en cm.
+// La clave (preClave) resume las entradas: si cambian las calles o el relieve, no coincide y se recalcula como siempre
+const MAGIC = 0x33414c46;   // 'FLA3': teselas guardadas a 2 cm (la mitad del valor; ~3,3 MB comprimido en vez de 4,9)
+function preClave(polys, h0, WX, WZ) { let h = 2166136261 >>> 0; const mix = v => { h = Math.imul(h ^ (v | 0), 16777619) >>> 0; };
+  mix(polys.length); mix(WX); mix(WZ); mix(7);   // 7: versión del cálculo (súbela si cambias calc)
+  for (let k = 0; k < polys.length; k += 97) { const p = polys[k]; mix(p.cls); mix(p.hw * 10); mix(p.xs.length); mix(p.xs[0] * 10); mix(p.zs[0] * 10); }
+  for (let j = 1; j < 16; j++) for (let i = 1; i < 16; i++) mix(Math.round(h0(WX * i / 16, WZ * j / 16) * 100));
+  return h; }
+function pack(F, clave) {
+  const R = F.raw, keys = [], lowI = []; R.tiles.forEach((T, k) => { if (T) keys.push(k); });
+  const TT = 52 * 52, nb = 24 + 32 + keys.length * 4 + keys.length * TT * 2 + R.low.length * 2, buf = new ArrayBuffer(nb), dv = new DataView(buf); let o = 0;
+  for (const v of [MAGIC, clave, R.tiles.length, keys.length, lowI.length, R.low.length]) { dv.setUint32(o, v, true); o += 4; }
+  for (const v of [R.stats.nodes, R.stats.moved, R.stats.sum, R.stats.max]) { dv.setFloat64(o, v, true); o += 8; }
+  for (const k of keys) { dv.setInt32(o, k, true); o += 4; }
+  for (const k of keys) { const T = R.tiles[k]; for (let q = 0; q < TT; q++) { dv.setInt16(o, Math.round(T[q] / 2), true); o += 2; } }
+  for (let i = 0; i < R.low.length; i++) { dv.setInt16(o, Math.max(-32000, Math.round(R.low[i] * 100)), true); o += 2; }
+  return new Uint8Array(buf);
+}
+function unpack(buf, clave, h0, WX, WZ) {
+  const dv = new DataView(buf); let o = 0; const u = () => { const v = dv.getUint32(o, true); o += 4; return v; };
+  if (u() !== MAGIC || u() !== clave) return null;
+  const nT = u(), nk = u(), nl = u(), nLow = u(), st = {}; for (const n of ['nodes', 'moved', 'sum', 'max']) { st[n] = dv.getFloat64(o, true); o += 8; }
+  const TT = 52 * 52, tiles = new Array(nT).fill(null), keys = []; for (let i = 0; i < nk; i++) { keys.push(dv.getInt32(o, true)); o += 4; }
+  for (const k of keys) { const T = new Int16Array(TT); for (let q = 0; q < TT; q++) { T[q] = 2 * dv.getInt16(o, true); o += 2; } tiles[k] = T; }
+  const low = new Float32Array(nLow); for (let i = 0; i < nLow; i++) { low[i] = dv.getInt16(o, true) / 100; o += 2; }
+  return finish({ tiles, low, stats: st }, h0, WX, WZ);
 }
 function allanar(h0, polys, WX, WZ, GW, GH, CELL) { return finish(calc(h0, segsOf(polys), WX, WZ, GW, GH, CELL), h0, WX, WZ); }
 // S3: lo mismo en paralelo (workers de un Blob). h0src es el código de la función de cota cruda y env sus variables libres
@@ -217,6 +246,6 @@ function allanarPar(h0, h0src, env, polys, WX, WZ, GW, GH, CELL, nW) {
     return finish({ tiles, low, stats: st }, h0, WX, WZ);
   });
 }
-window.BCN_SUELOS = { asfalto, acera, avenida, nivel, barri, NIVEL, allanar, allanarPar };
+window.BCN_SUELOS = { asfalto, acera, avenida, nivel, barri, NIVEL, allanar, allanarPar, preClave, pack, unpack };
 window.BCN_RENTA = { nivel, barri, NIVEL, PERIF };
 })();
