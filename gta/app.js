@@ -4,7 +4,8 @@
 const $ = id => document.getElementById(id);
 const SHOT = location.hash.indexOf('shot') >= 0;
 if (SHOT) document.body.classList.add('shot');
-const setMsg = (t, f) => { $('msg').textContent = t; if (f != null) $('bar').firstElementChild.style.width = Math.round(f * 100) + '%'; };
+const LOADT = window.BCN_LOADT = [[ 'inicio', Math.round(performance.now()) ]];   // INT3: tiempos de carga por fase (ms desde que se abre la página)
+const setMsg = (t, f) => { LOADT.push([t, Math.round(performance.now())]); $('msg').textContent = t; if (f != null) $('bar').firstElementChild.style.width = Math.round(f * 100) + '%'; };
 const tick = () => new Promise(r => setTimeout(r, 0));
 window.BCN = { ready: false, error: null };
 
@@ -1592,6 +1593,7 @@ function flushAll() {
     let n = 0; do { m.update(P, g, 0.3, 0); } while (m.busy && m.busy() && ++n < 100000);
   }
 }
+LOADT.push(["listo", Math.round(performance.now())]);
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
   ctx: CTX, reg, mods: MODS, fx: FXS, streets: STS, light: LIGHT, lm: LMS ? LMS.api : null,
   detailBusy: () => MODS.some(o => !!o.m.busy && o.m.busy()),
