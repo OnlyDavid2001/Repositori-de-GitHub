@@ -571,6 +571,11 @@ window.BCN_LANDMARKS = { init(ctx) {
     ST.list.push(rec); byId.set(f.id, rec);
   }
   try { applyEdits(); } catch (e) { console.warn('Hitos: no se han podido retocar los volúmenes simples', e); }
+  // FIX3: nivel de detalle por ficha (§10.9): con puerto, aeropuerto y plazas los hitos suman ~700 k triángulos. Las fichas
+  // pequeñas se ocultan a distancia (LOD de Babylon con malla nula, como hace aeropuerto.js con las suyas): a lim m una ficha de
+  // tamaño s (alto o radio del modelo) ocupa ~1/80 del alto de la vista. Las grandes (s ≥ 30 m) no cambian: se ven desde el aire
+  for (const r of ST.list) { if (!r.mesh) continue; const sz = Math.max(r.alto || 0, r.r || 0); if (sz >= 30) continue;
+    r.lim = Math.max(450, 80 * sz); r.mesh.addLODLevel(r.lim, null); }
 
   // vista de cámara que encuadra el hito: órbita a k veces su tamaño (alto y ancho/largo de la ficha; sin ellos, el radio del
   // modelo o la extensión de los volúmenes sustituidos), nunca a menos de 60 m, con elevación elev (grados) desde el rumbo dado
@@ -588,7 +593,11 @@ window.BCN_LANDMARKS = { init(ctx) {
       if (d > r) continue; const e = brec(b); o.push({ b, cls: e.cls, alto: Math.round((e.y1 - e.yb) * 10) / 10, y0: Math.round((e.y0 - e.yb) * 10) / 10, cx: Math.round(cx), cz: Math.round(cz), d: Math.round(d), ancho: Math.round(bb[b * 4 + 2] - bb[b * 4]), fondo: Math.round(bb[b * 4 + 3] - bb[b * 4 + 1]) }); }
     return o.sort((p, q) => p.d - q.d);
   }
-  const stats = () => ({ hitos: ST.hitos, fichas: FICHAS.length, tris: ST.tris, errores: ST.errores.slice(), ocultos: ST.ocultos, retocados: ST.retocados });
+  // trisVis: triángulos de hitos dentro de su distancia de dibujo desde la cámara (sin contar el encuadre)
+  const trisVis = () => { const c = scene.activeCamera; if (!c) return ST.tris; const p = c.globalPosition || c.position; let t = 0;
+    for (const r of ST.list) { if (!r.mesh) continue; const lv = r.mesh.getLODLevels(), lim = lv.length ? Math.min(...lv.map(l => l.distanceOrScreenCoverage)) : 1e9;
+      if (Math.hypot(r.x - p.x, r.yb - p.y, r.z - p.z) < lim) t += r.tris; } return t; };
+  const stats = () => ({ hitos: ST.hitos, fichas: FICHAS.length, tris: ST.tris, trisVis: trisVis(), errores: ST.errores.slice(), ocultos: ST.ocultos, retocados: ST.retocados });
   const api = { view, near, stats, get: id => byId.get(id) || null,
     list: () => ST.list.map(r => ({ id: r.id, nombre: r.nombre, nivel: r.nivel, ok: r.ok, tris: r.tris, x: r.x, z: r.z, yb: r.yb, alto: r.alto })) };
   window.BCN.lm = api;

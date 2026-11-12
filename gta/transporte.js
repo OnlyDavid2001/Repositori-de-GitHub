@@ -62,7 +62,8 @@ window.BCN_TRANSPORTE = { LINES, async init(ctx) {
   // estación, todas al cargar; luego se suelta la imagen). Mismo criterio que nature.js: verde claro (parque o prado) es
   // césped; el verde oscuro de las copas de los árboles de calle no cuenta.
   const GPX = 5, GT = 64, lawnT = new Map(); let gBmp = null, gW = 0, gH = 0, gCv = null, gG = null;
-  try { const url = await ctx.blobURL('data/ground.webp'); gBmp = await createImageBitmap(await (await fetch(url)).blob()); URL.revokeObjectURL(url);
+  try { if (ctx.groundBmp) { gBmp = ctx.groundBmp; ctx.groundBmp = null; }   // FIX3: la que ya descodificó nature.js
+    else { const url = await ctx.blobURL('data/ground.webp'); gBmp = await createImageBitmap(await (await fetch(url)).blob()); URL.revokeObjectURL(url); }
     gW = gBmp.width; gH = gBmp.height; gCv = document.createElement('canvas'); gCv.width = gCv.height = GT; gG = gCv.getContext('2d', { willReadFrequently: true }); }
   catch (e) { gBmp = null; }
   function lawnTile(ti, tj) { const k = tj * 1000 + ti; let T = lawnT.get(k); if (T !== undefined) return T;
@@ -540,10 +541,12 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   // ---------------------------------------------------------------- celdas: construir, tirar, planificar
   const BAND = [null, [-2, -1, 140, 165], [140, 165, 400, 440]], NOF = [-2, -1, 1e6, 1e6 + 1], HY = 20;
   const cells = new Map(); let want = new Map(), queue = [], placeQ = [], lastP = null; const tris = [0, 0, 0, 0];
-  function build(k, lvl) {
+  // FIX3: la construcción de una celda es un generador (cede el paso cada 3 piezas): una celda con varias bocas tardaba ~45 ms
+  function* build(k, lvl) {
     const ox = (k % TNX) * TC, oz = Math.floor(k / TNX) * TC, B = new GB(ox, oz), Bi = lvl === 1 ? new GB(ox, oz) : null, Bg = lvl === 1 ? new GB(ox, oz) : null, Bl = { op: [], n: 0 };
-    const nIt = { M: 0, S: 0, P: 0 };
+    const nIt = { M: 0, S: 0, P: 0 }; let nb = 0;
     for (const it of items.get(k) || []) {
+      if (nb++ && nb % 3 === 1) yield;
       nIt[it.t]++;
       if (it.t === 'M') entrance(it, B, Bl.n < 16 && GL2 ? Bi : null, Bl, Bg, Bl.n < 16 && GL2 ? lvl : 2, ox, oz);
       else if (it.t === 'S') shelter(it, B, Bg, lvl, ox, oz);
@@ -587,18 +590,22 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     const dk = key => { const k = key >> 2; return (key & 3) * 1e5 + Math.hypot(((k % TNX) + 0.5) * TC - P.x, (Math.floor(k / TNX) + 0.5) * TC - P.z); };
     queue.sort((a, b) => dk(a) - dk(b));
   }
+  let bCur = null;   // FIX3: celda a medio construir
   function work(P, ms) {
     if (!lastP || Math.abs(P.x - lastP[0]) + Math.abs(P.z - lastP[2]) + Math.abs(P.y - lastP[1]) > 12) { lastP = [P.x, P.y, P.z]; plan(P); }
     const t0 = performance.now();
     if (!stepPlace(t0, ms)) return;
     if (dirty.size) { plan(P); for (const k of dirty) for (let l = 1; l <= 2; l++) if (want.has(k * 4 + l) && queue.indexOf(k * 4 + l) < 0) queue.unshift(k * 4 + l); dirty.clear(); }
-    while (queue.length && performance.now() - t0 < ms) { const key = queue.shift(), l = want.get(key), a = performance.now(); if (l) build(key >> 2, l);
+    while ((bCur || queue.length) && performance.now() - t0 < ms) {
+      const a = performance.now();
+      if (!bCur) { const key = queue.shift(), l = want.get(key); if (l) bCur = build(key >> 2, l); }
+      if (bCur && bCur.next().done) bCur = null;
       const d = performance.now() - a; if (d > (count.maxBuildMs || 0)) count.maxBuildMs = +d.toFixed(1); }
   }
   dirty.clear();
   return {
     update(P) { work(P, 3); },
-    busy: () => !!cur || placeQ.length > 0 || queue.length > 0,
+    busy: () => !!cur || !!bCur || placeQ.length > 0 || queue.length > 0,
     flush(P) { lastP = null; work(P, 1e9); },
     stats: () => { const n = [{ M: 0, S: 0, P: 0 }, { M: 0, S: 0, P: 0 }]; for (const c of cells.values()) for (const t in c.nIt) n[c.lvl - 1][t] += c.nIt[t];
       return { cells: cells.size, near: n[0], far: n[1], maxStepMs: count.maxStepMs || 0, trisNear: Math.round(tris[0]), trisFar: Math.round(tris[1]), trisIn: Math.round(tris[2]), trisGlass: Math.round(tris[3]), queue: queue.length + placeQ.length }; },

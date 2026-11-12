@@ -136,6 +136,10 @@ const vec3 kLed = vec3(1.0, 0.86, 0.68);
 const vec3 kHaze = vec3(0.115, 0.105, 0.095);
 // BRUMA DE LA CIUDAD (de noche, con uGlow.z): una capa baja (densidad exp(−y/160 m)) solo sobre el llano de Barcelona.
 // cityW: 1 sobre la ciudad, 0 fuera (elipse a lo largo de la costa). hazeI: metros de esa capa que atraviesa el rayo
+// FIX3: campo de vuelo del aeropuerto (ficha aero_campo: centro 5089,3984, girada 66°, 2100 × 3740 m): sin farolas ni aura
+// de calzada (rodajes, viales de servicio y plataformas); 1 dentro, 0 fuera
+float aeroIn(vec2 p){ p -= vec2(5089.0, 3984.0); vec2 q = vec2(p.x*0.4067 - p.y*0.9135, p.x*0.9135 + p.y*0.4067);
+  return (1.0 - step(1050.0, abs(q.x)))*(1.0 - step(1870.0, abs(q.y))); }
 float cityW(vec2 p){ p -= vec2(12300.0, 14300.0);
   vec2 q = vec2(dot(p, vec2(0.61, 0.79))/7000.0, dot(p, vec2(0.79, -0.61))/4200.0); return 1.0 - smoothstep(0.85, 1.3, length(q)); }
 float hazeI(vec3 a, vec3 b){ float H = 160.0, ya = max(a.y, 0.0), yb = max(b.y, 0.0), dy = yb - ya, ea = exp(-ya/H), eb = exp(-yb/H);
@@ -611,7 +615,7 @@ void main(){
   }
   c *= 1.0 - 0.55*uNight;                           // de noche, montaña, parques y patios casi negros
   // aura nocturna: el suelo urbano (aceras, plazas) coge algo de la luz de las calles. Ni el verde ni el monte
-  if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w*mix(0.15, 1.0, texture2D(uStreet, (vPos.xz - uStreetR.xy)*uStreetR.zw).r));
+  if (uGlow.w > 0.001) c += emit(kAura*alb, (1.0 - aeroIn(vPos.xz))*(1.0 - veg)*(1.0 - smoothstep(200.0, 380.0, vPos.y))*uGlow.w*mix(0.15, 1.0, texture2D(uStreet, (vPos.xz - uStreetR.xy)*uStreetR.zw).r));
   FRAG(c);
 }`;
 
@@ -667,10 +671,11 @@ void main(){
   // SUELOS (día 3): estado del asfalto por polilínea, de suelos.js (vInfo.w: 0 nuevo · 1 seminuevo · 2 gastado · 3 bastante
   // gastado · 4 muy gastado, continuo). De lejos, solo el tono: nuevo casi negro y uniforme, gastado más claro, gris y a rodales
   float wr = uSF.x > 0.5 ? uSF.x - 0.5 : clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;   // uSF: muestras forzadas (depuración, S3)
-  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.062 + 0.03*wr + 0.0045*wr*wr;
+  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.084 + 0.021*wr + 0.0058*wr*wr;   // FIX3: nuevo 0,084 · seminuevo 0,11 · gastado 0,15 · bastante 0,20 · muy gastado 0,26–0,33
   if (car) {
     // S3: albedo medio por estado, absoluto (no relativo al color de la clase), para que cada estado se reconozca a pie:
     // nuevo ≈ 0,08 (negro profundo) · seminuevo ≈ 0,12 · gastado ≈ 0,17 · bastante ≈ 0,22 · muy gastado ≈ 0,29 (gris claro)
+    // FIX3: los estados 0–1 suben (0,062 → 0,084 y 0,096 → 0,11): el Passeig de Gràcia y la Diagonal salían casi negros
     alb *= (Ta/Lb)*(1.0 + (vnoise(P*0.045 + 7.3) - 0.5)*0.36*smoothstep(1.5, 4.5, wr));
     alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.02, 1.0, 0.97), smoothstep(1.5, 4.0, wr)*0.75);
   }
@@ -691,7 +696,7 @@ void main(){
       float on = step(h, 0.10 + 0.40*pw)*ins*step(abs(x), hw - 0.25);
       float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y)));
       // S3: parches de otro tono (recientes casi negros, viejos más claros y tostados)
-      alb = mix(alb, (h2 > 0.45 ? mix(alb, vec3(0.075, 0.076, 0.08), 0.75) : alb*vec3(1.30, 1.27, 1.20))*(0.95 + 0.1*vnoise(P*1.7)), on*near);
+      alb = mix(alb, (h2 > 0.45 ? mix(alb, vec3(0.092, 0.093, 0.097), 0.7) : alb*vec3(1.30, 1.27, 1.20))*(0.95 + 0.1*vnoise(P*1.7)), on*near);
       crk = max(crk, edge*0.35*lod);
     }
     // grietas selladas con betún (gastado normal y bastante gastado): longitudinales en las juntas de carril y alguna transversal
@@ -750,7 +755,7 @@ void main(){
   c += uSunCol*0.05*pow(max(dot(reflect(-uSunDir, N), normalize(uCam - vPos)), 0.0), 24.0)*near*sunVis();
   // aura nocturna: la calzada bajo las farolas. Un charco cada 24 m alternando de acera, donde furniture.js planta los postes
   // (along(24, 5)). De lejos, su valor medio (no parpadea) y muy cerca más suave: ahí ya están los charcos del mobiliario
-  if (uGlow.x > 0.001 && (car || abs(cls-6.0) < 0.5)) {
+  if (uGlow.x > 0.001 && (car || abs(cls-6.0) < 0.5) && aeroIn(vPos.xz) < 0.5) {
     // De lejos se ven CADENAS DE PUNTOS (la cabeza de cada farola y su charco), no tubos continuos: el charco es una
     // gaussiana a lo largo que se ensancha con el tamaño del píxel conservando su energía (sin dientes de sierra), y solo
     // cuando la separación entre farolas baja de ~2 píxeles se funde en su valor medio
@@ -921,6 +926,7 @@ const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', '
 for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
 const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph', 'uSF'], ['tAsD', 'tAsN']);
+matRoad.setVector2('uSF', new BABYLON.Vector2(0, 0));   // FIX3: depuración de S3 apagada
 matRoad.setVector2('uOrg', new BABYLON.Vector2(0, 0)); matRoad.setFloat('uAsph', 0);
 const matQuay = mkMat('quay', VS_BASIC, FS_QUAY, ['position']);
 const matSea = mkMat('sea', VS_BASIC, FS_SEA, ['position'], ['uSize'], ['coastTex', 'uShore', 'groundTex']);

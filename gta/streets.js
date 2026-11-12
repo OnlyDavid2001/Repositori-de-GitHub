@@ -181,7 +181,7 @@ void main(){
   vec3 c = lit(alb, N);
   // aura nocturna (uGlow.x): la luz de farola que ya recibe la calzada (FS_ROAD, app.js), sin charcos: más junto al bordillo,
   // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
-  if (uGlow.x > 0.001) {
+  if (uGlow.x > 0.001 && aeroIn(vPos.xz) < 0.5) {   // FIX3: sin aura en el campo de vuelo
     float gW = (0.55 + 0.45*exp(-dA/5.0))*mix(0.40, 1.0, smoothstep(40.0, 240.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
     // FIX2: visto desde arriba (cámara a más de ~25 m sobre la acera) el baño se queda en un 40 %: desde el aire las aceras
     // y ramblas con poca copa encima eran franjas brillantes. A pie de calle (cámara a 1,7 m) no cambia nada
@@ -191,6 +191,7 @@ void main(){
   FRAG(c);
 }`;
   const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade', 'uSF'], ['tField', 'tKind', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
+  matW.setVector2('uSF', new BABYLON.Vector2(0, 0));   // FIX3: depuración de S3 apagada
   const VS_TREE = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>
@@ -351,11 +352,14 @@ void main(){
     let v = wideCache.get(s); if (v !== undefined) return v;
     const o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4], ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3], L = Math.hypot(bx - ax, bz - az) || 1;
     const tx = (bx - ax) / L, tz = (bz - az) / L, mx = (ax + bx) / 2, mz = (az + bz) / 2;
-    const ws = [];
-    for (const f of [0.25, 0.5, 0.75]) { const cx = ax + (bx - ax) * f, cz = az + (bz - az) * f; let w = 0;
-      for (const sd of [-1, 1]) { let d = hw + 0.5; for (; d < 45; d += 1.5) if (coverAt(cx - tz * sd * d, cz + tx * sd * d, -1) > -1e8) break; w += d; }
-      ws.push(w); }
-    ws.sort((a, b) => a - b);
+    // FIX3: un lado sin edificios (solar, plaza, parque) no hace «ancha» la calle: con un lado abierto cuenta el doble del
+    // lado cerrado; con los dos abiertos, solo la calzada. En Ciutat Vella, ancha solo con edificios a los dos lados
+    const ws = [], wc = [];
+    for (const f of [0.25, 0.5, 0.75]) { const cx = ax + (bx - ax) * f, cz = az + (bz - az) * f; const dd = [];
+      for (const sd of [-1, 1]) { let d = hw + 0.5; for (; d < 45; d += 1.5) if (coverAt(cx - tz * sd * d, cz + tx * sd * d, -1) > -1e8) break; dd.push(d); }
+      const o0 = dd[0] >= 45, o1 = dd[1] >= 45;
+      ws.push(o0 && o1 ? 2 * hw + 6 : o0 ? 2 * dd[1] : o1 ? 2 * dd[0] : dd[0] + dd[1]); wc.push(o0 || o1 ? 0 : dd[0] + dd[1]); }
+    ws.sort((a, b) => a - b); wc.sort((a, b) => a - b);
     let rambla = cls === 7 && hw >= 4.5;
     if (!rambla) segIn(ctx.city.cellOf(mx, mz), r => {
       if (rambla || r === s) return; const q = r * 6; if (SEG[q + 5] !== 7 || SEG[q + 4] < 2) return;
@@ -363,8 +367,9 @@ void main(){
       const ex = mx - SEG[q], ez = mz - SEG[q + 1], al = (ex * rx + ez * rz) / rl, lat = Math.abs(ex * rz - ez * rx) / rl;
       if (al > -5 && al < rl + 5 && lat > 3 && lat < 14) rambla = true; });
     const B = window.BCN_BARRI ? window.BCN_BARRI.at(mx, mz) : null;
-    const wide = rambla && ws[1] >= 22 || ws[1] >= 36 || hw >= 5;
-    v = { wide, cv: !!(B && B.d === 'Ciutat Vella'), rambla };
+    const cv = !!(B && B.d === 'Ciutat Vella');
+    const wide = rambla && ws[1] >= 22 || (cv ? wc[1] >= 36 : ws[1] >= 36) || hw >= 5;
+    v = { wide, cv, rambla };
     wideCache.set(s, v); return v;
   }
   const treeCache = new Map();

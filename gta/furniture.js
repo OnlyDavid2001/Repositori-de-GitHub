@@ -6,7 +6,9 @@
      · K.FURN  superficie genérica (rugosidad, metal, patrón) — como K.PBR, más el nivel de detalle;
      · K.FDEC  «calcomanía»: un quad con uv propias y un dibujo procedural (adhesivos con pictograma, bocas, radios, chapa
                perforada, pantalla, focos).
-   window.BCN_FURNITURE = { init(ctx) → { build(cell), buildHi(cell), hiRange, poolMat } }. Contrato de cell/seg: DESARROLLO.md
+   // FIX3: campo de vuelo del aeropuerto (ficha aero_campo, como aeroIn del preludio de app.js): rodajes y viales sin farolas
+function aeroIn(x, z) { const dx = x - 5089, dz = z - 3984, a = dx * 0.4067 - dz * 0.9135, b = dx * 0.9135 + dz * 0.4067; return Math.abs(a) < 1050 && Math.abs(b) < 1870; }
+window.BCN_FURNITURE = { init(ctx) → { build(cell), buildHi(cell), hiRange, poolMat } }. Contrato de cell/seg: DESARROLLO.md
    §6.10; catálogo, niveles y cómo añadir un objeto: §9. */
 (function () {
 'use strict';
@@ -455,7 +457,7 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
       const out = side => side > 0 ? ang : ang + Math.PI;    // ángulo del marco cuyo +d mira hacia el lado `side` de la calle
       // farolas: cada 24 m alternando acera, con brazo sobre la calzada y su charco de luz
       along(24, 5, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.5, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
-        if (!inCell(x, z) || nearJ(x, z, 6)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        if (!inCell(x, z) || nearJ(x, z, 6) || aeroIn(x, z)) return; const ns = freeWalk(x, z); if (ns < -1) return;
         const y = walkY(ns, x, z) - 0.02, H = hw > 6 ? 9.5 : 7.8, reach = Math.min(1.9, hw * 0.45);
         lamp(W, A, fr(x, z, out(-side)), y, H, reach); log('farola', x, z, out(-side));
         if (hi || !cell.pools) return;

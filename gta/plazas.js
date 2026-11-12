@@ -423,8 +423,9 @@ SING.push({ key: 'Plaça de les Glòries Catalanes', ax: 44,
     if (Math.abs(u + 55) < 18 && Math.abs(v + 2) < 22) return [1, C.granite, 0.15];   // explanada bajo la canòpia
     return [5, C.grassD, 0]; },
   objs(S) { S.put('play', 78, -64, 0.3); S.put('play', -70, 72, 2.0);
-    S.grid(11, 4, (u, v, x, z, e, zz) => { if (!zz || e < 4) return; const q = (u / 105) ** 2 + (v / 62) ** 2, h = hash2(Math.round(x), Math.round(z));
-      if (zz[0] === 5 && q > 1.3 && h < 0.75) S.put('tree', u, v, 0, { sp: h < 0.4 ? 'pi' : h < 0.6 ? 'tipuana' : 'lledoner' });
+    // FIX3: bosquetes más claros (retícula de 11 → 14 m y 75 % → 52 %): los árboles de Glòries a pie pasaban de 260 k triángulos
+    S.grid(14, 4, (u, v, x, z, e, zz) => { if (!zz || e < 4) return; const q = (u / 105) ** 2 + (v / 62) ** 2, h = hash2(Math.round(x), Math.round(z));
+      if (zz[0] === 5 && q > 1.3 && h < 0.52) S.put('tree', u, v, 0, { sp: h < 0.28 ? 'pi' : h < 0.42 ? 'tipuana' : 'lledoner' });
       else if (zz[0] === 3 && q > 1.12 && q < 1.3 && h < 0.3) S.put('bench', u, v, Math.atan2(-v / 62, -u / 105));
       else if (zz[0] === 3 && h > 0.86) S.put('lamp', u, v, 0); });
     for (let k = 0; k < 24; k++) { const a = k / 24 * 2 * Math.PI; S.put('lamp', Math.cos(a) * 112, Math.sin(a) * 68, a); }

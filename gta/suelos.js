@@ -77,7 +77,7 @@ function asfalto(cls, hw, x0, z0, x1, z1) {
   if (cls <= 1 || cls === 10) w = 1.1 + (h - 0.5) * 0.8;                 // autopistas y rondas: mantenimiento propio, seminuevas
   else if (cls === 2) w -= 0.35;                                          // vías principales: se reasfaltan antes
   else if (cls === 6 || cls === 8 || cls === 11) w += 0.45;               // servicio, accesos: lo último que se arregla
-  if (av) w = (av === 'pgracia' ? 0.85 : 1.15) + (h - 0.5) * 0.6;         // Diagonal, Gran Via, Passeig de Gràcia: seminuevas
+  if (av) w = (av === 'pgracia' ? 1.05 : 1.25) + (h - 0.5) * 0.5;   // FIX3: seminuevas de verdad (antes 0,85 rozaba «nuevo»)         // Diagonal, Gran Via, Passeig de Gràcia: seminuevas
   const h2 = hash(Math.round(mz * 0.37) + 17, Math.round(mx * 0.41) - 5);
   if (!av && h2 < 0.06) w = 0.25 + h2 * 4;                                // tramo recién asfaltado en cualquier barrio
   else if (!av && h2 > 0.95 && n >= 2) w += 0.9;                         // tramo dejado

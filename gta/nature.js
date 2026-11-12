@@ -323,7 +323,8 @@ window.BCN_NATURE = { async init(ctx) {
         if (!(x & 1) && !((y0 + y) & 1)) { const c = (((y0 + y) >> 1) * CW + (x >> 1)) * 3; COL[c] = r; COL[c + 1] = g; COL[c + 2] = b; }
       }
     }
-    bmp.close && bmp.close();
+    // FIX3: la imagen descodificada pasa a transporte.js (césped de las paradas), que la cierra al terminar: no se descodifica dos veces
+    ctx.groundBmp = bmp;
     // ni hierba ni matas en la orilla: la mezcla de colores entre arena y mar se parece a la de los campos. Se limpia una
     // franja de 2 píxeles alrededor de la arena y del borde del mar (salvo el bosque)
     for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
