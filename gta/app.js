@@ -1368,7 +1368,8 @@ const BREC = { dv: [], n: 0 };
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
   BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot); BREC.vid = new Uint8Array(nTot);
-  BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; let mzK = 0;   // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
+  BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; window.BCN_MZINFO = MZ; let mzK = 0;   // INT3: BCN_MZINFO para el arnés (cache, ms, blocks)
+    // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
