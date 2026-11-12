@@ -11,54 +11,66 @@
    Contrato: window.BCN_PLAZAS = { init(ctx) → { update, busy, stats, flush, list } } (addMod('plz')). Se construye por plaza,
    en segundo plano y por distancia: capa sencilla (pavimento + equipamiento + mobiliario sencillo) a < 420 m y capa de
    detalle del mobiliario (furniture.js, nivel 2) a < 90 m, con el mismo relevo tramado que las calles (uCellHi/uFurnHi).
-   Tipos de material propios (ids 100–109): PLZ_PAV 100 (pavimentos), PLZ_LEAF 101 (copas), PLZ_WATER 102 (agua). */
+   Tipos de material propios (ids 140–149): PLZ_LEAF 141 (copas), PLZ_WATER 142 (agua); el pavimento lleva material propio. */
 (function () {
 'use strict';
 const G = window.BCN_GEO;
 const { K, F0, GB, quad, box, rev, tube, sphere, obox, bar, shade, mixc, seed, R, hash2, regKind } = G;
 
 // ------------------------------------------------------------------ tipos de material (al cargar: el shader de detalle se monta en init de facades.js)
-// PLZ_PAV: color de vértice = albedo base; auxiliar por vértice = (dibujo, luz de farola cocida 0–1, desgaste 0–1, 0)
-regKind('PLZ_PAV', 100, `
-    float pat = floor(vInfo.x*255.0 + 0.5), pGlow = vInfo.y, pWear = vInfo.z;
-    vec2 W = vPos.xz; float fw = fwidth(W.x) + fwidth(W.y);
-    float n1 = vnoise(W*0.31)*0.55 + vnoise(W*0.045)*0.45, n2 = vnoise(W*2.3);
-    rough = 0.85; N = vec3(0.0, 1.0, 0.0);
-    if (pat < 1.5) {                                  // 1: losas de granito de 60×40 a matajunta
-      vec2 q = W/vec2(0.6, 0.4); q.x += 0.5*floor(q.y); vec2 id = floor(q), f = fract(q);
-      float j = min(min(f.x, 1.0 - f.x)*0.6, min(f.y, 1.0 - f.y)*0.4), jt = smoothstep(0.003, 0.011, j), aa = smoothstep(0.02, 0.1, fw);
-      alb *= mix(mix(0.8, 1.0, jt)*mix(0.9, 1.08, hash21(id)), 0.97, aa)*mix(0.86, 1.08, n1*0.6 + n2*0.4); rough = 0.8;
-    } else if (pat < 2.5) {                           // 2: panot de 20×20 (las cuatro pastillas, insinuadas)
-      vec2 q = W*5.0, f = fract(q) - 0.5; float aa = smoothstep(0.05, 0.25, fw*5.0);
-      float jt = smoothstep(0.43, 0.48, max(abs(f.x), abs(f.y))), fl = 1.0 - smoothstep(0.0, 0.05, abs(length(abs(f) - 0.25) - 0.13));
-      alb *= mix((1.0 - 0.28*jt)*(1.0 - 0.14*fl), 0.9, aa)*mix(0.84, 1.08, n1);
-    } else if (pat < 3.5) {                           // 3: sauló (arena compactada)
-      alb *= mix(0.8, 1.12, n1)*mix(0.9, 1.07, vnoise(W*9.0)); rough = 0.96;
-    } else if (pat < 4.5) {                           // 4: caucho de juegos infantiles
-      alb *= mix(0.9, 1.06, vnoise(W*14.0))*mix(0.92, 1.04, n1); rough = 0.92;
-    } else if (pat < 5.5) {                           // 5: césped de parterre
-      float g = vnoise(W*0.6)*0.45 + vnoise(W*4.5)*0.3 + vnoise(W*0.08)*0.25;
-      alb *= mix(0.68, 1.18, g); rough = 0.95;
-    } else if (pat < 6.5) {                           // 6: piedra lisa (bordillos de parterre, incrustaciones)
-      alb *= mix(0.9, 1.05, n2); rough = 0.55;
-    } else {                                          // 7: reja de fundición del alcorque, con tierra debajo
-      vec2 q = fract(W*4.0) - 0.5; float b = step(0.36, max(abs(q.x), abs(q.y)));
-      alb = mix(vec3(0.2, 0.15, 0.1)*(0.7 + 0.6*vnoise(W*9.0)), vec3(0.08), b*0.85*(1.0 - smoothstep(0.05, 0.2, fw*4.0)));
-    }
-    alb *= mix(1.0, mix(0.7, 1.0, n1), pWear);         // suciedad y desgaste
-    if (uGlow.x > 0.001) {                            // de noche: aura de la calle + charcos de las farolas de la plaza (cocidos)
-      float gW = (0.2 + 1.6*pGlow*pGlow)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
-      gW *= mix(1.0, 0.45, smoothstep(25.0, 140.0, uCam.y - vPos.y));
-      emis = emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);
-    }`);
+// Pavimento: material propio (no el de detalle) para que se vea desde el dron: fundido tramado a 560–640 m, no a ~245 m.
+// Formato de vértice = el de GB: color = albedo base; auxiliar por vértice = (dibujo, luz de farola cocida 0–1, desgaste 0–1, 0)
+const VS_PAV = `precision highp float;
+attribute vec3 position; attribute vec4 color; attribute vec4 uv; uniform mat4 world; uniform mat4 viewProjection;
+varying vec3 vPos; varying vec4 vCol; varying vec4 vInfo;
+void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vCol = color; vInfo = uv; gl_Position = viewProjection*wp; }`;
+const FS_PAV = `
+varying vec4 vCol; varying vec4 vInfo; uniform vec2 uPavFade;
+void main(){
+  vec3 V = uCam - vPos; float dist = length(V); V /= dist;
+  if (dith() < smoothstep(uPavFade.x, uPavFade.y, dist)) discard;
+  vec3 alb = vCol.rgb, N = vec3(0.0, 1.0, 0.0), emis = vec3(0.0); float rough = 0.85;
+
+  float pat = floor(vInfo.x*255.0 + 0.5), pGlow = vInfo.y, pWear = vInfo.z;
+  vec2 W = vPos.xz; float fw = fwidth(W.x) + fwidth(W.y);
+  float n1 = vnoise(W*0.31)*0.55 + vnoise(W*0.045)*0.45, n2 = vnoise(W*2.3);
+  if (pat < 1.5) {                                  // 1: losas de granito de 60×40 a matajunta
+    vec2 q = W/vec2(0.6, 0.4); q.x += 0.5*floor(q.y); vec2 id = floor(q), f = fract(q);
+    float j = min(min(f.x, 1.0 - f.x)*0.6, min(f.y, 1.0 - f.y)*0.4), jt = smoothstep(0.003, 0.011, j), aa = smoothstep(0.02, 0.1, fw);
+    alb *= mix(mix(0.8, 1.0, jt)*mix(0.9, 1.08, hash21(id)), 0.97, aa)*mix(0.86, 1.08, n1*0.6 + n2*0.4); rough = 0.8;
+  } else if (pat < 2.5) {                           // 2: panot de 20×20 (las cuatro pastillas, insinuadas)
+    vec2 q = W*5.0, f = fract(q) - 0.5; float aa = smoothstep(0.05, 0.25, fw*5.0);
+    float jt = smoothstep(0.43, 0.48, max(abs(f.x), abs(f.y))), fl = 1.0 - smoothstep(0.0, 0.05, abs(length(abs(f) - 0.25) - 0.13));
+    alb *= mix((1.0 - 0.28*jt)*(1.0 - 0.14*fl), 0.9, aa)*mix(0.84, 1.08, n1);
+  } else if (pat < 3.5) {                           // 3: sauló (arena compactada)
+    alb *= mix(0.8, 1.12, n1)*mix(0.9, 1.07, vnoise(W*9.0)); rough = 0.96;
+  } else if (pat < 4.5) {                           // 4: caucho de juegos infantiles
+    alb *= mix(0.9, 1.06, vnoise(W*14.0))*mix(0.92, 1.04, n1); rough = 0.92;
+  } else if (pat < 5.5) {                           // 5: césped de parterre
+    float g = vnoise(W*0.6)*0.45 + vnoise(W*4.5)*0.3 + vnoise(W*0.08)*0.25;
+    alb *= mix(0.68, 1.18, g); rough = 0.95;
+  } else if (pat < 6.5) {                           // 6: piedra lisa (bordillos de parterre, incrustaciones)
+    alb *= mix(0.9, 1.05, n2); rough = 0.55;
+  } else {                                          // 7: reja de fundición del alcorque, con tierra debajo
+    vec2 q = fract(W*4.0) - 0.5; float b = step(0.36, max(abs(q.x), abs(q.y)));
+    alb = mix(vec3(0.34, 0.27, 0.19)*(0.7 + 0.6*vnoise(W*9.0)), vec3(0.08), b*0.85*(1.0 - smoothstep(0.05, 0.2, fw*4.0)));
+  }
+  alb *= mix(1.0, mix(0.7, 1.0, n1), pWear);         // suciedad y desgaste
+  if (uGlow.x > 0.001) {                            // de noche: aura de la calle + charcos de las farolas de la plaza (cocidos)
+    float gW = (0.2 + 1.6*pGlow*pGlow)*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
+    gW *= mix(1.0, 0.45, smoothstep(25.0, 140.0, uCam.y - vPos.y));
+    emis = emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);
+  }
+  FRAG(shade(alb, N, V, rough, 0.0, 1.0) + emis);
+}`;
 // PLZ_LEAF: copa de árbol de plaza (elipsoides suaves). Color de vértice = verde de la especie
-regKind('PLZ_LEAF', 101, `
+regKind('PLZ_LEAF', 141, `
     vec3 q = vLoc*1.9; float nz = vnoise(q.xz + q.y*0.7)*0.6 + vnoise(q.xz*3.1 - q.y*1.3)*0.4;
     alb = vCol.rgb*mix(0.55, 1.2, nz)*(1.0 - 0.3*step(0.72, vnoise(vLoc.xz*5.0 + vLoc.y*4.0)));
     rough = 0.9; ao = mix(0.5, 1.0, clamp(n.y*0.5 + 0.5, 0.0, 1.0));
     if (uGlow.x > 0.001) emis = emit(kAura*alb*0.7, 0.3*uGlow.x*(1.0 - clamp(n.y, 0.0, 1.0)));`);
 // PLZ_WATER: agua de fuente (lámina con oleaje; las caras verticales son chorros). auxiliar.y = focos bajo el agua de noche
-regKind('PLZ_WATER', 102, `
+regKind('PLZ_WATER', 142, `
     float t = uTime*0.6; vec2 w = vPos.xz;
     if (an.y > 0.6) { float h1 = vnoise(w*1.3 + vec2(t, 0.3*t)), h2 = vnoise(w*3.1 - vec2(0.4*t, t));
       N = normalize(vec3((h1 - 0.5)*0.22 + (h2 - 0.5)*0.12, 1.0, (h2 - 0.5)*0.22)); alb = vCol.rgb*0.55; rough = 0.06; }
@@ -80,12 +92,12 @@ const sid = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^=
 
 // ------------------------------------------------------------------ colores
 const C = {
-  granite: [150, 146, 140], graniteL: [176, 170, 160], graniteD: [104, 102, 100], pink: [178, 148, 136], panot: [146, 140, 132], saulo: [184, 160, 122],
+  granite: [150, 146, 140], graniteL: [166, 161, 152], graniteD: [104, 102, 100], pink: [178, 148, 136], panot: [146, 140, 132], saulo: [184, 160, 122],
   rubberR: [150, 62, 48], rubberG: [70, 118, 72], rubberB: [62, 96, 140], grass: [82, 110, 52], grassD: [64, 92, 44], curb: [160, 156, 148],
   iron: [40, 42, 45], green: [34, 62, 46], wood: [128, 82, 46], stone: [176, 168, 152], bronze: [92, 74, 52], water: [52, 86, 96], white: [222, 222, 216],
 };
 // especies de árbol de plaza: [copa, tronco, alto de tronco, radio de copa, forma (0 redonda, 1 parasol de pino, 2 columna)]
-const TREES = { platan: [[92, 118, 58], [128, 120, 100], 3.4, 3.6, 0], lledoner: [[78, 104, 62], [110, 108, 104], 2.8, 3.0, 0], pi: [[58, 84, 50], [104, 76, 56], 6.0, 4.2, 1],
+const TREES = { platan: [[92, 118, 58], [112, 106, 88], 4.0, 3.1, 0], lledoner: [[78, 104, 62], [110, 108, 104], 2.8, 3.0, 0], pi: [[58, 84, 50], [104, 76, 56], 6.0, 4.2, 1],
   tipuana: [[96, 122, 60], [104, 92, 78], 3.2, 4.0, 0], xiprer: [[46, 72, 46], [92, 74, 58], 1.0, 1.2, 2], taronger: [[60, 96, 48], [96, 86, 70], 1.6, 1.6, 0] };
 
 // ------------------------------------------------------------------ piezas propias (marco F: u, y, d; coordenadas de la malla)
@@ -166,6 +178,12 @@ function statue(B, F, y, ph, col, a) {
   rev(B, F, 0, 0, [[0.26, yb], [0.3, yb + 0.5], [0.24, yb + 0.95], [0.3, yb + 1.25], [0.22, yb + 1.45], [0.08, yb + 1.52], [0.1, yb + 1.6]], 7, col, K.FURN, { aux: ac, cap: 0 });
   sphere(B, F, 0, yb + 1.72, 0, 0.13, 6, 4, col, K.FURN, ac);
 }
+// estanque redondo con estatua en el centro (la Deessa, Plaça de Catalunya)
+function pond(B, F, y, r) {
+  rev(B, F, 0, 0, [[r + 0.45, y - 0.1], [r + 0.45, y + 0.5], [r + 0.2, y + 0.55]], 24, C.stone, K.FURN, { aux: A0.STONE, cap: 0 });
+  rev(B, F, 0, 0, [[0, y + 0.38], [r + 0.2, y + 0.38]], 24, C.water, K.PLZ_WATER, { aux: [0, 140, 0, 0] });
+  statue(B, F, y + 0.38, 1.2, [222, 214, 200], A0.STONE);
+}
 // monumento a Macià (Plaça de Catalunya): escalera invertida de piedra, cada peldaño más ancho que el de abajo, y busto
 function macia(B, F, y) {
   box(B, F, -3.2, 3.2, y - 0.4, y + 0.35, -3.2, 3.2, [150, 144, 132], K.FURN, 7, A0.STONE);
@@ -200,9 +218,9 @@ function lmLater(f) { LMQ.push(f); }
 })();
 // fuente monumental de la Plaça d'Espanya (Jujol, 1929): estanque circular, cuerpo triangular con tres grupos de columnas jónicas,
 // tres grupos escultóricos de agua en los lados y remate central. Modelo sencillo de proporciones; sin pretensión de detalle escultórico
-lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: 'B', x: 10446.2, z: 12741.6, rot: 63, alto: 24, ancho: 34, largo: 34, noche: 'focos', edificios: [],
+lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: 'B', x: 10446.2, z: 12741.6, rot: 63, alto: 24, ancho: 34, largo: 34, noche: 'focos', edificios: [59002],   // 59002: el volumen genérico que ocupaba la fuente
   build(B, h, L) {
-    const KK = window.BCN_LM.K, ST = [204, 192, 170], STD = [176, 164, 144], BR = [96, 82, 60], WT = [70, 110, 120];
+    const KK = window.BCN_LM.K, ST = [206, 202, 192], STD = [178, 172, 162], BR = [96, 82, 60], WT = [62, 100, 112];
     const R0 = 15.5;
     L.prisma(B, L.poligono(R0 + 1.2, 48, 0), -0.8, 0.25, STD, KK.PIEDRA, { aux: L.aux.piedra(0.4, 1.2) });                 // plataforma
     L.prisma(B, L.poligono(R0 + 0.6, 48, 0), 0.25, 0.95, ST, KK.PIEDRA, { sinTecho: true });                                 // pretil exterior
@@ -210,11 +228,11 @@ lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: '
     L.anillo(B, 0, 0, R0, R0 + 0.6, 0.95, { col: ST, k: KK.PIEDRA });
     L.disco(B, 0, 0, R0, 0.7, { col: WT, k: KK.AGUA });
     const tri = (r, a0) => L.poligono(r, 3, a0);
-    L.prisma(B, tri(8.5, 90), 0.5, 2.6, STD, KK.PIEDRA, { aux: L.aux.piedra(0.5, 1.0) });
-    L.prisma(B, tri(6.6, 90), 2.6, 4.2, ST, KK.PIEDRA);
-    L.prisma(B, tri(4.2, 90), 4.2, 13.5, ST, KK.PIEDRA, { aux: L.aux.piedra(0.6, 1.2) });
-    L.prisma(B, tri(4.8, 90), 13.5, 14.6, STD, KK.PIEDRA);
-    L.prisma(B, tri(2.6, 90), 14.6, 19.5, ST, KK.PIEDRA);
+    L.prisma(B, tri(8.0, 90), 0.5, 2.2, STD, KK.PIEDRA, { aux: L.aux.piedra(0.5, 1.0) });
+    L.prisma(B, tri(6.9, 90), 2.2, 4.2, ST, KK.PIEDRA);
+    L.prisma(B, tri(2.9, 90), 4.2, 13.5, ST, KK.PIEDRA, { aux: L.aux.piedra(0.6, 1.2) });
+    L.prisma(B, tri(7.4, 90), 15.6, 16.3, STD, KK.PIEDRA);
+    L.prisma(B, tri(2.4, 90), 16.3, 19.5, ST, KK.PIEDRA);
     L.aguja(B, 0, 0, 19.5, 3.4, 1.3, { lados: 10, col: ST, k: KK.PIEDRA, pot: 1, exp: 0.5 });
     L.esfera(B, 0, 23.4, 0, 0.8, { col: BR, k: KK.METAL });
     for (let k = 0; k < 3; k++) { const a = (90 + k * 120) * D2R, cx = Math.cos(a), cz = Math.sin(a);
@@ -222,8 +240,7 @@ lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: '
       for (const off of [-1.2, 0, 1.2]) { const x = cx * 6.4 - cz * off, z = cz * 6.4 + cx * off;
         L.tambor(B, x, z, 4.2, 15.6, 0.42, { lados: 10, col: ST, k: KK.PIEDRA, r1: 0.36 });
         L.caja(B, x, z, 15.6, 1.1, 1.1, 0.5, 0, STD, KK.PIEDRA); }
-      L.caja(B, cx * 6.4, cz * 6.4, 16.1, 1.6, 3.8, 0.6, -(90 + k * 120) + 90, ST, KK.PIEDRA);
-      L.aguja(B, cx * 6.4, cz * 6.4, 16.7, 2.6, 0.55, { lados: 8, col: BR, k: KK.METAL, pot: 2, exp: 0.5 });
+            L.aguja(B, cx * 6.4, cz * 6.4, 16.3, 2.6, 0.55, { lados: 8, col: BR, k: KK.METAL, pot: 2, exp: 0.5 });
       // grupo escultórico de agua en cada lado (entre vértices) y su caño
       const b = a + 60 * D2R, sx = Math.cos(b) * 5.2, sz = Math.sin(b) * 5.2;
       L.esfera(B, sx, 3.6, sz, 1.4, { col: [190, 180, 160], k: KK.PIEDRA, sy: 1.5 });
@@ -233,7 +250,7 @@ lmLater({ id: 'font_pl_espanya', nombre: "Font de la Plaça d'Espanya", nivel: '
     }
   } });
 // Canòpia Urbana de Glòries: gran cubierta de celosía metálica blanca sobre pilares finos, con trepadoras (posición y tamaño aproximados)
-lmLater({ id: 'canopia_glories', nombre: 'Canòpia Urbana', nivel: 'B', x: 13612, z: 15742, rot: 44, alto: 12, ancho: 34, largo: 110, noche: 'nada', edificios: [], sombra: true,
+lmLater({ id: 'canopia_glories', nombre: 'Canòpia Urbana', nivel: 'B', x: 13612, z: 15742, rot: 44, alto: 12, ancho: 34, largo: 110, noche: 'nada', edificios: [140877], sombra: true,   // 140877: torre de 30 m en mitad del parque que hoy no existe
   build(B, h, L) {
     const KK = window.BCN_LM.K, WH = [228, 228, 222], GR = [84, 116, 60], Y = 10.5, NX = 9, NZ = 28, SX = 34 / (NX - 1), SZ = 110 / (NZ - 1);
     const P = (i, j) => [-17 + i * SX, Y + 0.6 * Math.sin(j * 0.45 + i * 0.7), -55 + j * SZ];
@@ -255,29 +272,38 @@ lmLater({ id: 'canopia_glories', nombre: 'Canòpia Urbana', nivel: 'B', x: 13612
 // Cada una: { match(nombre), area?(p) → contorno propio, zone(u, v, x, z, e) → [dibujo, color, desgaste] o null, objs(ctx de colocación) }
 // u, v: coordenadas en el eje de la plaza (u a lo largo de ang); e: distancia al borde del contorno
 const SING = [];
-// Plaça de Catalunya: gran explanada elíptica de granito claro con la rosa de los vientos, dos fuentes con grupo escultórico,
-// cuatro parterres de césped con plátanos y estatuas en los bordes, balaustrada y el monumento a Macià (esquina de Portal de l'Àngel)
+// Plaça de Catalunya (posiciones de OSM): explanada circular de granito claro con la rosa de los vientos en el centro, anillo con
+// las estatuas (cada una en su sitio) y las fuentes (las Fonts Bessones al noroeste y la del lado de levante), paseos de
+// granito hacia las cuatro esquinas y cuatro parterres de césped con plátanos; al sur, la Deessa en su estanque y el monumento a Macià
+const CAT = { c: [12207.5, 14056.0], deessa: [12212.5, 13989.6], macia: [12212.3, 13970.8], fonts: [[12158.4, 14086.0, 1], [12272.0, 14053.9, 0]],
+  art: [[12259.1, 14023.2], [12248.3, 14009.3], [12243.3, 14096.4], [12169.2, 14016.5], [12254.1, 14082.9], [12159.3, 14030.7], [12222.7, 14108.6], [12263.8, 14063.9],
+    [12193.2, 13998.8], [12231.4, 13998.9], [12265.4, 14042.7], [12152.3, 14054.3], [12175.4, 14091.6], [12162.8, 14097.0], [12180.9, 14096.1], [12187.2, 14101.6],
+    [12168.2, 14087.9], [12176.8, 14117.4], [12155.2, 14100.9], [12178.7, 14109.3]],
+  corners: [[12206.6, 14146.2], [12293.7, 14050.0], [12212.3, 13933.1], [12105.8, 14097.6]] };
+const segD = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz; let t = ((x - a[0]) * dx + (z - a[1]) * dz) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
 SING.push({ key: 'Plaça de Catalunya', ax: 136,
-  zone(u, v, x, z, e, P) { const eu = P.hu * 0.52, ev = P.hv * 0.46, q = (u / eu) ** 2 + (v / ev) ** 2;
-    if (q < 1) return [1, C.graniteL, 0.15];
-    if (q < 1.12 || Math.abs(v) < 4 || Math.abs(u) < 4 || e < 3.5) return [1, C.granite, 0.25];
-    if (e < 4.3 || q < 1.17) return [6, C.curb, 0.2];
+  zone(u, v, x, z, e) { const r = Math.hypot(x - CAT.c[0], z - CAT.c[1]);
+    if (r < 47) return [1, C.graniteL, 0.15];
+    if (r < 63 || e < 3.5) return [1, C.granite, 0.25];
+    for (const k of CAT.corners) if (segD(x, z, CAT.c, k) < 6) return [1, C.granite, 0.3];
+    if (Math.hypot(x - CAT.deessa[0], z - CAT.deessa[1]) < 12 || Math.hypot(x - CAT.macia[0], z - CAT.macia[1]) < 9) return [1, C.granite, 0.25];
+    if (r < 64 || e < 4.3) return [6, C.curb, 0.2];
+    for (const k of CAT.corners) if (segD(x, z, CAT.c, k) < 6.8) return [6, C.curb, 0.2];
     return [5, C.grass, 0]; },
-  objs(S) { const { P, put } = S, eu = P.hu * 0.52, ev = P.hv * 0.46;
-    put('rose', 0, 0, 0);
-    for (const s of [-1, 1]) put('fontR', 0, s * ev * 0.72, 0, { L: Math.min(20, eu * 0.7), W: 7.5 });
-    // estatuas en el contorno de la elipse
-    for (let k = 0; k < 8; k++) { const a = (k + 0.5) * Math.PI / 4; put('statue', Math.cos(a) * (eu + 2.5), Math.sin(a) * (ev + 2.5), a + Math.PI / 2); }
-    // balaustrada a lo largo de la elipse, con aberturas en los cuatro paseos
-    for (let k = 0; k < 64; k++) { const a0 = k / 64 * 2 * Math.PI, a1 = (k + 1) / 64 * 2 * Math.PI, ua = Math.cos(a0) * (eu + 1.2), va = Math.sin(a0) * (ev + 1.2), ub = Math.cos(a1) * (eu + 1.2), vb = Math.sin(a1) * (ev + 1.2);
-      if (Math.abs(ua) < 6 || Math.abs(va) < 6 || Math.abs(ub) < 6 || Math.abs(vb) < 6) continue; put('balus', ua, va, 0, { u1: ub, v1: vb }); }
-    put('macia', -P.hu * 0.72, P.hv * 0.55, 0);
-    put('kiosk', P.hu * 0.62, -P.hv * 0.62, -Math.PI / 4);
-    put('canaletes', -eu - 6, -6, 0);
-    for (let k = 0; k < 20; k++) { const a = k / 20 * 2 * Math.PI; put('lampC', Math.cos(a) * (eu - 1.5), Math.sin(a) * (ev - 1.5), a); }
-    S.grid(9, 6, (u, v, x, z, e, zz) => zz && zz[0] === 5 && e > 5.5 && put('tree', u, v, 0, { sp: 'platan' }));
-    S.grid(13, 0, (u, v, x, z, e, zz) => zz && zz[0] === 1 && e > 3 && Math.abs(v) < 3.5 && Math.abs(u) > eu + 4 && put('bench', u, v + (u > 0 ? 2 : -2), u > 0 ? Math.PI / 2 : -Math.PI / 2));
-    S.grid(6, 3, (u, v, x, z, e, zz) => { const q = (u / (eu + 2.6)) ** 2 + (v / (ev + 2.6)) ** 2; if (q > 1 && q < 1.08 && hash2(Math.round(u * 3), Math.round(v * 3)) < 0.45) put('bench', u, v, Math.atan2(-v / ev, -u / eu)); });
+  objs(S) { const W = S.putW, c = CAT.c;
+    W('rose', c[0], c[1], 0, { a0: 0 });
+    for (const [x, z, twin] of CAT.fonts) { const a = Math.atan2(z - c[1], x - c[0]) + Math.PI / 2;
+      if (twin) for (const s of [-1, 1]) W('fontR', x + Math.cos(a) * s * 8, z + Math.sin(a) * s * 8, a, { L: 13, W: 6.5 });
+      else W('fontR', x, z, a, { L: 22, W: 7.5 }); }
+    for (const [x, z] of CAT.art) W('statue', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2);
+    W('pond', CAT.deessa[0], CAT.deessa[1], 0, { r: 6 });
+    W('macia', CAT.macia[0], CAT.macia[1], Math.atan2(c[1] - CAT.macia[1], c[0] - CAT.macia[0]) - Math.PI / 2);
+    W('kiosk', 12250, 14112, 0.8); W('kiosk', 12160, 14000, -0.7);
+    W('canaletes', 12196, 14004, 0); W('canaletes', 12240, 14100, 0);
+    for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 45, c[1] + Math.sin(a) * 45, a); }
+    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 42, c[1] + Math.sin(a) * 42, a + Math.PI); }
+    S.grid(8, 3, (u, v, x, z, e, zz) => zz && zz[0] === 5 && e > 5 && S.put('tree', u, v, 0, { sp: 'platan' }));
+    S.grid(16, 5, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && S.put('lampC', u, v, 0));
   } });
 // Plaça d'Espanya: la isla central de la rotonda. La fuente es un hito (font_pl_espanya); alrededor, anillo de granito, parterres y farolas
 SING.push({ key: "Plaça d'Espanya", ax: 63, center: [10446.2, 12741.6], disc: 58,
@@ -313,7 +339,7 @@ SING.push({ key: 'Plaça de Lesseps',
   zone(u, v, x, z, e, P) { if (e < 2.5) return [1, C.granite, 0.3]; const b = Math.abs(((u + 1000) % 14) - 7) < 0.6; return b ? [6, C.graniteD, 0.2] : [1, mixc(C.granite, C.pink, 0.25), 0.25]; },
   objs(S) { const { P } = S;
     S.put('play', P.hu * 0.4, -P.hv * 0.25, 0); S.put('canaletes', -P.hu * 0.15, P.hv * 0.3, 0); S.put('kiosk', -P.hu * 0.55, -P.hv * 0.35, 0); S.put('bikes', P.hu * 0.65, P.hv * 0.45, 0, { n: 6 });
-    S.grid(7, 3.5, (u, v, x, z, e, zz) => e > 3 && S.put('tree', u, v, 0, { sp: hash2(Math.round(u), Math.round(v)) < 0.7 ? 'platan' : 'tipuana', alc: true }));
+    S.grid(9, 4.5, (u, v, x, z, e, zz) => e > 3 && S.put('tree', u, v, 0, { sp: hash2(Math.round(u), Math.round(v)) < 0.7 ? 'platan' : 'tipuana', alc: true }));
     S.grid(14, 0, (u, v, x, z, e) => e > 3 && S.put('sbench', u, v + 3.5, 0, { len: 3.2, wood: true }));
     S.grid(21, 10, (u, v, x, z, e) => e > 2 && S.put('lamp', u, v, 0, { H: 8 })); } });
 
@@ -323,6 +349,8 @@ window.BCN_PLAZAS = { async init(ctx) {
   if (!city || !ctx.detail) throw new Error('las plazas necesitan las fachadas de detalle (ctx.city)');
   const { walkAt, coverAt, nearestCar } = city, matB = ctx.detail.matB, mkMesh = ctx.detail.mkMesh;
   const [AS, AH] = FUR ? FUR.levels : [null, null];
+  const matP = ctx.mkMat('plazaPav', VS_PAV, FS_PAV, ['position', 'color', 'uv'], ['uPavFade']);
+  matP.setVector2('uPavFade', new BABYLON.Vector2(560, 640));
   const data = await fetch('data/plazas.json').then(r => r.json());
   const PL = data.plazas.map((p, i) => {
     const sg = SING.find(s => s.key === p.n) || null, o = { i, n: p.n, t: p.t, a: p.a, cat: p.cat, r: p.r, c: p.c, ang: (sg && sg.ax !== undefined ? sg.ax : p.ang) * D2R, sg, id: sid(p.n) };
@@ -332,7 +360,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     const cu = Math.cos(o.ang), su = Math.sin(o.ang); let hu = 0, hv = 0;
     for (const [x, z] of o.r) { const dx = x - o.c[0], dz = z - o.c[1]; hu = Math.max(hu, Math.abs(dx * cu + dz * su)); hv = Math.max(hv, Math.abs(-dx * su + dz * cu)); }
     o.hu = hu; o.hv = hv; o.cu = cu; o.su = su; o.st = null; return o; });
-  const R_SIMPLE = [420, 470], R_HI = [90, 115];
+  const R_SIMPLE = [600, 680], R_HI = [90, 115];
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;
   const bbDist = (o, P) => Math.hypot(Math.max(o.bb[0] - P.x, 0, P.x - o.bb[2]), Math.max(o.bb[1] - P.z, 0, P.z - o.bb[3]));
 
@@ -361,7 +389,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     const U2W = (u, v) => [o.c[0] + u * o.cu - v * o.su, o.c[1] + u * o.su + v * o.cu];
     const fits = (x, z, r) => { if (!free(o, x, z)) return false; for (const [a, b] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!free(o, x + a, z + b)) return false;
       for (const q of occ) if (Math.hypot(q[0] - x, q[1] - z) < q[2] + r) return false; return true; };
-    const RAD = { tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
+    const RAD = { pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
     const put = (t, u, v, a, x) => { const [wx, wz] = U2W(u, v), r = RAD[t] || 1; if (r > 0 && !fits(wx, wz, r)) return false; occ.push([wx, wz, r]); items.push([t, wx, wz, a + o.ang, x || {}, u, v]); return true; };
     // zona de juegos genérica (se decide antes del pavimento: lleva caucho)
     if (!o.sg && (o.t === 'gran' || o.t === 'mitjana')) {
@@ -382,7 +410,8 @@ window.BCN_PLAZAS = { async init(ctx) {
       if (++nb % 60 === 0) yield; } }
     yield;
     // ---- objetos de la plaza
-    const S = { P: o, put, grid(sp, ph, f) { for (let v = -o.hv + ph; v <= o.hv; v += sp) for (let u = -o.hu + ph; u <= o.hu; u += sp) { const [x, z] = U2W(u, v); if (!free(o, x, z)) continue; f(u, v, x, z, edgeDist(o.r, x, z), zoneOf(o, x, z)); } } };
+    const putW = (t, x, z, a, ex) => { const dx = x - o.c[0], dz = z - o.c[1]; return put(t, dx * o.cu + dz * o.su, -dx * o.su + dz * o.cu, a - o.ang, ex); };
+    const S = { P: o, put, putW, grid(sp, ph, f) { for (let v = -o.hv + ph; v <= o.hv; v += sp) for (let u = -o.hu + ph; u <= o.hu; u += sp) { const [x, z] = U2W(u, v); if (!free(o, x, z)) continue; f(u, v, x, z, edgeDist(o.r, x, z), zoneOf(o, x, z)); } } };
     if (o.sg) o.sg.objs(S);
     else {
       const A = o.a, n0 = items.length;
@@ -424,10 +453,11 @@ window.BCN_PLAZAS = { async init(ctx) {
       else if (t === 'bikes') bikeRack(Wo, F, y, ex.n || 5);
       else if (t === 'statue') statue(Wo, F, y, 1.8 + h * 0.8, h < 0.6 ? C.bronze : [214, 206, 190], h < 0.6 ? A0.BRONZE : A0.STONE);
       else if (t === 'macia') macia(Wo, F, y);
+      else if (t === 'pond') pond(Wo, F, y, ex.r || 5);
       else if (t === 'fontR') fountainRect(Wo, F, y, ex.L, ex.W);
       else if (t === 'balus') { const [x1, z1] = U2W(ex.u1, ex.v1), l = Math.hypot(x1 - x, z1 - z), aa = Math.atan2(z1 - z, x1 - x), Fb = fr(x, z, aa);
         G.lattice(Wo, Fb, 0, l, y, y + 0.85, 0, C.stone, K.BAL, 1); box(Wo, Fb, -0.1, l + 0.1, y + 0.85, y + 1.0, -0.18, 0.18, C.stone, K.FURN, 7, A0.STONE); box(Wo, Fb, -0.1, l + 0.1, y, y + 0.12, -0.15, 0.15, C.stone, K.FURN, 7, A0.STONE); }
-      else if (t === 'rose') rose(Wo, x - ox, z - oz, y + 0.012, o.ang);
+      else if (t === 'rose') rose(Wp, x - ox, z - oz, y + 0.006, ex.a0 || 0);
     }
     yield;
     // ---- malla de pavimento con la luz de las farolas cocida en los vértices
@@ -438,7 +468,7 @@ window.BCN_PLAZAS = { async init(ctx) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
       for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(yAt(xs[i], zs[j]) - 0.02 + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
-      quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, K.PLZ_PAV, pav(zz[0], gs, wear));
+      quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, 0, pav(zz[0], gs, wear));
       if (++nq % 400 === 0) yield;
     }
     return { Wp, Wo, Wh, lamps: lamps.length, nItems: items.length, nQuads: quads.length };
@@ -448,16 +478,16 @@ window.BCN_PLAZAS = { async init(ctx) {
     const dark = [72, 70, 74], light = [214, 204, 186], mid = [170, 132, 112], aux = pav(6, [0, 0, 0, 0], 0.05);
     const P = (r, a) => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
     for (let k = 0; k < 48; k++) { const a = k / 48 * 2 * Math.PI, b = (k + 1) / 48 * 2 * Math.PI, p = [P(12, a), P(12, b), P(13, b), P(13, a)];
-      quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[3], dark, K.PLZ_PAV, aux); }
+      quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[3], dark, 0, aux); }
     for (let k = 0; k < 8; k++) { const a = a0 + k * Math.PI / 4, r = k % 2 ? 7.5 : 11.5, w = Math.PI / 8, c = P(0, 0);
-      for (const s of [-1, 1]) { const t = P(r, a), side = P(r * 0.3, a + s * w); quad(B, F0, ...c, ...t, ...side, ...side, s < 0 ? dark : (k % 2 ? mid : light), K.PLZ_PAV, aux); } }
-    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI, b = (k + 1) / 16 * 2 * Math.PI, p = [P(0, 0), P(1.4, a), P(1.4, b)]; quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[2], [150, 120, 70], K.PLZ_PAV, aux); }
+      for (const s of [-1, 1]) { const t = P(r, a), side = P(r * 0.3, a + s * w); quad(B, F0, ...c, ...t, ...side, ...side, s < 0 ? dark : (k % 2 ? mid : light), 0, aux); } }
+    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI, b = (k + 1) / 16 * 2 * Math.PI, p = [P(0, 0), P(1.4, a), P(1.4, b)]; quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[2], [150, 120, 70], 0, aux); }
   }
 
   function* runJob(o) {
     const r = yield* buildPlaza(o);
     const pc = { hi: null };
-    const mp = reg(mkMesh(r.Wp, matB, 'plp' + o.i), { cast: false, layer: 'walk' });
+    const mp = reg(mkMesh(r.Wp, matP, 'plp' + o.i), { cast: false, layer: 'walk' });
     const mo = reg(mkMesh(r.Wo, matB, 'plo' + o.i), { cast: true, layer: 'furn', cell: pc });
     o.st = { pc, mp, mo, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
     tris += o.st.tris; built++;
