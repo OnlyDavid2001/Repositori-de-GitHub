@@ -332,20 +332,8 @@ else {
     }
     for (const s of stands()) if (s.pas && inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.4);
   };
-  // AE3: lo menudo del bordillo de la T1 (coches, taxis, gente, bancos, carros): malla aparte que se oculta a más de 700 m
-  const PIEL = [[232, 196, 170], [196, 150, 116], [150, 104, 74], [96, 66, 48]], ROPA = [[40, 44, 52], [70, 74, 82], [150, 40, 40], [36, 60, 110], [210, 206, 196], [120, 96, 70], [60, 90, 70], [180, 150, 60], [24, 24, 28]];
-  // AE4: silueta con piernas separadas, brazos, cabeza y pelo (7 cajas, ~70 triángulos), en vez de tres cajas
-  const PELO = [[30, 24, 20], [70, 50, 32], [120, 96, 60], [180, 176, 170], [20, 20, 22]];
-  function persona(B, L, x, z, y, a, R) { const v0 = B.nv, alto = 0.92 + R(0.12), ropa = ROPA[Math.floor(R(ROPA.length))],
-      pant = R() < 0.5 ? [40, 44, 56] : ROPA[Math.floor(R(ROPA.length))], piel = PIEL[Math.floor(R(4))], hp = 0.84 * alto, ht = 0.6 * alto;
-    for (const e of [-0.095, 0.095]) L.caja(B, 0, e, 0, 0.16, 0.14, hp, 0, pant, K.LISO);                 // piernas
-    L.caja(B, 0, 0, hp, 0.24, 0.4, ht, 0, ropa, K.LISO);                                                    // torso
-    for (const e of [-0.25, 0.25]) L.caja(B, 0, e, hp + 0.05 * alto, 0.12, 0.1, ht - 0.04, 0, ropa, K.LISO);   // brazos
-    L.caja(B, 0, 0, hp + ht, 0.1, 0.1, 0.06, 0, piel, K.LISO);                                               // cuello
-    L.caja(B, 0, 0, hp + ht + 0.06, 0.2, 0.18, 0.22, 0, piel, K.LISO);                                       // cabeza
-    L.caja(B, -0.02, 0, hp + ht + 0.2, 0.22, 0.2, 0.07, 0, PELO[Math.floor(R(PELO.length))], K.LISO);         // pelo
-    if (R() < 0.45) L.caja(B, 0.4, -0.12, 0, 0.26, 0.42, 0.62, 0, [[30, 30, 34], [110, 30, 40], [40, 70, 120], [140, 140, 146]][Math.floor(R(4))], K.LISO);   // maleta
-    L.xf(B, v0, x, z, a, 1, 1, y); }
+  // AE3: lo menudo del bordillo de la T1 (coches, taxis, bancos, carros): malla aparte que se oculta a más de 700 m
+  // G1V2: sin gente parada (personas y coches con vida vendrán más adelante): fuera las figuras de pasajeros de la T1
   // coche de perfil (capó, parabrisas, techo, maletero) con ruedas; taxi: negro con puertas amarillas y luz verde
   function turismo(B, L, x, z, y, a, col, taxi) { const v0 = B.nv, w = 1.76;
     L.extruir(B, [[-2.25, 0.32], [2.25, 0.32], [2.28, 0.64], [2.18, 0.8], [0.95, 0.92], [0.32, 1.38], [-1.25, 1.42], [-2.05, 1.0], [-2.27, 0.9]], -w / 2, w / 2, col, K.LISO);
@@ -385,11 +373,6 @@ else {
           L.caja(B, 0, 0, 0.18, 0.55, 0.95, 0.05, 0, [150, 154, 160], K.METAL); L.caja(B, 0, -0.45, 0.18, 0.55, 0.05, 0.8, 0, [150, 154, 160], K.METAL);
           L.caja(B, 0, 0.47, 0.9, 0.6, 0.06, 0.06, 0, [40, 90, 150], K.METAL); L.caja(B, 0, 0.45, 0, 0.06, 0.06, 0.92, 0, [150, 154, 160], K.METAL);
           L.xf(B, v0, q[0], q[1], ang + 90, 1, 1, y0); } }
-      // gente: esperando en la cola de taxis, saliendo por los accesos y caminando, con maletas y carros
-      for (let u = uTx + 2; u < Ld - 14; u += 1.6 + R(1.2)) { q = at(u, 8.6 + R(-0.4, 0.4)); persona(B, L, q[0], q[1], 0.18, ang + R(-40, 40), R); }
-      for (const y0 of [0.18, 8.85]) for (let i = 0; i < 46; i++) { const u = 12 + R(Ld - 24), o = 2.6 + R(5.6); q = at(u, o);
-        persona(B, L, q[0], q[1], y0, ang + (R() < 0.5 ? 0 : 180) + R(-30, 30), R);
-        if (R() < 0.25) { const p2 = at(u + 0.9, o); const v0 = B.nv; L.caja(B, 0, 0, 0.18, 0.55, 0.95, 0.05, 0, [150, 154, 160], K.METAL); L.caja(B, 0, 0, 0.23, 0.45, 0.7, 0.45, 0, [40, 44, 52], K.LISO); L.xf(B, v0, p2[0], p2[1], ang, 1, 1, y0); } }
     } });
   const inT1 = p => p[1] < 4200;                                         // la T2 queda toda al norte de z = 4400
   if (t1f) { t1f.build = t1Build; t1f.rot = 0; t1f.x = 4240; t1f.z = 3250; t1f.ancho = 1150; t1f.largo = 720; t1f.alto = 20; }
