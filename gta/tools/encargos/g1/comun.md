@@ -38,6 +38,22 @@ noche, dron, lejos, montaña y mar), hojas ANTES/DESPUÉS y un jurado de agentes
 En cuanto exista `views_g1.json` (en la rama `wt-g1-banco`; `git show origin/wt-g1-banco:gta/tools/views_g1.json`), usa las
 vistas que toquen tu carril para tus ANTES/DESPUÉS, además de las tuyas.
 
+## Fotos del usuario (la referencia principal de luz, color, mar y lejanía)
+Las ha mandado el usuario para esta fase: están en
+`/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/ref_usuario/` (ábrelas y míralas bien).
+- `noche_dron_barceloneta.jpg`: de noche desde un dron sobre la Barceloneta. Cielo azul profundo (no negro); la ciudad en
+  naranja cálido (farolas de sodio y ventanas); el Passeig Marítim con las palmeras iluminadas; reflejos largos de las luces
+  en el mar; la arena iluminada junto al paseo; Montjuïc oscuro con luces; el puerto encendido.
+- `atardecer_mar_vila_olimpica.jpg`: atardecer desde el mar. Cielo en degradado de azul a naranja en el horizonte, con nubes
+  iluminadas; mar azul oscuro con olas suaves que reflejan el cielo; ristras naranjas del paseo; montañas en silueta con bruma.
+- `dia_carmel_eixample_mar.jpg`: de día desde el Carmel. Perspectiva aérea fuerte (la ciudad se aclara y se azulea hacia el
+  mar); franja de mar turquesa y horizonte pálido; tejados y fachadas ocres, terracota, beige y ladrillo; pinos en primer
+  plano (masa densa y oscura de agujas finas).
+- `dia_desde_mar.jpg`: de día desde el mar. Mar azul intenso con oleaje menudo; cielo pálido y algo amarillento junto al
+  horizonte; Collserola gris azulada en la bruma; ciudad baja y beige.
+Úsalas para calibrar el cielo, la bruma y la perspectiva aérea, el color del mar, la paleta de la ciudad de día y de noche y
+el aspecto de los pinos. Los jurados comparan con ellas.
+
 ## Carriles y ficheros (solo tocas los tuyos)
 | carril | qué | ficheros |
 |---|---|---|
