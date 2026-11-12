@@ -220,6 +220,61 @@ function build(k) {
            farBark: gLo.bark, farLeaf: palm ? frondGeo(sp, true) : leafGeo(sp, gHi.tips, true, gHi.mids), imp: impGeo(sp) };
 }
 
+// ---------------------------------------------------------------- plantón (ARB3): árbol recién plantado con tutores
+// Para las calles que se quedan sin árbol adulto (tercera persona): tronco fino de ~2,3 m con cuatro ramitas y una copita de
+// pocas hojas (atlas del plátano), y dos variantes de sujeción: A, tres tutores de madera en triángulo con travesaños y
+// atados de goma al tronco; B, dos tutores con travesaño y protector metálico (jaula de varillas). Todo a escala 1, base en y = 0.
+// Devuelve { trunk, leaf, stakesA, stakesB, guard } (cada uno P/N/U/I) para cinco mallas de instancias en streets.js
+function sapling() {
+  seed(991, 3);
+  const mk = () => ({ P: [], N: [], U: [], I: [] });
+  const tube = (G, pts, rad, sides) => {
+    let prev = -1, v = 0;
+    for (let k = 0; k < pts.length; k++) {
+      const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], ax = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...ax); ax[0] /= l; ax[1] /= l; ax[2] /= l;
+      if (k) v += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1], pts[k][2] - pts[k - 1][2]);
+      let ux = -ax[2], uz = ax[0], ul = Math.hypot(ux, uz); if (ul < 1e-4) { ux = 1; uz = 0; ul = 1; } ux /= ul; uz /= ul;
+      const wx = ax[1] * uz, wy = ax[2] * ux - ax[0] * uz, wz = -ax[1] * ux, r = rad(k / (pts.length - 1)), c = pts[k], base = G.P.length / 3;
+      for (let q = 0; q <= sides; q++) { const an = q / sides * 6.2832, ca = Math.cos(an), sa = Math.sin(an), nx = ux * ca + wx * sa, ny = wy * sa, nz = uz * ca + wz * sa;
+        G.P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); G.N.push(nx, ny, nz); G.U.push(q / sides * 0.25, v * 2); }
+      if (prev >= 0) for (let q = 0; q < sides; q++) G.I.push(prev + q, base + q, base + q + 1, prev + q, base + q + 1, prev + q + 1);
+      prev = base;
+    }
+  };
+  const rod = (G, a, b, r, sides) => tube(G, [a, b], () => r, sides);
+  const trunk = mk(), leaf = mk(), stakesA = mk(), stakesB = mk(), guard = mk();
+  // tronco: algo torcido, de 3,5 a 1,2 cm de radio, y cuatro ramitas en la punta
+  const H = 2.3, tp = [];
+  for (let k = 0; k <= 6; k++) { const t = k / 6; tp.push([0.03 * Math.sin(t * 4.1) * t, t * H, 0.025 * Math.sin(t * 3.3 + 1) * t]); }
+  tube(trunk, tp, t => 0.036 - 0.024 * t, 6);
+  const top = tp[6], tips = [top];
+  for (let b = 0; b < 4; b++) { const a = b * 1.57 + R(-0.4, 0.4), y0 = H - 0.12 - b * 0.11, L = R(0.32, 0.5);
+    const s = [top[0] * y0 / H, y0, top[2] * y0 / H], e = [s[0] + Math.cos(a) * L * 0.75, y0 + L * 0.66, s[2] + Math.sin(a) * L * 0.75];
+    tube(trunk, [s, [(s[0] + e[0]) / 2, (s[1] + e[1]) / 2 + 0.03, (s[2] + e[2]) / 2], e], t => 0.011 - 0.006 * t, 3); tips.push(e); }
+  // copita: 22 tarjetas pequeñas del atlas del plátano alrededor de las puntas
+  for (let q = 0; q < 22; q++) {
+    const W = tips[q % tips.length], x = W[0] + R(-0.16, 0.16), y = W[1] + R(-0.14, 0.1), z = W[2] + R(-0.16, 0.16), sz = R(0.1, 0.16), th = R(6.28), c = R(-1, 1);
+    const a = [Math.cos(th), 0, Math.sin(th)], bb = [-Math.sin(th) * Math.sin(c), Math.cos(c), Math.cos(th) * Math.sin(c)], base = leaf.P.length / 3;
+    for (const [w, e] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const px = x + (a[0] * w + bb[0] * e) * sz, py = y + (a[1] * w + bb[1] * e) * sz, pz = z + (a[2] * w + bb[2] * e) * sz;
+      leaf.P.push(px, py, pz); const nx = px, ny = py - H + 0.8, nz = pz, l = Math.hypot(nx, ny, nz); leaf.N.push(nx / l, ny / l, nz / l); leaf.U.push((w + 1) / 2 * 0.5, (e + 1) / 2 * 0.5);
+    }
+    leaf.I.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  // A: tres tutores (Ø 6 cm, 1,8 m) en triángulo de 30 cm de radio, dos travesaños y tres atados al tronco a 1,35 m
+  const SA = [0, 2.094, 4.189].map(a => [Math.cos(a + 0.3) * 0.3, Math.sin(a + 0.3) * 0.3]);
+  for (const [x, z] of SA) { rod(stakesA, [x, -0.1, z], [x, 1.8, z], 0.03, 5); rod(stakesA, [x, 1.36, z], [x * 0.12, 1.36, z * 0.12], 0.009, 3); }
+  for (let i = 0; i < 3; i++) { const a = SA[i], b = SA[(i + 1) % 3]; for (const y of [0.5, 1.62]) rod(stakesA, [a[0], y, a[1]], [b[0], y, b[1]], 0.018, 4); }
+  // B: dos tutores con travesaño arriba y atados; protector de 8 varillas y dos aros (Ø 40 cm, 1,2 m)
+  for (const x of [-0.32, 0.32]) { rod(stakesB, [x, -0.1, 0.02], [x, 1.85, 0.02], 0.03, 5); rod(stakesB, [x, 1.4, 0.02], [x * 0.1, 1.4, 0.01], 0.009, 3); }
+  rod(stakesB, [-0.32, 1.7, 0.02], [0.32, 1.7, 0.02], 0.02, 4);
+  for (let k = 0; k < 8; k++) { const a = k / 8 * 6.2832; rod(guard, [Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2], [Math.cos(a) * 0.2, 1.2, Math.sin(a) * 0.2], 0.007, 3); }
+  for (const y of [0.08, 0.62, 1.16]) for (let k = 0; k < 8; k++) { const a = k / 8 * 6.2832, b = (k + 1) / 8 * 6.2832;
+    rod(guard, [Math.cos(a) * 0.2, y, Math.sin(a) * 0.2], [Math.cos(b) * 0.2, y, Math.sin(b) * 0.2], 0.009, 3); }
+  const fin = G => ({ P: new Float32Array(G.P), N: new Float32Array(G.N), U: new Float32Array(G.U), I: new Uint32Array(G.I) });
+  return { trunk: fin(trunk), leaf: fin(leaf), stakesA: fin(stakesA), stakesB: fin(stakesB), guard: fin(guard) };
+}
+
 // ---------------------------------------------------------------- texturas (canvas)
 const rgb = (r, g, b, a) => a === undefined ? `rgb(${r | 0},${g | 0},${b | 0})` : `rgba(${r | 0},${g | 0},${b | 0},${a})`;
 function canvas(size) { const cv = document.createElement('canvas'); cv.width = cv.height = size; return [cv, cv.getContext('2d', { willReadFrequently: true })]; }
@@ -316,5 +371,5 @@ function impCanvas(k) {
   return cv;
 }
 
-window.BCN_TREES = { SP, pick, build, leafCanvas, impCanvas, familyOf };
+window.BCN_TREES = { SP, pick, build, sapling, leafCanvas, impCanvas, familyOf };
 })();
