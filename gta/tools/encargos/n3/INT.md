@@ -18,3 +18,17 @@ En el mismo worktree: mira las hojas con dureza contra lo que pidió el usuario 
 visibles y arregla todos los que puedas (puedes tocar cualquier fichero), volviendo a capturar. Sube. Monta una hoja
 final para el usuario con lo mejor del día (de día y de noche) en
 `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/rev/hoja_final.jpg`.
+
+## Notas del revisor (mirando las hojas de las etapas): REV las tiene en cuenta en sus 10 defectos
+- **Puerto de noche** (`pu1/hoja_noche.jpg`): la explanada de contenedores sale con sus colores saturados, como de día y
+  con luz uniforme (el aura de calle de los hitos la baña). De noche debe quedar en penumbra, con charcos de luz blanca
+  bajo las torres de focos y las grúas. Los cruceros iluminados están bien.
+- **Puerto de cerca**: buques y yates son cajas. Al menos proa afilada y popa en cruceros, ferris y portacontenedores,
+  y yates con casco en cuña vistos a pie desde el Moll de la Fusta.
+- **Tiendas fundidas con su fachada** (`e1/hoja_cubos.jpg`, fila «tiendas»): antes y después casi no se distinguen.
+  Compruébalo en fachadas de colores distintos (crema, rosa, gris, ladrillo) y que se note sin mirar dos veces, sin tocar
+  rótulos ni escaparates.
+- **Cubos que quedan**: desde el dron, las naves grandes de la Zona Franca y las torres de vidrio (clases 3 y 12) siguen
+  como cajas pintadas. Un muro cortina sencillo y lucernarios o placas en las cubiertas grandes valen.
+- **Aeropuerto**: las notas para AE2 están en AERO.md. Comprueba que se hicieron (T1 a pie, procesador con su cubierta
+  ondulada desde el aire, nada de fachadas de vivienda en el aeropuerto).
