@@ -881,7 +881,7 @@ void main(){
   vec3 N = normalize(vec3(g.x, 1.0, g.y));
   float ndv = max(dot(N, V), 0.0), fr = 0.02 + 0.98*pow(1.0 - ndv, 5.0), k = clamp(0.3 + 0.7*fr, 0.0, 1.0);
   vec3 rd = reflect(-V, N), sky = toLin(envRefl(rd, 0.02)); sky = mix(vec3(dot(sky, vec3(0.3, 0.5, 0.2))), sky, 0.6)*0.85;   // agua turbia: el cielo se refleja algo apagado
-  vec4 m = texture2D(uRefl, vClip.xy/vClip.w*0.5 + 0.5 + g*0.6);
+  vec4 m = texture2D(uRefl, vClip.xy/vClip.w*0.5 + 0.5 + g*0.22);
   vec3 mr = m.rgb;
 #ifdef LDR
   mr = toLin(mr);
@@ -951,6 +951,7 @@ function sfObjs(S, D) {
       if (!inPoly(E, p[0] - nx * 0.5, p[1] - nz * 0.5)) { nx = -nx; nz = -nz; }
       acc += Math.hypot(p[0] - a[0], p[1] - a[1]); if (acc < 7.5) continue; acc = 0; nb++;
       const ang = sfA(-nx, -nz) + Math.PI / 2;
+      if (inPoly(E, p[0] + nx * (D.orilla.paseo - 1.0), p[1] + nz * (D.orilla.paseo - 1.0)) || inPoly(E, p[0] + nx * 1.2, p[1] + nz * 1.2)) continue;   // entrantes: nada dentro del agua
       if (nb % 2) W('lamp', p[0] + nx * (D.orilla.paseo - 0.55), p[1] + nz * (D.orilla.paseo - 0.55), 0, { H: 4.2 });
       else W('bench', p[0] + nx * (D.orilla.paseo - 1.0), p[1] + nz * (D.orilla.paseo - 1.0), sfA(-nx, -nz));
       // seto bajo de boj al otro lado del paseo, donde hay parterre
@@ -969,6 +970,7 @@ function sfObjs(S, D) {
     W(q.t, q.X, q.Z, sfA(Math.cos(q.a || 0), Math.sin(q.a || 0)), { force: q.t === 'ovalp' ? 1 : 0, rx: q.rx, rz: q.rz }); }
   for (const z of D.zonas) if (z.t === 'circ' && z.pav[0] === 1) { const nB = Math.max(3, Math.round(z.r * 0.7));   // bancos y farolas en los bordes de las explanadas
     for (let k = 0; k < nB; k++) { const a = (k + 0.5) / nB * 2 * Math.PI, X = z.c[0] + Math.cos(a) * (z.r - 1.2), Z = z.c[1] + Math.sin(a) * (z.r - 1.2);
+      if (D.estanque && (inPoly(D.estanque, X, Z) || edgeDist(D.estanque, X, Z) < 1.2)) continue;   // el mirador pisa el estanque: nada dentro del agua
       W(k % 3 === 1 ? 'lamp' : 'bench', X, Z, k % 3 === 1 ? 0 : sfA(-Math.cos(a), -Math.sin(a)), { H: 4.2 }); } }
   // ---- cipreses que enmarcan la vista de la Passió
   if (D.cipreses) { const c = D.cipreses; for (const [x0, x1] of c.X) for (let X = x0; X <= x1; X += c.paso) for (const Z of c.Z) W('tree', X, Z, 0, { sp: 'xiprer' }); }
