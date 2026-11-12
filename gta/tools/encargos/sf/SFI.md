@@ -70,3 +70,9 @@ fotos; la cruz del usuario la pone SFD2 si SFI no lo hizo) y al final **SFR**. S
 encargo, revisa con dureza lo que hayan dejado (empieza por la noche desde el dron, que salía casi blanca y uniforme, y por
 lo que digan flojo) y monta la hoja final, con una vista parecida a cada foto del usuario y otra a cada alzado de su
 modelo (`scratchpad/sf/ref_modelo/`).
+
+## Prisa (petición del usuario, manda sobre lo anterior)
+El usuario pide acelerar y simplificar: **SFR en unas 35–40 llamadas**. Comprueba con 6–8 vistas que se cumplen las alturas
+de los documentos (Mare de Déu 138 m más alta que los evangelistas, 135 m), que la cruz es la del usuario, y que la forma,
+la luz y las texturas se parecen a sus fotos y a su modelo; arregla solo lo muy visible y monta la hoja final. Sin
+investigación nueva ni biblioteca de fotos.
