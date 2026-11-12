@@ -302,7 +302,7 @@ else {
       strip(10, Ld - 10, 2, 24, 7.2, 1.4, HOR, K.LISO, { aux: L.aux.panel(3, 0.05, 0), suelo: true });                       // tablero
       // REV3: de noche la cara inferior del tablero quedaba negra (las luminarias de llegadas solo dan charco en el suelo):
       // paños entre vigas alumbrados desde abajo, emisivos solo de noche y suaves
-      for (let u = 16; u < Ld - 34; u += 24) strip(u + 0.5, u + 23.5, 2.2, 23.8, 7.16, 0.02, [168, 156, 138], K.EMISIVO, { aux: L.aux.emisivo(0.45, true), suelo: true });
+      for (let u = 16; u < Ld - 34; u += 24) strip(u + 0.5, u + 23.5, 2.2, 23.8, 7.16, 0.02, [196, 184, 164], K.EMISIVO, { aux: L.aux.emisivo(1.4, true), suelo: true });
       strip(10, Ld - 10, 23.6, 24.0, 8.6, 1.1, [176, 174, 168], K.LISO, { suelo: true });                                   // pretil
       // ---- salidas (sobre el viaducto)
       strip(10, Ld - 10, 2, 9.8, 8.6, 0.25, ACE, K.LISO, { aux: L.aux.liso(0.6) });                    // acera de salidas
@@ -603,7 +603,8 @@ else {
       if (e.y0 > 2.5 && top - e.y0 < 6) { L.prisma(B, P, e.y0, top, [200, 200, 196], K.METAL, { aux: L.aux.panel(1.2, 0.05, 0), techo: [176, 180, 184], suelo: true }); continue; }   // marquesina
       // AE4: el bloque blanco de ventanas al este del P1 es el parque de bomberos del sur (C. I. Sur, data/aero_carga.json)
       if (DATA.c && DATA.c.bomberosSur && Math.hypot(cx + h.x - 3866, cz + h.z - 2826) < 70) { bomberos(B, L, P, y0, Math.max(top, y0 + 9), h); continue; }
-      if (A > 1500 && H >= 10) {                                                                    // AE4: oficinas de hormigón con huecos
+      // REV3: también las casetas altas (≥ 8 m; la de 3783, 2766 era el bloque blanco liso de pie_lejos)
+      if (A > 1500 && H >= 10 || A <= 1500 && H >= 8) {                                             // AE4: oficinas de hormigón con huecos
         // REV3: era un bloque blanco liso visto desde lejos (huecos pequeños en hormigón claro): ahora cuerpo de hormigón
         // gris arena y bandas corridas de vidrio oscuro por planta (ventanas en cinta, legibles a 500 m), zócalo y antepecho
         L.prisma(B, P, y0, top, [176, 170, 158], K.VENTANAS, { aux: L.aux.ventanas(3.6, 2.4, 0.55, 0.42), techo: [150, 150, 148] });

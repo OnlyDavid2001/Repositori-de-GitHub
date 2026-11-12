@@ -40,9 +40,9 @@ void main(){
     alb *= mix(mix(0.8, 1.0, jt)*mix(0.9, 1.08, hash21(id)), 0.97, aa)*mix(0.86, 1.08, n1*0.6 + n2*0.4); rough = 0.8;
     // REV3: a pie el granito era un gris liso: grano de la piedra (moteado fino), losas de tono algo distinto (más cálidas
     // o más frías, alguna repuesta más clara u oscura) y manchas de uso; todo se apaga con la distancia (sin moiré)
-    float gr = 1.0 - smoothstep(0.004, 0.03, fw), hs = hash21(id + 3.1);
+    float gr = 1.0 - smoothstep(0.002, 0.012, fw), hs = hash21(id + 3.1);
     alb *= mix(vec3(1.0), mix(vec3(1.04, 1.0, 0.95), vec3(0.95, 0.99, 1.04), hs)*mix(0.86, 1.12, hash21(id + 7.7))*(hs > 0.93 ? 0.8 : 1.0), 0.55 + 0.45*gr);
-    alb *= mix(1.0, mix(0.84, 1.12, vnoise(W*41.0))*mix(0.92, 1.05, vnoise(W*13.0 + 3.0)), gr);
+    alb *= mix(1.0, mix(0.88, 1.09, vnoise(W*17.0))*mix(0.93, 1.05, vnoise(W*6.0 + 3.0)), gr);
     alb *= 1.0 - 0.12*smoothstep(0.62, 0.8, vnoise(W*0.9 + 11.0))*gr;
   } else if (pat < 2.5) {                           // 2: panot de 20×20 (las cuatro pastillas, insinuadas)
     vec2 q = W*5.0, f = fract(q) - 0.5; float aa = smoothstep(0.05, 0.25, fw*5.0);
@@ -85,8 +85,8 @@ void main(){
     float ring = floor(r/0.75), nb = max(8.0, floor(6.2832*(ring + 0.5)*0.75/0.8)), ja = abs(fract(th/6.2832*nb) - 0.5)*6.2832/nb*r, jr = abs(fract(r/0.75) - 0.5)*0.75;
     float jt = smoothstep(0.004, 0.012, min(jr, ja)), aj = smoothstep(0.02, 0.1, fw);
     alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4); rough = 0.6;
-    { float gr = 1.0 - smoothstep(0.004, 0.03, fw);   // REV3: grano de la piedra a pie, como en el dibujo 1
-      alb *= mix(1.0, mix(0.86, 1.1, vnoise(W*41.0))*mix(0.93, 1.05, vnoise(W*13.0 + 3.0)), gr); }
+    { float gr = 1.0 - smoothstep(0.002, 0.012, fw);   // REV3: grano de la piedra a pie, como en el dibujo 1
+      alb *= mix(1.0, mix(0.88, 1.09, vnoise(W*17.0))*mix(0.93, 1.05, vnoise(W*6.0 + 3.0)), gr); }
   } else {                                          // 10: macizo de flores: hojas verdes con manchas de flor del color del vértice
     float g = vnoise(W*0.7)*0.4 + vnoise(W*5.0)*0.35 + vnoise(W*0.12)*0.25, fl = smoothstep(0.42, 0.62, vnoise(W*3.3 + 7.0)*0.7 + vnoise(W*11.0)*0.3);
     alb = mix(vec3(0.27, 0.38, 0.18)*mix(0.7, 1.15, g), vCol.rgb*mix(0.8, 1.1, vnoise(W*17.0)), fl*0.85); rough = 0.92;
