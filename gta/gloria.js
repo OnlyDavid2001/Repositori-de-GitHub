@@ -125,9 +125,11 @@
       lamp(s * (XW - 0.3), zt0 + 1.0, yT + 1.15); lamp(s * (XW - 0.3), zt1 - 0.6, yT + 1.17); lamp(s * 26, D.monumento.Z, yT); }
     // relieves del paso inferior sobre las bocas (el infierno, los vicios): grupos de figuras atormentadas y llamas talladas
     for (const s of [-1, 1]) { const x = s * (XW + 0.12), y0 = yT - D.losa.canto - 0.35;
-      for (let z = zl0 + 0.8; z < D.losa.Z[1] - 0.5; z += 0.55) { const r = hs(z, s), hgt = 0.35 + 0.55 * r;
-        L.caja(B, x, z, y0 + 0.02, 0.22, 0.4, hgt * 0.8, 0, r > 0.7 ? [140, 70, 40] : [104, 94, 84], K.PIEDRA);
-        if (r > 0.45) L.esfera(B, x + s * 0.08, y0 + hgt * 0.8 + 0.12, z, 0.15, { col: [110, 100, 88], k: K.PIEDRA }); } }
+      for (let z = zl0 + 0.6; z < D.losa.Z[1] - 0.4; z += 0.38) { const r = hs(z, s), r2 = hs(s, z), hgt = 0.25 + 0.6 * r;
+        const c = r2 > 0.82 ? [128, 96, 70] : L.shade([112, 104, 94], 0.85 + 0.3 * r2);                 // figuras y, a ratos, lenguas de fuego
+        L.caja(B, x, z, y0 + 0.02 + 0.1 * r2, 0.16 + 0.1 * r, 0.26 + 0.12 * r2, hgt, (r - 0.5) * 30, c, K.PIEDRA);
+        if (r > 0.4) L.esfera(B, x + s * 0.06, y0 + hgt + 0.16, z + (r2 - 0.5) * 0.2, 0.12 + 0.05 * r2, { col: L.shade(c, 1.05), k: K.PIEDRA }); }
+      L.caja(B, x, (zl0 + D.losa.Z[1]) / 2, y0 - 0.02, 0.3, D.losa.Z[1] - zl0, 0.08, 0, [96, 88, 80], K.PIEDRA); }
     // espuma al pie del surtidor y de las cascadas
     const M = D.monumento; for (let i = 0; i < 18; i++) { const a = i / 18 * 2 * PI, r = 2.9 + 0.3 * hs(i, 3);
       L.esfera(B, M.X + r * Math.cos(a), yT + 0.6, M.Z + r * Math.sin(a), 0.35, { sy: 0.4, col: [236, 242, 244], k: K.LISO }); }
