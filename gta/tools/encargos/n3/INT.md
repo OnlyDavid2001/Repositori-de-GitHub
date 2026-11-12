@@ -76,3 +76,8 @@ final para el usuario con lo mejor del día (de día y de noche) en
   Ciutat Vella exige edificios a los dos lados o calzada de semiancho ≥ 5 m para ser ancho (sus ramblas y paseos siguen la
   regla de media densidad). Haz lo mismo fuera de Ciutat Vella si el tramo solo es «ancho» por dar a un solar o a una plaza.
   Y quita la rama muerta del alcorque en FS_WALK (`step(0.84, f.a)`): ahora los alcorques son instancias.
+- **Manzanas precalculadas (crítico)**: E4 precalcula la partición de manzanas en `data/mz_partidas.json` (carga 0,2 s
+  en vez de ~9 s). Depende de los edificios, de manzanas.js y de la lista de hitos (las fichas de hitos excluyen
+  manzanas). Al terminar TODAS las fusiones (PUERTO, AERO y PLAZAS añaden fichas que ocultan volúmenes), relanza
+  `node tools/mz_partidas.js`, confirma el JSON nuevo y comprueba en el arnés que `BREC.mz.ms` es pequeño (no recalcula)
+  y que no hay manzanas partidas bajo hitos.
