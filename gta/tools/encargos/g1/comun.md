@@ -51,6 +51,10 @@ Las ha mandado el usuario para esta fase: están en
   plano (masa densa y oscura de agujas finas).
 - `dia_desde_mar.jpg`: de día desde el mar. Mar azul intenso con oleaje menudo; cielo pálido y algo amarillento junto al
   horizonte; Collserola gris azulada en la bruma; ciudad baja y beige.
+- `noche_tardia_carmel_0a4h.jpg`: de madrugada (entre las 0:00 y las 4:00, dice el usuario) desde el Carmel. Cielo casi
+  negro y el mar invisible; las calles como líneas de luz naranja (sodio) y algunas farolas y ventanas blancas frías (LED);
+  la mayoría de las ventanas apagadas, alguna encendida; la Torre Glòries iluminada en azul y rojo; las dos torres del Port
+  Olímpic y la Sagrada Família iluminadas; los árboles, masas oscuras. Es la referencia de `uLate` (la noche tardía).
 Úsalas para calibrar el cielo, la bruma y la perspectiva aérea, el color del mar, la paleta de la ciudad de día y de noche y
 el aspecto de los pinos. Los jurados comparan con ellas.
 
