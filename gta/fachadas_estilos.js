@@ -43,6 +43,29 @@ window.BCN_GEO.regKind('FXPIEDRA', 100, `
     alb *= clamp(mix(1.0, l*1.95, nearF*0.8 + 0.2), 0.7, 1.25)*mix(0.9, 1.06, vnoise(P*0.6));
     alb *= mix(1.0, 0.84, smoothstep(0.45, 0.85, vnoise(vec2(P.x*0.9, P.y*0.04))));
     vec3 tn = texture2D(tAsN, P*vec2(0.30, 0.38)).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*1.0*nearF);`);
+// barandilla de vidrio (FX3): el material de detalle no tiene transparencia, así que el panel pinta una versión atenuada de lo
+// que hay DETRÁS (el muro del balcón, la balconera y el suelo de la terraza), con el reflejo del cielo encima, algo oscuro y
+// azulado. Lo de detrás sale de seguir el rayo de la vista hasta el muro: aux.x = u a lo largo del panel (0–1), aux.y = v en
+// altura (0–1), aux.z = 16·q + h (q: distancia al muro = 0,25 + 0,1·q m; h: medio ancho del hueco = h/30 del panel); el
+// color de vértice es el del muro. Sale antes, como los vidrios del núcleo (envRefl + FRAG).
+window.BCN_GEO.regKind('FXVIDRIO', 101, `
+    float zq = floor(vInfo.z*255.0 + 0.5), dep = zq > 0.5 ? 0.25 + floor(zq/16.0)*0.1 : 1.2, hw = zq > 0.5 ? mod(zq, 16.0)/30.0 : 0.0;
+    vec3 off = -V*(dep/max(dot(V, n), 0.12));        // del panel al muro de detrás, siguiendo la vista
+    vec2 dT = vec2(dot(dFdx(vPos), T), dot(dFdy(vPos), T)), dY = vec2(dFdx(vPos.y), dFdy(vPos.y));
+    vec2 du = vec2(dFdx(vInfo.x), dFdy(vInfo.x)), dv = vec2(dFdx(vInfo.y), dFdy(vInfo.y));
+    float ku = dot(du, dT)/max(dot(dT, dT), 1e-8), kv = dot(dv, dY)/max(dot(dY, dY), 1e-8);
+    float uh = vInfo.x + ku*dot(off, T), yh = (kv > 1e-3 ? vInfo.y/kv : 0.5) + off.y + 0.06;   // en el muro: u (0–1) y altura sobre la losa
+    vec3 bk = vCol.rgb*0.78;                          // muro, en la sombra del balcón
+    float inW = step(abs(uh - 0.5), hw)*step(yh, 2.3);
+    float fr = inW*(1.0 - step(0.035, min(hw - abs(uh - 0.5), 0.05)));   // marco del hueco
+    bk = mix(bk, mix(vec3(0.07, 0.08, 0.09), vec3(0.62, 0.62, 0.6), fr), inW);
+    if (yh < 0.0) bk = vCol.rgb*0.55;                 // suelo del balcón
+    vec3 r = reflect(-V, n), refl = envRefl(r, 0.04);
+    float w = clamp(0.16 + 0.84*pow(1.0 - max(dot(n, V), 0.0), 4.0), 0.0, 0.85);
+    vec3 c = mix(lit(bk*vec3(0.80, 0.88, 0.94), n), refl*vec3(0.86, 0.92, 1.0), w);
+    c += uSunCol*pow(max(dot(r, uSunDir), 0.0), 300.0)*1.6;
+    FRAG(c); return;`);
+
 // tonos de carpintería (de las fotos de calle): verdes de librillo, marrones, grises, azules de la costa, blanco de aluminio
 const VERDE = [[43, 77, 51], [60, 92, 64], [52, 84, 70]], MARRON = [[84, 56, 34], [107, 77, 48], [70, 48, 32]];
 const GRIS = [[84, 87, 69], [120, 118, 104], [96, 98, 96]], AZUL = [[36, 59, 77], [52, 88, 112], [40, 96, 110]];
@@ -66,7 +89,7 @@ const FAM = {
     { id: 'eix_pedra', bay: 3.8, acab: 'piedra', princ: 'corrido', bar: 'balaustre', carp: 'porticon', carpCol: MARRON, recerc: 3,
       imposta: 2, pil: true, coron: 'balaustrada', trib: 0.3, mac: 0.2, remate: 0.35 },
     { id: 'eix_60', bay: 3.3, hp: 2.95, hueco: 'mixto', bal: 'terraza', bar: 'obra', vuelo: 1.1, carp: 'enrollable', carpCol: ALU,
-      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.3, remate: 0.25 }],
+      marco: ALU, recerc: 0, imposta: 0, ultimo: 'normal', coron: 'atico', mac: 0.5, remate: 0.25 }],
   // Gràcia: casas de 3–5 plantas, más estrechas, balcones corridos de forja sencilla, colores vivos, lamas
   gracia: [
     { id: 'gra_corrido', bay: 3.1, hp: 3.0, bal: 'corrido', vuelo: 0.75, carp: 'librillo', carpCol: VERDE, recerc: 1, imposta: 1,
