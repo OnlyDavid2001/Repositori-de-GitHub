@@ -539,8 +539,9 @@ void main(){
   }
   // NAT: campos del delta y del Baix Llobregat. La ortofoto los pinta de un oliva liso: mosaico de parcelas (cada una con
   // su tono y su cultivo) y, de cerca, surcos. De lejos solo queda el mosaico (los surcos se apagan con el píxel)
+  float farmK = 0.0;
   { vec3 a0 = texture2D(groundTex, uv).rgb;
-    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.72, 0.78, a0.r))*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y));
+    float farm = step(0.53, a0.r)*(1.0 - smoothstep(0.72, 0.78, a0.r))*(1.0 - smoothstep(0.04, 0.07, abs(a0.r - a0.g)))*smoothstep(0.12, 0.16, a0.r - a0.b)*(1.0 - sandM)*(1.0 - seaC)*(1.0 - smoothstep(30.0, 60.0, vPos.y)); farmK = farm;
     if (farm > 0.01) {
       vec2 q = vPos.xz; float px = length(fwidth(q));
       // NAT2: la misma parcelación que usa nature.js para poner cañas y matas en las lindes (franjas de 70 m giradas
@@ -561,7 +562,11 @@ void main(){
   alb *= 1.0 - 0.45*uNight*smoothstep(0.30, 0.75, max(alb.r, max(alb.g, alb.b)));
   // REV: de día, el hormigón casi blanco de la ortofoto (explanadas, pistas, plazas duras) salía quemado a pie: rodilla suave
   // sobre lo muy claro (la arena ya trae su propio color y no se toca)
-  alb *= 1.0 - 0.22*(1.0 - sandM)*smoothstep(0.62, 0.92, max(alb.r, max(alb.g, alb.b)));
+  // FIX2: la rodilla de REV (−22 % como mucho) apenas se notaba: ahora, de día, todo lo que pasa de 0,40 se comprime a
+  // pendiente 0,35 (0,70 → 0,51; 0,85 → 0,56). Igual a cualquier distancia (no cambia el color al acercarse); de noche no
+  // se aplica, para no mover la noche calibrada
+  { float am = max(alb.r, max(alb.g, alb.b)), ak = am > 0.40 ? (0.40 + 0.35*(am - 0.40))/am : 1.0;
+    alb *= mix(1.0, ak, (1.0 - sandM)*(1.0 - farmK)*(1.0 - uNight)); }
   vec3 c = lit(alb, n);
   if (sandM*wet > 0.001) c = mix(c, shade(alb, n, normalize(uCam - vPos), rough, 0.0, 1.0), sandM*wet*0.22);
   // NAT2: espuma de la última ola sobre la propia arena, en la línea de agua (el relieve tapa el borde del mar: así la espuma

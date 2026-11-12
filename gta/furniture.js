@@ -424,6 +424,9 @@ void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vUv = uv; gl_Po
 const FS_POOL = `varying vec2 vUv;
 void main(){
   float f = max(0.0, 1.0 - dot(vUv, vUv)), a = smoothstep(0.05, 0.3, uDusk)*f*f*(0.45 + 0.55*f);
+  // FIX2: visto desde arriba (cámara a más de ~25 m sobre el charco), menos de la mitad: desde el aire las aceras con poca
+  // copa encima eran franjas encendidas. A pie de calle no cambia
+  a *= mix(1.0, 0.4, smoothstep(25.0, 140.0, uCam.y - vPos.y));
   if (a < 0.004) discard;
 #ifdef LDR
   FRAGA(emit(vec3(1.0, 0.8, 0.5), 0.85), a*0.6);

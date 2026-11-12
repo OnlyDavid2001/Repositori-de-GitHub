@@ -122,9 +122,9 @@ void main(){
   // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
   if (uGlow.x > 0.001) {
     float gW = (0.55 + 0.45*exp(-dA/5.0))*mix(0.40, 1.0, smoothstep(40.0, 240.0, dist))*(1.0 - 0.85*smoothstep(200.0, 380.0, vPos.y));
-    // FIX2: visto desde arriba (cámara a más de ~25 m sobre la acera) el baño se queda en la mitad: desde el aire las aceras
+    // FIX2: visto desde arriba (cámara a más de ~25 m sobre la acera) el baño se queda en un 40 %: desde el aire las aceras
     // y ramblas con poca copa encima eran franjas brillantes. A pie de calle (cámara a 1,7 m) no cambia nada
-    gW *= mix(1.0, 0.5, smoothstep(25.0, 140.0, uCam.y - vPos.y));
+    gW *= mix(1.0, 0.4, smoothstep(25.0, 140.0, uCam.y - vPos.y));
     c += emit(kAura*(min(alb, vec3(0.4))*0.95 + 0.05), gW*0.7*uGlow.x);   // tope: el granito claro de las ramblas no se enciende de más
   }
   FRAG(c);
