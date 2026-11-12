@@ -837,6 +837,10 @@ window.BCN_PLAZAS = { async init(ctx) {
   // paseos y ramblas: teselas con su propio relevo (se añaden al final de PL)
   for (const p of makePaseos(ctx, PL, P2)) { const o = { i: PL.length, n: p.n, t: p.t, a: 0, cat: [], r: p.r, c: p.c, ang: 0, sg: p.sg, id: sid(p.n), tile: true, noPav: true, named: p.named, segs: p.segs, rb: p.rb,
     bb: [p.r[0][0], p.r[0][1], p.r[2][0], p.r[2][1]], hu: TS / 2, hv: TS / 2, cu: 1, su: 0, st: null }; PL.push(o); }
+  // INT3: ¿hay pavimento de plaza (plataforma) en (x, z)? Lo consulta transporte.js para no poner bocas de metro debajo de la
+  // plataforma (la tapa del hueco queda bajo el pavimento levantado y la boca se ve enterrada: Plaça de Catalunya)
+  window.BCN_PLAZAS.pavAt = (x, z) => { for (const o of PL) { if (o.tile || o.noPav || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
+      if (o.excl && o.excl.some(q => inPoly(q.r, x, z))) continue; return true; } return false; };
   const R_SIMPLE = [600, 680], R_HI = [90, 115], R_OBJ = 300;
   let trisOn = 0;
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;

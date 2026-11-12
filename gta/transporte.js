@@ -364,6 +364,8 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       if (got.some(g => g.x === x && g.z === z) || !freeRect(F, -3.7, 3.0, -1.3, 1.3, MARG, 1.85, 9)) continue;
       const [lo, hi] = yRange(F, -2.7, 2.7, -0.9, 0.9); if (hi - lo > 0.4) continue;
       if (lawnRect(F, -3.7, 3.0, -1.3, 1.3, 4.5)) continue;
+      // INT3: nunca bajo la plataforma de una plaza (plazas.js la levanta hasta 0,45 m y taparía el hueco)
+      { const pav = window.BCN_PLAZAS && window.BCN_PLAZAS.pavAt; if (pav && [[-4.7, -2.3], [4.0, -2.3], [4.0, 2.3], [-4.7, 2.3], [0, 0]].some(([uu, dd]) => pav(...toL(F, uu, dd)))) continue; }
       if ([-3.7, 0, 3.0].some(uu => { const [qx, qz] = toL(F, uu, 0); return zebraNear(qx, qz, 2.5); })) continue;
       // tótem del lado de la calzada (el que se ve desde la calle)
       const [qx, qz] = toL(F, 0, 1), sideT = (nearestCar(qx, qz)[1] < nearestCar(...toL(F, 0, -1))[1]) ? 1 : -1;
