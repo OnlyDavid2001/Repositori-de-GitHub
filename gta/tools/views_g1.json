@@ -1,0 +1,254 @@
+[
+ {
+  "name": "pg_pie",
+  "n": "Passeig de Gràcia a pie",
+  "x": 11836.8,
+  "z": 14607.4,
+  "walk": true,
+  "yaw": -0.7403,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "eix_calle",
+  "n": "Calle interior del Eixample a pie",
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "hour": 17
+ },
+ {
+  "name": "eix_xamfra",
+  "n": "Cruce de xamfrà del Eixample",
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": 0,
+  "pitch": 0.02,
+  "hour": 12,
+  "eval": "(function(X,Z){var B=BCN,S=B.ctx.SEG,m={};for(var i=0;i<S.length;i+=6){for(var e=0;e<2;e++){var x=S[i+2*e],z=S[i+1+2*e];if(Math.hypot(x-X,z-Z)>200||S[i+4]<7)continue;var k=Math.round(x)+','+Math.round(z);m[k]=(m[k]||0)+1;}}\nvar best=null,bd=1e9;for(var k in m){if(m[k]<3)continue;var p=k.split(',').map(Number),d=Math.hypot(p[0]-X,p[1]-Z);if(d<bd){bd=d;best=p;}}\nvar a=-0.7792+Math.PI/4+Math.PI,x=best[0]+Math.sin(a)*15,z=best[1]+Math.cos(a)*15,yw=a-Math.PI;B.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(12069.6,14544.5)"
+ },
+ {
+  "name": "gotic_calle",
+  "n": "Calle estrecha del Gòtic",
+  "x": 12712.0,
+  "z": 13385.3,
+  "walk": true,
+  "yaw": 0.704,
+  "pitch": -0.02,
+  "hour": 13
+ },
+ {
+  "name": "gracia_calle",
+  "n": "Calle de Gràcia",
+  "x": 11126.6,
+  "z": 15848.3,
+  "walk": true,
+  "yaw": 2.4542,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "poblenou_rambla",
+  "n": "Rambla del Poblenou",
+  "x": 15089.1,
+  "z": 15329.6,
+  "walk": true,
+  "yaw": -0.78,
+  "pitch": -0.02,
+  "hour": 11,
+  "eval": "(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"poblenou\",15089.1,15329.6,-0.78,3,40)"
+ },
+ {
+  "name": "sarria_major",
+  "n": "Carrer Major de Sarrià",
+  "x": 8114.1,
+  "z": 15591.8,
+  "walk": true,
+  "yaw": 0.8,
+  "pitch": -0.02,
+  "hour": 11,
+  "eval": "(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"sarria\",8114.1,15591.8,0.8,1,8)"
+ },
+ {
+  "name": "rambla_noche",
+  "n": "La Rambla de noche",
+  "x": 12405.9,
+  "z": 13505.8,
+  "walk": true,
+  "yaw": 2.584,
+  "pitch": 0.0,
+  "hour": 23
+ },
+ {
+  "name": "eix_noche",
+  "n": "Eixample a pie de noche",
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "hour": 22
+ },
+ {
+  "name": "pcat_pie",
+  "n": "Plaça de Catalunya a pie",
+  "x": 12217.8,
+  "z": 14027.8,
+  "walk": true,
+  "yaw": -0.3491,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "glories_dron",
+  "n": "Rotonda de Glòries desde el dron",
+  "x": 13581.3,
+  "z": 15573.9,
+  "agl": 140,
+  "yaw": 0.3491,
+  "pitch": 0.5468,
+  "hour": 10.5
+ },
+ {
+  "name": "espanya_dron",
+  "n": "Rotonda de Plaça d'Espanya desde el dron",
+  "x": 10401.7,
+  "z": 12619.4,
+  "agl": 80,
+  "yaw": 0.3491,
+  "pitch": 0.5517,
+  "hour": 10.5
+ },
+ {
+  "name": "diagonal_pie",
+  "n": "Avinguda Diagonal a pie",
+  "x": 13240.3,
+  "z": 15715.8,
+  "walk": true,
+  "yaw": 1.2542,
+  "pitch": -0.02,
+  "hour": 12
+ },
+ {
+  "name": "barceloneta_playa",
+  "n": "Barceloneta: playa y mar",
+  "x": 13850,
+  "z": 12640,
+  "walk": true,
+  "yaw": 1.75,
+  "pitch": 0.12,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "port_vell",
+  "n": "Port Vell",
+  "x": 13300,
+  "y": 260,
+  "z": 12700,
+  "yaw": -0.6,
+  "pitch": 0.35,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "montjuic_puerto",
+  "n": "Montjuïc desde el puerto",
+  "x": 13150,
+  "y": 22,
+  "z": 12450,
+  "yaw": -2.2406,
+  "pitch": -0.06,
+  "hour": 17,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "coll_camino",
+  "n": "Camino de tierra de Collserola a pie",
+  "x": 7350,
+  "z": 17650,
+  "walk": true,
+  "yaw": 0.6,
+  "pitch": 0.02,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"coll\",7350,17650,0.6,0,2.99)"
+ },
+ {
+  "name": "coll_desde_ciudad",
+  "n": "Collserola de lejos desde la ciudad",
+  "x": 10500,
+  "z": 15500,
+  "agl": 45,
+  "yaw": -0.7964,
+  "pitch": -0.02,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "tibidabo_ctra",
+  "n": "Carretera del Tibidabo",
+  "x": 8001.3,
+  "z": 18186.2,
+  "walk": true,
+  "yaw": 0.0,
+  "pitch": 0.0,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;(function(N,X,Z,Y,lo,hi){var B=BCN,S=B.ctx.SEG,bd=1e9,bi=-1,bt=0;for(var i=0;i<S.length;i+=6){if(S[i+4]<lo||S[i+4]>hi)continue;var ax=S[i],az=S[i+1],dx=S[i+2]-ax,dz=S[i+3]-az,L=dx*dx+dz*dz||1,t=Math.max(0,Math.min(1,((X-ax)*dx+(Z-az)*dz)/L)),d=Math.hypot(ax+dx*t-X,az+dz*t-Z);if(d<bd){bd=d;bi=i;bt=t;}}\nvar ax=S[bi],az=S[bi+1],dx=S[bi+2]-ax,dz=S[bi+3]-az,x=ax+dx*bt,z=az+dz*bt,yw=Math.atan2(dx,dz);if(Math.cos(yw-Y)<0)yw+=Math.PI;if(yw>Math.PI)yw-=2*Math.PI;\nB.cam.position.set(x,B.heightAt(x,z)+1.75,z);B.st.yaw=yw;})(\"tibidabo\",8001.3,18186.2,0,2,10)"
+ },
+ {
+  "name": "eix_dron",
+  "n": "Eixample desde el dron",
+  "x": 11900,
+  "y": 160,
+  "z": 14500,
+  "yaw": 0.5,
+  "pitch": 0.42,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "mar_atardecer",
+  "n": "La ciudad desde el mar al atardecer",
+  "x": 14500,
+  "y": 40,
+  "z": 11800,
+  "yaw": -0.7378,
+  "pitch": -0.02,
+  "hour": 20.25,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "noche_dron",
+  "n": "La ciudad de noche desde el dron",
+  "x": 11600,
+  "y": 350,
+  "z": 13600,
+  "yaw": 0.75,
+  "pitch": 0.3,
+  "hour": 23,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "sagrada_pie",
+  "n": "Sagrada Família a pie",
+  "x": 12600.4,
+  "z": 16333.0,
+  "walk": true,
+  "yaw": 3.1354,
+  "pitch": -0.1,
+  "hour": 10.5
+ },
+ {
+  "name": "azoteas",
+  "n": "Azoteas a la altura de los tejados",
+  "x": 12073.5,
+  "z": 14540.5,
+  "agl": 28,
+  "yaw": -2.0,
+  "pitch": 0.12,
+  "hour": 17
+ }
+]

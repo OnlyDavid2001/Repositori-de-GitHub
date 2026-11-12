@@ -1,0 +1,255 @@
+{
+ "poblenou": [
+  {
+   "place_id": 84103298,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 783379447,
+   "lat": "41.3987334",
+   "lon": "2.2043570",
+   "class": "highway",
+   "type": "pedestrian",
+   "place_rank": 26,
+   "importance": 0.22052600253021823,
+   "addresstype": "pedestrian",
+   "name": "Rambla del Poblenou",
+   "display_name": "Rambla del Poblenou, la Plata, el Poblenou, Sant Martí, Barcelona, Barcelonès, Barcelona, Catalunya, 08005, España",
+   "boundingbox": [
+    "41.3985876",
+    "41.3988793",
+    "2.2041589",
+    "2.2045551"
+   ]
+  }
+ ],
+ "sarria": [
+  {
+   "place_id": 84015848,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 35765890,
+   "lat": "41.3998551",
+   "lon": "2.1216963",
+   "class": "highway",
+   "type": "pedestrian",
+   "place_rank": 25,
+   "importance": 0.06675102388036927,
+   "addresstype": "pedestrian",
+   "name": "Plaça de Sarrià",
+   "display_name": "Plaça de Sarrià, Sarrià, Sarrià - Sant Gervasi, Barcelona, Barcelonès, Barcelona, Catalunya, España",
+   "boundingbox": [
+    "41.3995815",
+    "41.4001108",
+    "2.1211831",
+    "2.1221931"
+   ]
+  }
+ ],
+ "sarria_major": [
+  {
+   "place_id": 83756822,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 195697442,
+   "lat": "41.4004883",
+   "lon": "2.1208945",
+   "class": "highway",
+   "type": "living_street",
+   "place_rank": 26,
+   "importance": 0.0534176905470359,
+   "addresstype": "living_street",
+   "name": "Carrer Major de Sarrià",
+   "display_name": "Carrer Major de Sarrià, Sarrià, Sarrià - Sant Gervasi, Barcelona, Barcelonès, Barcelona, Catalunya, 08017, España",
+   "boundingbox": [
+    "41.3999605",
+    "41.4010235",
+    "2.1203273",
+    "2.1214565"
+   ]
+  }
+ ],
+ "tibidabo_ctra": [
+  {
+   "place_id": 83945448,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 240438265,
+   "lat": "41.4238438",
+   "lon": "2.1192286",
+   "class": "highway",
+   "type": "unclassified",
+   "place_rank": 26,
+   "importance": 0.0534176905470359,
+   "addresstype": "unclassified",
+   "name": "Carretera de Vallvidrera al Tibidabo",
+   "display_name": "Carretera de Vallvidrera al Tibidabo, el Tibidabo, Vallvidrera, el Tibidabo i les Planes, Sarrià - Sant Gervasi, Barcelona, Barcelonès, Barcelona, Catalunya, 08196, España",
+   "boundingbox": [
+    "41.4224619",
+    "41.4254518",
+    "2.1184276",
+    "2.1195471"
+   ]
+  }
+ ],
+ "aigues": [
+  {
+   "place_id": 83593121,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 309366584,
+   "lat": "41.4051955",
+   "lon": "2.1078134",
+   "class": "highway",
+   "type": "track",
+   "place_rank": 26,
+   "importance": 0.19619210675062,
+   "addresstype": "track",
+   "name": "Carretera de les Aigües",
+   "display_name": "Carretera de les Aigües, Can Caralleu, Vallvidrera, el Tibidabo i les Planes, Sarrià - Sant Gervasi, Barcelona, Barcelonès, Barcelona, Catalunya, 08017, España",
+   "boundingbox": [
+    "41.4029491",
+    "41.4070398",
+    "2.1058828",
+    "2.1090709"
+   ]
+  }
+ ],
+ "sf_marina": [
+  {
+   "place_id": 83200042,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "node",
+   "osm_id": 12046800080,
+   "lat": "41.4039477",
+   "lon": "2.1749745",
+   "class": "place",
+   "type": "house",
+   "place_rank": 30,
+   "importance": 8.435721370255616e-05,
+   "addresstype": "place",
+   "name": "",
+   "display_name": "253, Carrer de la Marina, la Sagrada Família, l'Eixample, Barcelona, Barcelonès, Barcelona, Catalunya, 08013, España",
+   "boundingbox": [
+    "41.4038977",
+    "41.4039977",
+    "2.1749245",
+    "2.1750245"
+   ]
+  }
+ ],
+ "diagonal_fmacia": [
+  {
+   "place_id": 83355950,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "node",
+   "osm_id": 8625156393,
+   "lat": "41.3955695",
+   "lon": "2.1547778",
+   "class": "place",
+   "type": "house",
+   "place_rank": 30,
+   "importance": 8.435721370255616e-05,
+   "addresstype": "place",
+   "name": "",
+   "display_name": "490;492;494;496;498;500, Avinguda Diagonal (lateral muntanya), Sant Gervasi - Galvany, Sarrià - Sant Gervasi, Barcelona, Barcelonès, Barcelona, Catalunya, 08036, España",
+   "boundingbox": [
+    "41.3955195",
+    "41.3956195",
+    "2.1547278",
+    "2.1548278"
+   ]
+  }
+ ],
+ "enric_granados": [
+  {
+   "place_id": 83406889,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 86301093,
+   "lat": "41.3918153",
+   "lon": "2.1570993",
+   "class": "highway",
+   "type": "residential",
+   "place_rank": 26,
+   "importance": 0.0534176905470359,
+   "addresstype": "residential",
+   "name": "Carrer d'Enric Granados",
+   "display_name": "Carrer d'Enric Granados, l'Antiga Esquerra de l'Eixample, l'Eixample, Barcelona, Barcelonès, Barcelona, Catalunya, 08036, España",
+   "boundingbox": [
+    "41.3894530",
+    "41.3941584",
+    "2.1539878",
+    "2.1601957"
+   ]
+  }
+ ],
+ "verdi": [
+  {
+   "place_id": 83475128,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 1360091641,
+   "lat": "41.4109323",
+   "lon": "2.1500838",
+   "class": "highway",
+   "type": "residential",
+   "place_rank": 26,
+   "importance": 0.0534176905470359,
+   "addresstype": "residential",
+   "name": "Carrer de Verdi",
+   "display_name": "Carrer de Verdi, la Salut, Gràcia, Barcelona, Barcelonès, Barcelona, Catalunya, 08023, España",
+   "boundingbox": [
+    "41.4104558",
+    "41.4114121",
+    "2.1496552",
+    "2.1505161"
+   ]
+  }
+ ],
+ "ferran": [
+  {
+   "place_id": 84881427,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "way",
+   "osm_id": 4743458,
+   "lat": "41.3810114",
+   "lon": "2.1750339",
+   "class": "highway",
+   "type": "living_street",
+   "place_rank": 26,
+   "importance": 0.38438338989703197,
+   "addresstype": "living_street",
+   "name": "Carrer de Ferran",
+   "display_name": "Carrer de Ferran, el Call, el Gòtic, Ciutat Vella, Barcelona, Barcelonès, Barcelona, Catalunya, 08002, España",
+   "boundingbox": [
+    "41.3803579",
+    "41.3816613",
+    "2.1742259",
+    "2.1758448"
+   ]
+  }
+ ],
+ "sant_joan": [
+  {
+   "place_id": 83581369,
+   "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+   "osm_type": "node",
+   "osm_id": 12008910328,
+   "lat": "41.3988970",
+   "lon": "2.1706846",
+   "class": "place",
+   "type": "house",
+   "place_rank": 30,
+   "importance": 8.435721370255616e-05,
+   "addresstype": "place",
+   "name": "",
+   "display_name": "100-98, Passeig de Sant Joan, la Dreta de l'Eixample, l'Eixample, Barcelona, Barcelonès, Barcelona, Catalunya, 08009, España",
+   "boundingbox": [
+    "41.3988470",
+    "41.3989470",
+    "2.1706346",
+    "2.1707346"
+   ]
+  }
+ ]
+}
