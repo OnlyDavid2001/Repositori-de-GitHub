@@ -356,6 +356,10 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       const o = s * 6, L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]), tx = (SEG[o + 2] - SEG[o]) / L, tz = (SEG[o + 3] - SEG[o + 1]) / L;
       const k = got.length, dir = rs[k] < 0.5 ? 1 : -1, ang = Math.atan2(tz * dir, tx * dir), F = { x, z, tx: Math.cos(ang), tz: Math.sin(ang), nx: -Math.sin(ang), nz: Math.cos(ang) };
       if (!PED.has(cls) && furnNear(a0, u, off > 0 ? 1 : -1, hw, cls, 4.2)) continue;
+      // alcorques (árboles de streets.js cada 10,5 m sobre la proyección global): si la boca queda cerca del bordillo, que
+      // ningún árbol caiga a lo largo de la boca más 1,3 m por cada lado
+      if (!PED.has(cls) && Math.abs(off) - hw < 3.9) { const e1 = u + dir * -3.7, e2 = u + dir * 3.0, ua = Math.min(e1, e2) - 1.3, ub = Math.max(e1, e2) + 1.3;
+        if (Math.floor((a0 + ub) / 10.5) >= Math.ceil((a0 + ua) / 10.5)) continue; }
       { if (coverAt(x, z, -1) > -1e8) continue; const nc = nearestCar(x, z); if (nc[0] >= 0 && (nc[1] < 2.9 || (nc[1] > 9 && !(roadDist(x, z) < 0)))) continue; }
       if (got.some(g => g.x === x && g.z === z) || !freeRect(F, -3.7, 3.0, -1.3, 1.3, MARG, 1.85, 9)) continue;
       const [lo, hi] = yRange(F, -2.7, 2.7, -0.9, 0.9); if (hi - lo > 0.4) continue;
