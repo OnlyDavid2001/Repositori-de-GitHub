@@ -73,7 +73,30 @@ varying vec3 vPos; varying vec3 vLoc; varying vec2 vUV;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vUV = uv; gl_Position = viewProjection*wp; }`;
   const FS_WALK = `
 varying vec3 vLoc; varying vec2 vUV;
-uniform vec2 uFade; uniform sampler2D tField; uniform sampler2D tPanD; uniform sampler2D tPanN; uniform sampler2D tGrD; uniform sampler2D tGrN;
+uniform vec2 uFade; uniform sampler2D tField; uniform sampler2D tKind; uniform sampler2D tPanD; uniform sampler2D tPanN; uniform sampler2D tGrD; uniform sampler2D tGrN;
+// SUELOS (día 3): relieve de las baldosas propias (altura 0 en la junta, 1 en la cara de la pieza)
+// hexagonal del Passeig de Gràcia (25 cm entre caras): amonite, estrella de mar y alga, en relieve, como en el panot de Gaudí
+float hexH(vec2 P){
+  vec2 p = P/0.25, r = vec2(1.0, 1.7320508), hh = r*0.5;
+  vec2 a = mod(p, r) - hh, b = mod(p - hh, r) - hh, g = dot(a, a) < dot(b, b) ? a : b;
+  float hd = max(dot(abs(g), vec2(0.5, 0.8660254)), abs(g).x);
+  float h = smoothstep(0.495, 0.465, hd);
+  vec2 q = g - vec2(0.0, 0.21); float rr = length(q), th = atan(q.y, q.x);
+  float am = (1.0 - smoothstep(0.17, 0.19, rr))*smoothstep(0.18, 0.32, abs(fract(rr*13.0 - th/6.2832) - 0.5));
+  q = g - vec2(-0.182, -0.105); rr = length(q); th = atan(q.y, q.x);
+  float sf = 1.0 - smoothstep(-0.015, 0.015, rr - 0.13*(0.42 + 0.58*pow(0.5 + 0.5*cos(5.0*th + 1.57), 1.6)));
+  q = g - vec2(0.182, -0.105); rr = length(q);
+  float al = (1.0 - smoothstep(0.15, 0.17, rr))*smoothstep(0.25, 0.5, abs(fract(q.x*9.0 + sin(q.y*26.0)*0.35) - 0.5)*2.0);
+  return h*(1.0 - 0.32*max(max(am, sf), al));
+}
+// losa de la Diagonal: piezas de 40×40 cm con cuatro estrías a 45° que cambian de sentido en cada pieza
+float diaH(vec2 P){
+  vec2 p = P/0.4, id = floor(p), f = fract(p);
+  float e = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
+  float dd = mod(id.x + id.y, 2.0) < 0.5 ? f.x + f.y : f.x - f.y + 1.0;
+  float gr = smoothstep(0.06, 0.13, abs(fract(dd*2.0) - 0.5));
+  return smoothstep(0.004, 0.018, e)*(0.72 + 0.28*gr);
+}
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   if (dith() < smoothstep(uFade.x, uFade.y, dist)) discard;
@@ -83,16 +106,25 @@ void main(){
   if (vUV.x < -0.5) {                                   // cara vertical del bordillo de granito
     vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc))); if (dot(n, V) < 0.0) n = -n;
     vec3 tx = texture2D(tGrD, vec2(P.x + P.y, vLoc.y)*0.45).rgb;
-    alb = vec3(0.58, 0.57, 0.55)*mix(0.7, 1.25, dot(tx, vec3(0.33))*1.8)*mix(0.55, 1.0, vUV.y);
+    // SUELOS: uv.x = −(2 + modelo + 0,9·desgaste): granito más claro y limpio en lo nuevo, oscuro y con mugre abajo en lo dejado
+    float cm = max(-vUV.x - 2.0, 0.0), cmd = floor(cm + 0.001), cwr = fract(cm + 0.001)/0.9;
+    vec3 cb = cmd > 4.5 ? vec3(0.66, 0.66, 0.65) : cmd > 3.5 ? vec3(0.50, 0.49, 0.46) : cmd > 0.5 ? vec3(0.63, 0.62, 0.60) : vec3(0.58, 0.57, 0.55);
+    alb = cb*mix(0.7, 1.25, dot(tx, vec3(0.33))*1.8)*mix(mix(0.55, 0.35, cwr), 1.0, vUV.y);
+    alb *= 1.0 - 0.25*cwr*smoothstep(0.55, 0.8, vnoise(P*3.0 + vLoc.y*2.0));
     FRAG(lit(alb, n)); return;
   }
   vec4 f = texture2D(tField, vUV);
   float dA = f.r*12.75 - 2.0, pv = (f.g*255.0 - 128.0)/20.0;
   if (dA < 0.0 || pv < 0.0) discard;
   float n1 = vnoise(P*0.21)*0.5 + vnoise(P*0.02)*0.5, n2 = vnoise(P*0.93), n1g = vnoise(P*0.06 + 3.1);
+  // SUELOS: modelo de acera (0 panot de flor · 1 hexagonal del Passeig de Gràcia · 2 Diagonal · 3 panot nuevo · 4 panot dejado ·
+  // 5 losas grandes) y desgaste 0–1, por tramo (suelos.js), en un atlas aparte sin filtrar
+  vec4 kd = texture2D(tKind, vUV); float mdl = floor(kd.r*255.0/40.0 + 0.5), wr = kd.g;
+  float tfw0 = fwidth(P.x) + fwidth(P.y);
   if (dA < 0.3) {                                       // bordillo: pieza de granito de 30 cm
     vec3 tx = texture2D(tGrD, P*0.6).rgb;
-    alb = vec3(0.60, 0.59, 0.56)*mix(0.72, 1.2, dot(tx, vec3(0.33))*1.8);
+    alb = (mdl > 4.5 ? vec3(0.67, 0.67, 0.66) : mdl > 3.5 ? vec3(0.50, 0.49, 0.46) : mdl > 0.5 ? vec3(0.64, 0.63, 0.60) : vec3(0.60, 0.59, 0.56))*mix(0.72, 1.2, dot(tx, vec3(0.33))*1.8);
+    alb *= 1.0 - 0.22*wr*smoothstep(0.5, 0.8, vnoise(P*2.3));
     alb *= mix(0.75, 1.0, smoothstep(0.0, 0.05, dA));   // canto redondeado
     alb *= mix(0.92, 1.0, step(0.04, fract(dot(P, vec2(0.7071))*1.0)));   // juntas
   } else if (f.b > 0.5) {                               // plaza o calle peatonal: losas de granito
@@ -101,21 +133,58 @@ void main(){
     // FIX2: granito algo menos claro y con rodilla en los tonos más altos (las plazas abiertas salían blancas quemadas al sol)
     alb = tx*1.5*mix(0.74, 1.12, n1)*mix(0.88, 1.08, n2);
     alb = min(alb, vec3(0.50) + 0.4*(alb - vec3(0.50)));
+    alb *= 1.0 - 0.22*wr*smoothstep(0.45, 0.8, n1g);
     vec3 tn = texture2D(tGrN, gP).xyz*2.0 - 1.0; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
-  } else {                                              // panot de 20×20 cm
+  } else if (abs(mdl - 1.0) < 0.5 || abs(mdl - 2.0) < 0.5) {   // hexagonal del Passeig de Gràcia y losa de la Diagonal
+    bool hx = mdl < 1.5;
+    float lodT = 1.0 - smoothstep(0.03, 0.12, tfw0), e = 0.012;
+    float h0 = hx ? hexH(P) : diaH(P);
+    vec3 base = hx ? vec3(0.47, 0.51, 0.48) : vec3(0.57, 0.56, 0.53);
+    vec2 cid = hx ? floor(P/0.25) : floor(P/0.4); float hc = hash21(cid);
+    alb = base*mix(0.80, 1.10, n1)*mix(0.92, 1.06, n2)*mix(1.0, 0.95 + 0.1*hc, lodT);
+    // las juntas y el fondo del relieve se ensucian (más con el desgaste); de lejos, el valor medio
+    alb *= mix(0.88, mix(0.62, 1.0, h0), lodT)*(1.0 - 0.25*wr*smoothstep(0.4, 0.8, n1g));
+    if (lodT > 0.0 && nearN > 0.0) {
+      float hxp = hx ? hexH(P + vec2(e, 0.0)) : diaH(P + vec2(e, 0.0)), hzp = hx ? hexH(P + vec2(0.0, e)) : diaH(P + vec2(0.0, e));
+      N = normalize(vec3(-(hxp - h0)/e*0.006, 1.0, -(hzp - h0)/e*0.006)*vec3(lodT*nearN, 1.0, lodT*nearN) + vec3(0.0, 0.0, 0.0));
+    }
+  } else if (mdl > 4.5) {                               // losas grandes modernas (80×40 cm, a matajuntas), granito gris claro
+    vec2 q = P/vec2(0.8, 0.4); q.x += 0.5*mod(floor(q.y), 2.0); vec2 id = floor(q), f = fract(q);
+    float e = min(min(f.x, 1.0 - f.x)*0.8, min(f.y, 1.0 - f.y)*0.4), lodT = 1.0 - smoothstep(0.05, 0.2, tfw0);
+    vec3 tx = texture2D(tGrD, P*0.7 + hash21(id)*3.0).rgb;
+    alb = vec3(0.60, 0.60, 0.59)*mix(0.82, 1.12, dot(tx, vec3(0.33))*1.8)*mix(0.9, 1.06, n1)*mix(1.0, 0.94 + 0.12*hash21(id + 2.0), lodT);
+    alb *= mix(0.97, mix(0.55, 1.0, smoothstep(0.002, 0.006, e)), lodT)*(1.0 - 0.2*wr*smoothstep(0.45, 0.8, n1g));
+  } else {                                              // panot de 20×20 cm (0 estándar, 3 nuevo y limpio, 4 sucio y dejado)
     vec2 gP = P*5.0; vec3 tx = texture2D(tPanD, gP).rgb;
     float tfw = fwidth(gP.x) + fwidth(gP.y), tileK = 1.0 - smoothstep(0.25, 0.9, tfw);   // de lejos, sin variación por baldosa (evita el muaré)
-    alb = tx*mix(0.74, 1.12, n1)*mix(0.88, 1.08, n2);
-    vec2 cl = floor(gP), tf = fract(gP); float h0 = hash21(cl), rep = step(0.9, vnoise(P*0.08)*0.9 + h0*0.12);
-    alb *= mix(1.0, mix(0.94, 1.05, h0), tileK); alb = mix(alb, alb*vec3(1.05, 1.03, 0.99), rep*tileK);
-    float gum = step(0.965, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
-    float dirt = smoothstep(0.38, 0.75, n1g); alb *= mix(1.0, 0.72, dirt*mix(0.45, smoothstep(0.0, 0.16, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5)) + dirt*0.12), tileK));
-    vec3 tn = texture2D(tPanN, gP).xyz*2.0 - 1.0; tn.xy *= 1.25; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
+    bool nu = abs(mdl - 3.0) < 0.5, su = mdl > 3.5;
+    alb = tx*mix(nu ? 0.90 : 0.74, nu ? 1.06 : 1.12, n1)*mix(nu ? 0.95 : 0.88, nu ? 1.04 : 1.08, n2);
+    if (nu) alb *= vec3(1.07, 1.07, 1.06);
+    if (su) alb *= vec3(0.86, 0.84, 0.80);
+    vec2 cl = floor(gP), tf = fract(gP); float h0 = hash21(cl), rep = step(0.9, vnoise(P*0.08)*0.9 + h0*0.12)*(nu ? 0.0 : 1.0);
+    alb *= mix(1.0, mix(nu ? 0.98 : 0.94, nu ? 1.02 : 1.05, h0), tileK); alb = mix(alb, alb*vec3(1.05, 1.03, 0.99), rep*tileK);
+    float gum = step(su ? 0.90 : nu ? 0.995 : 0.965, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
+    float dirt = smoothstep(mix(0.38, 0.22, wr), 0.75, n1g)*(nu ? 0.35 : 1.0); alb *= mix(1.0, mix(0.72, 0.58, wr), dirt*mix(0.45, smoothstep(0.0, 0.16, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5)) + dirt*0.12), tileK));
+    vec3 tn = texture2D(tPanN, gP).xyz*2.0 - 1.0; tn.xy *= nu ? 1.4 : 1.25; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
+    if (su) {
+      // manchas de aceite y de humedad, piezas rotas (remiendo de cemento o grieta) y juntas negras
+      float st = smoothstep(0.62, 0.8, vnoise(P*0.55 + 4.0)); alb *= mix(1.0, 0.68, st)*mix(vec3(1.0), vec3(1.0, 0.97, 0.9), st);
+      float hb = hash21(cl + 13.0);
+      if (hb > 0.94) { alb = mix(alb, vec3(0.44, 0.42, 0.39)*(0.85 + 0.3*vnoise(P*20.0)), tileK); N = mix(N, vec3(0.0, 1.0, 0.0), tileK); }
+      else if (hb > 0.88) { vec2 cd = tf - 0.5; float ln = abs(dot(cd, normalize(vec2(hash21(cl + 1.0) - 0.5, 0.6))) + 0.03*sin(cd.x*30.0));
+        alb *= 1.0 - 0.6*(1.0 - smoothstep(0.01, 0.03, ln))*tileK; }
+      alb *= 1.0 - 0.3*(1.0 - smoothstep(0.02, 0.06, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5))))*tileK;
+    }
   }
   if (f.a > 0.5) {                                      // alcorque: tierra y reja de fundición
     vec2 q = fract(P*4.0) - 0.5; float bar = step(0.38, max(abs(q.x), abs(q.y)));
     vec3 soil = vec3(0.21, 0.16, 0.11)*(0.7 + 0.6*vnoise(P*9.0));
-    alb = mix(soil, vec3(0.09, 0.09, 0.1), bar*0.85); N = vec3(0.0, 1.0, 0.0);
+    if (abs(mdl - 2.0) < 0.5 || mdl > 4.5) {            // SUELOS: zonas nuevas y Diagonal, sin reja: sauló compactado claro
+      alb = vec3(0.52, 0.45, 0.36)*(0.8 + 0.4*vnoise(P*14.0))*(0.9 + 0.2*step(0.7, hash21(floor(P*30.0))));
+    } else if (mdl > 3.5) {                             // acera dejada: sin reja, tierra pisada con restos
+      alb = soil*0.85*(1.0 + 0.8*step(0.93, hash21(floor(P*18.0))));
+    } else alb = mix(soil, (mdl > 0.5 && mdl < 1.5) ? vec3(0.07, 0.075, 0.08) : vec3(0.09, 0.09, 0.1), bar*0.85);
+    N = vec3(0.0, 1.0, 0.0);
   }
   vec3 c = lit(alb, N);
   // aura nocturna (uGlow.x): la luz de farola que ya recibe la calzada (FS_ROAD, app.js), sin charcos: más junto al bordillo,
@@ -129,7 +198,7 @@ void main(){
   }
   FRAG(c);
 }`;
-  const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade'], ['tField', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
+  const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade'], ['tField', 'tKind', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
   const VS_TREE = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>
@@ -302,6 +371,11 @@ void main(){
   const RES = 0.5, MG = 4, NT = Math.round(CS / RES) + 2 * MG, AT = 2048, SLOTS = Math.floor(AT / NT);
   const atlas = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
   atlas.wrapU = atlas.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+  // SUELOS: atlas gemelo (sin filtrar) con el modelo de acera (R = 40·modelo) y el desgaste (G) del tramo más cercano
+  const atlasK = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
+  atlasK.wrapU = atlasK.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; matW.setTexture('tKind', atlasK);
+  const SU = window.BCN_SUELOS, kindCache = new Map();
+  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
   matW.setTexture('tField', atlas); matW.setTexture('tPanD', tPanD); matW.setTexture('tPanN', tPanN); matW.setTexture('tGrD', tGrD); matW.setTexture('tGrN', tGrN);
   const freeSlots = []; for (let k = SLOTS * SLOTS - 1; k >= 0; k--) freeSlots.push(k);
 
@@ -312,6 +386,7 @@ void main(){
     const cell = cells.get(ci), cx = ci % NX, cz = (ci / NX) | 0, ox = cx * CS, oz = cz * CS;
     const fx0 = ox - MG * RES, fz0 = oz - MG * RES;
     const dA = new Float32Array(NT * NT).fill(99), dS = new Float32Array(NT * NT).fill(99), dP = new Float32Array(NT * NT).fill(99), near = new Int32Array(NT * NT).fill(-1);
+    const dK = new Float32Array(NT * NT).fill(99), nW = new Int32Array(NT * NT).fill(-1);   // tramo con acera más cercano (modelo)
     const segs = []; segIn(ci, s => segs.push(s));
     for (let n = 0; n < segs.length; n++) {
       if (n && n % 40 === 0) yield;
@@ -326,6 +401,7 @@ void main(){
           const e = Math.hypot(x - ax - dx * t, z - az - dz * t) - hw, q = j * NT + i;
           if (car && e < dA[q]) { dA[q] = e; near[q] = s; }
           if (walk && e < dS[q]) dS[q] = e;
+          if ((walk || ped) && e < dK[q]) { dK[q] = e; nW[q] = s; }
           if (ped && e < dP[q]) dP[q] = e;
         } }
     }
@@ -348,6 +424,8 @@ void main(){
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const ex = fx0 + (i + 0.5) * RES - x, ez = fz0 + (j + 0.5) * RES - z;
         if (Math.abs(ex * c + ez * sn) < 0.62 && Math.abs(-ex * sn + ez * c) < 0.62) F[(j * NT + i) * 4 + 3] = 255; }
     }
+    const FK = new Uint8Array(NT * NT * 4);
+    for (let q = 0; q < NT * NT; q++) { if (nW[q] < 0) continue; const k = kindOf(nW[q]); FK[q * 4] = k[0] * 40; FK[q * 4 + 1] = Math.round(k[1] * 255); FK[q * 4 + 3] = 255; }
     const slot = freeSlots.pop(); if (slot === undefined) return;
     const sx = (slot % SLOTS) * NT, sy = Math.floor(slot / SLOTS) * NT;
     yield;
@@ -371,9 +449,9 @@ void main(){
     }
     yield;
     // bordillo: caras verticales en la curva de nivel dA = 0 (marching squares a 0,5 m)
-    const curb = (x1, z1, x2, z2, s) => {
+    const curb = (x1, z1, x2, z2, s, cu) => {
       const t1 = walkY(s, x1, z1), t2 = walkY(s, x2, z2), b1 = s >= 0 ? roadY(s, x1, z1) - 0.03 : t1 - 0.18, b2 = s >= 0 ? roadY(s, x2, z2) - 0.03 : t2 - 0.18, base = P.length / 3;
-      P.push(x1 - ox, b1, z1 - oz, x2 - ox, b2, z2 - oz, x2 - ox, t2, z2 - oz, x1 - ox, t1, z1 - oz); UV.push(-1, 0, -1, 0, -1, 1, -1, 1);
+      P.push(x1 - ox, b1, z1 - oz, x2 - ox, b2, z2 - oz, x2 - ox, t2, z2 - oz, x1 - ox, t1, z1 - oz); UV.push(cu, 0, cu, 0, cu, 1, cu, 1);
       I.push(base, base + 1, base + 2, base, base + 2, base + 3);
     };
     for (let j = MG - 1; j < NT - MG - 1; j++) for (let i = MG - 1; i < NT - MG - 1; i++) {
@@ -384,8 +462,8 @@ void main(){
       const cxs = [[0, 0], [1, 0], [1, 1], [0, 1]], pts = [];
       for (let e = 0; e < 4; e++) { const a = e, b = (e + 1) % 4; if (pos[a] !== pos[b]) { const t = v[a] / (v[a] - v[b]);
         pts.push([fx0 + (i + 0.5 + cxs[a][0] + (cxs[b][0] - cxs[a][0]) * t) * RES, fz0 + (j + 0.5 + cxs[a][1] + (cxs[b][1] - cxs[a][1]) * t) * RES]); } }
-      const s = near[q.find(k => near[k] >= 0) ?? q[0]];
-      for (let e = 0; e + 1 < pts.length; e += 2) curb(pts[e][0], pts[e][1], pts[e + 1][0], pts[e + 1][1], s);
+      const s = near[q.find(k => near[k] >= 0) ?? q[0]], sw = nW[q.find(k => nW[k] >= 0) ?? q[0]], kk = sw >= 0 ? kindOf(sw) : [0, 0.3];
+      for (let e = 0; e + 1 < pts.length; e += 2) curb(pts[e][0], pts[e][1], pts[e + 1][0], pts[e + 1][1], s, -(2 + kk[0] + 0.9 * Math.min(kk[1], 0.99)));
     }
     yield;
     // mobiliario (furniture.js) y marcas viales (ground.js)
@@ -406,6 +484,7 @@ void main(){
     cell.pool = poolMesh;
     if (LG) LG.set(ci, poolLamps(cc.pools, ox, oz));    // baño de sodio en fachadas y copas (rejilla de facades.js)
     engine.updateTextureData(atlas.getInternalTexture(), F, sx, sy, NT, NT);
+    engine.updateTextureData(atlasK.getInternalTexture(), FK, sx, sy, NT, NT);
     let walkMesh = null;
     if (I.length) {
       walkMesh = new BABYLON.Mesh('wk' + ci, scene);
