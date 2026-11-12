@@ -390,6 +390,7 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
     // escalinatas en las esquinas (bajan de la plataforma a la acera cuando hay desnivel)
     for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), dl = Math.hypot(k[0] - c[0], k[1] - c[1]) - 1.5; W('stairs', c[0] + Math.cos(a) * dl, c[1] + Math.sin(a) * dl, a, { w: 10 }); }
     for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 48.5, c[1] + Math.sin(a) * 48.5, a); }
+    for (let k = 0; k < 8; k++) { const a = (k + 0.25) / 8 * 2 * Math.PI; W('lamp', c[0] + Math.cos(a) * 31, c[1] + Math.sin(a) * 31, a, { H: 7.5 }); }   // farolas altas sobre la explanada: luz cálida de noche en la rosa
     for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 49.5, c[1] + Math.sin(a) * 49.5, a + Math.PI); }
     for (let k = 0; k < 4; k++) { const a = k * 1.7 + 0.4, r = 14 + k * 7; W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a); }
     // setos: anillo de boj tras los macizos de flores, cortado en los paseos
@@ -841,8 +842,9 @@ window.BCN_PLAZAS = { async init(ctx) {
   let tris = 0, trisHi = 0, built = 0, queue = [], job = null;
   const bbDist = (o, P) => Math.hypot(Math.max(o.bb[0] - P.x, 0, P.x - o.bb[2]), Math.max(o.bb[1] - P.z, 0, P.z - o.bb[3]));
 
+  // P3: a 1,4 m del bordillo (allí la acera de streets.js sube y asomaba entre el césped: los «triangulitos» de Glòries)
   // ¿suelo libre de plaza? dentro del contorno, fuera de calzada (a 0,5 m del bordillo) y fuera de todo edificio
-  function free(o, x, z) { if (!inPoly(o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < 0.5) return false; return coverAt(x, z, -1) < -1e8; }
+  function free(o, x, z) { if (!inPoly(o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < (o.noPav ? 0.5 : 1.4)) return false; return coverAt(x, z, -1) < -1e8; }
   const zoneOf = (o, x, z) => { const dx = x - o.c[0], dz = z - o.c[1], u = dx * o.cu + dz * o.su, v = -dx * o.su + dz * o.cu, e = edgeDist(o.r, x, z);
     return o.sg ? o.sg.zone(u, v, x, z, e, o) : genZone(o, u, v, x, z, e); };
   // disposición genérica: borde de granito; en las medianas y grandes, parterres alineados con el eje; sauló en parques
@@ -902,7 +904,10 @@ window.BCN_PLAZAS = { async init(ctx) {
       let all = true, z0k = null, same = true;
       for (const [a, b] of pts) { const x = gx + a, z = gz + b; if (!free(o, x, z)) { all = false; break; } const zz = zoneOf(o, x, z); const k = ZK(zz); if (z0k === null) z0k = k; else if (k !== z0k) same = false; }
       if (all && same) { const zz = zoneOf(o, gx + 2, gz + 2); if (zz) quads.push([gx, gz, 4, zz]); }
-      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x = gx + i + 0.5, z = gz + j + 0.5; if (!free(o, x, z)) continue; const zz = zoneOf(o, x, z); if (zz) quads.push([gx + i, gz + j, 1, zz]); }
+      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x0 = gx + i, z0 = gz + j;
+        // P3: borde suavizado: celda entera si sus cuatro esquinas están libres, triángulo si lo están tres (sin dientes de sierra)
+        const cf = [free(o, x0, z0), free(o, x0 + 1, z0), free(o, x0 + 1, z0 + 1), free(o, x0, z0 + 1)], nf = cf[0] + cf[1] + cf[2] + cf[3];
+        if (nf < 3 && !(nf === 2 && free(o, x0 + 0.5, z0 + 0.5))) continue; const zz = zoneOf(o, x0 + 0.5, z0 + 0.5); if (zz) quads.push([x0, z0, 1, zz, false, nf === 3 ? cf.indexOf(false) : -1]); }
       if (++nb % 60 === 0) yield; } }
     yield;
     // ---- objetos de la plaza
@@ -968,14 +973,21 @@ window.BCN_PLAZAS = { async init(ctx) {
     const LGR = 9;
     const glowAt = (x, z) => { let g = 0; for (const [lx, lz, H] of lamps) { const d2 = (lx - x) ** 2 + (lz - z) ** 2, r = H * 1.5; if (d2 < 9 * r * r) g += Math.exp(-d2 / (r * r)); } return Math.min(1, g); };
     let nq = 0;
-    for (const [x, z, s, zz, top] of quads) {
+    for (const [x, z, s, zz, top, miss] of quads) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
       for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
+      const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]];
+      if (miss >= 0) {   // triángulo: las tres esquinas libres, y faldón por la hipotenusa
+        const t = [1, 2, 3].map(q => (miss + q) % 4), A = P4[t[0]], Bq = P4[t[2]], nx = P4[miss][0] - (A[0] + Bq[0]) / 2, nz = P4[miss][1] - (A[1] + Bq[1]) / 2;
+        quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, P4[t[1]][0] - ox, ys[t[1]], P4[t[1]][1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, col, 0, pav(zz[0], gs, wear));
+        const ga = gAt(A[0] + nx * 0.6, A[1] + nz * 0.6) - 0.12, gb = gAt(Bq[0] + nx * 0.6, Bq[1] + nz * 0.6) - 0.12;
+        if (ys[t[0]] - ga > 0.14 || ys[t[2]] - gb > 0.14) quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35));
+        if (++nq % 300 === 0) yield; continue; }
       quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, 0, pav(zz[0], gs, wear));
       // faldón de piedra en el borde exterior del pavimento: del canto de la plataforma hasta el suelo de fuera (algo enterrado)
       if (!top) for (const [i0, i1, nx, nz] of [[0, 1, 0, -1], [1, 2, 1, 0], [2, 3, 0, 1], [3, 0, -1, 0]]) {
-        const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]], A = P4[i0], Bq = P4[i1], mx = (A[0] + Bq[0]) / 2 + nx * 0.5, mz = (A[1] + Bq[1]) / 2 + nz * 0.5;
+        const A = P4[i0], Bq = P4[i1], mx = (A[0] + Bq[0]) / 2 + nx * 0.5, mz = (A[1] + Bq[1]) / 2 + nz * 0.5;
         if (free(o, mx, mz) && zoneOf(o, mx, mz)) continue;
         const ga = gAt(A[0] + nx * 0.4, A[1] + nz * 0.4) - 0.12, gb = gAt(Bq[0] + nx * 0.4, Bq[1] + nz * 0.4) - 0.12;
         if (ys[i0] - ga < 0.14 && ys[i1] - gb < 0.14) continue;
