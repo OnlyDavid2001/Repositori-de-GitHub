@@ -2,8 +2,9 @@
    Lleva la calle de «Transeúnte» a toda la ciudad, siguiendo la topografía real:
      · aceras de panot de 20×20 cm (el mismo generador de Transeúnte), bordillo de granito de 15 cm,
        plazas y calles peatonales enlosadas, alcorques con reja;
-     · plátanos de sombra en tres niveles: árbol completo con ramas y hojas (cerca), copa de tarjetas (media
-       distancia) e impostor (lejos), todos con instancias;
+     · árboles de calle de siete especies (trees.js: plátano, almez, naranjo, palmera —Washingtonia y Phoenix—, jacaranda, tipuana, pino), cada
+       una en tres niveles: árbol completo con ramas y hojas (cerca), copa de tarjetas (media distancia) e impostor
+       (lejos), todos con instancias; la especie se elige por calle o tramo según el barrio y el ancho;
      · mobiliario (furniture.js) y marcas viales (ground.js), que se enganchan aquí por celda.
    El asfalto (también de Transeúnte) va en el shader de calzada de app.js y cubre toda la ciudad.
    Igual que las fachadas: de lejos la ciudad simple, de cerca el detalle, construido por celdas en segundo plano.
@@ -52,32 +53,8 @@ window.BCN_STREETS = { init: async function (ctx) {
     return [mk(col), mk(nrm)];
   })();
 
-  // hojas de plátano: atlas dibujado como en Transeúnte (cerca: hojas grandes; lejos: más y menudas; impostor: silueta)
-  function leafCanvas(far, size) {
-    const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d', { willReadFrequently: true });
-    seedRaw(far ? 62 : 61);
-    const leaf = (x, y, sc, rot, gr) => {
-      g.save(); g.translate(x, y); g.rotate(rot); g.scale(sc, sc); g.beginPath(); g.moveTo(0, 1);
-      for (const [S, M] of [[-2.7, .36], [-2.15, .62], [-1.75, .42], [-1.05, .92], [-.72, .5], [-.3, .78], [0, 1.05], [.3, .78], [.72, .5], [1.05, .92], [1.75, .42], [2.15, .62], [2.7, .36]]) g.lineTo(Math.sin(S) * M, -Math.cos(S) * M);
-      g.closePath();
-      const xr = gr * 0.72 + R(-10, 10), xg = gr, xb = gr * 0.3, T = g.createLinearGradient(0, -1, 0, 1);
-      T.addColorStop(0, `rgb(${xr * 1.18 | 0},${xg * 1.16 | 0},${xb * 1.1 | 0})`); T.addColorStop(1, `rgb(${xr * 0.78 | 0},${xg * 0.8 | 0},${xb * 0.8 | 0})`);
-      g.fillStyle = T; g.fill(); g.strokeStyle = `rgba(${xr * 1.5 | 0},${xg * 1.38 | 0},${xb * 1.3 | 0},.55)`; g.lineWidth = 0.028; g.beginPath();
-      for (const S of [-1.05, -0.3, 0, 0.3, 1.05]) { g.moveTo(0, 0.55); g.lineTo(Math.sin(S) * 0.85, -Math.cos(S) * 0.85); }
-      g.stroke(); g.restore();
-    };
-    const k = size / 1024, n = far ? 240 : 96;
-    for (let u = 0; u < n; u++) { const f = R(6.28), rr = Math.pow(R(), 0.55) * size * 0.44; leaf(size / 2 + Math.cos(f) * rr, size / 2 + Math.sin(f) * rr, (far ? R(44, 74) : R(60, 104)) * k, R(6.28), 74 + R(82)); }
-    return cv;
-  }
-  function impostorCanvas() {
-    const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d', { willReadFrequently: true });
-    seedRaw(63);
-    g.fillStyle = '#6d5a44'; g.beginPath(); g.moveTo(S * 0.47, S); g.lineTo(S * 0.53, S); g.lineTo(S * 0.515, S * 0.45); g.lineTo(S * 0.485, S * 0.45); g.fill();
-    for (let i = 0; i < 1400; i++) { const a = R(6.28), rr = Math.sqrt(R()); const x = S / 2 + Math.cos(a) * rr * S * 0.46, y = S * 0.36 + Math.sin(a) * rr * S * 0.3;
-      const gr = 70 + R(90); g.fillStyle = `rgb(${gr * 0.72 | 0},${gr | 0},${gr * 0.3 | 0})`; g.beginPath(); g.arc(x, y, R(5, 13), 0, 6.3); g.fill(); }
-    return cv;
-  }
+  // hojas e impostores de las siete especies (trees.js): un atlas de hojas por especie y nivel, y una silueta lejana
+  const TR = window.BCN_TREES, NSP = TR.SP.length;
   function canvasTex(cv) {
     const g = cv.getContext('2d'), im = g.getImageData(0, 0, cv.width, cv.height), a = im.data; let r = 0, gg = 0, b = 0, n = 0;
     for (let i = 0; i < a.length; i += 4) if (a[i + 3] > 200) { r += a[i]; gg += a[i + 1]; b += a[i + 2]; n++; }
@@ -85,7 +62,9 @@ window.BCN_STREETS = { init: async function (ctx) {
     const t = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(a.buffer), cv.width, cv.height, scene, true, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
     t.hasAlpha = true; t.anisotropicFilteringLevel = 4; return t;
   }
-  const tLeafN = canvasTex(leafCanvas(false, 1024)), tLeafF = canvasTex(leafCanvas(true, 1024)), tImp = canvasTex(impostorCanvas());
+
+  const tLeafN = [], tLeafF = [], tImp = [];
+  for (let k = 0; k < NSP; k++) { tLeafN.push(canvasTex(TR.leafCanvas(k, false))); tLeafF.push(canvasTex(TR.leafCanvas(k, true))); tImp.push(canvasTex(TR.impCanvas(k))); }
 
   // ---------------------------------------------------------------- materiales
   const VS_WALK = `precision highp float;
@@ -169,7 +148,7 @@ void main(){
     return out; }
   const FS_TREE = `
 varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
-uniform float uKind; uniform vec4 uBand; uniform sampler2D tMap; uniform sampler2D tNrm;
+uniform float uKind; uniform vec4 uBand; uniform vec4 uBark; uniform vec4 uLeaf; uniform vec4 uSp; uniform sampler2D tMap; uniform sampler2D tNrm;
 ` + LG.glsl + `
 // aura nocturna (uGlow.x): las farolas iluminan el árbol desde abajo. vHl = altura local (tronco 0-5,4 m, copa ~5-12 m)
 // mucho en el tronco y la panza de la copa, casi nada arriba. De lejos, su valor medio (como la calzada)
@@ -185,8 +164,26 @@ void main(){
   // fundido entre niveles: visible si la distancia está dentro de la banda [uBand.x→uBand.y … uBand.z→uBand.w]
   if (d < smoothstep(uBand.z, uBand.w, dist) || d >= smoothstep(uBand.x, uBand.y, dist)) discard;
   vec3 tint = mix(vec3(0.86, 0.98, 0.78), vec3(1.12, 1.06, 0.84), vH);
-  if (uKind < 0.5) {                                    // corteza de plátano
+  if (uKind < 0.5) {                                    // corteza (la del plátano, teñida y menos moteada en las otras especies)
     vec3 tx = texture2D(tMap, vUV*vec2(1.0, 0.5)).rgb;
+    tx = mix(vec3(dot(tx, vec3(0.33))), tx, uBark.w)*uBark.rgb*mix(0.9, 1.1, vH);
+    if (uSp.y > 0.5) {                                  // corteza propia (vUV.x: vuelta al tronco, vUV.y: metros a lo largo)
+      vec3 bc;
+      if (uSp.y < 1.5) {                                // pino piñonero: placas rojizas separadas por grietas oscuras
+        vec2 g = vec2(vUV.x*16.0, vUV.y*3.6); float row = floor(g.y); g.x += hash21(vec2(row, 3.0))*7.0 + vnoise(g*0.7)*0.7;
+        vec2 f = fract(g); float h = hash21(floor(g)), e = min(min(f.x, 1.0 - f.x)*1.5, min(f.y, 1.0 - f.y)) + (vnoise(g*3.0) - 0.5)*0.14;
+        bc = mix(vec3(0.16, 0.14, 0.13), mix(vec3(0.36, 0.24, 0.18), vec3(0.50, 0.32, 0.23), h)*(0.84 + 0.3*vnoise(g*5.0)), smoothstep(0.04, 0.16, e));
+      } else if (uSp.y < 2.5) {                         // Washingtonia: fibra vertical gris parda con anillos tenues
+        float sF = vnoise(vec2(vUV.x*90.0, vUV.y*1.5))*0.6 + vnoise(vec2(vUV.x*30.0, vUV.y*0.6))*0.4;
+        float ring = smoothstep(0.8, 1.0, abs(sin(vUV.y*8.0 + vnoise(vUV*vec2(8.0, 2.0))*2.0)));
+        bc = mix(vec3(0.30, 0.26, 0.21), vec3(0.56, 0.49, 0.40), sF)*(1.0 - 0.22*ring);
+      } else {                                          // Phoenix: rombos de las bases de hoja cortadas
+        vec2 g = vec2(vUV.x*13.0, vUV.y*3.0), dd = vec2(g.x + g.y, g.x - g.y), f = fract(dd) - 0.5;
+        float e = max(abs(f.x), abs(f.y)), h = hash21(floor(dd));
+        bc = mix(vec3(0.50, 0.42, 0.31)*(0.84 + 0.26*h)*mix(0.8, 1.05, f.y + 0.5), vec3(0.3, 0.24, 0.18), smoothstep(0.42, 0.49, e))*(0.86 + 0.28*vnoise(g*4.0));
+      }
+      tx = bc*mix(0.9, 1.1, vH);
+    }
     vec3 n = normalize(vN); vec3 tn = texture2D(tNrm, vUV*vec2(1.0, 0.5)).xyz*2.0 - 1.0;
     n = normalize(n + vec3(tn.x, tn.y*0.3, tn.x)*0.45);
     vec3 c = lit(tx*1.35, n);
@@ -195,12 +192,21 @@ void main(){
   }
   vec4 tx = texture2D(tMap, vUV);
   if (tx.a < 0.5) discard;
-  vec3 alb = tx.rgb*tint*(uKind > 1.5 ? 0.66 : 0.86);
-  alb = mix(vec3(dot(alb, vec3(0.3, 0.6, 0.1))), alb, 0.82);   // verde de plátano, menos saturado
+  // flor (jacaranda): los píxeles lilas del atlas; en los ejemplares sin flor (vH > uSp.x) se vuelven verde de hoja
+  float fl = smoothstep(0.0, 0.06, tx.b - tx.g);
+  vec3 txc = mix(tx.rgb, vec3(0.42, 0.62, 0.28)*dot(tx.rgb, vec3(0.4)), fl*step(uSp.x, vH));
+  fl *= step(vH, uSp.x);
+  // de lejos el atlas mezcla flor y hoja (gris azulado): en los ejemplares en flor se empuja hacia el lila
+  txc = mix(txc, vec3(0.70, 0.50, 0.92)*dot(txc, vec3(0.36))*1.25, fl*0.55*smoothstep(15.0, 90.0, dist));
+  vec3 alb = txc*mix(tint, vec3(1.0), fl*0.7)*uLeaf.rgb*(uKind > 1.5 ? 0.66 : 0.86);
+  alb = mix(vec3(dot(alb, vec3(0.3, 0.6, 0.1))), alb, mix(uLeaf.w, 1.0, fl));   // verde menos saturado (la flor, no)
   vec3 n = normalize(vN); if (dot(n, V) < 0.0) n = mix(-n, n, 0.4);
   vec3 c = lit(alb, normalize(n + vec3(0.0, 0.35, 0.0)));
   float bt = pow(max(dot(-V, uSunDir), 0.0), 3.0)*0.85 + max(dot(-n, uSunDir), 0.0)*0.26;
   c += alb*vec3(1.05, 1.2, 0.55)*uSunCol*bt*0.3;
+  // luz sobre la copa: la cara de arriba (normal al cielo y al sol) más clara y más cálida, para que desde el aire no sean bolas oscuras
+  float top = smoothstep(0.15, 0.85, n.y)*sqrt(max(uSunDir.y, 0.0));
+  c += alb*uSunCol*vec3(1.0, 1.05, 0.8)*top*0.32*(1.0 - uNight);
   if (uGlow.x > 0.001) {
     // de noche, vista desde arriba (cámara por encima de la hoja), la copa es una masa casi negra: la farola solo alumbra la cara
     // de abajo (normal hacia abajo) y deja un borde cálido justo encima de cada luminaria (rejilla de farolas). Desde abajo, como antes
@@ -212,74 +218,14 @@ void main(){
   }
   FRAG(c);
 }`;
-  const mkTreeMat = (name, kind, map, nrm) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand'], ['tMap', 'tNrm', 'tLamp']);
-    m.setTexture('tLamp', LG.tex); m.setFloat('uKind', kind); m.setTexture('tMap', map); m.setTexture('tNrm', nrm || map); m.setVector4('uBand', new BABYLON.Vector4(0, 0, 1e9, 1e9)); return m; };
-  const mBarkN = mkTreeMat('barkN', 0, tBkD, tBkN), mLeafN = mkTreeMat('leafN', 1, tLeafN), mBarkF = mkTreeMat('barkF', 0, tBkD, tBkN), mLeafF = mkTreeMat('leafF', 1, tLeafF), mImp = mkTreeMat('imp', 2, tImp);
+  const mkTreeMat = (name, kind, map, nrm, sp) => { const m = mkMat(name, VS_TREE, FS_TREE, ['position', 'normal', 'uv'], ['uKind', 'uBand', 'uBark', 'uLeaf', 'uSp'], ['tMap', 'tNrm', 'tLamp']);
+    m.setTexture('tLamp', LG.tex); m.setFloat('uKind', kind); m.setTexture('tMap', map); m.setTexture('tNrm', nrm || map); m.setVector4('uBand', new BABYLON.Vector4(0, 0, 1e9, 1e9));
+    m.setVector4('uBark', BABYLON.Vector4.FromArray(sp.bark)); m.setVector4('uLeaf', BABYLON.Vector4.FromArray(sp.leaf)); m.setVector4('uSp', new BABYLON.Vector4(sp.fl, sp.bm || 0, 0, 0)); return m; };
+  // por especie k: TMAT[k] = { barkN, leafN, barkF, leafF, imp } (mismo programa de sombreado para todas)
+  const TMAT = TR.SP.map((sp, k) => ({ barkN: mkTreeMat('barkN' + k, 0, tBkD, tBkN, sp), leafN: mkTreeMat('leafN' + k, 1, tLeafN[k], null, sp), barkF: mkTreeMat('barkF' + k, 0, tBkD, tBkN, sp),
+    leafF: mkTreeMat('leafF' + k, 1, tLeafF[k], null, sp), imp: mkTreeMat('imp' + k, 2, tImp[k], null, sp) }));
 
-  // ---------------------------------------------------------------- geometría del plátano (como en Transeúnte)
-  function treeGeo(hi) {
-    seedRaw(5);
-    const P = [], Nn = [], U = [], I = [];
-    const ring = (c, ax, r, sides, v) => { // anillo perpendicular a ax
-      let ux = -ax[2], uy = 0, uz = ax[0]; let l = Math.hypot(ux, uy, uz); if (l < 1e-4) { ux = 1; uz = 0; l = 1; } ux /= l; uz /= l;
-      const wx = ax[1] * uz - ax[2] * uy, wy = ax[2] * ux - ax[0] * uz, wz = ax[0] * uy - ax[1] * ux;
-      const base = P.length / 3;
-      for (let k = 0; k <= sides; k++) { const a = k / sides * 6.2832, ca = Math.cos(a), sa = Math.sin(a);
-        const nx = ux * ca + wx * sa, ny = uy * ca + wy * sa, nz = uz * ca + wz * sa;
-        P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); Nn.push(nx, ny, nz); U.push(k / sides, v); }
-      return base;
-    };
-    const tube = (pts, rad, sides) => {
-      let prev = -1, v = 0;
-      for (let k = 0; k < pts.length; k++) {
-        const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], ax = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...ax); ax[0] /= l; ax[1] /= l; ax[2] /= l;
-        if (k) v += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1], pts[k][2] - pts[k - 1][2]);
-        const cur = ring(pts[k], ax, rad(k / (pts.length - 1)), sides, v);
-        if (prev >= 0) for (let s = 0; s < sides; s++) I.push(prev + s, cur + s, cur + s + 1, prev + s, cur + s + 1, prev + s + 1);
-        prev = cur;
-      }
-    };
-    const NT = hi ? 14 : 4, trunk = [];
-    for (let k = 0; k <= NT; k++) trunk.push([0, k / NT * 5.4, 0]);
-    tube(trunk, E => 0.3 * (1 - E * 0.5) + 0.2 * Math.pow(1 - Math.min(1, E * 5), 2), hi ? 14 : 6);
-    const tips = [];
-    const br = (E, dir, len, rad, depth) => {
-      const Pp = [E[0] + dir[0] * len, E[1] + dir[1] * len, E[2] + dir[2] * len];
-      const M = [(E[0] + Pp[0]) / 2 + R(-0.25, 0.25), (E[1] + Pp[1]) / 2 + R(-0.1, 0.2), (E[2] + Pp[2]) / 2 + R(-0.25, 0.25)];
-      tube([E, M, Pp], t => rad * (1 - 0.5 * t), depth === 0 ? (hi ? 9 : 5) : depth === 1 ? 5 : 3);
-      if (depth >= (hi ? 3 : 0)) { tips.push(Pp); return; }
-      for (let b = 0; b < 3; b++) {
-        const a = R(6.28), q = R(0.25, 0.6); let W = [dir[0] + Math.cos(a) * q, dir[1] + R(0.05, 0.4), dir[2] + Math.sin(a) * q]; const l = Math.hypot(...W); W = W.map(x => x / l);
-        const Z = b === 0 ? 1 : R(0.55, 0.9);
-        br([E[0] + (Pp[0] - E[0]) * Z, E[1] + (Pp[1] - E[1]) * Z, E[2] + (Pp[2] - E[2]) * Z], W, len * 0.68, rad * 0.55, depth + 1);
-      }
-    };
-    for (let k = 0; k < 5; k++) { const a = k * 1.257 + R(0.3); br([0, 4.9 + k * 0.1, 0], [Math.cos(a) * 0.66, 0.75, Math.sin(a) * 0.66], R(3.1, 3.9), 0.19, 0); }
-    const bark = { P: new Float32Array(P), N: new Float32Array(Nn), U: new Float32Array(U), I: new Uint32Array(I) };
-    return { bark, tips };
-  }
-  function leafGeo(tips, n, s0, s1, D) {
-    seedRaw(41);
-    const fy = tips.reduce((a, t) => a + t[1], 0) / tips.length;
-    const P = [], N = [], U = [], I = [];
-    for (let q = 0; q < n; q++) {
-      const W = tips[Math.floor(R() * tips.length)], x = W[0] + R(-D, D), y = W[1] + R(-D * 0.7, D * 0.8), z = W[2] + R(-D, D), s = R(s0, s1), t = R(6.28), c = R(-1.2, 1.2);
-      const a = [Math.cos(t), 0, Math.sin(t)], b = [-Math.sin(t) * Math.sin(c), Math.cos(c), Math.cos(t) * Math.sin(c)], base = P.length / 3;
-      for (const [w, e] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        const px = x + (a[0] * w + b[0] * e) * s, py = y + (a[1] * w + b[1] * e) * s, pz = z + (a[2] * w + b[2] * e) * s;
-        P.push(px, py, pz); const nx = px, ny = py - fy + 1.2, nz = pz, l = Math.hypot(nx, ny, nz); N.push(nx / l, ny / l, nz / l); U.push((w + 1) / 2, (e + 1) / 2);
-      }
-      I.push(base, base + 1, base + 2, base, base + 2, base + 3);
-    }
-    return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
-  }
-  function impGeo() {
-    const P = [], N = [], U = [], I = [];
-    for (const a of [0, Math.PI / 2]) { const c = Math.cos(a) * 5.2, s = Math.sin(a) * 5.2, base = P.length / 3;
-      for (const [w, h, u, v] of [[-1, 0, 0, 0], [1, 0, 1, 0], [1, 12.5, 1, 1], [-1, 12.5, 0, 1]]) { P.push(c * w, h, s * w); N.push(-s / 5.2, 0.3, c / 5.2); U.push(u, v); }
-      I.push(base, base + 1, base + 2, base, base + 2, base + 3); }
-    return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
-  }
+  // ---------------------------------------------------------------- geometría de las especies (trees.js) e instancias
   const mkGeoMesh = (name, g, mat) => {
     const m = new BABYLON.Mesh(name, scene);
     m.setVerticesData('position', g.P, false); m.setVerticesData('normal', g.N, false); m.setVerticesData('uv', g.U, false); m.setIndices(g.I);
@@ -287,15 +233,16 @@ void main(){
     m.thinInstanceSetBuffer('matrix', new Float32Array(16), 16, false); m.thinInstanceCount = 0;
     return m;
   };
-  const gHi = treeGeo(true), gLo = treeGeo(false);
-  const TM = {
-    nearBark: mkGeoMesh('tNB', gHi.bark, mBarkN), nearLeaf: mkGeoMesh('tNL', leafGeo(gHi.tips, 620, 0.42, 0.78, 1), mLeafN),
-    farBark: mkGeoMesh('tFB', gLo.bark, mBarkF), farLeaf: mkGeoMesh('tFL', leafGeo(gHi.tips, 90, 1.15, 1.9, 1.2), mLeafF),
-    imp: mkGeoMesh('tI', impGeo(), mImp),
-  };
-  reg(TM.nearBark, { cast: true, layer: 'tree' }); reg(TM.nearLeaf, { cast: true, alphaTex: tLeafN, layer: 'tree' });
-  reg(TM.farBark, { cast: true, layer: 'tree' }); reg(TM.farLeaf, { cast: true, alphaTex: tLeafF, layer: 'tree' });
-  reg(TM.imp, { cast: false, alphaTex: tImp, layer: 'imp' });
+  // TMS[k] = mallas de la especie k (nombres tNB/tNL/tFB/tFL/tI + k: lighting.js separa las cascadas por el prefijo tN/tF)
+  const TMS = [], TRIS = [];
+  for (let k = 0; k < NSP; k++) { const G = TR.build(k), M = TMAT[k];
+    const t = { nearBark: mkGeoMesh('tNB' + k, G.nearBark, M.barkN), nearLeaf: mkGeoMesh('tNL' + k, G.nearLeaf, M.leafN),
+      farBark: mkGeoMesh('tFB' + k, G.farBark, M.barkF), farLeaf: mkGeoMesh('tFL' + k, G.farLeaf, M.leafF), imp: mkGeoMesh('tI' + k, G.imp, M.imp) };
+    reg(t.nearBark, { cast: true, layer: 'tree' }); reg(t.nearLeaf, { cast: true, alphaTex: tLeafN[k], layer: 'tree' });
+    reg(t.farBark, { cast: true, layer: 'tree' }); reg(t.farLeaf, { cast: true, alphaTex: tLeafF[k], layer: 'tree' });
+    reg(t.imp, { cast: false, alphaTex: tImp[k], layer: 'imp' });
+    TMS.push(t); TRIS.push([(G.nearBark.I.length + G.nearLeaf.I.length) / 3, (G.farBark.I.length + G.farLeaf.I.length) / 3, G.imp.I.length / 3]); }
+  const allTM = TMS.flatMap(t => Object.values(t));
 
   // ---------------------------------------------------------------- tramos: utilidades
   const segIn = (ci, f) => { // tramos de la celda y de sus 8 vecinas, sin repetir
@@ -323,6 +270,7 @@ void main(){
       const rambla = cls === 7 && hw >= 4.5; if (!(TREE.has(cls) && hw >= 2.4) && !rambla) continue;
       const ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L = Math.hypot(dx, dz); if (L < 2) continue;
       const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 10.5, a0 = ax * tx + az * tz;
+      const spc = TR.pick(s, ax, az, SEG[o + 2], SEG[o + 3], hw, rambla);   // especie: la misma en toda la calle o tramo
       for (let u = Math.ceil(a0 / sp) * sp - a0; u < L; u += sp) for (const side of [-1, 1]) {
         const off = rambla ? hw - 1.2 : hw + 1.3, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (x < x0 || x >= x0 + CS || z < z0 || z >= z0 + CS) continue;
@@ -333,12 +281,12 @@ void main(){
         const [ns, nd] = nearestCar(x, z); if (nd < 1.0) continue;
         if (coverAt(x, z, -1) > -1e8 || !rambla && coverAt(x + px * side * 1.4, z + pz * side * 1.4, -1) > -1e8) continue;
         const y = walkY(ns, x, z), h = hash2(Math.round(x * 7), Math.round(z * 7));
-        out.push(x, y - 0.17, z, h * 6.2832, 0.9 + 0.38 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx));
+        out.push(x, y - 0.17, z, h * 6.2832, 0.9 + 0.38 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), spc);
       }
     }
     t = new Float32Array(out);
-    const mats = new Float32Array(t.length / 6 * 16), m = new BABYLON.Matrix(), q = new BABYLON.Quaternion(), v = new BABYLON.Vector3(), sc = new BABYLON.Vector3();
-    for (let k = 0, w = 0; k < t.length; k += 6, w += 16) {
+    const mats = new Float32Array(t.length / 7 * 16), m = new BABYLON.Matrix(), q = new BABYLON.Quaternion(), v = new BABYLON.Vector3(), sc = new BABYLON.Vector3();
+    for (let k = 0, w = 0; k < t.length; k += 7, w += 16) {
       BABYLON.Quaternion.RotationYawPitchRollToRef(t[k + 3], 0, 0, q); v.set(t[k], t[k + 1], t[k + 2]); sc.set(t[k + 4], t[k + 4] * (0.95 + 0.17 * ((t[k + 3] * 7) % 1)), t[k + 4]);
       BABYLON.Matrix.ComposeToRef(sc, q, v, m); mats.set(m.m, w);
     }
@@ -379,7 +327,7 @@ void main(){
     yield;
     // árboles de la celda y vecinas (para los alcorques)
     const pits = [];
-    for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const T = treesOf(j * NX + i); for (let k = 0; k < T.length; k += 6) pits.push(T[k], T[k + 2], T[k + 5]); }
+    for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const T = treesOf(j * NX + i); for (let k = 0; k < T.length; k += 7) pits.push(T[k], T[k + 2], T[k + 5]); }
     yield;
     // campo → RGBA
     const F = new Uint8Array(NT * NT * 4);
@@ -568,34 +516,38 @@ void main(){
   let pendingTrees = [];
   function instances(P) {
     const r = S.tI + 60, c0 = Math.floor((P.x - r) / CS), c1 = Math.floor((P.x + r) / CS), d0 = Math.floor((P.z - r) / CS), d1 = Math.floor((P.z + r) / CS);
-    const sel = [[], [], []], cnt = [0, 0, 0];
+    const sel = [], cnt = [];   // por nivel g y especie k: índice g*NSP + k
+    for (let q = 0; q < 3 * NSP; q++) { sel.push([]); cnt.push(0); }
     pendingTrees = [];
     for (let j = Math.max(0, d0); j <= Math.min(NZ - 1, d1); j++) for (let i = Math.max(0, c0); i <= Math.min(NX - 1, c1); i++) {
       const dx = Math.max(i * CS - P.x, 0, P.x - (i + 1) * CS), dz = Math.max(j * CS - P.z, 0, P.z - (j + 1) * CS); if (Math.hypot(dx, dz) > r) continue;
       const ci = j * NX + i, T = treeCache.get(ci);
       if (!T) { pendingTrees.push([Math.hypot(dx, dz), ci]); continue; }
-      for (let k = 0, w = 0; k < T.length; k += 6, w += 16) {
-        const d = Math.hypot(T[k] - P.x, T[k + 1] + 6 - P.y, T[k + 2] - P.z);
-        if (d < S.tN[1] + 2) { sel[0].push(T.mats, w); cnt[0]++; }
-        if (d > S.tN[0] - 2 && d < S.tF[1] + 2) { sel[1].push(T.mats, w); cnt[1]++; }
-        if (d > S.tF[0] - 2 && d < S.tI) { sel[2].push(T.mats, w); cnt[2]++; }
+      for (let k = 0, w = 0; k < T.length; k += 7, w += 16) {
+        const d = Math.hypot(T[k] - P.x, T[k + 1] + 6 - P.y, T[k + 2] - P.z), e = T[k + 6];
+        if (d < S.tN[1] + 2) { sel[e].push(T.mats, w); cnt[e]++; }
+        if (d > S.tN[0] - 2 && d < S.tF[1] + 2) { sel[NSP + e].push(T.mats, w); cnt[NSP + e]++; }
+        if (d > S.tF[0] - 2 && d < S.tI) { sel[2 * NSP + e].push(T.mats, w); cnt[2 * NSP + e]++; }
       }
     }
     pendingTrees.sort((a, b) => a[0] - b[0]);
-    const groups = [[TM.nearBark, TM.nearLeaf], [TM.farBark, TM.farLeaf], [TM.imp]];
-    for (let g = 0; g < 3; g++) {
-      const b = new Float32Array(Math.max(16, cnt[g] * 16)), L = sel[g];
+    const n3 = [0, 0, 0], ntri = [0, 0, 0], nsp = new Array(NSP).fill(0);
+    for (let q = 0; q < 3 * NSP; q++) {
+      const g = (q / NSP) | 0, e = q % NSP, t = TMS[e], groups = g === 0 ? [t.nearBark, t.nearLeaf] : g === 1 ? [t.farBark, t.farLeaf] : [t.imp];
+      const b = new Float32Array(Math.max(16, cnt[q] * 16)), L = sel[q];
       for (let k = 0, w = 0; k < L.length; k += 2, w += 16) b.set(L[k].subarray(L[k + 1], L[k + 1] + 16), w);
-      for (const me of groups[g]) { me.thinInstanceSetBuffer('matrix', b, 16, false); me.thinInstanceCount = cnt[g]; }
+      for (const me of groups) { me.thinInstanceSetBuffer('matrix', b, 16, false); me.thinInstanceCount = cnt[q]; }
+      n3[g] += cnt[q]; ntri[g] += cnt[q] * TRIS[e][g]; if (g < 2) nsp[e] += cnt[q];
     }
-    nTrees = cnt;
+    nTrees = n3; treeTris = ntri; treeSp = nsp;
   }
-  let nTrees = [0, 0, 0];
+  let nTrees = [0, 0, 0], treeTris = [0, 0, 0], treeSp = [];
   const band = (m, a, b, c, d) => m.setVector4('uBand', new BABYLON.Vector4(a, b, c, d));
   function setBands() {
-    band(mBarkN, -2, -1, S.tN[0], S.tN[1]); band(mLeafN, -2, -1, S.tN[0], S.tN[1]);
-    band(mBarkF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]); band(mLeafF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]);
-    band(mImp, S.tF[0], S.tF[1], S.tI - 200, S.tI);
+    for (const M of TMAT) {
+      band(M.barkN, -2, -1, S.tN[0], S.tN[1]); band(M.leafN, -2, -1, S.tN[0], S.tN[1]);
+      band(M.barkF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]); band(M.leafF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]);
+      band(M.imp, S.tF[0], S.tF[1], S.tI - 200, S.tI); }
     matW.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1));
   }
   function update(P, groundY, dt) {
@@ -620,14 +572,25 @@ void main(){
     const k = q >= 2 ? 1.4 : 1;
     Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [430 * k, 520 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
     setBands();
-    if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of Object.values(TM)) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; }
+    if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; }
     lastIP = null; planT = 0;
   }
   setRange(1);
   const busy = () => !!job || queue.length > 0 || pendingTrees.length > 0;
   // vaciado de golpe (arnés de capturas): hasta que no quede nada pendiente, y una pasada más para asentar las instancias
   function flush(P, groundY) { let n = 0; for (let pass = 0; pass < 2; pass++) do { update(P, groundY, 0.5, 0); } while (busy() && ++n < 100000); update(P, groundY, 0.5, 0); }   // dos pasadas: la segunda planifica el mobiliario de detalle de las celdas recién hechas
-  return { update, setRange, flush, busy,
-    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, trees: nTrees, treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
+  // árbol de la especie k más cercano a (x, z) entre las celdas ya calculadas (pruebas y hojas de contacto): [x, y, z, ángulo de la calle]
+  function findTree(k, x, z) { let best = null, bd = 1e18;
+    for (const T of treeCache.values()) for (let i = 0; i < T.length; i += 7) if (k < 0 || T[i + 6] === k) { const d = (T[i] - x) ** 2 + (T[i + 2] - z) ** 2; if (d < bd) { bd = d; best = [T[i], T[i + 1], T[i + 2], T[i + 5]]; } }
+    if (best) {                                         // para las vistas de prueba: dirección (unitaria) del árbol al eje de la calzada y distancia
+      const o = nearestCar(best[0], best[2])[0] * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L2 = dx * dx + dz * dz || 1;
+      const u = Math.max(0, Math.min(1, ((best[0] - ax) * dx + (best[2] - az) * dz) / L2)), qx = ax + dx * u - best[0], qz = az + dz * u - best[2], ad = Math.hypot(qx, qz) || 1;
+      best.push(qx / ad, qz / ad, ad); }
+    return best; }
+  // para las vistas de prueba: ¿es (x, z) suelo libre (ni dentro de un edificio ni en mitad de la calzada)?
+  const free = (x, z) => coverAt(x, z, -1) < -1e8 && nearestCar(x, z)[1] > 0.3;
+  const api = { update, setRange, flush, busy, findTree, free, lastCam: null,
+    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
+  return api;
 } };
 })();
