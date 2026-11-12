@@ -964,13 +964,23 @@ window.BCN_AERO = { async init(ctx) {
   // AE3: césped del campo de vuelo (data/aero_cesped.json: filas de celdas de 6 m en el marco de las pistas 07/25, solo donde
   // el mapa del suelo es verde dentro del recinto, lejos de pistas, rodaje, plataformas y terminales); tramos de ≤ 90 m
   let nCes = 0;
-  const ces = await cesP;
+  const ces = await cesP; await dataT;
   if (ces) { const U = ces.u, Vv = ces.v, C = ces.c, O = ces.o;
     const dRw = (x, z) => { let m = 1e9; for (const p of d.pistas) m = Math.min(m, segDist([x, z], p.a, p.b) - p.w / 2); return Math.max(m, 0); };
     const dTx = (x, z) => { let m = 1e9; for (const pl of d.rodaje) for (let i = 0; i + 1 < pl.length; i++) { const a = pl[i], b = pl[i + 1];
       if (Math.abs(x - a[0]) > 400 && Math.abs(x - b[0]) > 400) continue; m = Math.min(m, segDist([x, z], a, b) - 11.5); } return Math.max(m, 0); };
     const W = (uu, vv) => [O[0] + U[0] * uu + Vv[0] * vv, O[1] + U[1] * uu + Vv[1] * vv];
-    for (const row of ces.filas) { const j = row[0], va = ces.v0 + j * C - 0.35, vb = va + C + 0.7;
+    // fuera del césped: el lado tierra de la T1 (bordillos, viaducto) y los aparcamientos (el verde del mapa bajo el viaducto)
+    const cf = curbFrame(d), lots = ((DATA.t && DATA.t.aparcamientos) || []).map(l => l.p).concat(DATA.t && DATA.t.p1 ? [DATA.t.p1] : []);
+    const excl = (x, z) => { const o = x * cf.n[0] + z * cf.n[1] - cf.f, u = x * cf.t[0] + z * cf.t[1]; if (o > -10 && o < 60 && u > cf.u0 - 60 && u < cf.u1 + 60) return true;
+      for (const P of lots) if (inPoly(P, x, z)) return true; return false; };
+    const filas = [];
+    for (const row of ces.filas) { const j = row[0], vm = ces.v0 + (j + 0.5) * C, out = [j];
+      for (let r = 1; r + 1 < row.length; r += 2) { let a = -1;
+        for (let i = row[r]; i <= row[r + 1]; i++) { const ok = i < row[r + 1] && !excl(...W(ces.u0 + (i + 0.5) * C, vm));
+          if (ok && a < 0) a = i; if (!ok && a >= 0) { out.push(a, i); a = -1; } } }
+      if (out.length > 1) filas.push(out); }
+    for (const row of filas) { const j = row[0], va = ces.v0 + j * C - 0.35, vb = va + C + 0.7;
       for (let r = 1; r + 1 < row.length; r += 2) { const ua = ces.u0 + row[r] * C - 0.35, ub = ces.u0 + row[r + 1] * C + 0.35, US = [ua];
         for (let g = Math.floor(ua / 90) * 90 + 90; g < ub - 1; g += 90) US.push(g); US.push(ub); const ns = US.length - 1;
         const b0 = P.length / 3;

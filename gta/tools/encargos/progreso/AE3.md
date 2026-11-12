@@ -30,3 +30,33 @@
    pista `aero_veh_*` (por celdas de 450 m) 800 m, aparcamientos 850 m, coches del P1 `aero_p1_coches` 850 m, torres de
    focos `aero_focos_*` (por celdas) 900 m, rótulos 700 m. Medidas en el informe.
 7. Terminal de carga, combustible y hangares: no hecho (sin margen).
+
+## Coste (triángulos dibujados, `scene.getActiveIndices()/3`; «aero» = mallas lm_aero*/aero*, mismas vistas, 640×360)
+| vista | escena antes | escena después | aero antes | aero después |
+|---|---|---|---|---|
+| aereo_dia (2 200 m de alto) | 2 525 790 | 2 383 632 | 256 415 | 114 257 |
+| t1_dron | 1 001 667 | 884 627 | 233 347 | 116 307 |
+| t2_dron | 1 063 263 | 982 189 | 179 469 | 98 515 |
+| t1_bordillo (a pie) | 555 400 | 585 549 | 145 396 | 177 686 |
+| pie_lejos (a pie, a 600 m) | 2 674 273 | 2 605 893 | 256 415 | 188 905 |
+Hitos registrados (BCN.lm.stats().tris): 341 742 → 360 414 (+18,7 k: procesadores, bordillo, lo menudo ~9 k, edificios
+de servicio), pero desde el aire se dibujan 140 k menos del aeropuerto. Césped: ~4 200 tramos en la malla de marcas
+(una llamada más de nada: va en la misma malla). Rótulos: 1 malla, ~300 triángulos. Nada por fotograma.
+
+## Flojo
+- Nota 4: la conversión es genérica por tamaño; en `t1_tierra` siguen viéndose el bloque curvo y el bloque blanco con
+  ventanas al este del P1: no salen del registro en mi recuadro (otra ficha u otro módulo); no identificado.
+- El césped sale de la clasificación de color del mapa a 6 m: en diagonales (02/20, calles de rodaje oblicuas) se ven
+  escalones, y quedan parches grises del mapa (zonas pavimentadas o tierra) sin césped. Es más verde que la ortofoto.
+- Coches de los aparcamientos a más de 850 m: desde el dron de la T2 los aparcamientos del fondo se ven vacíos.
+- Vestíbulos de llegadas: el vidrio se lee oscuro, casi como caja negra. De noche el techo del viaducto queda muy oscuro.
+- Gente y coches son de cajas (perfil extruido para los coches); de cerca, esquemáticos.
+- Terminal de carga, combustible y hangares (nota 7): sin hacer.
+
+## Para DESARROLLO.md
+- `data/aero_cesped.json` (filas de celdas de 6 m en el marco de las pistas; script en scratchpad n3/ae3/ces.py).
+- aeropuerto.js: `curbFrame(d)` (recta del bordillo de la T1), `procT1/procT2` (recorte por semiplanos `clipHP`),
+  `offs()` (desplazamiento de polígonos). Fichas nuevas: `aero_t1_menudo`, `aero_p1_coches`, `aero_edificis`,
+  `aero_veh_<celda>` y `aero_focos_<celda>` (celdas de 450 m, creadas en el init de los hitos). Tras los hitos,
+  `addLODLevel(d, null)` a lo pequeño (tabla `LODD`). Material `aero_rotulos` (atlas de texto, retroiluminado de noche).
+  En la malla de marcas, color.a = 128 es césped (rw.x/rw.y = distancia a pista/rodaje).
