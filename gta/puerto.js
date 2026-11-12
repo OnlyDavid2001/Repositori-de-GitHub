@@ -278,18 +278,18 @@ function deposits(id, nombre, lista) {
       for (const t of lista) {
         const [, wx, wz, dd] = t, lx = wx - h.x, lz = wz - h.z, r = dd / 2, y0 = h.y(lx, lz) - 0.3;
         const big = dd >= 50, H = big ? 36 : dd < 8 ? Math.max(4, dd * 0.9) : Math.min(22, 6 + dd * 0.36), col = cols[Math.floor(R() * cols.length)];
-        const lados = dd > 30 ? 24 : dd > 12 ? 16 : 10;
+        const lados = dd > 30 ? 18 : dd > 12 ? 12 : 8;                                              // PU2: menos lados (coste)
         L.tambor(B, lx, lz, y0, y0 + H, r, { lados, col, k: K.METAL, aux: AUX.panel(2.4, 0.12, 0), sinTapa: true });
         if (big) L.cupula(B, lx, lz, y0 + H, r, r * 0.22, { lados, col: mix(col, C.gris, 0.2), k: K.METAL });
         else { L.tambor(B, lx, lz, y0 + H, y0 + H + Math.max(0.6, r * 0.12), r, { r1: r * 0.25, lados, col: mix(col, C.gris, 0.35), k: K.METAL });
-          if (dd > 10) L.tambor(B, lx, lz, y0 + H - 0.8, y0 + H, r + 0.12, { lados, col: mix(col, C.hormOsc, 0.5), k: K.METAL, sinTapa: true }); }
+          if (dd > 18) L.tambor(B, lx, lz, y0 + H - 0.8, y0 + H, r + 0.12, { lados, col: mix(col, C.hormOsc, 0.5), k: K.METAL, sinTapa: true }); }
         if (dd > 18) {                                                                                                  // escalera de caracol (tramo recto en diagonal)
           const a0 = R() * 6.283, a1 = a0 + 0.9, p = (a, y) => [lx + Math.cos(a) * (r + 0.7), y, lz + Math.sin(a) * (r + 0.7)];
           barra(B, p(a0, y0 + 0.5), p(a1, y0 + H), 0.35, [140, 142, 140]);
           if (big) for (let k = 0; k < 3; k++) bx(B, lx, lz, y0 + H + r * 0.22 - 0.4 + k * 1.2, 1, 1, 1, 0, [255, 40, 30], K.EMISIVO, LUZ(1.2));
         }
         // cubeto (murete de contención) en los grandes
-        if (dd > 30) L.anillo(B, lx, lz, r + 7, r + 7.6, y0 + 1.6, { lados: 24, col: C.hormigon, k: K.LISO });
+        if (dd > 30) L.anillo(B, lx, lz, r + 7, r + 7.6, y0 + 1.6, { lados: 16, col: C.hormigon, k: K.LISO });
         pts.push([lx, lz, r, y0]);
       }
       // tuberías: cada depósito con su vecino más cercano, sobre soportes bajos
@@ -407,6 +407,175 @@ function silos() {
     } });
 }
 
+// ================================================================ PU2 · zona de mercancías (ZAL, Zona Franca, Mercabarna) y playa de vías
+// Datos: data/puerto_pu2.js (window.BCN_PUERTO2_DATA, generado con Nominatim y el registro de edificios; ver progreso/PU2.md):
+// naves por zona (ids del registro: área ≥ 1 100 m², 3,5–24 m de alto, dentro de los recintos de Nominatim), cajas de todos
+// los edificios de cada recinto (para no meter camiones ni vallas dentro de otro edificio), contornos y eje de la playa de vías.
+const PD2 = window.BCN_PUERTO2_DATA;
+const MUROS = [[214, 216, 214], [198, 202, 206], [226, 222, 210], [178, 188, 198], [158, 166, 172], [208, 200, 184], [190, 196, 188], [222, 224, 226]];
+const ACENTO = [[40, 86, 150], [176, 52, 42], [52, 120, 76], [70, 74, 80], [226, 160, 40], [30, 120, 150]];
+const PUERTA = [[96, 104, 112], [70, 92, 130], [180, 168, 120], [128, 134, 138], [60, 66, 72]];
+const LONA = [[232, 232, 228], [220, 220, 214], [150, 40, 36], [44, 70, 120], [236, 236, 230], [70, 110, 80], [200, 200, 196]];
+const pip = (x, z, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j];
+  if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+// remolque de camión (+Z hacia la cabeza tractora); cab: con tractora; furgo: camión rígido corto
+function remolque(B, colLona, colCab, cab, furgo) {
+  if (furgo) { bx(B, 0, -1, 0.7, 2.4, 6.6, 2.7, 0, colLona, K.METAL, AUX.panel(1.1, 0.04, 0)); bx(B, 0, 0, 0.25, 2.1, 8.6, 0.5, 0, C.negro);
+    bx(B, 0, 3.2, 0.5, 2.36, 2.0, 2.6, 0, colCab, K.METAL, AUX.panel(1.2, 0.1, 0.3)); return; }
+  bx(B, 0, 0, 1.25, 2.55, 13.6, 2.75, 0, colLona, K.METAL, AUX.panel(1.3, 0.05, 0));
+  bx(B, 0, -3.4, 0.35, 2.2, 6.4, 0.9, 0, C.negro);
+  if (cab) { bx(B, 0, 8.4, 0.5, 2.5, 2.4, 3.3, 0, colCab, K.METAL, AUX.panel(1.2, 0.1, 0.25)); bx(B, 0, 6.6, 0.35, 2.2, 3.6, 0.8, 0, C.negro); }
+  else bx(B, 0, 4.6, 0, 0.3, 0.3, 1.25, 0, C.gris);                                                            // patas de apoyo
+}
+// aduana / control de acceso: marquesina sobre nl carriles (X), casetas entre carriles, barreras; origen en el centro, +Z hacia dentro
+function aduana(B, nl) {
+  const W = nl * 4.4 + 2;
+  for (let i = 0; i <= nl; i++) { const x = -W / 2 + 1 + i * 4.4;
+    bx(B, x, 0, 0, 1.2, 9, 0.25, 0, [226, 214, 90], K.LISO, PLISO);                                              // isleta pintada
+    if (i > 0 && i < nl) bx(B, x, 1, 0.25, 1.1, 2.4, 2.6, 0, [232, 232, 228], K.VENTANAS, AUX.ventanas(2.6, 1.1, 0.8, 0.5));   // caseta
+    bx(B, x, -3.6, 0, 0.35, 0.35, 6.2, 0, C.gris); bx(B, x, 3.6, 0, 0.35, 0.35, 6.2, 0, C.gris);
+    if (i < nl) bx(B, x + 2.2, -2.2, 1.0, 3.6, 0.12, 0.12, 0, [230, 60, 50], K.LISO, PLISO); }                    // barrera
+  bx(B, 0, 0, 6.2, W + 1, 10, 0.9, 0, [236, 236, 232], K.METAL, AUX.panel(1.4, 0.04, 0));                       // marquesina
+  bx(B, 0, -5.05, 6.2, W + 1, 0.12, 0.9, 0, [40, 86, 150], K.LISO, PLISO);
+  for (let i = 0; i < nl; i++) bx(B, -W / 2 + 3.2 + i * 4.4, 0, 6.0, 2.2, 6, 0.2, 0, [255, 236, 200], K.EMISIVO, LUZ(1.1));
+  bx(B, W / 2 + 6, 6, 0, 10, 7, 3.4, 0, [226, 226, 222], K.VENTANAS, AUX.ventanas(3.4, 2, 0.7, 0.5));              // oficina de la aduana
+}
+// valla de malla (dos tramos por segmento: murete y malla verde) entre p y q (locales), base y
+function valla(B, p, q, y0, y1) {
+  L.q4(B, [p[0], y0 - 0.2, p[1]], [q[0], y1 - 0.2, q[1]], [q[0], y1 + 0.4, q[1]], [p[0], y0 + 0.4, p[1]], [176, 174, 168], K.LISO, AUX.liso(3));
+  L.q4(B, [p[0], y0 + 0.4, p[1]], [q[0], y1 + 0.4, q[1]], [q[0], y1 + 2.4, q[1]], [p[0], y0 + 2.4, p[1]], [64, 82, 72], K.METAL, AUX.panel(2.5, 0.02, 0));
+}
+// nave logística o industrial sobre la planta real del registro
+function naveLog(B, h, e, R, z, libre) {
+  const pl = e.plantas[0]; if (!pl || pl.length < 3) return;
+  const n = pl.length; let cx = 0, cz = 0, area = 0;
+  for (let i = 0; i < n; i++) { const a = pl[i], b = pl[(i + 1) % n], cr = a[0] * b[1] - b[0] * a[1]; area += cr; cx += (a[0] + b[0]) * cr; cz += (a[1] + b[1]) * cr; }
+  area /= 2; if (Math.abs(area) < 1) return; cx /= 6 * area; cz /= 6 * area; area = Math.abs(area);
+  let yb = 1e9; for (const p of pl) yb = Math.min(yb, h.y(p[0], p[1])); yb -= 0.2;
+  const H = Math.max(6, Math.min(e.alto, 16)), merca = z === 'merca';
+  // lado de muelles: entre los lados largos, el que tiene más sitio libre delante
+  let lmax = 0; for (let i = 0; i < n; i++) lmax = Math.max(lmax, Math.hypot(pl[(i + 1) % n][0] - pl[i][0], pl[(i + 1) % n][1] - pl[i][1]));
+  let best = null;
+  for (let i = 0; i < n; i++) { const a = pl[i], b = pl[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l < lmax * 0.6 || l < 24) continue;
+    const ux = (b[0] - a[0]) / l, uz = (b[1] - a[1]) / l, mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+    let nx = uz, nz = -ux; if ((mx - cx) * nx + (mz - cz) * nz < 0) { nx = -nx; nz = -nz; }
+    let s = 0; for (const d of [8, 16, 26, 34]) for (const f of [-0.35, 0, 0.35]) if (libre(mx + ux * l * f + nx * d, mz + uz * l * f + nz * d, e)) s += d < 20 ? 2 : 1;
+    if (!best || s > best.s) best = { a, b, l, ux, uz, nx, nz, s }; }
+  if (!best) return;
+  const { ux, uz, nx, nz } = best;
+  // marco de la nave: u a lo largo del muelle, v hacia fuera
+  let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+  for (const p of pl) { const u = (p[0] - cx) * ux + (p[1] - cz) * uz, v = (p[0] - cx) * nx + (p[1] - cz) * nz; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+  const rect = area / ((u1 - u0) * (v1 - v0)), ang = hd(ux, uz), at = (u, v) => [cx + ux * u + nx * v, cz + uz * u + nz * v];
+  const col = merca ? [[222, 216, 200], [206, 204, 196], [232, 228, 216]][Math.floor(R() * 3)] : MUROS[Math.floor(R() * MUROS.length)];
+  const big = Math.max(u1 - u0, v1 - v0), ex = L.mover(pl.map(p => [p[0] - cx, p[1] - cz]), cx, cz, 0, 1 + 0.5 / big);
+  // cuerpo: zócalo de hormigón, chapa grecada, franja de color arriba y cubierta de chapa
+  L.prisma(B, ex, yb, yb + 1.8, [172, 170, 164], K.LISO, { aux: AUX.liso(6), sinTecho: true });
+  L.prisma(B, pl, yb + 1.8, yb + H, col, K.METAL, { aux: AUX.panel(0.9, 0.03, 0), techo: [176, 178, 178], kTecho: K.METAL, auxTecho: AUX.panel(1.6, 0.05, 0) });
+  if (!merca && R() < 0.45) L.prisma(B, ex, yb + H - 1.4, yb + H + 0.3, ACENTO[Math.floor(R() * ACENTO.length)], K.METAL, { aux: AUX.panel(1.2, 0.02, 0), sinTecho: true });
+  else L.prisma(B, ex, yb + H - 0.2, yb + H + 0.6, mix(col, C.gris, 0.4), K.LISO, { aux: PLISO, sinTecho: true });           // remate del peto
+  // cubierta: lucernarios corridos (naves) o dientes de sierra (pabellones de Mercabarna) si la planta es casi rectangular
+  const lu = u1 - u0, lv = v1 - v0, cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+  if (rect > 0.82 && area > 1800) {
+    if (merca && area > 4000) { const ns = Math.max(2, Math.floor(lv / 14)), w = lv / ns;
+      for (let s = 0; s < ns; s++) { const [x, zz] = at(cu, v0 + (s + 0.5) * w); L.cubierta(B, x, zz, yb + H + 0.6, w * 0.98, lu * 0.96, 3.2, { tipo: 'dos', ang, col: s % 2 ? [184, 186, 186] : [170, 174, 176], k: K.METAL, aux: AUX.panel(1.4, 0.04, 0) }); } }
+    else { const ns = Math.min(3, Math.max(1, Math.floor(lv / 22))), w = lv / (ns + 1);
+      for (let s = 1; s <= ns; s++) { const [x, zz] = at(cu, v0 + s * w); bx(B, x, zz, yb + H + 0.3, 2.4, lu * 0.8, 0.6, ang, [168, 190, 200], K.CORTINA, AUX.cortina(0.6, 1.2, 0.1)); }
+      const nm = 1 + Math.floor(R() * 2); for (let s = 0; s < nm; s++) { const [x, zz] = at(cu + (R() - 0.5) * lu * 0.7, cv + (R() - 0.5) * lv * 0.6);
+        bx(B, x, zz, yb + H + 0.3, 2.6, 4.2, 1.6, ang, [196, 198, 196], K.METAL, AUX.panel(1, 0.08, 0.2)); } } }
+  // muelles de carga: banda de puertas seccionales (con luz encima de noche), marquesina corrida y remolques atracados
+  const bl = best.l, nd = Math.max(2, Math.floor((bl - 8) / 4.6)), du = (bl - 8) / nd, eu = ((best.a[0] + best.b[0]) / 2 - cx) * ux + ((best.a[1] + best.b[1]) / 2 - cz) * uz;
+  const ev = ((best.a[0] + best.b[0]) / 2 - cx) * nx + ((best.a[1] + best.b[1]) / 2 - cz) * nz + 0.12;
+  const pa = at(eu - (bl - 8) / 2, ev), pb = at(eu + (bl - 8) / 2, ev), colP = PUERTA[Math.floor(R() * PUERTA.length)];
+  L.q4(B, [pa[0], yb + 1.25, pa[1]], [pb[0], yb + 1.25, pb[1]], [pb[0], yb + 4.6, pb[1]], [pa[0], yb + 4.6, pa[1]], colP, K.VENTANAS, AUX.ventanas(3.35, du, 0.68, 0.9));
+  { const [x, zz] = at(eu, ev + 1.6); bx(B, x, zz, yb + 5.1, 3.2, bl - 6, 0.35, ang, [214, 216, 218], K.METAL, PCH);
+    const [x2, z2] = at(eu, ev + 0.45); bx(B, x2, z2, yb + 4.85, 0.25, bl - 8, 0.2, ang, [255, 232, 196], K.EMISIVO, LUZ(1.0));
+    const [x3, z3] = at(eu, ev + 0.35); bx(B, x3, z3, yb + 0.6, 0.7, bl - 8, 0.65, ang, [60, 62, 64], K.LISO, PLISO); }   // andén
+  const nT = merca ? Math.floor(R() * 5) + 1 : Math.floor(R() * Math.min(nd, 4)) + (best.s > 10 ? 1 : 0);
+  if (best.s >= 6) for (let t = 0; t < nT; t++) { const k = Math.floor(R() * nd), u = eu - (bl - 8) / 2 + (k + 0.5) * du, furgo = merca && R() < 0.6, d = furgo ? 4.6 : 7.1;
+    const [x, zz] = at(u, ev + d); if (!libre(...at(u, ev + d + 6), e)) continue; const w0 = B.nv;
+    remolque(B, LONA[Math.floor(R() * LONA.length)], CONT[Math.floor(R() * 6)], R() < 0.4, furgo); L.xf(B, w0, x, zz, hd(nx, nz), 1, 1, h.y(x, zz)); }
+  // explanada de remolques delante del muelle (aparcados en batería) y torre de focos
+  if ((z === 'zal' || z === 'prat') && best.s >= 13 && bl > 50 && R() < 0.75) { const nr = Math.floor((bl - 20) / 3.8 * (0.4 + R() * 0.5));
+    for (let t = 0; t < nr; t++) { if (R() < 0.18) continue; const u = eu - (bl - 20) / 2 + t * 3.8, [x, zz] = at(u, ev + 28); if (!libre(x, zz, e)) continue;
+      const w0 = B.nv; remolque(B, LONA[Math.floor(R() * LONA.length)], C.negro, false); L.xf(B, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); } }
+  if (best.s >= 9 && R() < 0.55) { const [x, zz] = at(eu + bl * 0.3, ev + 19); if (libre(x, zz, e)) { const w0 = B.nv; torreFocos(B, 18); L.xf(B, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); } }
+  // valla del patio de maniobras (tres lados, con puerta) si el patio está libre
+  if (best.s >= 15 && R() < 0.7) { const D = 38, ua = eu - bl / 2 - 3, ub = eu + bl / 2 + 3, P = [at(ua, ev), at(ua, ev + D), at(ub - 16, ev + D)], Q = [at(ub, ev + D), at(ub, ev)];
+    if (P.every(p => libre(p[0], p[1], e)) && Q.every(p => libre(p[0], p[1], e))) { const y = (p) => h.y(p[0], p[1]);
+      valla(B, P[0], P[1], y(P[0]), y(P[1])); valla(B, P[1], P[2], y(P[1]), y(P[2])); valla(B, Q[0], Q[1], y(Q[0]), y(Q[1])); } }
+  // bloque de oficinas en un testero (naves grandes casi rectangulares)
+  if (rect > 0.85 && area > 2500 && R() < 0.45) { const s = R() < 0.5 ? -1 : 1, [x, zz] = at(s > 0 ? u1 - 6 : u0 + 6, cv), w = Math.min(lv + 0.8, 40);
+    bx(B, x, zz, yb, w, 12.8, H + 2.2, ang, [228, 228, 224], K.VENTANAS, AUX.ventanas(3.6, 1.5, 0.82, 0.48)); }
+}
+function zonaNaves(id, nombre, zn, Z) {
+  if (!Z) return;
+  ficha({ id, nombre: nombre || id, etiqueta: !!nombre, x: Z.c[0], z: Z.c[1], alto: 20, ancho: Math.min(Z.ext, 1600), largo: Math.min(Z.ext, 1600), edificios: Z.b,
+    build(B, h) {
+      const R = h.R, CJ = PD2.cajas;
+      // ¿punto (local) libre de edificios (salvo la nave e) y dentro de un recinto? (las cajas son de todo el recinto)
+      const libre = (lx, lz, e) => { const x = lx + h.x, z = lz + h.z;
+        for (const c of CJ) { if (Math.abs(x - c[0]) < c[2] + 2 && Math.abs(z - c[1]) < c[3] + 2) { if (e && Math.abs(c[0] - e.wx) < 2 && Math.abs(c[1] - e.wz) < 2) continue; return false; } }
+        return true; };
+      for (const e of h.edif) { const pl = e.plantas[0]; if (!pl) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+        for (const p of pl) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+        e.wx = (x0 + x1) / 2 + h.x; e.wz = (z0 + z1) / 2 + h.z; naveLog(B, h, e, R, zn, libre); }
+      // control de acceso con aduana en la entrada del recinto
+      for (const g of (PD2.aduanas || [])) if (g[0] === zn) { const [lx, lz] = [g[1] - h.x, g[2] - h.z], v0 = B.nv; aduana(B, g[4]); L.xf(B, v0, lx, lz, g[3], 1, 1, h.y(lx, lz)); }
+    } });
+}
+// playa de vías de mercancías (Morrot / Can Tunis): vías paralelas recortadas al recinto, trenes de contenedores, tolvas,
+// cisternas y vagones cerrados con locomotoras diésel, torres de focos y gabinete de circulación
+function playaVias() {
+  const V = PD2.via, P = PD2.zonas.morrot; if (!V || !P) return;
+  ficha({ id: 'pu_vias', nombre: 'Platja de vies de mercaderies', x: V.c[0], z: V.c[1], alto: 25, ancho: 600, largo: 1200, build(B, h) {
+    const R = h.R, [ux, uz] = V.u, nx = -uz, nz = ux, CJ = PD2.cajas, ang = hd(ux, uz);
+    const W = (u, v) => [V.c[0] + ux * u + nx * v, V.c[1] + uz * u + nz * v];
+    const ok = (x, z) => { if (!pip(x, z, P)) return false; for (const c of CJ) if (Math.abs(x - c[0]) < c[2] + 4 && Math.abs(z - c[1]) < c[3] + 4) return false; return true; };
+    let umin = 1e9, umax = -1e9, vmin = 1e9, vmax = -1e9;
+    for (const p of P) { const dx = p[0] - V.c[0], dz = p[1] - V.c[1], u = dx * ux + dz * uz, v = dx * nx + dz * nz; umin = Math.min(umin, u); umax = Math.max(umax, u); vmin = Math.min(vmin, v); vmax = Math.max(vmax, v); }
+    const gy = (x, z) => h.y(x - h.x, z - h.z), tramos = [];
+    for (let v = vmin + 6; v < vmax - 6; v += 4.8) {
+      let run = null;
+      for (let u = umin; u <= umax + 10; u += 10) { const [x, z] = W(u, v), y = ok(x, z) ? gy(x, z) : null;
+        const sigue = y !== null && (!run || Math.abs(y - run.yl) < 1.2);
+        if (sigue) { if (!run) run = { u0: u, yl: y, ys: [] }; run.u1 = u; run.yl = y; run.ys.push(y); }
+        else { if (run && run.u1 - run.u0 >= 80) tramos.push(Object.assign(run, { v })); run = y !== null ? { u0: u, u1: u, yl: y, ys: [y] } : null; } }
+      if (run && run.u1 - run.u0 >= 80) tramos.push(Object.assign(run, { v }));
+    }
+    const loc = (x, z) => [x - h.x, z - h.z];
+    for (const t of tramos) {
+      for (let u = t.u0; u < t.u1; u += 60) { const ue = Math.min(u + 60, t.u1), [x, z] = loc(...W((u + ue) / 2, t.v)), y = h.y(x, z) + 0.02, len = ue - u + 0.1;
+        L.prisma(B, L.mover(L.rect(3.4, len), x, z, ang), y - 0.3, y + 0.25, [104, 96, 86], K.PIEDRA, { aux: AUX.piedra(0.5, 0.6), techo: [92, 84, 76] });
+        for (const s of [-0.72, 0.72]) { const qx = x + nx * s, qz = z + nz * s, a = [qx - ux * len / 2, qz - uz * len / 2], b = [qx + ux * len / 2, qz + uz * len / 2], ex = nx * 0.06, ez = nz * 0.06;
+          L.q4(B, [a[0] - ex, y + 0.42, a[1] - ez], [b[0] - ex, y + 0.42, b[1] - ez], [b[0] + ex, y + 0.42, b[1] + ez], [a[0] + ex, y + 0.42, a[1] + ez], [168, 164, 156], K.METAL, PCH); } }
+      // tren: una de cada dos vías tiene vagones
+      if (R() < 0.45) continue;
+      const tipo = Math.floor(R() * 4), nW = Math.floor((t.u1 - t.u0 - 30) / 19.5 * (0.4 + R() * 0.55)); let u = t.u0 + 12 + R() * 10;
+      if (R() < 0.7) { const [x, z] = loc(...W(u + 9, t.v)), y = h.y(x, z) + 0.45, v0 = B.nv;                       // locomotora diésel
+        bx(B, 0, 0, 0.6, 2.9, 19, 0.7, 0, C.negro); bx(B, 0, 0.6, 1.3, 2.7, 15, 2.9, 0, R() < 0.5 ? [226, 180, 40] : [70, 80, 96], K.METAL, AUX.panel(1.2, 0.06, 0));
+        bx(B, 0, 8.4, 1.3, 2.9, 2.6, 3.4, 0, [236, 236, 230], K.VENTANAS, AUX.ventanas(3.4, 1.4, 0.8, 0.4)); bx(B, 0, 9.75, 2.6, 0.6, 0.12, 0.4, 0, [255, 240, 210], K.EMISIVO, LUZ(1.3));
+        L.xf(B, v0, x, z, ang, 1, 1, y); u += 21; }
+      for (let w = 0; w < nW && u < t.u1 - 12; w++, u += tipo === 0 ? 19.6 : 15.5) {
+        const [x, z] = loc(...W(u, t.v)), y = h.y(x, z) + 0.45, v0 = B.nv, k = tipo === 3 ? Math.floor(R() * 3) : tipo;
+        if (k === 0) { bx(B, 0, 0, 0.6, 2.6, 19, 0.6, 0, [70, 60, 52]); if (R() < 0.85) pila(B, 0, -4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); if (R() < 0.75) pila(B, 0, 4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); }
+        else if (k === 1) { bx(B, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); const t0 = B.nv; L.tambor(B, 0, 0, -6.6, 6.6, 1.45, { lados: 10, col: R() < 0.5 ? [214, 214, 210] : [52, 54, 58], k: K.METAL, aux: AUX.panel(1.5, 0.05, 0) });
+          rotX(B, t0, 90, 0, 0); L.xf(B, t0, 0, 0, 0, 1, 1, 2.6); bx(B, 0, 0, 3.9, 0.9, 0.9, 0.6, 0, C.gris); }
+        else { const c = k === 2 ? [[140, 64, 44], [96, 70, 56], [70, 96, 120]][Math.floor(R() * 3)] : [150, 150, 146];
+          bx(B, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); bx(B, 0, 0, 1.1, 2.9, 14.2, k === 2 ? 3.1 : 2.8, 0, c, K.METAL, AUX.panel(k === 2 ? 1.2 : 0.8, 0.06, 0)); }
+        for (const s of [-1, 1]) bx(B, 0, s * (tipo === 0 ? 6.2 : 5), 0, 2.2, 2.6, 0.6, 0, C.negro);
+        L.xf(B, v0, x, z, ang, 1, 1, y); }
+    }
+    // torres de focos y gabinete de circulación junto a la vía central
+    if (tramos.length) { const tm = tramos[Math.floor(tramos.length / 2)];
+      for (let u = tm.u0 + 30; u < tm.u1; u += 160) { const [x, z] = loc(...W(u, tm.v + 2.5)), v0 = B.nv; torreFocos(B, 26); L.xf(B, v0, x, z, ang + 90, 1, 1, h.y(x, z)); }
+      const t0 = tramos[0], [x, z] = loc(...W((t0.u0 + t0.u1) / 2, t0.v - 9)), v0 = B.nv, y = h.y(x, z);
+      bx(B, 0, 0, 0, 8, 14, 7, 0, [222, 214, 196], K.VENTANAS, AUX.ventanas(3.5, 2.2, 0.7, 0.5)); bx(B, 0, 0, 7, 9, 15, 0.6, 0, [120, 124, 128]);
+      L.xf(B, v0, x, z, ang, 1, 1, y); }
+    window.BCN_PUERTO.vias = tramos.length;
+  } });
+}
+
 // ---------------------------------------------------------------- declaración
 try {
   portVell();
@@ -419,4 +588,14 @@ try {
   deposits('pu_energia', "Moll de l'Energia (depòsits)", PD.tanques.filter(t => t[2] < 9300));
   deposits('pu_contradic', 'Depòsits del Moll de Contradic', PD.tanques.filter(t => t[2] >= 9300));
 } catch (e) { console.warn('puerto.js: no se han podido declarar las fichas del puerto', e); }
+// PU2: zona de mercancías
+if (PD2) try {
+  const N = PD2.naves;
+  zonaNaves('pu_zal', "ZAL Port", 'zal', N.zal);
+  zonaNaves('pu_zal_prat', 'ZAL Prat', 'prat', N.prat);
+  zonaNaves('pu_mercabarna', 'Mercabarna', 'merca', N.merca);
+  for (const q of ['zf0', 'zf1', 'zf2', 'zf3']) zonaNaves('pu_' + q, q === 'zf3' ? 'Zona Franca' : null, q, N[q]);
+  playaVias();
+} catch (e) { console.warn('puerto.js: no se han podido declarar las fichas de la zona de mercancías', e); }
+else console.warn('puerto.js: faltan los datos de la zona de mercancías (data/puerto_pu2.js)');
 })();
