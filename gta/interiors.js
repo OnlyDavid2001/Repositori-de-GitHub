@@ -788,8 +788,9 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   function shopCols(env) {
     if (env._shopC) return env._shopC;
     const p = env.p, h = ((Math.imul(env.b ^ 0x5bd1e995, 0x9e3779b1) >>> 0) >> 8) % 3;
-    const sc = h === 0 ? shade(sat(p, 1.15), 0.80) : h === 1 ? shade(sat(p, 1.55), 0.66) : shade(sat(p, 1.3), 0.52);
-    const met = shade(sat(p, 1.8), h === 2 ? 0.30 : 0.20);
+    // n3 E3: más cerca del color de la fachada (antes, piedra oscura y marcos casi negros: no se distinguía de un edificio a otro)
+    const sc = h === 0 ? shade(sat(p, 1.3), 0.94) : h === 1 ? shade(sat(p, 1.6), 0.84) : shade(sat(p, 1.45), 0.74);
+    const met = shade(sat(p, 2.1), h === 2 ? 0.42 : 0.52);
     return (env._shopC = { sc, met, kS: K.FXPIEDRA !== undefined ? K.FXPIEDRA : KS });
   }
   // un vano de comercio: machones y dintel de piedra y, dentro, el escaparate o la puerta de vidrio de la tienda

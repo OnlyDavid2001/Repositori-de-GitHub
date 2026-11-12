@@ -40,6 +40,26 @@ GEO.regKind('TEJA', 120, `
     N = normalize(n + vec3(-dd.y, 0.0, dd.x)*cos(6.2832*cu)*0.55*fs);
     ao = mix(1.0, 0.82, ed*fs);`);
 
+// n3 E3 · suelo de los interiores de manzana con textura propia: aux.x = tipo (1 grava · 2 baldosa · 3 césped · 4 terrazo ·
+// 5 hormigón · 6 sauló). Patrón en coordenadas de mundo, apagado cuando baja de ~2 píxeles. De noche, algo más oscuro que las
+// cubiertas (antes salía más claro: el suelo claro del patio recibe la misma penumbra que una losa)
+GEO.regKind('PATIO', 121, `
+    rough = 0.9;
+    float ty = floor(vInfo.x*255.0 + 0.5);
+    vec2 q = vPos.xz;
+    float pw = max(length(fwidth(q)), 1e-4), f1 = 1.0 - smoothstep(0.03, 0.12, pw), f2 = 1.0 - smoothstep(0.15, 0.6, pw);
+    float tx = (vnoise(q*0.35) - 0.5)*0.16;
+    if (ty < 1.5) tx += (hash21(floor(q*6.0)) - 0.5)*0.36*f1 + (vnoise(q*2.1) - 0.5)*0.2*f2;
+    else if (ty < 2.5) { vec2 c = floor(q/0.45), f = fract(q/0.45); float j = 1.0 - smoothstep(0.03, 0.08, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
+      tx += ((hash21(c) - 0.5)*0.16 + mod(c.x + c.y, 2.0)*0.1 - j*0.3)*f1 + 0.05*f2; }
+    else if (ty < 3.5) { tx += 0.07*sign(sin((q.x + q.y)*1.6))*f2 + (vnoise(q*1.7) - 0.5)*0.3*f2 + (hash21(floor(q*9.0)) - 0.5)*0.18*f1; }
+    else if (ty < 4.5) { vec2 c = floor(q/0.6), f = fract(q/0.6); float j = 1.0 - smoothstep(0.02, 0.05, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
+      float sp = step(0.82, hash21(floor(q*22.0))); tx += ((sp - 0.18)*0.35 - j*0.25)*f1 + (hash21(c) - 0.5)*0.06*f2; }
+    else if (ty < 5.5) { vec2 f = fract(q/3.0); float j = 1.0 - smoothstep(0.004, 0.012, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
+      tx += (vnoise(q*0.6) - 0.5)*0.22*f2 - j*0.35*f2 + (hash21(floor(q/3.0)) - 0.5)*0.1*f2; }
+    else tx += (hash21(floor(q*10.0)) - 0.5)*0.14*f1 + (vnoise(q*0.8) - 0.5)*0.18*f2;
+    alb *= (1.0 + tx)*(1.0 - 0.55*uNight);`);
+
 window.BCN_ROOFTOPS = { init(ctx) {
   const { city, detail, reg, BREC, bldChunks, scene } = ctx;
   const PAL = window.BCN_PAL;
@@ -51,6 +71,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   const A_PAINT = pbrAux(0.55, 0, 0, 0), A_MATTE = pbrAux(0.9, 0, 0, 0), A_GALV = pbrAux(0.42, 1, 0, 0), A_RUST = pbrAux(0.7, 0, 3, 0);
   const A_FIBRO = pbrAux(0.85, 0, 3, 0), A_LOUV = pbrAux(0.5, 0, 1, 0), A_PV = pbrAux(0.18, 0.2, 0, 0), A_GLASS = pbrAux(0.12, 0, 0, 0);
   const A_CLOTH = pbrAux(0.95, 0, 0, 0), A_PILOT = pbrAux(0.5, 0, 0, 1), A_TILE = pbrAux(0.85, 0, 0, 0);
+  const patAux = g => { const a = [g, 0, 0, 0]; return a.concat(a, a, a); }, A_WARM = pbrAux(0.5, 0, 0, 0.5);
   const CLOTHES = [[236, 236, 232], [200, 60, 56], [60, 90, 160], [230, 200, 80], [90, 150, 110], [240, 170, 180], [40, 40, 46], [170, 200, 225], [220, 120, 60]];
 
   // ---------------------------------------------------------------- material: copia del shader de detalle de las fachadas
@@ -236,7 +257,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
     const d = bget(b), P = []; const r0 = d.rings[0]; for (let i = 0; i < r0.length; i += 2) P.push([r0[i], r0[i + 1]]);
     const g = take(b, 60, 40), items = [];
     const ang = axis(r0), fc = FLOORC[Math.floor(g[0] * FLOORC.length)];
-    items.push({ t: 'floor', P, y: y + 0.03, col: fc, x: P[0][0], z: P[0][1], a: 0 });
+    items.push({ t: 'floor', P, y: y + 0.03, col: fc, x: P[0][0], z: P[0][1], a: 0, g: g[30] < 0.6 ? 2 : 4 });
     // borde: pared (si al otro lado hay un edificio más alto) o barandilla
     const railC = g[1] < 0.5 ? [44, 46, 48] : g[1] < 0.8 ? [232, 230, 222] : [86, 70, 54];
     const open = [];
@@ -264,6 +285,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
     if (g[22] < 0.5) { const p = spot(0.6, 4); if (p) items.push({ t: 'ac', x: p[0], z: p[1], y, a: ang, n: 1 + Math.floor(g[23] * 2), col: [214, 214, 208] }); }
     if (area > 40 && g[24] < 0.12) { const p = spot(2.2, 5); if (p) items.push({ t: 'pool', x: p[0], z: p[1], y, a: ang, l: 3 + g[25] * 1.4, w: 1.8 + g[26] * 0.8, on: true }); }
     if (g[27] < 0.35) { const p = spot(0.5, 6); if (p) items.push({ t: 'tree', x: p[0], z: p[1], y: y + 0.45, a: 0, sp: 3, h: 1.6 + g[28], r: 0.7 + g[29] * 0.4, pot: true }); }
+    // n3 E3: luz cálida de terraza (guirnalda de bombillas entre dos esquinas abiertas, o un farol de pared) — de noche se ve
+    if (open.length && g[31] < 0.55) { const [A, B, nx, nz] = open[0]; items.push({ t: 'guir', ax: A[0] - nx * 0.3, az: A[1] - nz * 0.3, bx: B[0] - nx * 0.3, bz: B[1] - nz * 0.3, y, x: A[0], z: A[1], a: 0, sag: 0.25 + g[32 % 40] * 0.2 }); }
+    else if (g[33] < 0.6) { const p = spot(0.4, 7); if (p) items.push({ t: 'lamp', x: p[0], z: p[1], y, a: 0, h: 1.9 }); }
     return items;
   }
   function MZ_area(P) { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
@@ -283,13 +307,14 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // suelo: el interior entero (bajo las cubiertas no se ve) en tierra, sauló, césped o baldosa según el tipo
     const GC = { talleres: [[150, 146, 138], [138, 132, 122]], jardines: [[150, 136, 108], [170, 150, 118], [140, 132, 120]], mixto: [[146, 140, 130], [164, 150, 122]],
       publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[160, 146, 120], [150, 144, 132]] }[tipo];
-    items.push({ t: 'ground', P: sp.inner, col: shade(GC[Math.floor(g[0] * GC.length)], 0.78), x: C[0], z: C[1], y: 0, a: 0 });
+    const GT = { talleres: [5, 1, 5], jardines: [1, 6, 4], mixto: [2, 5, 1], publico: [6, 1], aparcamiento: [5, 5, 1] }[tipo], gt = GT[Math.floor(g[31] * GT.length)];
+    items.push({ t: 'ground', P: sp.inner, col: shade(GC[Math.floor(g[0] * GC.length)], 0.78), x: C[0], z: C[1], y: 0, a: 0, g: gt });
     if (tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.6)) {           // césped en el centro (jardín)
       // césped partido en cuatro parterres por dos paseos (de 1,6 m) que se cruzan en el centro, cada uno con su tono
       const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.78, C[1] + (p[1] - C[1]) * 0.78]), ca = Math.cos(ang), sa = Math.sin(ang);
       for (let q = 0; q < 4; q++) { const s1 = q & 1 ? 1 : -1, s2 = q & 2 ? 1 : -1;
         let Q = hclip(L, C[0], C[1], ca * s1, sa * s1, 0.8); if (Q) Q = hclip(Q, C[0], C[1], -sa * s2, ca * s2, 0.8);
-        if (Q && Q.length >= 3) items.push({ t: 'ground', P: Q, col: shade(LAWN[Math.floor(g[20 + q] * LAWN.length)], 0.92 + g[24 + q] * 0.14), x: C[0], z: C[1], y: 0, a: 0, up: 0.05 }); }
+        if (Q && Q.length >= 3) items.push({ t: 'ground', P: Q, col: shade(LAWN[Math.floor(g[20 + q] * LAWN.length)], 0.92 + g[24 + q] * 0.14), x: C[0], z: C[1], y: 0, a: 0, up: 0.05, g: 3 }); }
     }
     // tapias entre fincas (de la trasera hacia el centro), salvo en el jardín público
     if (tipo !== 'publico') for (let k = 0; k < sp.rad.length; k++) { const r = takeS(src, 200 + k, 4); if (r[0] < 0.25) continue;
@@ -324,6 +349,24 @@ window.BCN_ROOFTOPS = { init(ctx) {
     }
     // en los talleres: algún coche o furgoneta aparcados y palés
     if (tipo === 'talleres' || tipo === 'mixto') for (let i = 0; i < 1 + Math.floor(g[30] * 3); i++) { const r = takeS(src, 600 + i, 6), p = spot(2.6); if (p) items.push({ t: 'car', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[0] < 0.5 ? 0 : Math.PI / 2), l: r[1] < 0.3 ? 5 : 4.2, col: [[200, 200, 196], [60, 62, 66], [150, 30, 28], [40, 70, 120], [220, 220, 214], [120, 124, 128]][Math.floor(r[2] * 6)] }); }
+    // n3 E3 · patio con vida: zonas de otro suelo (la terracita de una finca, una pista), cosas de taller y rarezas repartidas
+    for (let i = 0; i < 1 + Math.floor(g[32] * 3); i++) { const r = takeS(src, 700 + i, 6), w = 3 + r[0] * 4, l = 4 + r[1] * 5, p = spot(Math.hypot(l, w) / 2 + 0.4); if (!p) continue;
+      const a = ang + (r[2] < 0.5 ? 0 : Math.PI / 2), c = Math.cos(a), sn = Math.sin(a), Q = [[-l / 2, -w / 2], [l / 2, -w / 2], [l / 2, w / 2], [-l / 2, w / 2]].map(([u, v]) => [p[0] + c * u - sn * v, p[1] + sn * u + c * v]);
+      const zg = [2, 4, 3, 1, 2][Math.floor(r[3] * 5)], zc = zg === 3 ? LAWN[Math.floor(r[4] * LAWN.length)] : zg === 1 ? [176, 168, 150] : [[196, 186, 168], [186, 120, 96], [170, 168, 160]][Math.floor(r[4] * 3)];
+      items.push({ t: 'ground', P: Q, col: shade(zc, 0.8), x: p[0], z: p[1], y: 0, a: 0, up: 0.1, g: zg });
+      if (r[5] < 0.5) items.push({ t: 'table', x: p[0], z: p[1], y: gY(p[0], p[1]) + 0.1, a: a + r[5], n: 2 + Math.floor(r[1] * 3), round: r[0] < 0.5, umb: r[2] < 0.6 ? AWN[Math.floor(r[3] * AWN.length)] : null, col: r[4] < 0.5 ? [236, 236, 230] : [92, 70, 52] }); }
+    if (tipo === 'talleres' || tipo === 'mixto' || tipo === 'aparcamiento') {
+      for (let i = 0; i < 2 + Math.floor(g[33] * 4); i++) { const r = takeS(src, 720 + i, 4), p = spot(1.0); if (p) items.push({ t: 'pal', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + r[0] * 0.4, n: 1 + Math.floor(r[1] * 6) }); }
+      if (g[34] < 0.7) { const r = takeS(src, 730, 4), p = spot(2.2); if (p) items.push({ t: 'bin', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang + (r[0] < 0.5 ? 0 : Math.PI / 2), col: [[230, 170, 40], [200, 80, 40], [60, 110, 160], [90, 130, 80]][Math.floor(r[1] * 4)] }); }
+      for (let i = 0; i < 1 + Math.floor(g[35] * 3); i++) { const r = takeS(src, 735 + i, 4), p = spot(1.4); if (p) items.push({ t: 'skyg', x: p[0], z: p[1], y: gY(p[0], p[1]), a: ang, l: 1.4 + r[0] * 1.6, w: 1 + r[1] }); }
+    }
+    const RAR = ['inv', 'ping', 'tramp', 'hoop', 'slide', 'dog', 'bikes', 'palm', 'carcov', 'lamp', 'inv', 'bikes', 'dog', 'lamp'];
+    const nR = (tipo === 'publico' ? 2 : 3) + Math.floor(g[36] * 4);
+    for (let i = 0; i < nR; i++) { const r = takeS(src, 760 + i, 8), t = RAR[Math.floor(r[0] * RAR.length)];
+      const rad = { inv: 2.2, ping: 2.4, tramp: 2.2, hoop: 1.2, slide: 2.0, dog: 0.9, bikes: 1.3, palm: 1.6, carcov: 2.6, lamp: 0.5 }[t], p = spot(rad); if (!p) continue;
+      const y = gY(p[0], p[1]), a = ang + (r[1] < 0.5 ? 0 : Math.PI / 2) + (t === 'bikes' || t === 'dog' ? r[2] : 0);
+      if (t === 'palm') items.push({ t: 'tree', x: p[0], z: p[1], y, a: r[2] * 6.28, sp: 1, h: 6 + r[3] * 6, r: 2 });
+      else items.push({ t, x: p[0], z: p[1], y, a, h: t === 'lamp' ? 2.6 : 0, c: r[4], col: [[200, 60, 50], [60, 130, 190], [230, 190, 60], [90, 160, 90], [150, 156, 166]][Math.floor(r[5] * 5)] }); }
     return items;
   }
   function plan(b) {
@@ -397,14 +440,14 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // ---------------------------------------------------------------- n3 E2 · piezas de los interiores de manzana
   const TRUNK = [96, 80, 64], LEAVES = [[70, 104, 50], [86, 116, 56], [60, 92, 48], [98, 124, 62]], WATER = [70, 156, 190];
   // polígono horizontal (suelo del patio o de la terraza), subdividido para seguir el relieve: yf(x, z) da la cota
-  function fillPoly(W, P, yf, col, aux, maxE, ox, oz) {
+  function fillPoly(W, P, yf, col, aux, maxE, ox, oz, kd) {
     const flat = []; for (const p of P) flat.push(p[0], p[1]);
     const tr = earcut(flat);
     const tri = (a, b, c, dep) => {
       const lab = Math.hypot(a[0] - b[0], a[1] - b[1]), lbc = Math.hypot(b[0] - c[0], b[1] - c[1]), lca = Math.hypot(c[0] - a[0], c[1] - a[1]);
       if (dep < 4 && Math.max(lab, lbc, lca) > maxE) { const m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], ab = m(a, b), bc = m(b, c), ca = m(c, a);
         tri(a, ab, ca, dep + 1); tri(ab, b, bc, dep + 1); tri(ca, bc, c, dep + 1); tri(ab, bc, ca, dep + 1); return; }
-      quad(W, F0, a[0] - ox, yf(a[0], a[1]), a[1] - oz, b[0] - ox, yf(b[0], b[1]), b[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, col, K.PBR, aux);
+      quad(W, F0, a[0] - ox, yf(a[0], a[1]), a[1] - oz, b[0] - ox, yf(b[0], b[1]), b[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, c[0] - ox, yf(c[0], c[1]), c[1] - oz, col, kd || K.PBR, aux);
     };
     for (let k = 0; k < tr.length; k += 3) tri(P[tr[k]], P[tr[k + 1]], P[tr[k + 2]], 0);
   }
@@ -462,8 +505,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
   function emitMZ(W, it, ox, oz, lvl) {
     const y = it.y;
     switch (it.t) {
-      case 'floor': fillPoly(W, it.P, () => y, it.col, A_TILE, 1e9, ox, oz); return true;
-      case 'ground': { const up = it.up || 0.08; fillPoly(W, it.P, (x, z) => gY(x, z) + up, it.col, A_MATTE, lvl === 1 ? 12 : 24, ox, oz); return true; }
+      case 'floor': fillPoly(W, it.P, () => y, it.col, it.g ? patAux(it.g) : A_TILE, 1e9, ox, oz, it.g ? K.PATIO : 0); return true;
+      case 'ground': { const up = it.up || 0.08; fillPoly(W, it.P, (x, z) => gY(x, z) + up, it.col, it.g ? patAux(it.g) : A_MATTE, lvl === 1 ? 12 : 24, ox, oz, it.g ? K.PATIO : 0); return true; }
+      case 'floor2': fillPoly(W, it.P, () => y, it.col, patAux(it.g), 1e9, ox, oz, K.PATIO); return true;
       case 'tree': treeE(W, it, ox, oz, lvl); return true;
       case 'pool': poolE(W, it, ox, oz, lvl); return true;
       case 'rail': if (lvl !== 3) railE(W, it, ox, oz, lvl); return true;
@@ -481,6 +525,41 @@ window.BCN_ROOFTOPS = { init(ctx) {
       case 'pot': { if (lvl !== 1) return true; const x = it.x - ox, z = it.z - oz; cyl(W, x, z, y, y + it.r * 1.4, it.r * 0.8, it.r, 6, it.col, K.PBR, A_MATTE);
         GEO.sphere(W, F0, x, y + it.r * 1.4 + it.r * (it.tall ? 1.4 : 0.7), z, it.r * 1.05, 5, 3, it.pc, K.PBR, A_MATTE, it.tall ? 1.8 : 0.9); return true; }
       case 'table': if (lvl === 1) tableE(W, it, ox, oz); return true;
+      // n3 E3 · piezas nuevas del patio (baratas: cajas, paños y algún cilindro; de lejos, nada o una caja)
+      case 'pal': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 1.2, 1.0, 0.14 * it.n, it.a, [176, 146, 104], A_MATTE);
+        if (lvl === 1) for (let k = 1; k < it.n; k++) bx(W, x, z, y + 0.14 * k - 0.03, 1.22, 1.02, 0.02, it.a, [120, 96, 66], A_MATTE); return true; }
+      case 'bin': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 3.6, 1.8, 1.25, it.a, it.col, A_PAINT);
+        if (lvl === 1) { bx(W, x, z, y + 1.2, 3.3, 1.5, 0.07, it.a, [92, 84, 72], A_MATTE); for (const u of [-1.2, 0, 1.2]) { const [px, pz] = loc(it, u, 0.91, ox, oz); post(W, px, pz, y + 0.1, y + 1.2, 0.12, it.a, shade(it.col, 0.75), A_PAINT); } } return true; }
+      case 'skyg': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, it.l + 0.3, it.w + 0.3, 0.45, it.a, [200, 196, 188], A_MATTE);
+        bx(W, x, z, y + 0.45, it.l, it.w, 0.12, it.a, [150, 176, 186], A_GLASS); return true; }
+      case 'inv': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 3.0, 2.0, 1.7, it.a, [196, 216, 210], A_GLASS);
+        const [r0x, r0z] = loc(it, -1.5, 0, ox, oz), [r1x, r1z] = loc(it, 1.5, 0, ox, oz); bar(W, [r0x, y + 2.3, r0z], [r1x, y + 2.3, r1z], 0.05, [230, 232, 228], K.PBR, A_PAINT);
+        for (const e of [-1, 1]) { const [ax, az] = loc(it, -1.5, e * 1.0, ox, oz), [bx_, bz] = loc(it, 1.5, e * 1.0, ox, oz);
+          quad(W, F0, ax, y + 1.7, az, bx_, y + 1.7, bz, r1x, y + 2.3, r1z, r0x, y + 2.3, r0z, [190, 212, 208], K.PBR, A_GLASS); }
+        if (lvl === 1) for (let k = 0; k < 4; k++) { const [px, pz] = loc(it, -1.1 + k * 0.73, 0, ox, oz); GEO.sphere(W, F0, px, y + 0.5, pz, 0.3, 4, 3, PLANTC[k % 6], K.PBR, A_MATTE, 0.8); } return true; }
+      case 'ping': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.7, 2.74, 1.52, 0.05, it.a, [40, 96, 70], A_PAINT);
+        if (lvl === 1) { vq(W, loc(it, 0, -0.8, ox, oz), loc(it, 0, 0.8, ox, oz), y + 0.75, y + 0.9, [230, 230, 226], A_CLOTH);
+          for (const [u, v] of [[-1.1, -0.6], [1.1, -0.6], [1.1, 0.6], [-1.1, 0.6]]) { const [px, pz] = loc(it, u, v, ox, oz); post(W, px, pz, y, y + 0.7, 0.06, it.a, [60, 62, 64], A_GALV); } } return true; }
+      case 'tramp': { if (lvl === 3) return true; const x = it.x - ox, z = it.z - oz; cyl(W, x, z, y + 0.82, y + 0.9, 1.9, 1.9, 10, it.col, K.PBR, A_PAINT); cyl(W, x, z, y + 0.9, y + 0.92, 1.6, 1.6, 10, [30, 32, 34], K.PBR, A_MATTE);
+        if (lvl === 1) { for (let k = 0; k < 6; k++) { const a = k * 1.047; post(W, x + Math.cos(a) * 1.85, z + Math.sin(a) * 1.85, y, y + 2.6, 0.05, a, [50, 52, 54], A_GALV); } } return true; }
+      case 'hoop': { if (lvl !== 1) return true; const [x, z] = loc(it, 0, 0, ox, oz); post(W, x, z, y, y + 3.05, 0.1, it.a + Math.PI / 2, [60, 62, 64], A_GALV);
+        const [bx0, bz0] = loc(it, 0, 0.1, ox, oz); bx(W, bx0, bz0, y + 2.9, 1.2, 0.04, 0.8, it.a, [236, 236, 232], A_PAINT);
+        const [rx, rz] = loc(it, 0, 0.45, ox, oz); cyl(W, rx, rz, y + 3.04, y + 3.06, 0.23, 0.23, 8, [220, 90, 40], K.PBR, A_PAINT); return true; }
+      case 'slide': { if (lvl === 3) return true; const [tx, tz] = loc(it, -1.2, 0, ox, oz); bx(W, tx, tz, y, 0.8, 0.8, 1.5, it.a, it.col, A_PAINT);
+        const s0 = loc(it, -0.8, -0.3, ox, oz), s1 = loc(it, 1.6, -0.3, ox, oz), s2 = loc(it, 1.6, 0.3, ox, oz), s3 = loc(it, -0.8, 0.3, ox, oz);
+        quad(W, F0, s0[0], y + 1.5, s0[1], s1[0], y + 0.2, s1[1], s2[0], y + 0.2, s2[1], s3[0], y + 1.5, s3[1], [230, 200, 60], K.PBR, A_PAINT); return true; }
+      case 'dog': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 1.0, 0.8, 0.7, it.a, [160, 120, 80], A_MATTE); bx(W, x, z, y + 0.7, 1.15, 0.95, 0.12, it.a, [120, 50, 40], A_MATTE);
+        if (lvl === 1) vq(W, loc(it, -0.2, 0.41, ox, oz), loc(it, 0.2, 0.41, ox, oz), y, y + 0.45, [30, 26, 22], A_MATTE); return true; }
+      case 'bikes': { if (lvl !== 1) return true; for (let k = 0; k < 2 + Math.floor(it.c * 2); k++) { const v = -0.4 + k * 0.5, C2 = [[40, 42, 46], [190, 40, 40], [40, 90, 160], [230, 230, 226]][(k + Math.floor(it.c * 4)) % 4];
+          vq(W, loc(it, -0.85, v, ox, oz), loc(it, 0.85, v, ox, oz), y + 0.05, y + 0.7, [34, 34, 36], A_MATTE); vq(W, loc(it, -0.4, v, ox, oz), loc(it, 0.45, v, ox, oz), y + 0.55, y + 0.95, C2, A_PAINT); } return true; }
+      case 'carcov': { if (lvl === 3) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y, 4.2, 1.8, 0.95, it.a, [146, 156, 168], A_CLOTH);
+        const [cx, cz] = loc(it, -0.2, 0, ox, oz); bx(W, cx, cz, y + 0.95, 2.4, 1.6, 0.5, it.a, [140, 150, 162], A_CLOTH); return true; }
+      case 'lamp': { if (lvl !== 1) return true; const x = it.x - ox, z = it.z - oz, h = it.h || 1.9; post(W, x, z, y, y + h, 0.06, 0, [40, 40, 42], A_GALV);
+        GEO.sphere(W, F0, x, y + h + 0.12, z, 0.16, 5, 3, [255, 196, 120], K.PBR, A_WARM, 1); return true; }
+      case 'guir': { if (lvl !== 1) return true; const n = Math.max(3, Math.min(14, Math.round(Math.hypot(it.bx - it.ax, it.bz - it.az) / 0.7)));
+        for (let k = 0; k <= n; k++) { const t = k / n, px = it.ax + (it.bx - it.ax) * t - ox, pz = it.az + (it.bz - it.az) * t - oz, py = y + 2.3 - it.sag * 4 * t * (1 - t);
+          GEO.sphere(W, F0, px, py, pz, 0.07, 4, 2, [255, 206, 140], K.PBR, A_WARM, 1); }
+        post(W, it.ax - ox, it.az - oz, y, y + 2.35, 0.05, 0, [50, 50, 52], A_GALV); post(W, it.bx - ox, it.bz - oz, y, y + 2.35, 0.05, 0, [50, 50, 52], A_GALV); return true; }
       case 'bench': { if (lvl !== 1) return true; const [x, z] = loc(it, 0, 0, ox, oz); bx(W, x, z, y + 0.42, 1.8, 0.45, 0.06, it.a, [140, 100, 62], A_MATTE);
         const [bx0, bz0] = loc(it, 0, 0.22, ox, oz); bx(W, bx0, bz0, y + 0.5, 1.8, 0.06, 0.42, it.a, [140, 100, 62], A_MATTE);
         for (const u of [-0.75, 0.75]) { const [px, pz] = loc(it, u, 0, ox, oz); bx(W, px, pz, y, 0.08, 0.45, 0.42, it.a, [50, 52, 54], A_GALV); } return true; }

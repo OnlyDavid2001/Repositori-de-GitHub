@@ -1255,7 +1255,7 @@ const BREC = { dv: [], n: 0 };
   let nTot = 0;
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
-  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot);
+  BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot); BREC.vid = new Uint8Array(nTot);
   BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; let mzK = 0;   // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
@@ -1332,6 +1332,10 @@ const BREC = { dv: [], n: 0 };
           else if (cls === 6) tp = Hm <= 30 ? (Hm < 9 && area > 2500 ? 1 : 0) : -1;
           else if (cls === 1 || cls === 5) tp = Hm <= 14 ? 1 : Hm <= 60 ? 2 : -1;
           else if (cls === 2 || cls === 8 || cls === 9 || cls === 11 || cls === 13) tp = Hm <= 60 ? 2 : -1;
+          // n3 E3: vidrio y oficinas (3, 12) → muro cortina (BREC.vid); grandes superficies (10) y 14, 15 → nave o equipamiento
+          else if (cls === 3 || cls === 12) { tp = Hm <= 160 ? 2 : -1; if (tp > 0) BREC.vid[bi] = 1; }
+          else if (cls === 10) tp = Hm < 12 ? 1 : Hm <= 60 ? 2 : -1;
+          else if (cls === 14 || cls === 15) tp = Hm <= 40 ? 2 : -1;
         }
         BREC.elig[bi] = tp >= 0 ? 1 : 0; BREC.tipo[bi] = tp >= 0 ? tp : 0;
         if (MZ_SKIP.has(bi)) {                       // manzana entera partida: se colapsa (la sustituyen sus fincas)
