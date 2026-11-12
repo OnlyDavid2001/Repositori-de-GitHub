@@ -349,7 +349,9 @@ function construir(B, h, L, q) {
     }
   }
   for (const t of R.naix) apostol(t, [-1, 0], NAIX, 30);
-  for (const t of R.pass) apostol(t, [1, 0], PASS, 30);
+  // Passió: planta elíptica (más ancha a lo largo de la fachada, menos honda), según las fotos de las torres de Sardenya
+  for (const t of R.pass) { const vs = B.nv; apostol(t, [1, 0], PASS, 30);
+    for (let vv = vs; vv < B.nv; vv++) { const o = vv * 3; B.p[o] = t.x + (B.p[o] - t.x) * 0.86; B.p[o + 2] = t.z + (B.p[o + 2] - t.z) * 1.12; } }
   for (const t of R.glor) apostol(t, [0, 1], sh(TOR, 0.98), 40);
 
   // ================================================================ 4 · fachadas en volumen (SF2 las detalla)
@@ -452,19 +454,22 @@ function construir(B, h, L, q) {
         const X = marco(x0, zz, -1, 0), hw = w * 0.32, ya = w * 1.45, ys = w * 0.9;
         for (let i = 0; i < 5; i++) banda(X, hw + 0.6 * (i + 1), 0, ys + 0.45 * i, ya + 0.95 * (i + 1), 0.62, 0, 0.6 + 0.55 * i, sh(NX, 1 - 0.035 * i), K.PIEDRA, 6);
         // estalactitas colgando del borde de las arquivoltas y de la base del hastial
-        const arc = arcoC(hw + 3.4, 0, ys + 2, ya + 5, 7);
-        for (let j = 2; j < arc.length - 2; j++) { const [u, y] = arc[j], p = X(u, y - 0.1, 3.0), lg = 0.8 + ((j * 7) % 5) * 0.45; rv(p[0], p[2], [[0, y - lg], [0.28, y]], 5, NX, K.PIEDRA, { cap: 0 }); }
-        for (let u = -w / 2 + 0.4; u < w / 2; u += 0.7) { const p = X(u, 27.4, 0.35), lg = 0.7 + (Math.abs(Math.round(u * 13)) % 6) * 0.5; rv(p[0], p[2], [[0, 27.4 - lg], [0.3, 27.4]], 5, NX, K.PIEDRA, { cap: 0 }); }
+        const arc = arcoC(hw + 2.75, 0, ys + 1.8, ya + 4.6, 14);
+        for (let j = 2; j < arc.length - 2; j++) { const [u, y] = arc[j], p = X(u, y, 2.4), lg = 0.6 + ((j * 7) % 5) * 0.3; rv(p[0], p[2], [[0, y - lg], [0.42, y - 0.1], [0.3, y + 0.3]], 5, NX, K.PIEDRA, { cap: 0 }); }
+        // vegetación esculpida en las enjutas (racimos de hojas y frutos de piedra a ambos lados del arco)
+        for (let j = 0; j < 22; j++) { const sg = j % 2 ? 1 : -1, t = j / 22, u = sg * (hw + 3.6 + (j % 3) * 0.7), y = ys + 1 + t * (ya - ys + 4), p = X(u, y, 1.2 + (j % 4) * 0.35);
+          L.esfera(B, p[0], p[1], p[2], 0.55 + (j % 3) * 0.25, { gajos: 6, anillos: 4, col: sh(NX, 0.92 + (j % 5) * 0.04), k: K.PIEDRA, sy: 0.8 }); }
+        for (let u = -w / 2 + 0.3; u < w / 2; u += 0.5) { const p = X(u, 27.5, 0.45), lg = 0.6 + (Math.abs(Math.round(u * 13)) % 6) * 0.35; rv(p[0], p[2], [[0, 27.5 - lg], [0.4, 27.4], [0.3, 27.8]], 5, NX, K.PIEDRA, { cap: 0 }); }
         // parteluz (columna central con la genealogía)
         const pc = X(0, 0, 0.9); L.tambor(B, pc[0], pc[2], 0, ys - 0.4, w > 10 ? 0.55 : 0.42, { lados: 10, col: FG, k: K.PIEDRA });
         if (nom === 'caritat') {                                      // Nativitat: Maria, Josep, el Nen al pesebre, el buey y la mula
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.4, zz, yn - 0.4, 2.6, 7.4, 0.4, 0, NX, K.PIEDRA);
-          figura(...X(-1.7, yn, 1.1), A, 2.6, { col: FG, sentada: true, pose: 'rezar', aureola: true });
-          figura(...X(1.8, yn, 1.1), A, 2.9, { col: FG, pose: 'delante', aureola: true });
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.4, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
+          figura(...X(-1.7, yn, 1.1), A, 3.3, { col: FG, sentada: true, pose: 'rezar', aureola: true });
+          figura(...X(1.8, yn, 1.1), A, 3.6, { col: FG, pose: 'delante', aureola: true });
           { const p = X(0, yn, 1.3); L.caja(B, p[0], p[2], yn, 0.8, 1.3, 0.55, 0, sh(NX, 0.9), K.PIEDRA); L.esfera(B, p[0], yn + 0.7, p[2], 0.28, { gajos: 6, anillos: 4, col: FG, k: K.PIEDRA, sy: 0.7 }); }
           animal(...X(-0.9, yn, 0.2), A + 30, 1.9, 'buey', sh(NX, 0.95)); animal(...X(0.9, yn, 0.2), A - 30, 1.8, 'mula', sh(NX, 0.9));
           for (const [u, y] of [[-2.4, ya + 3.8], [2.4, ya + 3.8], [-4.4, ya + 1.6], [4.4, ya + 1.6]])           // ángeles con trompetas
-            figura(...X(u, y, 2.7), A + Math.sign(u) * 12, 2.7, { col: FG, alas: true, pose: 'trompeta' });
+            figura(...X(u, y, 2.7), A + Math.sign(u) * 12, 3.4, { col: FG, alas: true, pose: 'trompeta' });
           estrella(B, L, ...X(0, ya + 6.6, 2.2), 1.0, c.oro, K.TRENCADIS);                     // la estrella de Betlem
           L.caja(B, x0 - 0.9, zz, 30.5, 1.8, 6, 0.35, 0, NX, K.PIEDRA);                                   // Coronació de Maria
           figura(...X(-1.1, 30.85, 1.1), A + 15, 2.6, { col: FG, pose: 'rezar', aureola: true }); figura(...X(1.1, 30.85, 1.1), A - 15, 2.9, { col: FG, pose: 'arriba', aureola: true });
@@ -472,12 +477,12 @@ function construir(B, h, L, q) {
           for (let k = 0; k < 18; k++) { const b = k * 2.4, py = 45 + k * 0.7, rr = Math.max(0.6, 2.9 - (py - 48) * 0.16) + 0.25;   // palomas del ciprés
             L.esfera(B, x0 + 2.2 + Math.cos(b) * rr, py, zc + Math.sin(b) * rr, 0.38, { gajos: 5, anillos: 3, col: [240, 238, 232], k: K.LISO, sy: 0.7 }); }
         } else if (nom === 'esperanca') {                              // huida a Egipto y matanza de los inocentes
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.4, zz, yn - 0.4, 2.4, 5.6, 0.4, 0, NX, K.PIEDRA);
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.2, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
           animal(...X(-0.3, yn, 0.9), A + 90, 2.2, 'mula', sh(NX, 0.92)); figura(...X(-0.3, yn + 0.95, 0.9), A, 1.9, { col: FG, sentada: true, pose: 'delante' });
           figura(...X(1.6, yn, 1.0), A + 70, 2.6, { col: FG, pose: 'delante' });
           figura(...X(-1.2, ya + 1.2, 2.0), A + 20, 2.6, { col: FG, pose: 'arriba' }); figura(...X(1.2, ya + 1.2, 2.0), A - 20, 2.4, { col: FG, pose: 'rezar' });
         } else {                                                       // Visitació y presentación en el templo
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.4, zz, yn - 0.4, 2.4, 5.6, 0.4, 0, NX, K.PIEDRA);
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.2, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
           figura(...X(-1.0, yn, 1.0), A + 25, 2.6, { col: FG, pose: 'delante', aureola: true }); figura(...X(1.0, yn, 1.0), A - 25, 2.5, { col: FG, pose: 'delante' });
           for (const u of [-1.6, 0, 1.6]) figura(...X(u, ya + 1.2, 2.0), A, u ? 2.4 : 2.7, { col: FG, pose: u ? 'rezar' : 'arriba', aureola: !u });
         }
@@ -493,36 +498,36 @@ function construir(B, h, L, q) {
       L.caja(B, xw + 0.8, zc, 0, 1.6, z1 - z0, 1.0, 0, PC, K.PIEDRA);                                   // zócalo de los grupos bajos
       // nivel 1 (abajo, de izquierda a derecha visto desde la calle: +Z → −Z): Sant Sopar, beso de Judas, flagelación, negación de Pere, Ecce Homo, Pilat
       { const zs = z1 - 5.5; L.caja(B, xw + 1.1, zs, 1.0, 0.9, 5.2, 0.85, 0, sh(PASS, 0.95), K.PIEDRA);
-        for (let i = 0; i < 6; i++) { figura(xw + 0.3, 1.0, zs - 2.2 + i * 0.88, A, 1.9, Object.assign({ sentada: true, pose: 'delante' }, ang)); figura(xw + 1.95, 1.0, zs - 2.2 + i * 0.88, -A, 1.9, Object.assign({ sentada: true, pose: 'delante' }, ang)); }
-        figura(xw + 1.1, 1.0, zs - 3.2, 180, 2.1, Object.assign({ sentada: true, pose: 'rezar' }, ang)); }
-      figura(xw + 1.0, 1.0, z1 - 12.3, A - 70, 2.9, Object.assign({ pose: 'delante' }, ang)); figura(xw + 1.1, 1.0, z1 - 13.3, A + 70, 2.9, Object.assign({ pose: 'delante' }, ang));
+        for (let i = 0; i < 6; i++) { figura(xw + 0.3, 1.0, zs - 2.2 + i * 0.88, A, 2.4, Object.assign({ sentada: true, pose: 'delante' }, ang)); figura(xw + 1.95, 1.0, zs - 2.2 + i * 0.88, -A, 2.4, Object.assign({ sentada: true, pose: 'delante' }, ang)); }
+        figura(xw + 1.1, 1.0, zs - 3.2, 180, 2.6, Object.assign({ sentada: true, pose: 'rezar' }, ang)); }
+      figura(xw + 1.0, 1.0, z1 - 12.3, A - 70, 3.6, Object.assign({ pose: 'delante' }, ang)); figura(xw + 1.1, 1.0, z1 - 13.3, A + 70, 3.6, Object.assign({ pose: 'delante' }, ang));
       animal(xw + 1.2, 1.0, z1 - 10.6, A + 40, 1.4, 'leon', sh(PASS, 0.95));                              // la serpiente-perro de Judas (bulto bajo)
       { const s4 = xw + 0.05; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++)              // cuadrado mágico (suma 33)
         L.caja(B, s4, z1 - 15.6 + i * 0.32, 3.4 + j * 0.32, 0.12, 0.28, 0.28, 0, (i + j) % 2 ? PF : sh(PASS, 0.85), K.PIEDRA); }
-      L.tambor(B, xw + 1.4, zc, 1.0, 4.6, 0.32, { lados: 8, col: PF, k: K.PIEDRA }); figura(xw + 1.95, 1.0, zc, A, 2.9, Object.assign({ pose: 'abajo' }, ang));   // flagelación
+      L.tambor(B, xw + 1.4, zc, 1.0, 4.6, 0.32, { lados: 8, col: PF, k: K.PIEDRA }); figura(xw + 1.95, 1.0, zc, A, 3.6, Object.assign({ pose: 'abajo' }, ang));   // flagelación
       for (const [dz, rr] of [[-1.2, 0], [0, 15], [1.2, -15]]) figura(xw + 1.1, 1.0, z0 + 14.5 + dz, A + rr, dz ? 2.6 : 2.9, Object.assign({ pose: dz < 0 ? 'delante' : 'abajo' }, ang));   // negación
-      L.caja(B, xw + 1.1, z0 + 7.5, 1.0, 1.4, 1.4, 1.1, 0, PC, K.PIEDRA); figura(xw + 1.1, 2.1, z0 + 7.5, A, 2.9, Object.assign({ pose: 'abajo', }, ang));   // Ecce Homo
-      for (const dz of [-1.4, 1.4]) figura(xw + 1.6, 1.0, z0 + 7.5 + dz, A, 2.8, Object.assign({ pose: 'delante' }, ang));
-      figura(xw + 1.0, 1.0, z0 + 3.2, A + 25, 2.9, Object.assign({ sentada: true, pose: 'delante' }, ang));   // Pilat
+      L.caja(B, xw + 1.1, z0 + 7.5, 1.0, 1.4, 1.4, 1.1, 0, PC, K.PIEDRA); figura(xw + 1.1, 2.1, z0 + 7.5, A, 3.6, Object.assign({ pose: 'abajo', }, ang));   // Ecce Homo
+      for (const dz of [-1.4, 1.4]) figura(xw + 1.6, 1.0, z0 + 7.5 + dz, A, 3.5, Object.assign({ pose: 'delante' }, ang));
+      figura(xw + 1.0, 1.0, z0 + 3.2, A + 25, 3.6, Object.assign({ sentada: true, pose: 'delante' }, ang));   // Pilat
       // puertas de bronce: Evangeli (centro, letras en relieve) y Coronació d'espines (a los lados)
       for (const [dz, w] of [[-3.2, 2.8], [3.2, 2.8]]) L.caja(B, xw + 0.06, zc + dz, 1.0, 0.12, w, 5.8, 0, [98, 82, 58], K.METAL, { aux: L.aux.panel(0.35, 0.45, 0) });
       // nivel 2: balcón; Simó de Cirene, la Verònica con el velo y Longinos a caballo
       L.caja(B, xw + 1.3, zc, 11, 2.6, z1 - z0 - 2, 0.6, 0, PC, K.PIEDRA);
-      figura(xw + 1.3, 11.6, z0 + 6, A + 20, 3.0, Object.assign({ pose: 'delante' }, ang));
+      figura(xw + 1.3, 11.6, z0 + 6, A + 20, 3.8, Object.assign({ pose: 'delante' }, ang));
       L.bar(B, [xw + 1.6, 12.4, z0 + 4.6], [xw + 1.2, 15.6, z0 + 7.6], 0.18, C(PC), K.PIEDRA); L.bar(B, [xw + 1.4, 14.6, z0 + 5.4], [xw + 1.4, 13.6, z0 + 7.2], 0.16, C(PC), K.PIEDRA);
-      figura(xw + 1.4, 11.6, zc + 0.8, A, 3.0, Object.assign({ pose: 'cruz' }, ang));
+      figura(xw + 1.4, 11.6, zc + 0.8, A, 3.8, Object.assign({ pose: 'cruz' }, ang));
       L.q4(B, [xw + 1.75, 12.4, zc - 0.9], [xw + 1.75, 12.4, zc + 2.5], [xw + 1.75, 14.5, zc + 2.5], [xw + 1.75, 14.5, zc - 0.9], C([230, 226, 214]), K.LISO);   // el velo
-      for (const dz of [-3, -4.5]) figura(xw + 1.0, 11.6, zc + dz, A + 15, 2.7, Object.assign({ pose: 'abajo' }, ang));
-      animal(xw + 1.3, 11.6, z1 - 7, A + 75, 3.0, 'caballo', PF); figura(xw + 1.3, 13.0, z1 - 7.1, A, 2.2, Object.assign({ sentada: true, pose: 'arriba' }, ang));
+      for (const dz of [-3, -4.5]) figura(xw + 1.0, 11.6, zc + dz, A + 15, 3.4, Object.assign({ pose: 'abajo' }, ang));
+      animal(xw + 1.3, 11.6, z1 - 7, A + 75, 3.0, 'caballo', PF); figura(xw + 1.3, 13.0, z1 - 7.1, A, 2.8, Object.assign({ sentada: true, pose: 'arriba' }, ang));
       L.bar(B, [xw + 1.3, 14.4, z1 - 7.6], [xw + 2.4, 18.6, z1 - 10.2], 0.06, C([90, 80, 70]), K.METAL);   // la lanza
       // nivel 3 (sobre el porche): soldados jugándose la túnica, Crucifixió y Santo Sepulcro
       const xr = R.xP + 10.4, yr = 27;
-      for (const dz of [-1.2, 0, 1.2]) figura(xr, yr, z1 - 7 + dz, A + dz * 40, 2.2, Object.assign({ sentada: true, pose: 'delante' }, ang));
+      for (const dz of [-1.2, 0, 1.2]) figura(xr, yr, z1 - 7 + dz, A + dz * 40, 2.8, Object.assign({ sentada: true, pose: 'delante' }, ang));
       L.caja(B, xr - 0.6, zc, yr, 0.8, 0.8, 9, 0, PF, K.PIEDRA); L.caja(B, xr - 0.6, zc, yr + 6.4, 0.6, 4.6, 0.6, 0, PF, K.PIEDRA);
-      figura(xr - 0.1, yr + 2.6, zc, A, 3.6, Object.assign({ pose: 'cruz' }, ang));
-      for (const dz of [-1.8, 1.8, 2.8]) figura(xr + 0.5, yr, zc + dz, A - dz * 10, 2.5, Object.assign({ pose: 'rezar' }, ang));
+      figura(xr - 0.1, yr + 2.6, zc, A, 4.5, Object.assign({ pose: 'cruz' }, ang));
+      for (const dz of [-1.8, 1.8, 2.8]) figura(xr + 0.5, yr, zc + dz, A - dz * 10, 3.1, Object.assign({ pose: 'rezar' }, ang));
       L.caja(B, xr, z0 + 7, yr, 1.5, 4, 1.0, 0, PC, K.PIEDRA); L.caja(B, xr, z0 + 7, yr + 1.0, 0.5, 2.6, 0.5, 0, PF, K.PIEDRA);   // sepulcro y el cuerpo
-      for (const dz of [-1.8, 0, 1.8]) figura(xr - 0.9, yr, z0 + 7 + dz, A, 2.6, Object.assign({ pose: 'delante' }, ang));
+      for (const dz of [-1.8, 0, 1.8]) figura(xr - 0.9, yr, z0 + 7 + dz, A, 3.2, Object.assign({ pose: 'delante' }, ang));
       // Resurrecció: figura dorada en el puente entre las dos torres centrales, a 65 m
       { const ta = R.pass[1], tb = R.pass[2]; L.bar(B, [ta.x, 64, ta.z], [tb.x, 64, tb.z], 0.6, C(PASS), K.PIEDRA);
         figura(ta.x + 1.2, 64.5, (ta.z + tb.z) / 2, A, 5.0, { col: c.oro, k: K.TRENCADIS, pose: 'arriba' }); }
