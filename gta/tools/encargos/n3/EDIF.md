@@ -18,6 +18,13 @@ necesitas (por ejemplo `manzanas.js`). Lee `n3/comun.md` y de DESARROLLO §2, §
 3. **Tiendas fundidas con su fachada.** Sin tocar interiores, rótulos, toldos ni escaparates: los marcos, pilastras,
    faja del rótulo y zócalo de cada bajo toman tonos derivados del color de la fachada de su edificio (`d.col`, por ejemplo
    su versión piedra, más oscura o más saturada), estables por edificio.
+
+**Añadido del usuario (más tarde):** «hay bloques que aún no están hechos, tanto por arriba como por abajo»: que ningún
+bloque quede sin terminar ni en la azotea ni en la planta baja (bajos comerciales, portales o planta baja de vivienda,
+zócalo), y que **la base de cada fachada case con la acera**: el borde inferior del edificio no puede quedar flotando ni
+con un escalón o una rendija respecto al plano de la calle; el zócalo baja hasta la cota de la acera (que en este día
+aplana la etapa SUELOS; tú asegúrate de que el zócalo llega siempre un poco por debajo de esa cota).
+
 ## E2
 4. **Manzanas enteras modeladas como un solo edificio** (sobre todo en el Eixample: una planta que ocupa casi toda la
    manzana de 113 m). Divídelas en fincas a lo largo del perímetro (fachadas de 12–25 m, cada una con su variante, su
@@ -26,6 +33,15 @@ necesitas (por ejemplo `manzanas.js`). Lee `n3/comun.md` y de DESARROLLO §2, §
    en el patio (talleres, lucernarios) y, en algunas, jardín interior con árboles. Coherente de lejos (el volumen lejano
    también ahuecado o, como mínimo, cubiertas por finca) y sin costuras. Haz lo mismo con los bloques grandes de otros
    barrios si les pasa lo mismo.
+
+**Añadido del usuario sobre los interiores de manzana:** «hazlos bien… ponles mini terracillas, piscinillas, cosas raras,
+pon cosas características de un patio interior, sobre todo del Eixample, que es donde hay más densidad». En los patios:
+terrazas de los pisos principales sobre las cubiertas de planta baja (con barandilla, plantas, mesas, toldos), cubiertas
+de talleres y aparcamientos con lucernarios y claraboyas, alguna piscina pequeña comunitaria o particular, jardines con
+árboles y setos, huertos y pérgolas, trasteros y casetas, aparatos de aire, tendederos con ropa, chimeneas, tapias que
+separan las fincas y, en algunas manzanas, el interior recuperado como jardín público. Variedad: que no haya dos patios
+iguales.
+
 5. Repaso de variedad y de coste (triángulos de fachada y de azotea antes y después).
 
 ## Verificación
