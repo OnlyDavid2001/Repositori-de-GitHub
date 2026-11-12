@@ -27,6 +27,7 @@
   }
   const PI = Math.PI, hs = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
   const ST = [200, 192, 176], STd = [176, 166, 150], STl = [214, 208, 194], BRZ = [86, 70, 50], DARK = [92, 84, 76];
+  const MONUMENTO = false;   // Monumento al Fuego y al Agua (surtidor y cascadas en arco): quitado a petición del usuario
 
   // ------------------------------------------------------------ la obra: losa, terraza, monumento, escalinata
   function obra(B, h, L) {
@@ -56,11 +57,14 @@
     for (const z of [zt0 + 2.2, zt1 - 2.2]) L.caja(B, 0, z, yT, 2 * XW - 2, 0.5, 0.02, 0, [150, 142, 128], K.PIEDRA);   // franjas de piedra oscura
     // --- Monumento al Fuego y al Agua: vaso en cruz, fuste, surtidor de 20 m y cuatro cascadas; dos tederos con fuego
     const M = D.monumento, mx = M.X, mz = M.Z, yW = yT + 0.55;
-    const arms = [[0, 0, 7.5, 7.5], [0, 0, 18.5, 4.2], [0, 0, 4.2, 15.5]];
+    // a petición del usuario, la entrada de la escalinata queda despejada: sin el vaso en cruz, el fuste, el surtidor ni las
+    // cuatro cascadas en arco (MONUMENTO = false); se quedan los dos tederos con fuego a los lados
+    const arms = MONUMENTO ? [[0, 0, 7.5, 7.5], [0, 0, 18.5, 4.2], [0, 0, 4.2, 15.5]] : [];
     for (const [ax, az, w, l] of arms) {
       for (const s of [-1, 1]) { L.caja(B, mx + ax + s * (w / 2 + 0.3), mz + az, yT, 0.6, l + 1.2, 0.8, 0, STl, K.PIEDRA);
         L.caja(B, mx + ax, mz + az + s * (l / 2 + 0.3), yT, w + 1.2, 0.6, 0.8, 0, STl, K.PIEDRA); }
       L.caja(B, mx + ax, mz + az, yT + 0.05, w, l, yW - yT - 0.05, 0, [52, 86, 96], K.AGUA); }
+    if (MONUMENTO) {
     L.tambor(B, mx, mz, yW, yW + 4.2, 1.6, { r1: 1.0, lados: 16, col: STl, k: K.PIEDRA, aux: aP });
     L.tambor(B, mx, mz, yW + 4.2, yW + 4.9, 2.6, { r1: 2.9, lados: 20, col: STl, k: K.PIEDRA });
     L.tambor(B, mx, mz, yW + 4.85, yW + 4.95, 2.75, { lados: 20, col: [70, 110, 120], k: K.AGUA });
@@ -69,6 +73,7 @@
       let p = null; for (let i = 0; i <= 12; i++) { const t = i / 12, r = 0.6 + t * (a % 2 ? 6.6 : 8.4), y = yW + M.surtidor - 1.2 + 2.0 * t - (M.surtidor - 0.6) * t * t;
         const q = [mx + ca * r, Math.max(y, yW), mz + sa * r]; if (p) L.bar(B, p, q, 0.3 - 0.12 * t, [238, 244, 248], K.LISO); p = q; }
       L.esfera(B, mx + ca * (a % 2 ? 7.2 : 9.0), yW + 0.25, mz + sa * (a % 2 ? 7.2 : 9.0), 1.1, { sy: 0.35, col: [236, 242, 244], k: K.LISO }); }
+    }
     for (const tx of M.teders_X) { const y0 = yT;
       L.tambor(B, tx, mz, y0, y0 + 0.6, 1.8, { r1: 1.6, lados: 12, col: STl, k: K.PIEDRA });
       for (let i = 0; i < 3; i++) { const a = i * 2 * PI / 3 + 0.3; L.bar(B, [tx + 1.3 * Math.cos(a), y0 + 0.6, mz + 1.3 * Math.sin(a)], [tx + 0.55 * Math.cos(a), y0 + 5.0, mz + 0.55 * Math.sin(a)], 0.14, BRZ, K.METAL); }
@@ -132,7 +137,7 @@
         if (r > 0.4) L.esfera(B, x + s * 0.06, y0 + hgt + 0.16, z + (r2 - 0.5) * 0.2, 0.12 + 0.05 * r2, { col: L.shade(c, 1.05), k: K.PIEDRA }); }
       L.caja(B, x, (zl0 + D.losa.Z[1]) / 2, y0 - 0.02, 0.3, D.losa.Z[1] - zl0, 0.08, 0, [96, 88, 80], K.PIEDRA); }
     // espuma al pie del surtidor y de las cascadas
-    const M = D.monumento; for (let i = 0; i < 18; i++) { const a = i / 18 * 2 * PI, r = 2.9 + 0.3 * hs(i, 3);
+    const M = D.monumento; if (MONUMENTO) for (let i = 0; i < 18; i++) { const a = i / 18 * 2 * PI, r = 2.9 + 0.3 * hs(i, 3);
       L.esfera(B, M.X + r * Math.cos(a), yT + 0.6, M.Z + r * Math.sin(a), 0.35, { sy: 0.4, col: [236, 242, 244], k: K.LISO }); }
   }
 
