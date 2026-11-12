@@ -165,6 +165,12 @@
   // para el jugador a pie (la losa es hueca: quien llega por la calle de Mallorca pasa por debajo; el resto es macizo)
   const floorAt = (x, z, feet) => { if (!D || !LV.steps || LV.yb === undefined) return null;
     const e = D.ejes, dx = x - e.centro[0], dz = z - e.centro[1], X = dx * e.vecX[0] + dz * e.vecX[1], Z = dx * e.vecZ[0] + dz * e.vecZ[1];
+    // SFD1: atrios de las fachadas laterales (sagrada.js, SF.atrios): explanada a la cota de las puertas, taludes y escalinata
+    const AT = window.BCN_SF && window.BCN_SF.atrios;
+    if (AT && LV.yF !== undefined) for (const a of AT) {
+      if (Z >= a.z0 - a.rampa && Z <= a.z1 + a.rampa && X >= a.x0 && X <= a.x1)
+        return LV.yF - (Z < a.z0 ? (a.z0 - Z) / a.rampa * a.ga : Z > a.z1 ? (Z - a.z1) / a.rampa * a.gb : 0);
+      const d = (X - a.xe) * a.sg; if (d > 0 && d <= a.run && Z >= a.ze[0] && Z <= a.ze[1]) return LV.yF - Math.ceil(d / 0.36 - 1e-6) / Math.max(1, Math.round(a.run / 0.36)) * a.gf; }
     if (Z < 34.6 || Z > D.escalinata.Z[1] + 0.5) return null;
     if (Z < 41) { if (Math.abs(X + 2.5) > 28) return null; return LV.yF + (LV.yS - LV.yF) * Math.min(1, (Z - 34.6) / 6.4); }   // escalera del nártex
     if (Math.abs(X) > D.franja_X) return Z < 46.7 && Math.abs(X + 2.5) < 37 ? LV.yS : null;                                     // zócalo de las columnas

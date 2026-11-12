@@ -199,6 +199,31 @@ function construir(B, h, L, q) {
     L.prisma(B, cl, yLo, 11.5, OCRE, FAR ? K.PIEDRA : K.VENTANAS, { aux: FAR ? aP : L.aux.ventanas(11.5, 3.75, 0.5, 0.62), techo: TECHO, kTecho: K.PIEDRA });
     // pretil del claustro
     if (MED) L.prisma(B, cl, 11.5, 13, sh(OCRE, 1.04), K.PIEDRA, { aux: aP, techo: TECHO });
+    // SFD1: el pretil del claustro acaba en diente de sierra (modelo del usuario): hastiales de 3,2 m cada 3,75 m
+    if (MED && cl.length > 10) { let acc = 0; for (let i = 0; i < cl.length; i++) { const a = cl[i], b = cl[(i + 1) % cl.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (l > 0.01) { const ex = (b[0] - a[0]) / l, ez = (b[1] - a[1]) / l, ang = Math.atan2(-ez, ex) * 180 / PI;
+        for (let s = (3.75 - acc) % 3.75; s < l; s += 3.75) L.cubierta(B, a[0] + ex * s, a[1] + ez * s, 13, 2.6, 0.6, 3.2, { tipo: 'dos', ang, col: sh(OCRE, 1.04), k: K.PIEDRA, aux: aP, colHastial: sh(OCRE, 1.04) }); }
+      acc = (acc + l) % 3.75; } }
+    // SFD1: atrios de las fachadas laterales (modelo del usuario): explanada a la cota de las puertas delante del Naixement
+    // (hacia Marina) y de la Passió (hacia Sardenya), con taludes a los dos extremos, escalinata central a la calle y pretil.
+    // Quedan en SF.atrios (ejes locales, cotas relativas al suelo del templo) para el suelo a pie (BCN_GLORIA.floorAt)
+    if (MED) { const PAV = [212, 200, 178], PAVd = sh(PAV, 0.86), RMP = 9, A = [];
+      const qq = (p0, p1, p2, p3, col) => { L.q4(B, p0, p1, p2, p3, col, K.PIEDRA, aP); L.q4(B, p3, p2, p1, p0, col, K.PIEDRA, aP); };
+      for (const sg of [-1, 1]) {
+        const xi = sg < 0 ? -41 : 37, xo = sg < 0 ? -54 : 50.5, za = -45, zb = 4, zm = (za + zb) / 2, x0 = Math.min(xi, xo), x1 = Math.max(xi, xo);
+        const gy = (x, z) => h.y(x, z) - yF, ga = Math.min(-0.2, gy(xo, za - RMP)), gb = Math.min(-0.2, gy(xo, zb + RMP)), gf = Math.min(-0.2, gy(xo + sg * 3, zm));
+        L.caja(B, (x0 + x1) / 2, zm, yLo, x1 - x0, zb - za, -yLo, 0, PAVd, K.PIEDRA, { aux: aP, techo: PAV, kTecho: K.PIEDRA });
+        // taludes: rampa pavimentada y su costado
+        for (const [zt, zg, g] of [[za, za - RMP, ga], [zb, zb + RMP, gb]]) {
+          qq([x0, 0, zt], [x1, 0, zt], [x1, g, zg], [x0, g, zg], PAV);
+          qq([xo, 0, zt], [xo, g, zg], [xo, yLo, zg], [xo, yLo, zt], PAVd); }
+        // escalinata central (18 m) hasta la acera y pretil a los lados
+        const nE = Math.max(0, Math.round(-gf / 0.17)), ri = nE ? -gf / nE : 0, tr = 0.36;
+        for (let i = 0; i < nE; i++) L.caja(B, xo + sg * (i + 0.5) * tr, zm, yLo, tr, 18 + i * 0.5, -(i + 1) * ri - yLo, 0, sh(PAV, 0.96 + (i % 2) * 0.05), K.PIEDRA, { aux: aP });
+        for (const [z0, z1] of [[za, zm - 9], [zm + 9, zb]]) L.caja(B, xo - sg * 0.3, (z0 + z1) / 2, 0, 0.6, z1 - z0, 1.0, 0, sh(OCRE, 1.04), K.PIEDRA, { aux: aP });
+        A.push({ x0, x1, z0: za, z1: zb, rampa: RMP, ga: -ga, gb: -gb, xe: xo, sg, ze: [zm - 9, zm + 9], run: nE * tr, gf: -gf });
+      }
+      SF.atrios = A; }
   }
   const ZG = R.zG + 2, ZT = CZ - 16.5;                              // frente de las naves (muro de la Glòria) y fondo del crucero
   const xN = R.xN + 2.5, xP = R.xP - 1.5;                             // muros testeros del crucero (detrás de los pórticos)
@@ -224,6 +249,17 @@ function construir(B, h, L, q) {
     L.caja(B, (xN + xP) / 2, CZ, yLo, xP - xN, 33, 33 - yLo, 0, OCRE, K.PIEDRA, { aux: VL, techo: TECHO, kTecho: K.PIEDRA });
     L.caja(B, (xN + xP) / 2, CZ, 33, xP - xN, 19, 15, 0, OCRE, K.PIEDRA, { aux: VC, techo: TECHO, kTecho: K.PIEDRA });
     L.cubierta(B, (xN + xP) / 2, CZ, 48, xP - xN, 19.6, 12.5, { tipo: 'dos', ang: 90, col: sh(OCRE, 0.86), k: K.PIEDRA, colHastial: OCRE });
+    // SFD1: la silueta lateral del modelo del usuario corona los muros con hastiales apuntados en diente de sierra, uno por
+    // tramo de 7,5 m: sobre la cornisa de las naves laterales (33), del claristorio (48) y de los testeros del crucero
+    const hast = (x, z, y, w, hh, ang) => L.cubierta(B, x, z, y, w, 1.1, hh * 1.15, { tipo: 'dos', ang, col: sh(OCRE, 0.8), k: K.PIEDRA, aux: aP, colHastial: sh(OCRE, 1.08) });
+    for (const s of [-1, 1]) {
+      for (let z = CZ + 16.5 + 3.75; z < ZG - 2; z += 7.5) hast(AX + s * 24.6, z, 33, 6.2, 7.5, 90);           // naves laterales
+      for (let z = CZ + 15; z < ZG - 3; z += 7.5) if (z - 3 > CZ + 9.5) hast(AX + s * 9.8, z, 48, 5.4, 7, 90);   // claristorio, entre pináculos
+      for (const zw of [CZ - 16.6, CZ + 16.6]) {                                                                   // testeros del crucero
+        for (let x = AX - 24.5 - 3.75; x > xN + 3; x -= 7.5) hast(x, zw, 33, 6.2, 7.5, 0);
+        for (let x = AX + 24.5 + 3.75; x < xP - 3; x += 7.5) hast(x, zw, 33, 6.2, 7.5, 0); }
+      for (const xw of [xN + 7.75, xP - 7.75]) hast(xw, CZ + s * 9.8, 48, 5.4, 7, 0);
+    }
   }
   // ---- ábside: presbiterio (bóveda 75), girola con siete capillas y sus agujas
   const ZA = CZ - 23;                                                 // centro del semicírculo del ábside
@@ -279,10 +315,11 @@ function construir(B, h, L, q) {
     if (BASE) rv(e.x, e.z, [[2.6, yEp], [2.9, yEp + 1.2, BL], [2.2, yEp + 5, BL], [1.5, yEp + 7.5, c.ama]], n(12), BL, K.TRENCADIS);
     if (MED) for (let k = 0; k < 6; k++) { const b = k / 6 * 2 * PI; L.esfera(B, e.x + Math.cos(b) * 3.0, yEp + 0.6, e.z + Math.sin(b) * 3.0, 0.32, { gajos: 5, anillos: 3, col: [255, 206, 140], k: K.EMISIVO, aux: L.aux.emisivo(3.5, true) }); }   // SF3: luces cálidas
     if (BASE) L.esfera(B, e.x, yEp + 10.5, e.z, 3.0, { gajos: FAR ? 5 : 10, anillos: FAR ? 3 : 5, col: c.oro, k: K.TRENCADIS });   // icosaedro con la esfera
-    if (FAR) L.esfera(B, e.x, yEp + 16.5, e.z, 1.7, { gajos: FAR ? 5 : 8, anillos: FAR ? 3 : 5, col: BL, k: K.LISO, sy: 2.2 });   // la figura
-    if (FAR) for (const s of [-1, 1]) {                                // alas de la figura (ángel, león, buey, águila)
+    // SFD1: la figura alada también en la malla media (antes solo lejos): sin ella, de 1,5 km para dentro la torre acababa a 126 m
+    if (BASE) L.esfera(B, e.x, yEp + 16.5, e.z, 1.7, { gajos: FAR ? 5 : 8, anillos: FAR ? 3 : 5, col: BL, k: K.LISO, sy: 2.2 });   // la figura
+    if (BASE) for (const s of [-1, 1]) {                                // alas de la figura (ángel, león, buey, águila)
       const dx = e.x - AX, dz = e.z - CZ, l = Math.hypot(dx, dz) || 1, ox = -dz / l * s, oz = dx / l * s;
-      L.q4(B, [e.x + ox * 0.8, yEp + 14.5, e.z + oz * 0.8], [e.x + ox * 3.4, yEp + 17.5, e.z + oz * 3.4], [e.x + ox * 2.6, yEp + 21.5, e.z + oz * 2.6], [e.x + ox * 0.6, yEp + 19, e.z + oz * 0.6], BL, K.LISO);
+      L.q4(B, [e.x + ox * 0.8, yEp + 14.5, e.z + oz * 0.8], [e.x + ox * 3.4, yEp + 17.5, e.z + oz * 3.4], [e.x + ox * 2.6, yEp + 22.5, e.z + oz * 2.6], [e.x + ox * 0.6, yEp + 19, e.z + oz * 0.6], BL, K.LISO);
     }
     if (DET) {                                                          // escudos hexagonales del fuste del remate («Amén», «Al·leluia») y bultos dorados
       for (let k = 0; k < 6; k++) { const b = k / 6 * 2 * PI + 0.3, r = 2.75, x = e.x + Math.cos(b) * r, z = e.z + Math.sin(b) * r;
@@ -406,10 +443,10 @@ function construir(B, h, L, q) {
   // ---- SF3: linternas de la Glòria (maqueta): gota o bulbo apuntado; fila 0 delante (sobre las columnas), 1 en medio, 2 detrás;
   // «eje», el cono puntiagudo destacado del centro
   const GLI = (() => { const zf = R.zG + 13.4, zm = R.zG + 10.8, zb = R.zG + 8.3, L1 = [];
-    L1.push({ dx: 0, z: zb - 0.5, yb: 27, yt: 82, r: 3.3, eje: true, fila: 2 });
-    for (const [dx, yb, yt, r] of [[4.6, 33, 70, 2.2], [12.8, 31, 64, 2.2], [21, 29, 57, 2.1]]) for (const sg of [-1, 1]) L1.push({ dx: sg * dx, z: zb, yb, yt, r, fila: 2 });
-    for (const [dx, yb, yt, r] of [[8.6, 27, 60, 2.3], [17.2, 26, 53, 2.2], [25.4, 25, 47, 2.0]]) for (const sg of [-1, 1]) L1.push({ dx: sg * dx, z: zm, yb, yt, r, fila: 1 });
-    for (const [dx, yb, yt, r] of [[0, 22.5, 52, 2.6], [9, 22.5, 47, 2.45], [18, 22, 43, 2.3], [27, 21.5, 39, 2.1]]) for (const sg of dx ? [-1, 1] : [1]) L1.push({ dx: sg * dx, z: zf, yb, yt, r, fila: 0 });
+    L1.push({ dx: 0, z: zb - 0.5, yb: 27, yt: 96, r: 3.6, eje: true, fila: 2 });   // SFD1: más alta, como el alzado del modelo del usuario
+    for (const [dx, yb, yt, r] of [[4.6, 33, 84, 2.4], [12.8, 31, 76, 2.4], [21, 29, 66, 2.2]]) for (const sg of [-1, 1]) L1.push({ dx: sg * dx, z: zb, yb, yt, r, fila: 2 });
+    for (const [dx, yb, yt, r] of [[8.6, 27, 72, 2.5], [17.2, 26, 63, 2.3], [25.4, 25, 54, 2.1]]) for (const sg of [-1, 1]) L1.push({ dx: sg * dx, z: zm, yb, yt, r, fila: 1 });
+    for (const [dx, yb, yt, r] of [[0, 22.5, 64, 2.8], [9, 22.5, 58, 2.6], [18, 22, 51, 2.4], [27, 21.5, 44, 2.2]]) for (const sg of dx ? [-1, 1] : [1]) L1.push({ dx: sg * dx, z: zf, yb, yt, r, fila: 0 });
     return L1; })();
   SF.gloria = GLI;
   const gota = (x, z, yb, yt, r, eje) => {
@@ -461,7 +498,9 @@ function construir(B, h, L, q) {
       if (MED) L.bar(B, [R.xP + 9, 27, z], [R.xP + 8, top, z], 0.42, C(sh(PASS, 1.06)), K.PIEDRA);
       if (DET) { L.esfera(B, R.xP + 9, 27.3, z, 0.65, { gajos: 6, anillos: 4, col: sh(PASS, 1.06), k: K.PIEDRA }); L.esfera(B, R.xP + 8, top, z, 0.6, { gajos: 6, anillos: 4, col: sh(PASS, 1.06), k: K.PIEDRA }); }
     }
-    if (BASE) { L.piramide(B, R.xP + 7, zc, 30, 3, 28, 16, { col: PASS, k: K.PIEDRA });                         // frontón
+    // SFD1: frontón a dos aguas (como el modelo del usuario): cumbrera perpendicular a la fachada y hastial triangular a la
+    // calle, detrás de las columnas-hueso; los faldones bajan sobre el porche
+    if (BASE) { L.cubierta(B, R.xP + 3.5, zc, 27, 36, 8, 20, { tipo: 'dos', ang: 90, col: sh(PASS, 0.9), k: K.PIEDRA, aux: aP, colHastial: PASS });
       L.caja(B, R.xP + 7.5, zc, 46, 0.8, 0.8, 12, 0, [232, 228, 218], K.LISO); L.caja(B, R.xP + 7.5, zc, 54, 0.8, 5, 0.8, 0, [232, 228, 218], K.LISO); }
   }
   // Glòria (+Z, la principal): muro con ventanales entre las torres, nártex con siete puertas y dieciséis linternas hasta 80 m
