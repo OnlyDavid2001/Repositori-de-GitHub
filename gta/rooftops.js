@@ -114,6 +114,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // ---------------------------------------------------------------- plan de un edificio: lista de elementos en mundo
   // Cada elemento: { t: tipo, x, z, y, a (ángulo), …medidas }. Determinista: seed(b, 90, k).
   const MODERN = new Set(['poblenou', 'les_corts', 'sant_andreu', 'nou_barris', 'periferia', 'horta_guinardo', 'sants']);
+  const EXTRA = new Set([1, 2, 3, 5, 8, 9, 10, 11, 12, 13]);
   const TERRACE = new Set(['eixample', 'gracia', 'sant_gervasi', 'sarria_pedralbes', 'barceloneta', 'ciutat_vella', 'poble_sec']);
   const AWN = [[46, 110, 70], [200, 70, 52], [230, 220, 196], [52, 84, 140], [214, 150, 60], [120, 120, 118]];
   const take = (b, k, n) => { seed(b, 90, k); const a = new Array(n); for (let i = 0; i < n; i++) a[i] = R(); return a; };
@@ -149,13 +150,20 @@ window.BCN_ROOFTOPS = { init(ctx) {
   }
   function plan0(b) {
     // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
-    const tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
-    const d = bget(b); if (d.cls !== 0 && d.cls !== 2 && d.cls !== 6 && !(BREC.elig[b] && tipo > 0)) return null;
+    let tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
+    const d = bget(b), resid = d.cls === 0 || d.cls === 2 || d.cls === 6;
+    // G1T1: también las cubiertas planas que antes quedaban vacías: industria, comercio, equipamientos y oficinas sin fachada
+    // de detalle (los de más de 16 000 m² de caja, las torres, los volúmenes elevados): azotea de nave (< 14 m) o de
+    // equipamiento. Fuera los templos e invernaderos (14, 15), el cristal con pilares (4) y la clase 7
+    if (!resid && !(BREC.elig[b] && tipo > 0) && !EXTRA.has(d.cls)) return null;
     const y = roofY(b); if (y === null) return null;
     if (PAL.roof(b) >= 0 && !PAL.flat(b)) return planTeja(b, d, y);
     const x0 = city.BB[b * 4], z0 = city.BB[b * 4 + 1], x1 = city.BB[b * 4 + 2], z1 = city.BB[b * 4 + 3];
     const Hm = y - d.yb, area = (x1 - x0) * (z1 - z0);
-    if (Hm < 3.6 || area < 40 || area > 14000) return null;      // n3 E1: también las casas de una planta (antes, desde 6 m)
+    if (!resid && !(BREC.elig[b] && tipo > 0)) tipo = Hm < 14 ? 1 : 2;
+    // n3 E1: también las casas de una planta (antes, desde 6 m). G1T1: hasta 250 000 m² de caja (antes 14 000: las cubiertas
+    // grandes de Poblenou, la Zona Franca o los centros comerciales salían lisas y vacías desde el aire)
+    if (Hm < 3.6 || area < 40 || area > 250000) return null;
     const fam = PAL.FAMS[PAL.fam(b)];
     const ang = axis(d.rings[0]);
     // ¿cabe un rectángulo l × w (girado a) con centro (x, z), a 0,7 m del borde (dentro del peto)?
@@ -184,7 +192,33 @@ window.BCN_ROOFTOPS = { init(ctx) {
         const tx = (bx - ax) / L, tz = (bz - az) / L; let nx = -tz, nz = tx;
         if (!inside(d, (ax + bx) / 2 + nx * 0.5, (az + bz) / 2 + nz * 0.5)) { nx = -nx; nz = -nz; }
         items.push({ t: 'peto', ax, az, bx, bz, nx, nz, y, h: pH, L, col: petoC }); } }
-    const big = area > 110, nMax = Math.max(3, Math.min(12, 3 + Math.floor(area / 140)));
+    const big = area > 110, nMax = area > 1700 ? Math.min(36, 12 + Math.floor((area - 1700) / 900)) : Math.max(3, Math.min(12, 3 + Math.floor(area / 140)));
+    // G1T1 · CUBIERTAS GRANDES (> 600 m² de caja), con orden: en las naves, hileras de lucernarios a lo largo del eje cada 7–9 m
+    // (como las de Poblenou y la Zona Franca); en los equipamientos y oficinas, un cuarto de máquinas y baterías de aparatos
+    // de clima con su chimenea. Van primero (ocupan su sitio) y el sorteo de abajo rellena alrededor
+    if (area > 600 && tipo > 0) {
+      const r0 = d.rings[0], m0 = r0.length / 2, ca = Math.cos(ang), sa = Math.sin(ang);
+      let u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9;
+      for (let i = 0; i < m0; i++) { const px = r0[i * 2], pz = r0[i * 2 + 1], u = px * ca + pz * sa, w = pz * ca - px * sa;
+        u0 = Math.min(u0, u); u1 = Math.max(u1, u); w0 = Math.min(w0, w); w1 = Math.max(w1, w); }
+      const P = (u, w) => [u * ca - w * sa, u * sa + w * ca], gg = take(b, 200, 8);
+      if (tipo === 1) {
+        const sp = 7 + gg[0] * 2, segL = 9 + gg[1] * 5, sw = 1.3 + gg[2] * 0.6, pit = gg[3] < 0.6;
+        let nS = 0;
+        for (let w = w0 + 4 + gg[4] * 2; w < w1 - 3 && nS < 60; w += sp)
+          for (let u = u0 + 3; u + segL < u1 - 3 + 1e-6 && nS < 60; u += segL + 2.5) { const [cx, cz] = P(u + segL / 2, w);
+            if (fits(cx, cz, segL, sw, ang) && free(cx, cz, 0)) { items.push({ t: 'sky', x: cx, z: cz, y, a: ang, s: segL, w: sw, pit }); nS++; } }
+        for (const it of items) if (it.t === 'sky') used.push([it.x, it.z, sw / 2 + 0.3]);
+      } else {
+        const nC = Math.min(4, 1 + Math.floor(area / 2500));
+        for (let ci = 0; ci < nC; ci++) { const rr = take(b, 201 + ci, 44), l = 4 + rr[40] * 3, w = 3 + rr[41] * 1.5, p = spot(l, w, rr);
+          if (p) items.push({ t: 'caseta', x: p[0], z: p[1], y, a: ang, l, w, h: 2.6 + rr[42] * 0.8, col: shade(mixc(wall, [200, 202, 200], 0.6), 0.95), door: rr[39] < 0.5 ? 1 : -1, rail: false, ladder: rr[38] < 0.5, doorC: [72, 76, 80] });
+          const ra = take(b, 206 + ci, 44), n = 4 + Math.floor(ra[40] * 3), q = spot(n * 0.95, 0.5, ra);
+          if (q) items.push({ t: 'ac', x: q[0], z: q[1], y, a: ang, n, col: [208, 210, 206] });
+          const rv = take(b, 211 + ci, 44), nv = 2 + Math.floor(rv[40] * 3), v = spot(nv * 0.6, 0.6, rv);
+          if (v) items.push({ t: 'vent', x: v[0], z: v[1], y, a: ang, n: nv, metal: true, h: 1.2 + rv[42], hs: rv.slice(10, 16), col: [170, 172, 170] }); }
+      }
+    }
     let nAnt = 0;
     // 1 · caseta de escalera (casi todos los edificios de pisos; dos en los muy grandes), con puerta, rejilla y, a veces,
     // barandilla en su terrado y escalera de gato
