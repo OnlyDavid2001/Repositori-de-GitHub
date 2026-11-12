@@ -175,6 +175,8 @@ void main(){
         alb *= 1.0 - 0.6*(1.0 - smoothstep(0.01, 0.03, ln))*tileK; }
       alb *= 1.0 - 0.12*(1.0 - smoothstep(0.02, 0.06, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5))))*tileK;
     }
+  }
+  // INT3: la rama del alcorque (f.a > 0.5) se quitó: los alcorques son instancias (ARB4, pitG/pitS) y el campo deja f.a a 0
   vec3 c = lit(alb, N);
   // aura nocturna (uGlow.x): la luz de farola que ya recibe la calzada (FS_ROAD, app.js), sin charcos: más junto al bordillo,
   // donde están los postes, y menos hacia la fachada. Muy cerca se atenúa porque ahí pintan los charcos reales del mobiliario
