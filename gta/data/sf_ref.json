@@ -1,0 +1,2509 @@
+{
+ "_leeme": "Datos de referencia de la Sagrada Família ACABADA para gta/sagrada.js. Ejes locales de la ficha landmarks_a.js (centro mundo 12597,9;15875,2; rot 136): +Z = fachada de la Glòria (c/ Mallorca), -Z = ábside (c/ Provença), -X = Naixement (c/ Marina, Pl. de Gaudí), +X = Passió (c/ Sardenya, Pl. de la Sagrada Família). Metros; y = 0 en el suelo del templo (nivel de Provença; Mallorca queda unos 4 m más baja). Cada dato lleva estado: verificado (con fuente) o estimacion (con nota). Generado en la etapa SF0.",
+ "fuentes": {
+  "wpOfi10": "sagradafamilia.org Information Booklet 10 (Bell towers, lanterns and sacristies)",
+  "wpOfi08": "sagradafamilia.org Information Booklet 8 (Glory façade, Baptistery, Chapel of Penitence)",
+  "caWiki": "ca.wikipedia.org Temple Expiatori de la Sagrada Família (Mides interiors, Escalinata)",
+  "enWiki": "en.wikipedia.org Sagrada Família",
+  "conv": "The Conversation, «The mathematical secrets hidden at the heart of Barcelona’s Sagrada Família» (2026)",
+  "vatican": "Vatican News 2026-02 «Central tower completed» / sagradafamilia2026.org «Cross lands in sky above Barcelona»",
+  "bArch": "barcelonarchitecturewalks.com «Sagrada Família verticality rules»",
+  "evang": "sagradafamilia.org «lights up towers of Evangelists Luke and Mark»",
+  "ermak": "ermakvagus.com (resumen de ca.wikipedia): sacristías 35 m sobre base 18×18, remates evangelistas 22,5 m",
+  "fGaudi": "fundacionantoniogaudi.org «A star in the Sagrada Familia»; thenewbarcelonapost.com 2021-12",
+  "lkl": "lichtkunstlicht.com «The Tower of the Virgin Mary» (iluminación)",
+  "blogNaix": "blog.sagradafamilia.org «What scenes are on the Nativity façade?»",
+  "osm": "OpenStreetMap vía Nominatim: relation/9194723 (basílica), relation/7708297 (Pl. de Gaudí), way/23431084 (Pl. de la Sagrada Família)"
+ },
+ "marco": {
+  "centro_mundo": [
+   12597.9,
+   15875.2
+  ],
+  "rot_grados": 136,
+  "paso_local_a_mundo": "x_m = cx + lx*(-0.7193) + lz*0.6947 ; z_m = cz + lx*(-0.6947) + lz*(-0.7193)",
+  "manzana_basilica": {
+   "v": {
+    "x": [
+     -69.3,
+     64.4
+    ],
+    "z": [
+     -74.5,
+     39.3
+    ]
+   },
+   "fuente": "osm: las dos plazas ocupan las manzanas contiguas (Gaudí x -184,9…-89,3; Sagrada Família x 84,4…194,1; ambas z ≈ -74…+39) y las calles del Eixample miden 20 m",
+   "estado": "verificado"
+  },
+  "linea_edificacion_mallorca_enfrente": {
+   "v": 59.3,
+   "estado": "estimacion",
+   "nota": "manzana de 113,3 m + calle de 20 m; bloque Mallorca 410-414 (Núñez i Navarro) que ocupa el sitio de la escalinata"
+  },
+  "reticula_eixample_rumbo": {
+   "v": 134.6,
+   "estado": "estimacion",
+   "nota": "ang de las dos plazas en data/plazas.json: 134,3 y 134,9; la ficha usa 136 (1,4° de diferencia)"
+  },
+  "desnivel_provenca_mallorca_m": {
+   "v": 4.0,
+   "fuente": "wpOfi08: «four-metre height gap between Carrer de Provença and Carrer de Mallorca»; enWiki da 5 m sobre Mallorca",
+   "estado": "verificado"
+  }
+ },
+ "contorno_osm_local": {
+  "estado": "verificado",
+  "fuente": "osm",
+  "nota": "anillo 0 = planta construida hoy (sin el nártex de la Glòria ni la sacristía este); anillos 1-6 = las seis columnas inclinadas de la Passió (círculos de 2,6-3,1 m); 7-8 = las dos columnas que separan los pórticos del Naixement",
+  "anillos": [
+   [
+    [
+     37.65,
+     -72.39
+    ],
+    [
+     38.03,
+     -71.95
+    ],
+    [
+     38.0,
+     -71.37
+    ],
+    [
+     37.55,
+     -70.98
+    ],
+    [
+     38.03,
+     -70.42
+    ],
+    [
+     38.5,
+     -70.58
+    ],
+    [
+     38.91,
+     -70.28
+    ],
+    [
+     38.93,
+     -69.86
+    ],
+    [
+     38.63,
+     -69.54
+    ],
+    [
+     38.16,
+     -69.41
+    ],
+    [
+     38.07,
+     -68.25
+    ],
+    [
+     37.75,
+     -67.0
+    ],
+    [
+     38.19,
+     -66.96
+    ],
+    [
+     38.0,
+     -53.1
+    ],
+    [
+     37.76,
+     -39.98
+    ],
+    [
+     37.54,
+     -39.13
+    ],
+    [
+     37.69,
+     -36.44
+    ],
+    [
+     39.92,
+     -34.9
+    ],
+    [
+     40.1,
+     -34.55
+    ],
+    [
+     40.13,
+     -34.18
+    ],
+    [
+     40.01,
+     -33.84
+    ],
+    [
+     39.51,
+     -33.33
+    ],
+    [
+     39.03,
+     -28.97
+    ],
+    [
+     39.93,
+     -28.61
+    ],
+    [
+     40.57,
+     -28.22
+    ],
+    [
+     40.73,
+     -27.91
+    ],
+    [
+     40.79,
+     -27.58
+    ],
+    [
+     40.57,
+     -27.16
+    ],
+    [
+     38.85,
+     -25.77
+    ],
+    [
+     38.73,
+     -24.15
+    ],
+    [
+     38.49,
+     -23.82
+    ],
+    [
+     38.1,
+     -23.66
+    ],
+    [
+     37.32,
+     -23.75
+    ],
+    [
+     36.64,
+     -20.75
+    ],
+    [
+     36.93,
+     -20.76
+    ],
+    [
+     37.13,
+     -20.48
+    ],
+    [
+     37.15,
+     -20.26
+    ],
+    [
+     37.17,
+     -20.07
+    ],
+    [
+     36.92,
+     -19.79
+    ],
+    [
+     36.63,
+     -19.69
+    ],
+    [
+     37.27,
+     -16.93
+    ],
+    [
+     37.9,
+     -17.0
+    ],
+    [
+     38.28,
+     -16.76
+    ],
+    [
+     38.62,
+     -16.29
+    ],
+    [
+     38.55,
+     -14.68
+    ],
+    [
+     40.34,
+     -13.16
+    ],
+    [
+     40.46,
+     -12.73
+    ],
+    [
+     40.27,
+     -12.17
+    ],
+    [
+     39.89,
+     -11.81
+    ],
+    [
+     38.71,
+     -11.54
+    ],
+    [
+     38.82,
+     -7.89
+    ],
+    [
+     39.04,
+     -7.54
+    ],
+    [
+     39.06,
+     -6.52
+    ],
+    [
+     39.57,
+     -6.0
+    ],
+    [
+     39.66,
+     -5.63
+    ],
+    [
+     39.61,
+     -5.21
+    ],
+    [
+     39.33,
+     -4.85
+    ],
+    [
+     36.58,
+     -3.15
+    ],
+    [
+     36.56,
+     -0.03
+    ],
+    [
+     36.53,
+     25.65
+    ],
+    [
+     29.03,
+     25.58
+    ],
+    [
+     29.05,
+     24.12
+    ],
+    [
+     29.25,
+     -0.06
+    ],
+    [
+     29.08,
+     -0.04
+    ],
+    [
+     29.1,
+     -0.35
+    ],
+    [
+     29.33,
+     -0.48
+    ],
+    [
+     29.33,
+     -2.7
+    ],
+    [
+     28.01,
+     -4.06
+    ],
+    [
+     26.5,
+     -2.64
+    ],
+    [
+     26.03,
+     -2.69
+    ],
+    [
+     25.44,
+     -3.37
+    ],
+    [
+     25.31,
+     -4.18
+    ],
+    [
+     19.95,
+     -4.35
+    ],
+    [
+     19.9,
+     0.96
+    ],
+    [
+     20.55,
+     0.94
+    ],
+    [
+     21.34,
+     1.86
+    ],
+    [
+     21.22,
+     2.47
+    ],
+    [
+     20.5,
+     3.09
+    ],
+    [
+     20.04,
+     3.26
+    ],
+    [
+     19.81,
+     8.25
+    ],
+    [
+     20.34,
+     8.24
+    ],
+    [
+     21.24,
+     9.15
+    ],
+    [
+     21.15,
+     9.87
+    ],
+    [
+     20.3,
+     10.55
+    ],
+    [
+     19.79,
+     10.59
+    ],
+    [
+     19.63,
+     15.75
+    ],
+    [
+     20.23,
+     15.76
+    ],
+    [
+     21.13,
+     16.67
+    ],
+    [
+     20.98,
+     17.29
+    ],
+    [
+     20.16,
+     18.13
+    ],
+    [
+     19.73,
+     18.13
+    ],
+    [
+     19.51,
+     23.41
+    ],
+    [
+     19.15,
+     32.36
+    ],
+    [
+     16.18,
+     33.9
+    ],
+    [
+     14.44,
+     32.69
+    ],
+    [
+     12.35,
+     32.32
+    ],
+    [
+     10.12,
+     33.81
+    ],
+    [
+     6.68,
+     33.75
+    ],
+    [
+     4.95,
+     32.32
+    ],
+    [
+     3.21,
+     32.07
+    ],
+    [
+     1.14,
+     33.33
+    ],
+    [
+     -1.02,
+     34.37
+    ],
+    [
+     -1.78,
+     34.16
+    ],
+    [
+     -3.4,
+     34.48
+    ],
+    [
+     -4.96,
+     34.45
+    ],
+    [
+     -6.2,
+     34.07
+    ],
+    [
+     -6.94,
+     34.36
+    ],
+    [
+     -9.02,
+     33.22
+    ],
+    [
+     -10.79,
+     32.15
+    ],
+    [
+     -12.66,
+     32.08
+    ],
+    [
+     -14.43,
+     33.23
+    ],
+    [
+     -18.55,
+     33.16
+    ],
+    [
+     -20.13,
+     31.99
+    ],
+    [
+     -22.2,
+     31.99
+    ],
+    [
+     -23.82,
+     33.3
+    ],
+    [
+     -25.71,
+     32.57
+    ],
+    [
+     -27.71,
+     31.05
+    ],
+    [
+     -27.15,
+     22.47
+    ],
+    [
+     -27.04,
+     17.39
+    ],
+    [
+     -27.45,
+     17.41
+    ],
+    [
+     -28.36,
+     16.46
+    ],
+    [
+     -28.33,
+     15.76
+    ],
+    [
+     -27.48,
+     15.08
+    ],
+    [
+     -27.11,
+     15.1
+    ],
+    [
+     -26.99,
+     9.78
+    ],
+    [
+     -27.46,
+     9.81
+    ],
+    [
+     -28.26,
+     9.0
+    ],
+    [
+     -28.22,
+     8.36
+    ],
+    [
+     -27.6,
+     7.72
+    ],
+    [
+     -27.03,
+     7.65
+    ],
+    [
+     -26.88,
+     2.54
+    ],
+    [
+     -27.26,
+     2.47
+    ],
+    [
+     -28.08,
+     1.6
+    ],
+    [
+     -28.04,
+     1.01
+    ],
+    [
+     -27.35,
+     0.38
+    ],
+    [
+     -26.79,
+     0.3
+    ],
+    [
+     -26.71,
+     -5.15
+    ],
+    [
+     -32.82,
+     -5.3
+    ],
+    [
+     -35.79,
+     -2.25
+    ],
+    [
+     -35.98,
+     -1.08
+    ],
+    [
+     -42.97,
+     -0.85
+    ],
+    [
+     -42.89,
+     -5.01
+    ],
+    [
+     -42.85,
+     -6.75
+    ],
+    [
+     -41.74,
+     -6.73
+    ],
+    [
+     -40.93,
+     -7.66
+    ],
+    [
+     -40.94,
+     -9.98
+    ],
+    [
+     -40.98,
+     -12.39
+    ],
+    [
+     -41.46,
+     -13.08
+    ],
+    [
+     -42.57,
+     -13.2
+    ],
+    [
+     -42.53,
+     -14.08
+    ],
+    [
+     -41.45,
+     -14.19
+    ],
+    [
+     -38.88,
+     -16.8
+    ],
+    [
+     -38.74,
+     -21.09
+    ],
+    [
+     -38.63,
+     -24.79
+    ],
+    [
+     -41.46,
+     -27.77
+    ],
+    [
+     -42.52,
+     -27.82
+    ],
+    [
+     -42.49,
+     -29.17
+    ],
+    [
+     -41.56,
+     -29.12
+    ],
+    [
+     -40.59,
+     -29.97
+    ],
+    [
+     -40.49,
+     -31.97
+    ],
+    [
+     -40.41,
+     -33.7
+    ],
+    [
+     -41.15,
+     -34.66
+    ],
+    [
+     -42.29,
+     -34.8
+    ],
+    [
+     -42.11,
+     -40.54
+    ],
+    [
+     -42.1,
+     -41.06
+    ],
+    [
+     -35.12,
+     -40.64
+    ],
+    [
+     -35.23,
+     -39.46
+    ],
+    [
+     -32.08,
+     -35.94
+    ],
+    [
+     -25.36,
+     -35.83
+    ],
+    [
+     -25.25,
+     -37.16
+    ],
+    [
+     -24.27,
+     -37.09
+    ],
+    [
+     -25.22,
+     -38.48
+    ],
+    [
+     -26.36,
+     -38.21
+    ],
+    [
+     -26.65,
+     -39.02
+    ],
+    [
+     -25.42,
+     -39.45
+    ],
+    [
+     -25.36,
+     -41.03
+    ],
+    [
+     -26.33,
+     -41.53
+    ],
+    [
+     -26.02,
+     -42.42
+    ],
+    [
+     -24.92,
+     -42.1
+    ],
+    [
+     -24.04,
+     -43.39
+    ],
+    [
+     -24.83,
+     -44.37
+    ],
+    [
+     -23.95,
+     -44.98
+    ],
+    [
+     -23.12,
+     -43.94
+    ],
+    [
+     -21.16,
+     -44.78
+    ],
+    [
+     -22.41,
+     -46.99
+    ],
+    [
+     -23.88,
+     -46.87
+    ],
+    [
+     -23.94,
+     -47.81
+    ],
+    [
+     -22.57,
+     -47.98
+    ],
+    [
+     -22.1,
+     -49.66
+    ],
+    [
+     -23.19,
+     -50.73
+    ],
+    [
+     -22.58,
+     -51.58
+    ],
+    [
+     -21.3,
+     -50.68
+    ],
+    [
+     -19.65,
+     -51.78
+    ],
+    [
+     -20.15,
+     -52.47
+    ],
+    [
+     -19.83,
+     -53.07
+    ],
+    [
+     -19.05,
+     -53.11
+    ],
+    [
+     -19.15,
+     -55.37
+    ],
+    [
+     -20.43,
+     -55.84
+    ],
+    [
+     -20.19,
+     -56.58
+    ],
+    [
+     -18.95,
+     -56.2
+    ],
+    [
+     -17.67,
+     -57.58
+    ],
+    [
+     -18.39,
+     -59.06
+    ],
+    [
+     -17.53,
+     -59.56
+    ],
+    [
+     -16.63,
+     -58.28
+    ],
+    [
+     -14.57,
+     -58.39
+    ],
+    [
+     -14.65,
+     -59.19
+    ],
+    [
+     -14.04,
+     -59.7
+    ],
+    [
+     -13.4,
+     -59.43
+    ],
+    [
+     -12.51,
+     -61.29
+    ],
+    [
+     -13.61,
+     -62.36
+    ],
+    [
+     -12.92,
+     -63.08
+    ],
+    [
+     -11.69,
+     -62.17
+    ],
+    [
+     -10.14,
+     -62.91
+    ],
+    [
+     -10.12,
+     -64.38
+    ],
+    [
+     -9.21,
+     -64.41
+    ],
+    [
+     -9.15,
+     -63.07
+    ],
+    [
+     -7.21,
+     -62.34
+    ],
+    [
+     -6.99,
+     -63.23
+    ],
+    [
+     -6.22,
+     -63.45
+    ],
+    [
+     -5.57,
+     -62.63
+    ],
+    [
+     -4.0,
+     -63.95
+    ],
+    [
+     -4.57,
+     -65.34
+    ],
+    [
+     -3.76,
+     -65.82
+    ],
+    [
+     -2.96,
+     -64.49
+    ],
+    [
+     -1.24,
+     -64.55
+    ],
+    [
+     -0.47,
+     -65.84
+    ],
+    [
+     0.4,
+     -65.31
+    ],
+    [
+     -0.25,
+     -64.06
+    ],
+    [
+     1.25,
+     -62.57
+    ],
+    [
+     1.96,
+     -63.14
+    ],
+    [
+     2.55,
+     -62.98
+    ],
+    [
+     2.83,
+     -62.25
+    ],
+    [
+     4.82,
+     -62.74
+    ],
+    [
+     4.92,
+     -64.35
+    ],
+    [
+     5.96,
+     -64.27
+    ],
+    [
+     5.96,
+     -62.78
+    ],
+    [
+     7.67,
+     -61.96
+    ],
+    [
+     8.69,
+     -62.89
+    ],
+    [
+     9.38,
+     -62.04
+    ],
+    [
+     8.28,
+     -61.03
+    ],
+    [
+     8.95,
+     -59.11
+    ],
+    [
+     9.71,
+     -59.37
+    ],
+    [
+     10.28,
+     -58.84
+    ],
+    [
+     10.17,
+     -58.19
+    ],
+    [
+     12.3,
+     -57.85
+    ],
+    [
+     13.05,
+     -59.14
+    ],
+    [
+     13.94,
+     -58.71
+    ],
+    [
+     13.19,
+     -57.28
+    ],
+    [
+     14.3,
+     -55.95
+    ],
+    [
+     15.63,
+     -56.19
+    ],
+    [
+     15.83,
+     -55.11
+    ],
+    [
+     14.61,
+     -54.8
+    ],
+    [
+     14.43,
+     -52.7
+    ],
+    [
+     15.2,
+     -52.52
+    ],
+    [
+     15.52,
+     -51.9
+    ],
+    [
+     15.03,
+     -51.37
+    ],
+    [
+     16.86,
+     -50.11
+    ],
+    [
+     17.91,
+     -50.95
+    ],
+    [
+     18.54,
+     -50.13
+    ],
+    [
+     17.58,
+     -49.3
+    ],
+    [
+     17.93,
+     -47.26
+    ],
+    [
+     19.07,
+     -47.11
+    ],
+    [
+     18.98,
+     -46.24
+    ],
+    [
+     17.77,
+     -46.39
+    ],
+    [
+     16.28,
+     -44.19
+    ],
+    [
+     18.22,
+     -43.61
+    ],
+    [
+     19.06,
+     -44.55
+    ],
+    [
+     20.01,
+     -43.7
+    ],
+    [
+     19.13,
+     -42.74
+    ],
+    [
+     20.08,
+     -41.38
+    ],
+    [
+     20.98,
+     -41.68
+    ],
+    [
+     21.33,
+     -40.79
+    ],
+    [
+     20.34,
+     -40.36
+    ],
+    [
+     20.32,
+     -38.75
+    ],
+    [
+     21.41,
+     -38.42
+    ],
+    [
+     21.16,
+     -37.52
+    ],
+    [
+     20.09,
+     -37.74
+    ],
+    [
+     19.05,
+     -36.56
+    ],
+    [
+     20.19,
+     -36.5
+    ],
+    [
+     20.18,
+     -35.55
+    ],
+    [
+     25.59,
+     -35.53
+    ],
+    [
+     26.12,
+     -36.23
+    ],
+    [
+     28.37,
+     -36.06
+    ],
+    [
+     30.04,
+     -37.4
+    ],
+    [
+     30.32,
+     -53.01
+    ],
+    [
+     27.25,
+     -53.01
+    ],
+    [
+     27.26,
+     -52.85
+    ],
+    [
+     26.9,
+     -52.81
+    ],
+    [
+     26.87,
+     -53.04
+    ],
+    [
+     22.77,
+     -53.07
+    ],
+    [
+     22.56,
+     -52.95
+    ],
+    [
+     22.16,
+     -53.19
+    ],
+    [
+     22.23,
+     -53.45
+    ],
+    [
+     18.15,
+     -57.76
+    ],
+    [
+     17.37,
+     -57.84
+    ],
+    [
+     17.34,
+     -58.35
+    ],
+    [
+     17.58,
+     -58.41
+    ],
+    [
+     17.56,
+     -60.17
+    ],
+    [
+     16.96,
+     -60.75
+    ],
+    [
+     16.24,
+     -59.94
+    ],
+    [
+     14.17,
+     -60.05
+    ],
+    [
+     12.74,
+     -61.57
+    ],
+    [
+     12.85,
+     -63.59
+    ],
+    [
+     14.32,
+     -65.03
+    ],
+    [
+     16.3,
+     -64.93
+    ],
+    [
+     17.11,
+     -64.16
+    ],
+    [
+     17.81,
+     -64.72
+    ],
+    [
+     17.89,
+     -66.14
+    ],
+    [
+     18.21,
+     -73.11
+    ],
+    [
+     18.23,
+     -73.25
+    ],
+    [
+     18.56,
+     -73.23
+    ],
+    [
+     18.6,
+     -73.01
+    ],
+    [
+     22.67,
+     -73.02
+    ],
+    [
+     22.69,
+     -73.21
+    ],
+    [
+     23.09,
+     -73.18
+    ],
+    [
+     23.09,
+     -72.98
+    ],
+    [
+     27.06,
+     -72.91
+    ],
+    [
+     27.08,
+     -73.18
+    ],
+    [
+     27.67,
+     -73.17
+    ],
+    [
+     27.66,
+     -72.96
+    ],
+    [
+     31.69,
+     -72.83
+    ],
+    [
+     31.75,
+     -73.07
+    ],
+    [
+     32.15,
+     -73.05
+    ],
+    [
+     32.14,
+     -72.27
+    ],
+    [
+     32.83,
+     -72.53
+    ],
+    [
+     33.89,
+     -72.7
+    ],
+    [
+     34.94,
+     -72.61
+    ],
+    [
+     35.17,
+     -73.06
+    ],
+    [
+     35.65,
+     -73.16
+    ],
+    [
+     36.05,
+     -72.78
+    ],
+    [
+     35.95,
+     -72.25
+    ],
+    [
+     36.55,
+     -71.92
+    ],
+    [
+     36.99,
+     -72.42
+    ],
+    [
+     37.65,
+     -72.39
+    ]
+   ],
+   [
+    [
+     43.68,
+     -42.64
+    ],
+    [
+     43.2,
+     -42.12
+    ],
+    [
+     43.39,
+     -41.85
+    ],
+    [
+     43.06,
+     -41.8
+    ],
+    [
+     43.14,
+     -41.23
+    ],
+    [
+     42.76,
+     -41.59
+    ],
+    [
+     42.46,
+     -41.48
+    ],
+    [
+     42.41,
+     -41.76
+    ],
+    [
+     41.64,
+     -41.7
+    ],
+    [
+     42.09,
+     -42.16
+    ],
+    [
+     41.96,
+     -42.47
+    ],
+    [
+     42.26,
+     -42.48
+    ],
+    [
+     42.25,
+     -43.22
+    ],
+    [
+     42.71,
+     -42.73
+    ],
+    [
+     42.99,
+     -42.89
+    ],
+    [
+     43.03,
+     -42.58
+    ],
+    [
+     43.68,
+     -42.64
+    ]
+   ],
+   [
+    [
+     46.71,
+     -36.91
+    ],
+    [
+     46.22,
+     -36.27
+    ],
+    [
+     46.31,
+     -35.95
+    ],
+    [
+     46.04,
+     -35.92
+    ],
+    [
+     45.82,
+     -35.23
+    ],
+    [
+     45.18,
+     -35.69
+    ],
+    [
+     44.87,
+     -35.62
+    ],
+    [
+     44.88,
+     -35.89
+    ],
+    [
+     44.02,
+     -36.05
+    ],
+    [
+     44.63,
+     -36.69
+    ],
+    [
+     44.49,
+     -36.97
+    ],
+    [
+     44.8,
+     -37.0
+    ],
+    [
+     44.99,
+     -37.79
+    ],
+    [
+     45.6,
+     -37.28
+    ],
+    [
+     45.89,
+     -37.44
+    ],
+    [
+     45.91,
+     -37.11
+    ],
+    [
+     46.71,
+     -36.91
+    ]
+   ],
+   [
+    [
+     48.75,
+     -29.09
+    ],
+    [
+     48.01,
+     -28.51
+    ],
+    [
+     48.05,
+     -28.19
+    ],
+    [
+     47.76,
+     -28.19
+    ],
+    [
+     47.53,
+     -27.37
+    ],
+    [
+     46.9,
+     -28.08
+    ],
+    [
+     46.57,
+     -28.03
+    ],
+    [
+     46.63,
+     -28.33
+    ],
+    [
+     45.65,
+     -28.55
+    ],
+    [
+     46.48,
+     -29.13
+    ],
+    [
+     46.37,
+     -29.43
+    ],
+    [
+     46.69,
+     -29.42
+    ],
+    [
+     46.95,
+     -30.31
+    ],
+    [
+     47.51,
+     -29.59
+    ],
+    [
+     47.82,
+     -29.71
+    ],
+    [
+     47.8,
+     -29.38
+    ],
+    [
+     48.75,
+     -29.09
+    ]
+   ],
+   [
+    [
+     47.2,
+     -12.42
+    ],
+    [
+     47.5,
+     -11.55
+    ],
+    [
+     47.83,
+     -11.58
+    ],
+    [
+     47.7,
+     -11.27
+    ],
+    [
+     48.51,
+     -10.67
+    ],
+    [
+     47.61,
+     -10.37
+    ],
+    [
+     47.55,
+     -10.05
+    ],
+    [
+     47.28,
+     -10.15
+    ],
+    [
+     46.79,
+     -9.44
+    ],
+    [
+     46.42,
+     -10.32
+    ],
+    [
+     46.11,
+     -10.38
+    ],
+    [
+     46.25,
+     -10.63
+    ],
+    [
+     45.39,
+     -11.18
+    ],
+    [
+     46.37,
+     -11.45
+    ],
+    [
+     46.37,
+     -11.77
+    ],
+    [
+     46.65,
+     -11.66
+    ],
+    [
+     47.2,
+     -12.42
+    ]
+   ],
+   [
+    [
+     45.26,
+     -4.66
+    ],
+    [
+     45.46,
+     -3.87
+    ],
+    [
+     45.79,
+     -3.85
+    ],
+    [
+     45.61,
+     -3.55
+    ],
+    [
+     46.15,
+     -2.94
+    ],
+    [
+     45.39,
+     -2.69
+    ],
+    [
+     45.29,
+     -2.38
+    ],
+    [
+     45.03,
+     -2.52
+    ],
+    [
+     44.46,
+     -2.06
+    ],
+    [
+     44.2,
+     -2.81
+    ],
+    [
+     43.91,
+     -2.93
+    ],
+    [
+     44.08,
+     -3.16
+    ],
+    [
+     43.47,
+     -3.77
+    ],
+    [
+     44.32,
+     -3.96
+    ],
+    [
+     44.37,
+     -4.27
+    ],
+    [
+     44.63,
+     -4.11
+    ],
+    [
+     45.26,
+     -4.66
+    ]
+   ],
+   [
+    [
+     42.4,
+     1.32
+    ],
+    [
+     42.33,
+     2.01
+    ],
+    [
+     42.65,
+     2.12
+    ],
+    [
+     42.41,
+     2.35
+    ],
+    [
+     42.82,
+     2.76
+    ],
+    [
+     42.29,
+     2.7
+    ],
+    [
+     42.13,
+     2.97
+    ],
+    [
+     41.9,
+     2.78
+    ],
+    [
+     41.34,
+     3.3
+    ],
+    [
+     41.4,
+     2.65
+    ],
+    [
+     41.13,
+     2.49
+    ],
+    [
+     41.35,
+     2.3
+    ],
+    [
+     40.9,
+     1.73
+    ],
+    [
+     41.57,
+     1.83
+    ],
+    [
+     41.68,
+     1.53
+    ],
+    [
+     41.91,
+     1.75
+    ],
+    [
+     42.4,
+     1.32
+    ]
+   ],
+   [
+    [
+     -42.97,
+     -28.73
+    ],
+    [
+     -42.81,
+     -28.26
+    ],
+    [
+     -43.12,
+     -27.9
+    ],
+    [
+     -43.61,
+     -27.98
+    ],
+    [
+     -43.78,
+     -28.44
+    ],
+    [
+     -43.46,
+     -28.82
+    ],
+    [
+     -42.97,
+     -28.73
+    ]
+   ],
+   [
+    [
+     -43.13,
+     -14.03
+    ],
+    [
+     -42.96,
+     -13.56
+    ],
+    [
+     -43.28,
+     -13.2
+    ],
+    [
+     -43.76,
+     -13.27
+    ],
+    [
+     -43.93,
+     -13.74
+    ],
+    [
+     -43.62,
+     -14.11
+    ],
+    [
+     -43.13,
+     -14.03
+    ]
+   ]
+  ]
+ },
+ "modulo": {
+  "v": 7.5,
+  "fuente": "conv, caWiki: todo se mide en módulos de 7,5 m",
+  "estado": "verificado"
+ },
+ "planta": {
+  "tipo": "cruz latina: 5 naves (central 15 + 4 laterales de 7,5) y crucero de 3 naves; ábside con girola y 7 capillas; claustro perimetral que rodea todo el templo; dos sacristías en las esquinas del ábside; cripta bajo el ábside (de Villar, 1882-1891)",
+  "eje_nave_x": {
+   "v": -2.5,
+   "estado": "estimacion",
+   "nota": "centro de la manzana (-2,4) y planta OSM (naves x -28,3…21,2 → -3,55 incl. muros); ±1,5 m"
+  },
+  "centro_crucero_z": {
+   "v": -20.5,
+   "estado": "estimacion",
+   "nota": "punto medio de las columnas de los pórticos: Passió (-42,2…2,3 → -20,0) y Naixement (-28,4/-13,7 → -21,05)"
+  },
+  "largo_interior": {
+   "v": 90,
+   "fuente": "caWiki/conv: 7,5×12, de la puerta de la Glòria al fondo del ábside",
+   "estado": "verificado"
+  },
+  "ancho_naves": {
+   "v": 45,
+   "fuente": "caWiki: central 15 + laterales 4×7,5",
+   "estado": "verificado"
+  },
+  "largo_transepto_interior": {
+   "v": 60,
+   "fuente": "caWiki: 7,5×8",
+   "estado": "verificado"
+  },
+  "ancho_transepto": {
+   "v": 30,
+   "fuente": "caWiki: 7,5×4",
+   "estado": "verificado"
+  },
+  "z_puertas_gloria": {
+   "v": 32.0,
+   "estado": "estimacion",
+   "nota": "crucero -20,5 + 52,5 (7 módulos); la planta OSM llega a +34,5 y la manzana a +39,3"
+  },
+  "z_fondo_absis_interior": {
+   "v": -58.0,
+   "estado": "estimacion",
+   "nota": "puerta - 90; la girola exterior OSM llega a -62 y el claustro a -74"
+  },
+  "fachada_naixement_x": {
+   "v": -42.5,
+   "estado": "estimacion",
+   "nota": "planta OSM: frente del pórtico del Naixement a x ≈ -42,5…-43"
+  },
+  "fachada_passio_x": {
+   "v": 38.5,
+   "estado": "estimacion",
+   "nota": "planta OSM: muro x 36,6…40,8; columnas inclinadas hasta x 47,2"
+  },
+  "alturas_interiores": {
+   "v": {
+    "naves_laterales": 30,
+    "nave_central": 45,
+    "crucero": 60,
+    "absis": 75,
+    "coro": 15
+   },
+   "fuente": "conv, bArch",
+   "estado": "verificado"
+  },
+  "alturas_exteriores": {
+   "v": {
+    "cornisa_naves_laterales": 33,
+    "cornisa_nave_central": 48,
+    "cumbrera_nave_central": 60,
+    "cumbrera_crucero": 70,
+    "base_torres_centrales": 85
+   },
+   "estado": "estimacion",
+   "nota": "por las bóvedas (+ espesor y cubiertas); los paneles de Jesucrist empezaron a 85 m (vatican)"
+  }
+ },
+ "torres": {
+  "jesucrist": {
+   "n": 1,
+   "altura": {
+    "v": 172.5,
+    "fuente": "vatican, wpOfi10",
+    "estado": "verificado"
+   },
+   "centro": {
+    "v": [
+     -2.5,
+     -20.5
+    ],
+    "estado": "estimacion",
+    "nota": "sobre el crucero, descansa en las 4 columnas del crucero"
+   },
+   "planta": {
+    "v": "12 caras (dodecágono), 12 niveles de paneles de piedra tensada desde 85 m hasta 142,5 m",
+    "fuente": "vatican",
+    "estado": "verificado"
+   },
+   "diametro_base": {
+    "v": 18,
+    "fuente": "wpOfi10: «sacristía, Mare de Déu y Jesucrist, todas de unos 18 m»",
+    "estado": "verificado"
+   },
+   "remate": {
+    "v": {
+     "tramo_inscripciones": "29 m de cerámica blanca esmaltada y ladrillo con «Tu solus Sanctus, tu solus Dominus, tu solus Altissimus» y palmas (142,5→~155,5)",
+     "cruz": "cuatro brazos tridimensionales, 17 m de alto × 13,5 m de ancho, vidrio y cerámica blanca esmaltada; brazos «ondulados» con miradores; pieza superior 4,5×4,5×4,9 m (2026-02-20)"
+    },
+    "fuente": "vatican",
+    "estado": "verificado"
+   },
+   "perfil": {
+    "v": "paraboloide de 12 lados que se estrecha de ~18 m a ~7 m a 142,5 m; superficie gris clara con huecos triangulares/rombos",
+    "estado": "estimacion",
+    "nota": "fotos 2025-2026; sin plano publicado"
+   },
+   "puentes": {
+    "v": "unida por puentes a las 4 de los evangelistas e interiormente a la de la Mare de Déu",
+    "fuente": "vatican",
+    "estado": "verificado"
+   }
+  },
+  "mare_de_deu": {
+   "altura": {
+    "v": 138,
+    "fuente": "wpOfi10, caWiki (inaugurada 8-12-2021)",
+    "estado": "verificado"
+   },
+   "centro": {
+    "v": [
+     -2.5,
+     -44.5
+    ],
+    "estado": "estimacion",
+    "nota": "sobre el ábside, ~3 módulos detrás del crucero"
+   },
+   "diametro_base": {
+    "v": 18,
+    "fuente": "wpOfi10",
+    "estado": "verificado"
+   },
+   "remate": {
+    "v": "pináculo de 25 m; estrella de 12 puntas de vidrio texturado y acero inoxidable: dodecaedro con una pirámide pentagonal en cada cara, 7,5 m de diámetro, 5,5 t, centro a 135 m, sobre tres brazos",
+    "fuente": "fGaudi, conv, sagradafamilia.org (history)",
+    "estado": "verificado"
+   },
+   "perfil": {
+    "v": "paraboloides que se cortan (como la sacristía), fuste claro con huecos; corona de piedra que oculta 12 proyectores",
+    "estado": "estimacion",
+    "nota": "wpOfi10, lkl"
+   }
+  },
+  "evangelistes": {
+   "altura": {
+    "v": 135,
+    "fuente": "wpOfi10",
+    "estado": "verificado"
+   },
+   "planta": {
+    "v": "8 lados con perfil parabólico hasta la base del pináculo",
+    "fuente": "evang",
+    "estado": "verificado"
+   },
+   "centros": {
+    "v": {
+     "mateu": [
+      -13.75,
+      -6.75
+     ],
+     "joan": [
+      8.75,
+      -6.75
+     ],
+     "lluc": [
+      -13.75,
+      -34.25
+     ],
+     "marc": [
+      8.75,
+      -34.25
+     ]
+    },
+    "estado": "estimacion",
+    "nota": "esquinas del cuadrado del crucero a ±11,25 del centro; la asignación de cada evangelista a cada esquina NO está confirmada"
+   },
+   "diametro_base": {
+    "v": 10,
+    "estado": "estimacion",
+    "nota": "fotos: más finas que la de Jesucrist y que la Mare de Déu"
+   },
+   "remate": {
+    "v": {
+     "altura": 22.5,
+     "partes": "fuste con escudos hexagonales «Amén» y «Al·leluia» y palmas; icosaedro con esfera (trencadís: dorado Orsoni en los bultos esféricos, ocre, amarillo y salmón en las caras) que guarda los focos que iluminan la cruz; figura blanca alada con libro: ángel (Mateu), león (Marc), buey (Lluc), águila (Joan), de Xavier Medina-Campeny"
+    },
+    "fuente": "evang, ermak",
+    "estado": "verificado"
+   }
+  },
+  "apostols": {
+   "rango_alturas": {
+    "v": [
+     98.5,
+     120
+    ],
+    "fuente": "wpOfi10",
+    "estado": "verificado"
+   },
+   "remate": {
+    "v": "pináculo de mosaico de vidrio veneciano policromado: mitra con la cruz, báculo y anillo (agujero pasante bajo la cruz), esfera blanca/hostias; letras «Hosanna», «Excelsis» y el «Sanctus» (amarillo Padre, rojo Hijo, naranja Espíritu); inicial del apóstol",
+    "fuente": "wpOfi10, ermak, foreverbarcelona",
+    "estado": "verificado"
+   },
+   "cuerpo": {
+    "v": "planta cuadrada en la base y circular/elíptica arriba (Passió: planta elíptica), perfil parabólico, huecos en espiral (lamas para el sonido de las campanas), estatua sentada del apóstol, inscripción «Sanctus» a media altura, escalera helicoidal interior",
+    "fuente": "wpOfi10, enWiki, foreverbarcelona",
+    "estado": "verificado"
+   },
+   "diametro_base": {
+    "v": 7.6,
+    "estado": "estimacion",
+    "nota": "fotos y planta OSM; el modelo actual usa 7,2-7,5"
+   },
+   "naixement": {
+    "x": {
+     "v": -38.5,
+     "estado": "estimacion",
+     "nota": "detrás del pórtico OSM"
+    },
+    "torres": [
+     {
+      "nom": "Bernabé",
+      "z": {
+       "v": -3.3,
+       "estado": "estimacion",
+       "nota": "izquierda vista desde la plaza = lado Glòria"
+      },
+      "altura": {
+       "v": 98.5,
+       "fuente": "wpOfi10/foreverbarcelona: exteriores ~98 m",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Simó",
+      "z": {
+       "v": -13.7,
+       "estado": "estimacion",
+       "nota": "sobre la columna entre Esperança y Caritat"
+      },
+      "altura": {
+       "v": 107.5,
+       "fuente": "bArch",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Judes Tadeu",
+      "z": {
+       "v": -28.4,
+       "estado": "estimacion",
+       "nota": "sobre la columna entre Caritat y Fe"
+      },
+      "altura": {
+       "v": 107.5,
+       "fuente": "bArch",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Macià",
+      "z": {
+       "v": -38.8,
+       "estado": "estimacion",
+       "nota": "lado ábside"
+      },
+      "altura": {
+       "v": 98.5,
+       "fuente": "wpOfi10",
+       "estado": "verificado"
+      }
+     }
+    ]
+   },
+   "passio": {
+    "x": {
+     "v": 36.0,
+     "estado": "estimacion",
+     "nota": "detrás del muro OSM"
+    },
+    "torres": [
+     {
+      "nom": "Jaume el Menor",
+      "z": {
+       "v": -38.8,
+       "estado": "estimacion",
+       "nota": "izquierda vista desde la plaza = lado ábside"
+      },
+      "altura": {
+       "v": 107.5,
+       "estado": "estimacion",
+       "nota": "fuentes dicen 107 o 107,5"
+      }
+     },
+     {
+      "nom": "Bartomeu",
+      "z": {
+       "v": -27.6,
+       "estado": "estimacion",
+       "nota": ""
+      },
+      "altura": {
+       "v": 112,
+       "fuente": "bArch",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Tomàs",
+      "z": {
+       "v": -13.4,
+       "estado": "estimacion",
+       "nota": ""
+      },
+      "altura": {
+       "v": 112,
+       "fuente": "bArch",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Felip",
+      "z": {
+       "v": -2.2,
+       "estado": "estimacion",
+       "nota": "lado Glòria"
+      },
+      "altura": {
+       "v": 107.5,
+       "estado": "estimacion",
+       "nota": ""
+      }
+     }
+    ]
+   },
+   "gloria": {
+    "z": {
+     "v": 36.0,
+     "estado": "estimacion",
+     "nota": "muro de las torres detrás del nártex"
+    },
+    "torres": [
+     {
+      "nom": "Andreu",
+      "x": {
+       "v": 19.5,
+       "estado": "estimacion",
+       "nota": "izquierda vista desde Mallorca = lado Passió"
+      },
+      "altura": {
+       "v": 114,
+       "estado": "estimacion",
+       "nota": "fuentes: 112-117; máximo de la Glòria 120"
+      }
+     },
+     {
+      "nom": "Pere",
+      "x": {
+       "v": 6.0,
+       "estado": "estimacion",
+       "nota": ""
+      },
+      "altura": {
+       "v": 120,
+       "fuente": "bArch: 2/3 de 180 m; thenewbarcelonapost: «raising the four bell towers to 120 metres»",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Pau",
+      "x": {
+       "v": -11.0,
+       "estado": "estimacion",
+       "nota": ""
+      },
+      "altura": {
+       "v": 120,
+       "fuente": "bArch",
+       "estado": "verificado"
+      }
+     },
+     {
+      "nom": "Jaume el Major",
+      "x": {
+       "v": -24.5,
+       "estado": "estimacion",
+       "nota": "lado Naixement"
+      },
+      "altura": {
+       "v": 114,
+       "estado": "estimacion",
+       "nota": ""
+      }
+     }
+    ]
+   }
+  },
+  "sacristies": {
+   "altura": {
+    "v": 35,
+    "fuente": "ermak (de ca.wikipedia)",
+    "estado": "verificado"
+   },
+   "base": {
+    "v": [
+     18,
+     18
+    ],
+    "fuente": "ermak",
+    "estado": "verificado"
+   },
+   "forma": {
+    "v": "planta baja cuadrada (lados exteriores = claustro), primer piso octogonal (esquinas achaflanadas), cúpula de 12 paraboloides con huecos triangulares, linterna de hiperboloide elíptico; tres obeliscos en la esquina exterior; inscripciones del Apocalipsi («Lloança», «Glòria», «Saviesa», «Acció de gràcies»…)",
+    "fuente": "ermak, wpOfi10",
+    "estado": "verificado"
+   },
+   "oest_passio": {
+    "centro": {
+     "v": [
+      29.0,
+      -65.0
+     ],
+     "estado": "estimacion",
+     "nota": "planta OSM: x 18,2…38,9, z -74…-56"
+    },
+    "estado_obra": "acabada 2016"
+   },
+   "est_naixement": {
+    "centro": {
+     "v": [
+      -34.0,
+      -65.0
+     ],
+     "estado": "estimacion",
+     "nota": "simétrica respecto al eje -2,5"
+    },
+    "estado_obra": "en obras; en el juego, acabada como la oeste"
+   }
+  }
+ },
+ "fachadas": {
+  "naixement": {
+   "v": {
+    "orientacion": "NE (sol naciente)",
+    "porticos": "tres: Esperança (Josep, izq. = lado Glòria), Caritat (Jesús, centro, el más grande), Fe (Maria, der. = lado ábside); dos columnas con palmeras y tortugas en la base (mar/tierra) los separan; marco de estalactitas; camaleones en las esquinas",
+    "xiprer": "ciprés de cerámica verde (Arbre de la Vida) sobre la Caritat, con palomas blancas, tau, X y paloma con alas abiertas en la cima; escaleras «de la virtud» y «de la santidad»",
+    "piedra": "arenisca de Montjuïc, la más oscura y envejecida (ocre parduzco)"
+   },
+   "fuente": "blogNaix, enWiki",
+   "estado": "verificado"
+  },
+  "naixement_medidas": {
+   "v": {
+    "ancho_portico": 42,
+    "alto_hastial_caritat": 48,
+    "cima_xiprer": 62,
+    "cota_torres_sobre_portico": "las 4 torres arrancan sobre el pórtico (~28 m)"
+   },
+   "estado": "estimacion",
+   "nota": "fotos; sin alzado acotado"
+  },
+  "passio": {
+   "v": {
+    "orientacion": "SO (sol poniente)",
+    "portico": "seis grandes columnas inclinadas (troncos de secuoya/«músculos tensos»), frontón piramidal de 18 columnas-hueso rematado por una gran cruz con corona de espinas (cruz colocada 2018); esculturas angulosas de Subirachs en tres niveles en «S»; muro desnudo",
+    "piedra": "más clara, gris-beige"
+   },
+   "fuente": "enWiki, buffaloah",
+   "estado": "verificado"
+  },
+  "passio_medidas": {
+   "v": {
+    "columnas_osm": "6 círculos de 2,6-3,1 m en arco: x 41,9…47,2, z -42,2…+2,3",
+    "alto_porche": 25,
+    "alto_fronton_con_cruz": 58
+   },
+   "estado": "estimacion",
+   "nota": "columnas: osm (verificado); alturas: fotos"
+  },
+  "gloria": {
+   "v": {
+    "orientacion": "SE, hacia el mar, sobre Mallorca",
+    "nartex": "pórtico monumental cubierto por 16 linternas hiperboloides rematadas por conos, en dos planos: 7 delante (días de la Creación) y 9 detrás (coros de ángeles), subiendo hasta 80 m en el centro",
+    "puertas": "siete puertas de bronce de Subirachs (izq.→der.: bautismo, unción, orden, eucaristía, confirmación, matrimonio, penitencia); la central 4,7 m × 5 m con el Padrenuestro en catalán",
+    "columnas": "siete columnas exteriores (dones del Espíritu Santo; pecados en la base, virtudes arriba) y columnas junto a las puertas (obras de misericordia)",
+    "nubes": "nubes en la parte baja de las torres y en las linternas con el Credo en letras grandes",
+    "muro": "muro que sostiene las torres detrás del nártex con ventanales entre las dos torres centrales",
+    "capillas": "Baptisteri a un lado (puerta del bautismo = izquierda vista desde la calle = lado Passió, +X) y capilla de la Penitència al otro (-X); fuente-surtidor de 20 m ante el baptisterio y fuego (pebetero) ante la Penitència",
+    "infern": "nivel inferior junto a Mallorca: infierno, demonios, ídolos, cismas, herejías; purgatorio y muerte (tumbas) en el suelo"
+   },
+   "fuente": "wpOfi08, caWiki, enWiki",
+   "estado": "verificado"
+  },
+  "gloria_medidas": {
+   "v": {
+    "z_frente_nartex": 39.0,
+    "ancho_nartex": 60,
+    "altura_linternas_delanteras": [
+     35,
+     60
+    ],
+    "altura_linternas_traseras": [
+     50,
+     80
+    ]
+   },
+   "estado": "estimacion",
+   "nota": "frente sobre la línea de manzana; anchos y alturas parciales por la maqueta, solo el máximo de 80 m es dato"
+  },
+  "escalinata": {
+   "v": {
+    "desnivel": "4 m entre Provença y Mallorca (el nivel del templo y Mallorca)",
+    "paso_mallorca": "puente o losa elevada sobre Mallorca, con el tráfico por debajo (en otros proyectos Mallorca soterrada)",
+    "largo": "57 m (enWiki, según la Junta)",
+    "destino": "avenida/explanada de dos manzanas hacia la Diagonal (plano de ~1908/1916)",
+    "estado": "proyecto; exige derribar el bloque de Mallorca 410-414"
+   },
+   "fuente": "wpOfi08, enWiki",
+   "estado": "verificado"
+  }
+ },
+ "cubiertas": {
+  "v": {
+   "linternas": "linternas cónicas (hiperboloides) sobre las cubiertas de las naves; pináculos con racimos de frutas de colores (trencadís) sobre los contrafuertes de la nave y del crucero; cubierta de la nave a dos aguas formada por paraboloides con lucernarios",
+   "frutas_colores": [
+    "rojo",
+    "naranja",
+    "amarillo",
+    "verde",
+    "blanco"
+   ]
+  },
+  "estado": "estimacion",
+  "nota": "fotos y descripciones generales"
+ },
+ "vidrieras": {
+  "v": {
+   "autor": "Joan Vila-Grau",
+   "este_naixement": "fríos: azules, verdes, turquesa",
+   "oeste_passio": "cálidos: rojos, naranjas, amarillos",
+   "abside_gloria": "claros/amarillos hacia lo alto"
+  },
+  "estado": "estimacion",
+  "nota": "dato muy difundido, no reconfirmado con fuente en esta sesión"
+ },
+ "materiales_colores_rgb": {
+  "v": {
+   "naixement_piedra": [
+    142,
+    124,
+    98
+   ],
+   "passio_piedra": [
+    196,
+    184,
+    160
+   ],
+   "naves_piedra": [
+    200,
+    186,
+    158
+   ],
+   "torres_centrales_piedra": [
+    214,
+    206,
+    190
+   ],
+   "ceramica_blanca": [
+    242,
+    240,
+    232
+   ],
+   "trencadis_amarillo": [
+    226,
+    182,
+    60
+   ],
+   "trencadis_rojo": [
+    176,
+    52,
+    44
+   ],
+   "trencadis_naranja": [
+    214,
+    120,
+    48
+   ],
+   "xiprer_verde": [
+    64,
+    108,
+    72
+   ],
+   "oro_orsoni": [
+    210,
+    170,
+    80
+   ],
+   "estrella_vidrio": [
+    236,
+    240,
+    244
+   ]
+  },
+  "estado": "estimacion",
+  "nota": "paleta orientativa para el juego (luz calibrada); ajustar con capturas"
+ },
+ "iluminacion_nocturna": {
+  "v": {
+   "mare_de_deu": "estrella encendida desde dentro (12 luminarias, una en la base de cada pirámide); 12 proyectores ocultos tras la corona de piedra bañan el fuste; luz interior visible por los huecos; discreta, sin exceso de brillo",
+   "evangelistes": "los icosaedros contienen focos que iluminan la cruz de Jesucrist; remates encendidos desde 2022/2023",
+   "jesucrist": "cruz de vidrio y cerámica blanca iluminada; miradores",
+   "fachadas": "bañadas con focos cálidos; vidrieras encendidas desde dentro en celebraciones"
+  },
+  "fuente": "lkl, evang, sagradafamilia.org (history)",
+  "estado": "verificado"
+ }
+}

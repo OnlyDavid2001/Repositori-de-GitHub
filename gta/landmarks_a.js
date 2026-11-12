@@ -69,6 +69,7 @@ function estrella(B, x, y, z, r, col, k, aux) {
 // (3) piedra ocre (el Naixement, más oscuro), naves con frutas de colores en los pináculos.
 // Ejes locales (de los datos): +Z = rumbo 136° = hacia la Glòria (c/ Mallorca); −Z = ábside (Provença); −X = Naixement
 // (c/ Marina); +X = Passió (c/ Sardenya). Crucero en (−1,9, −18,4).
+// SF1: este constructor queda de reserva; sagrada.js lo sustituye en la carga (data/sf_ref.json, tres niveles de detalle).
 add({ id: 'sagrada_familia', nombre: 'Sagrada Família', nivel: 'A', x: 12597.9, z: 15875.2, rot: 136, alto: 172.5, ancho: 84, largo: 142,
   noche: 'focos', edificios: ED.sagrada_familia,
   build(B, h, L) {
