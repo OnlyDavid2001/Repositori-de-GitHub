@@ -655,7 +655,7 @@ void main(){
       float ins = smoothstep(-aa, aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y));
       float on = step(h, 0.10 + 0.40*pw)*ins*step(abs(x), hw - 0.25);
       float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y)));
-      alb = mix(alb, alb*(h2 > 0.45 ? 0.84 : 1.10)*(0.95 + 0.1*vnoise(P*1.7)), on*near);
+      alb = mix(alb, alb*(h2 > 0.45 ? 0.86 : 1.06)*(0.95 + 0.1*vnoise(P*1.7)), on*near);
       crk = max(crk, edge*0.35*lod);
     }
     // grietas selladas con betún (gastado normal y bastante gastado): longitudinales en las juntas de carril y alguna transversal

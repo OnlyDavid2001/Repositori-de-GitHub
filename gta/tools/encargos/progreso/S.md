@@ -7,7 +7,21 @@
       con junta, grietas selladas con betún, piel de cocodrilo, árido descarnado, baches; pintura nítida o borrada.
 - [x] `streets.js`: atlas gemelo sin filtrar (`tKind`) con modelo de acera y desgaste; 6 modelos de baldosa; bordillo y
       alcorque según el modelo.
-- [x] Capturas ANTES (13 vistas) · [ ] DESPUÉS y ajuste
+- [x] Capturas ANTES (13 vistas) y DESPUÉS, ajustes (acera dejada menos oscura, parches más suaves, hexagonal menos verde,
+      Passeig de Gràcia bien localizado). Hoja: scratchpad n3/s/hoja_antes_despues.jpg. Sin errores de consola.
+
+## Coste
+- Geometría: 0 triángulos nuevos (misma calzada, misma malla de acera y bordillo). Memoria: +16 MB de GPU (atlas `tKind`
+  2048² RGBA). Sombreado: FS_ROAD algo más de ALU de cerca (Voronoi 3×3 solo en asfalto muy gastado y en las rodadas);
+  FS_WALK, una lectura de textura más y, en Passeig de Gràcia y Diagonal, el relieve evaluado tres veces (diferencias finitas).
+  Sin trabajo por fotograma en JS; `acera()` en caché por tramo y `nivel()` en rejilla de 100 m.
+
+## Flojo / pendiente
+- La losa «de la Diagonal» es una interpretación (no encontré el diseño real). Las aceras de la Diagonal no han salido en
+  ninguna captura a pie (el encuadre automático cae en cruces): sin verificar de cerca.
+- El reparto va por polilínea de roads.png: una polilínea larga lleva un único estado.
+- Gran Via y Diagonal se reconocen por trazado aproximado (Nominatim, tolerancia 30–40 m): algún tramo lateral puede quedar fuera.
+- En L'Hospitalet, una grieta sellada cruza una explanada clara: casi invisible, sin investigar.
 
 ## Para DESARROLLO.md
 ### Suelos (etapa S, `suelos.js`)
