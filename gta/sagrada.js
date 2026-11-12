@@ -45,6 +45,15 @@ const piezasP = window.BCN_SF_PIEZAS ? Promise.resolve(SF.piezas = piezasOf(wind
   ? fetch('data/sf_modelo_piezas.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => (SF.piezas = piezasOf(d)))
     .catch(e => { console.warn('Sagrada Família: sin data/sf_modelo_piezas.json, pináculos y fachadas procedurales', e); return null; })
   : Promise.resolve(null));
+// SFA: exterior del ábside del modelo del usuario (data/sf_modelo_absis.json, tools/stl_absis.py): corona de puntas que envuelve
+// la torre de la Mare de Déu, agujas de la girola, torres de las esquinas y capillas; mismos ejes y formato que las piezas
+// (pos Int16 en cm, absolutos del modelo) y `piezas` = [primer triángulo, nº, u, v, z0, z1] de cada componente
+const absisOf = d => { try { const o = {}; for (const g of ['corona', 'agujas', 'torres', 'capillas']) if (d[g]) o[g] = Object.assign(piezaOf(d[g]), { piezas: d[g].piezas || [] });
+  return o; } catch (e) { console.warn('Sagrada Família: sf_modelo_absis.json ilegible', e); return null; } };
+const absisP = window.BCN_SF_ABSIS ? Promise.resolve(SF.absis = absisOf(window.BCN_SF_ABSIS)) : (typeof fetch === 'function'
+  ? fetch('data/sf_modelo_absis.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => (SF.absis = absisOf(d)))
+    .catch(e => { console.warn('Sagrada Família: sin data/sf_modelo_absis.json, ábside procedural', e); return null; })
+  : Promise.resolve(null));
 
 // ------------------------------------------------------------------ referencia (sf_ref.json o, sin él, lo mismo a mano)
 const v = (o, d) => (o && o.v !== undefined ? o.v : (o !== undefined && o !== null && typeof o !== 'object' ? o : d));
@@ -279,13 +288,16 @@ function construir(B, h, L, q) {
     }
   }
   // ---- ábside: presbiterio (bóveda 75), girola con siete capillas y sus agujas
-  const ZA = CZ - 23;                                                 // centro del semicírculo del ábside
+  // SFA: con data/sf_modelo_absis.json, el exterior del ábside es el del modelo del usuario (ver más abajo): la girola propia se
+  // queda como núcleo bajo (r 14, dentro del anillo de capillas del modelo) y fuera hastiales, agujas y remate del presbiterio
+  const ZA = CZ - 23, AB = SF.absis && SF.absis.corona ? SF.absis : null, rG = AB ? 14 : 22, yGi = AB ? 32.4 : 33;
   if (BASE) {
     L.caja(B, AX, (ZA + ZT) / 2, yLo, 44, ZT - ZA + 0.5, 33 - yLo, 0, OCRE, K.PIEDRA, { aux: VL, techo: TECHO, kTecho: K.PIEDRA });
-    rv(AX, ZA, [[22, yLo], [22, 33]], n(20), OCRE, K.PIEDRA, { aux: VL, a0: PI, a1: 2 * PI });
-    rv(AX, ZA, [[22, 33], [22, 33], [0, 33]], n(20), TECHO, K.PIEDRA, { a0: PI, a1: 2 * PI, cap: 0 });
+    rv(AX, ZA, [[rG, yLo], [rG, yGi]], n(20), OCRE, K.PIEDRA, { aux: VL, a0: PI, a1: 2 * PI });
+    rv(AX, ZA, [[rG, yGi], [rG, yGi], [0, yGi]], n(20), TECHO, K.PIEDRA, { a0: PI, a1: 2 * PI, cap: 0 });
     L.caja(B, AX, (ZA + CZ - 9) / 2, 33, 19, CZ - 9 - ZA, 30, 0, OCRE, K.PIEDRA, { aux: aP, techo: TECHO, kTecho: K.PIEDRA });
-    rv(AX, ZA, [[9.5, 33], [9.5, 63], [9.5, 63], [6.5, 67], [0, 71]], n(16), OCRE, K.PIEDRA, { aux: aP, a0: PI, a1: 2 * PI, cap: 0 });
+    if (AB) rv(AX, ZA, [[9.5, yGi], [9.5, 41], [9.5, 41], [0, 41]], n(16), OCRE, K.PIEDRA, { aux: aP, a0: PI, a1: 2 * PI, cap: 0 });   // base de la Mare de Déu
+    else rv(AX, ZA, [[9.5, 33], [9.5, 63], [9.5, 63], [6.5, 67], [0, 71]], n(16), OCRE, K.PIEDRA, { aux: aP, a0: PI, a1: 2 * PI, cap: 0 });
   }
   // ventanales: naves laterales (13 → 30), claristorio (35 → 46), testeros del crucero, presbiterio y girola
   for (const s of [-1, 1]) {
@@ -294,12 +306,52 @@ function construir(B, h, L, q) {
     muroV(AX + s * 9.5, ZA, AX + s * 9.5, CZ - 9.5, s, 0, 36, 58, 3.6, 7.5);
     for (const [xa, xb] of [[xN, AX - 24.5], [AX + 24.5, xP]]) { muroV(xa, CZ + s * 16.5, xb, CZ + s * 16.5, 0, s, 13, 30, 3.4, 7.5); muroV(xa, CZ + s * 9.5, xb, CZ + s * 9.5, 0, s, 35, 46.5, 3.6, 7.5); }
   }
-  for (let i = 0; i < 7; i++) { const a = PI + PI * (i + 0.5) / 7; ventanal(AX + Math.cos(a) * 9.5, ZA + Math.sin(a) * 9.5, Math.cos(a), Math.sin(a), 36, 60, 3.2); }
-  for (let i = 0; i < 7; i++) {                                          // capillas de la girola: hastial y aguja con espigas
+  if (!AB) for (let i = 0; i < 7; i++) { const a = PI + PI * (i + 0.5) / 7; ventanal(AX + Math.cos(a) * 9.5, ZA + Math.sin(a) * 9.5, Math.cos(a), Math.sin(a), 36, 60, 3.2); }
+  if (!AB) for (let i = 0; i < 7; i++) {                                 // capillas de la girola: hastial y aguja con espigas
     const a = PI + PI * (i + 0.5) / 7, x = AX + Math.cos(a) * 21.5, z = ZA + Math.sin(a) * 21.5, ang = Math.atan2(Math.cos(a), Math.sin(a)) * 180 / PI;
     if (BASE) L.piramide(B, x, z, 33, 7.5, 2.4, 8, { col: OCRE, k: K.PIEDRA, ang });
     if (MED || FAR) rv(x, z, [[1.3, 33], [1.2, 44], [0.8, 50], [0.95, 51, c.oro], [0, 56, c.ama]], n(8), TOR, K.LISO);
     if (DET) for (let k = 0; k < 5; k++) { const b = k / 5 * 2 * PI; L.esfera(B, x + Math.cos(b) * 0.9, 53, z + Math.sin(b) * 0.9, 0.45, { gajos: 5, anillos: 3, col: c.oro, k: K.TRENCADIS }); }
+  }
+  // ---- SFA: el exterior del ábside del modelo del usuario. En planta, la torre de María del modelo (u, v = 24, 0) sobre la del
+  // juego (R.md) y escala sA que lleva el borde exterior de la girola del modelo a la huella real (girola de OSM a z ≈ −62).
+  // En altura, por tramos: suelo del modelo (4,8) → 0; cubierta de las capillas (23,1) → 33 (la de la girola); por encima,
+  // el factor que lleva la punta de la torre de María del modelo (124,8) a sus 138 m: corona ≈ 88 m, lado del crucero ≈ 98 m.
+  // Lo que se acerca a los fustes de los evangelistas (r ≈ 5,4 por encima de 40 m) se aparta: las torres de las esquinas enteras,
+  // la corona vértice a vértice. Malla media (el detalle superpuesto no lo repite); lejos, la silueta: un anillo de conos.
+  if (AB) {
+    const [mx, mz] = R.md, ZGE = -62, sA = (mz - ZGE) / (AB.capillas.caja[1][0] - 24), kz = (R.Hmd - 33) / (124.8 - 23.1);
+    const yM = z => z <= 23.1 ? Math.max(0, (z - 4.8) * 33 / 18.3) : 33 + (z - 23.1) * kz;
+    const XZ = (u, v) => [mx - v * sA, mz - (u - 24) * sA];
+    const EVo = R.ev.map(e => [e.x, e.z]), rE = 5.9;
+    const VID = mix(c.oro, TOR, 0.35), aV = L.aux.piedra(0.4, 0.8);           // cerámica vidriada de las puntas: dorado sobrio
+    if (FAR) {                                                                  // silueta: corona de conos y agujas de la girola
+      for (const p of AB.corona.piezas) { const [x, z] = XZ(p[2], p[3]); rv(x, z, [[2.6, yM(p[4])], [0, yM(p[5])]], 6, TOR, K.PIEDRA); }
+      for (const p of AB.agujas.piezas) if (p[1] >= 60 && p[1] < 120) { const [x, z] = XZ(p[2], p[3]); rv(x, z, [[0.8, 0], [0, yM(p[5])]], 4, TOR, K.LISO); }
+      for (const p of AB.torres.piezas) if (p[4] > 30) { const [x, z] = XZ(p[2], p[3]); rv(x, z, [[3.6, 33], [3.6, yM(p[4])], [0, yM(p[5])]], 8, TOR, K.PIEDRA); }
+    }
+    if (MED) {
+      const grupo = (m, opt) => { const P = m.pos, I = m.idx;
+        for (const p of m.piezas) {
+          let [cx, cz] = XZ(p[2], p[3]); const y1 = yM(p[5]), hz = p[5] - p[4];
+          if (opt.mueve && y1 > 40) for (const [ex, ez] of EVo) {                // pieza entera fuera del fuste del evangelista
+            let r = 0; for (let t = p[0] * 3; t < (p[0] + p[1]) * 3; t++) { const i = I[t]; r = Math.max(r, Math.hypot(P[i * 3] * 0.01 - p[2], P[i * 3 + 1] * 0.01 - p[3]) * sA); }
+            const dx = cx - ex, dz = cz - ez, d = Math.hypot(dx, dz) || 1, need = rE + r + 0.3;
+            if (d < need) { cx += dx / d * (need - d); cz += dz / d * (need - d); } }
+          const V = i => { const u = P[i * 3] * 0.01, v = P[i * 3 + 1] * 0.01, z = P[i * 3 + 2] * 0.01, y = yM(z);
+            let x = cx - (v - p[3]) * sA, zz = cz - (u - p[2]) * sA;
+            if (opt.aparta && y > 40) for (const [ex, ez] of EVo) { const dx = x - ex, dz = zz - ez, d = Math.hypot(dx, dz) || 1;
+              if (d < rE) { x = ex + dx / d * rE; zz = ez + dz / d * rE; } }
+            return [x, y, zz]; };
+          for (let t = p[0] * 3; t < (p[0] + p[1]) * 3; t += 3) {
+            const zt = (P[I[t] * 3 + 2] + P[I[t + 1] * 3 + 2] + P[I[t + 2] * 3 + 2]) * 0.01 / 3, vid = opt.vid && zt > p[5] - hz * opt.vid;
+            L.poly(B, [V(I[t]), V(I[t + 1]), V(I[t + 2])], vid ? VID : TOR, vid ? K.TRENCADIS : K.PIEDRA, vid ? aV : aP); }
+        } };
+      grupo(AB.capillas, {});
+      grupo(AB.torres, { mueve: true, vid: 0.06 });
+      grupo(AB.agujas, { vid: 0.05 });
+      grupo(AB.corona, { aparta: true, vid: 0.07 });
+    }
   }
   // contrafuertes y pináculos con frutas (cornisa de la nave central y del crucero); linternas sobre las naves laterales
   const FR = [c.rojo, c.nar, c.ama, [120, 150, 80], [230, 226, 214], [150, 60, 90]];
@@ -922,7 +974,7 @@ function sfMat(ctx, rot, ids, sfg) {
 const LMS = window.BCN_LANDMARKS;
 if (LMS && LMS.init) { const init0 = LMS.init;
   LMS.init = async function (ctx) {
-    await dataP; await cruzP; await piezasP;
+    await dataP; await cruzP; await piezasP; await absisP;
     const r = await init0.call(this, ctx);
     try {
       const api = window.BCN && window.BCN.lm, get = id => api && api.get ? api.get(id) : null;
