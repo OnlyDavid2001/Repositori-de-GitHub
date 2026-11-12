@@ -152,7 +152,7 @@ function crucero(B, Ls, Bm, R) {
   // bloque de cabinas con balcones, retranqueado hacia proa
   const decks = [[fb, Ls * 0.86, Bm * 0.98], [fb + 12, Ls * 0.8, Bm * 0.96], [fb + 27, Ls * 0.7, Bm * 0.9], [fb + 36, Ls * 0.5, Bm * 0.8]];
   for (let i = 0; i < decks.length - 1; i++) { const [y0, l, w] = decks[i], y1 = decks[i + 1][0];
-    bx(B, 0, -h * 0.08 + (Ls * 0.86 - l) * -0.05, y0, w, l, y1 - y0, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.85, 3.6, 0.78, 0.62)); }
+    bx(B, 0, -h * 0.08 + (Ls * 0.86 - l) * -0.05, y0, w, l, y1 - y0, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.85, 2.0, 0.94, 0.4)); }
   const [yt, lt, wt] = decks[decks.length - 1];
   bx(B, 0, -h * 0.1, yt, wt, lt, 3, 0, [200, 200, 196], K.LISO, PLISO);
   bx(B, 0, -h * 0.1 + 6, yt + 3, wt * 0.4, 16, 0.4, 0, [60, 150, 200], K.AGUA);                                  // piscina
@@ -200,7 +200,10 @@ function yate(B, Ls, R) {
 }
 
 // ---------------------------------------------------------------- ficha genérica: ayuda a pasar de mundo a local
-function ficha(o) { add(Object.assign({ y: 0, rot: 0, nivel: 'A', noche: 'ventanas' }, o)); }
+// tiempos de construcción por ficha (ms), para medir el coste: window.BCN_PUERTO.t
+const TIEMPOS = {}; window.BCN_PUERTO = { t: TIEMPOS };
+function ficha(o) { const b = o.build; add(Object.assign({ y: 0, rot: 0, nivel: 'A', noche: 'ventanas' }, o, { build(B, h, lib) {
+  const t0 = performance.now(); b(B, h, lib); TIEMPOS[o.id] = Math.round(performance.now() - t0); } })); }
 const ctr = pts => { let x = 0, z = 0; for (const p of pts) { x += p[0]; z += p[1]; } return [x / pts.length, z / pts.length]; };
 
 // ---------------------------------------------------------------- terminal de contenedores (Moll Sud y Moll Prat)
@@ -390,10 +393,25 @@ function portVell() {
     } });
 }
 
+// ---------------------------------------------------------------- silos de grano (batería de celdas de hormigón)
+function silos() {
+  const S = PD.silos; if (!S) return;
+  ficha({ id: 'pu_silos', nombre: 'Sitges de gra', etiqueta: false, x: S[0], z: S[1], alto: 58, ancho: 80, largo: 44, build(B, h) {
+      const y0 = h.y(0, 0) - 0.3, v0 = B.nv, HC = 44, col = [196, 190, 176];
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 3; j++) L.tambor(B, -30 + i * 10, -10 + j * 10, y0, y0 + HC, 5, { lados: 14, col, k: K.LISO, aux: AUX.liso(3) });
+      bx(B, 0, 0, y0 + HC, 72, 30, 5, 0, [206, 200, 186], K.VENTANAS, AUX.ventanas(2.5, 4, 0.5, 0.3));                        // galería de cintas
+      bx(B, 40, 0, y0, 10, 12, HC + 14, 0, [190, 184, 170], K.VENTANAS, AUX.ventanas(3.5, 3, 0.35, 0.3));                    // torre de elevadores
+      barra(B, [45, y0 + HC + 10, 0], [92, y0 + 10, 0], 1.2, [150, 150, 146]);                                                  // cinta inclinada al muelle
+      bx(B, 40, 0, y0 + HC + 14, 0.6, 0.6, 0.6, 0, [255, 40, 30], K.EMISIVO, LUZ(1.4));
+      L.xf(B, v0, 0, 0, S[2], 1, 1, 0);
+    } });
+}
+
 // ---------------------------------------------------------------- declaración
 try {
   portVell();
   adossat();
+  silos();
   terminal('pu_moll_sud', 'Terminal de contenidors (Moll Sud)', PD.apm, { hueco: 0.12, alto: 5, gruas: 1, rail: false, colPatio: [236, 236, 228], colSTS: C.azulGrua, altoSTS: 44,
     buques: [[330, 290, 44, [32, 48, 82], 0], [720, 330, 48, [70, 26, 24], 1]], porBuque: 4, libres: 2, straddle: 14, camiones: 30, vias: [540, 4, 130, 880], ctrl: [1010, 610] });
   terminal('pu_moll_prat', 'Terminal de contenidors (Moll Prat)', PD.best, { hueco: 0.18, alto: 4, gruas: 2, rail: true, colPatio: [228, 228, 220], colSTS: [232, 232, 226], altoSTS: 48,
