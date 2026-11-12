@@ -63,8 +63,12 @@ if (window.BCN_SUELOS && window.BCN_SUELOS.allanar) try {
     while (p < end) { const cls = dv.getUint8(p), w = dv.getUint8(p + 1) / 4, n = dv.getUint16(p + 2, true); let x = dv.getInt32(p + 4, true) / 10, z = dv.getInt32(p + 8, true) / 10; p += 12;
       const xs = [x], zs = [z]; for (let k = 1; k < n; k++, p += 4) { x += dv.getInt16(p, true) / 10; z += dv.getInt16(p + 2, true) / 10; xs.push(x); zs.push(z); }
       polys.push({ cls, hw: w / 2, xs, zs }); } }
-  FLAT = window.BCN_SUELOS.allanar(heightAt0, polys, WX, WZ, GW, GH, CELL);
-  console.log('calles planas (S2):', Math.round(performance.now() - t0), 'ms', JSON.stringify(FLAT.stats));
+  // S3: en paralelo en workers (2–4 según los núcleos); si no hay workers o fallan, en el hilo principal como antes
+  const nW = Math.max(2, Math.min(4, (navigator.hardwareConcurrency || 2)));
+  try { FLAT = await window.BCN_SUELOS.allanarPar(heightAt0, heightAt0.toString(), { WX, WZ, CH, CELL, NCX, CPC, GW, H, S }, polys, WX, WZ, GW, GH, CELL, nW); }
+  catch (e) { FLAT = window.BCN_SUELOS.allanar(heightAt0, polys, WX, WZ, GW, GH, CELL); }
+  window.BCN_SUELOS.ms = Math.round(performance.now() - t0);
+  console.log('calles planas (S2):', window.BCN_SUELOS.ms, 'ms', JSON.stringify(FLAT.stats));
 } catch (e) { FLAT = null; console.log('calles planas (S2) desactivadas:', e && e.message); }
 function heightAt(x, z) { return FLAT ? FLAT.h(x, z) : heightAt0(x, z); }
 
@@ -635,7 +639,7 @@ void main(){
 const ROAD_NEAR = (window.BCN_GROUND && window.BCN_GROUND.roadGLSL) || '';
 const FS_ROAD = `
 varying vec4 vCol; varying vec4 vInfo;
-uniform sampler2D tAsD; uniform sampler2D tAsN; uniform vec2 uOrg; uniform float uAsph;
+uniform sampler2D tAsD; uniform sampler2D tAsN; uniform vec2 uOrg; uniform float uAsph; uniform vec2 uSF;
 void main(){
   float cls = floor(vCol.a*255.0 + 0.5);
   vec2 P = vPos.xz - uOrg;                         // origen cercano a la cámara: precisión para texturas
@@ -662,19 +666,22 @@ void main(){
   bool car = cls < 6.5 || abs(cls-8.0) < 0.5 || abs(cls-10.0) < 0.5 || abs(cls-11.0) < 0.5;
   // SUELOS (día 3): estado del asfalto por polilínea, de suelos.js (vInfo.w: 0 nuevo · 1 seminuevo · 2 gastado · 3 bastante
   // gastado · 4 muy gastado, continuo). De lejos, solo el tono: nuevo casi negro y uniforme, gastado más claro, gris y a rodales
-  float wr = clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;
+  float wr = uSF.x > 0.5 ? uSF.x - 0.5 : clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;   // uSF: muestras forzadas (depuración, S3)
+  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.062 + 0.03*wr + 0.0045*wr*wr;
   if (car) {
-    alb *= (0.80 + 0.085*wr)*(1.0 + (vnoise(P*0.045 + 7.3) - 0.5)*0.30*smoothstep(1.5, 4.5, wr));
-    alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.02, 1.0, 0.97), smoothstep(2.0, 4.8, wr)*0.5);
+    // S3: albedo medio por estado, absoluto (no relativo al color de la clase), para que cada estado se reconozca a pie:
+    // nuevo ≈ 0,08 (negro profundo) · seminuevo ≈ 0,12 · gastado ≈ 0,17 · bastante ≈ 0,22 · muy gastado ≈ 0,29 (gris claro)
+    alb *= (Ta/Lb)*(1.0 + (vnoise(P*0.045 + 7.3) - 0.5)*0.36*smoothstep(1.5, 4.5, wr));
+    alb = mix(alb, vec3(dot(alb, vec3(0.33)))*vec3(1.02, 1.0, 0.97), smoothstep(1.5, 4.0, wr)*0.75);
   }
   if (near > 0.0 && car) {` + ROAD_NEAR + `
     // SUELOS: detalle por estado, en coordenadas de calle (x de través, v a lo largo). Todo se apaga con el tamaño del píxel
     float pxs = length(fwidth(P)), aa = max(pxs, 0.004), lod = 1.0 - smoothstep(0.03, 0.12, pxs);
     float nw = 1.0 - smoothstep(0.4, 1.6, wr);
     // nuevo: tono uniforme (tapa las manchas del asfalto fotografiado) y algo más oscuro
-    alb = mix(alb, vCol.rgb*0.66*(0.96 + 0.08*vnoise(P*0.8)), nw*0.55*near);
+    alb = mix(alb, vec3(Ta)*vec3(0.98, 1.0, 1.03)*(0.96 + 0.08*vnoise(P*0.8)), nw*0.8*near);
     // parches de reparación por carril (más con el desgaste): unos más nuevos (oscuros), otros más viejos, con su junta sellada
-    float pw = smoothstep(1.3, 4.6, wr);
+    float pw = smoothstep(1.8, 4.2, wr);
     if (pw > 0.0) {
       vec2 g = vec2((x + hw)/3.3, v/(5.0 + 4.0*hash21(vec2(floor((x + hw)/3.3), 3.7))));
       vec2 id = floor(g), f = fract(g); float h = hash21(id + 11.3), h2 = hash21(id + 4.1);
@@ -683,7 +690,8 @@ void main(){
       float ins = smoothstep(-aa, aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y));
       float on = step(h, 0.10 + 0.40*pw)*ins*step(abs(x), hw - 0.25);
       float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y)));
-      alb = mix(alb, alb*(h2 > 0.45 ? 0.86 : 1.06)*(0.95 + 0.1*vnoise(P*1.7)), on*near);
+      // S3: parches de otro tono (recientes casi negros, viejos más claros y tostados)
+      alb = mix(alb, (h2 > 0.45 ? mix(alb, vec3(0.075, 0.076, 0.08), 0.75) : alb*vec3(1.30, 1.27, 1.20))*(0.95 + 0.1*vnoise(P*1.7)), on*near);
       crk = max(crk, edge*0.35*lod);
     }
     // grietas selladas con betún (gastado normal y bastante gastado): longitudinales en las juntas de carril y alguna transversal
@@ -698,17 +706,17 @@ void main(){
       crk = max(crk, sl*cw*0.78*lod);
     }
     // muy gastado: piel de cocodrilo en las rodadas, árido suelto y baches
-    float aw = smoothstep(2.7, 4.3, wr);
+    float aw = smoothstep(3.3, 4.4, wr);   // S3: piel de cocodrilo solo en lo muy gastado
     if (aw > 0.0 && lod > 0.0) {
-      float zone = smoothstep(0.45, 0.70, vnoise(P*0.22 + 3.0)*0.7 + (1.0 - smoothstep(0.1, 0.45, abs(fract((x + hw)/3.3) - 0.5)))*0.45);
+      float zone = smoothstep(0.42, 0.66, vnoise(P*0.22 + 3.0)*0.7 + (1.0 - smoothstep(0.1, 0.45, abs(fract((x + hw)/3.3) - 0.5)))*0.45);
       if (zone > 0.0) {
         vec2 q = P*2.6 + vec2(vnoise(P*3.0), vnoise(P*3.0 + 9.0))*0.35, iq = floor(q), fq = fract(q); float d1 = 8.0, d2 = 8.0;
         for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
           vec2 o = vec2(float(i), float(j)), r = o + vec2(hash21(iq + o), hash21(iq + o + 5.7))*0.8 + 0.1 - fq; float d = dot(r, r);
           if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
         float e = sqrt(d2) - sqrt(d1);
-        crk = max(crk, (1.0 - smoothstep(0.03, 0.03 + 3.0*aa*2.6, e))*zone*aw*0.85*(1.0 - smoothstep(0.02, 0.06, pxs)));
-        alb *= 1.0 + zone*aw*0.12;
+        crk = max(crk, (1.0 - smoothstep(0.02, 0.02 + 3.0*aa*2.6, e))*zone*aw*0.6*(1.0 - smoothstep(0.02, 0.06, pxs)));
+        alb *= 1.0 + zone*aw*0.30;
       }
       // árido descarnado: puntos claros
       float ag = step(0.86, hash21(floor(P*22.0)))*(1.0 - smoothstep(0.012, 0.03, pxs));
@@ -718,7 +726,7 @@ void main(){
       if (bw > 0.0) {
         vec2 g = vec2((x + hw)/2.6, v/9.0), id = floor(g), c0 = (vec2(0.5) + (vec2(hash21(id + 1.3), hash21(id + 2.9)) - 0.5)*0.5)*vec2(2.6, 9.0);
         vec2 dq = (fract(g)*vec2(2.6, 9.0) - c0)/vec2(1.0, 1.4); float rr = (0.25 + 0.4*hash21(id + 8.1))*(0.85 + 0.3*vnoise(dq*5.0 + id));
-        float ph = step(hash21(id + 6.6), 0.16*bw)*step(abs(x), hw - 0.5), dd = length(dq);
+        float ph = step(hash21(id + 6.6), 0.30*bw)*step(abs(x), hw - 0.5), dd = length(dq);
         float pin = (1.0 - smoothstep(rr - 0.02, rr + 0.02, dd))*ph;
         alb = mix(alb, vec3(0.13, 0.125, 0.12)*(0.7 + 0.6*vnoise(P*14.0)), pin*near);
         float rim = (1.0 - smoothstep(0.0, 0.10, abs(dd - rr)))*ph;
@@ -731,7 +739,8 @@ void main(){
     mk *= 1.0 - smoothstep(2.2, 4.9, wr)*smoothstep(0.35, 0.75, vnoise(P*0.7 + 1.0)*0.7 + vnoise(P*3.1)*0.3)*near;
   }
   if (car) mk *= 1.08 - 0.09*wr;                 // de lejos: la pintura se apaga con el desgaste
-  alb = mix(alb, vec3(0.86,0.86,0.82), clamp(mk, 0.0, 1.0)*fade*0.8);
+  // S3: pintura blanca nítida en lo nuevo, apagada y amarillenta en lo gastado
+  alb = mix(alb, mix(vec3(0.92, 0.92, 0.90), vec3(0.62, 0.61, 0.56), car ? smoothstep(0.8, 3.8, wr) : 0.0), clamp(mk, 0.0, 1.0)*fade*(car ? mix(0.95, 0.7, smoothstep(0.8, 3.8, wr)) : 0.8));
   alb *= 1.0 - crk*near;
   // DIA: de lejos no hay mapa de sombras: fracción de calzada al sol en un cañón de calle (edificios de ~20 m, aceras de 5 m),
   // para que las calles se lean como surcos en sombra entre manzanas soleadas. Solo en el llano y nunca de noche
@@ -911,7 +920,7 @@ const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', '
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
 for (const m of [matBld, matTer]) { m.setTexture('uStreet', SH_NONE); m.setVector4('uStreetR', new BABYLON.Vector4(0, 0, 0, 0)); }
 const matOut = mkMat('out', VS_NRM, FS_OUT, ['position', 'normal'], ['uUseTex', 'uOutRect'], ['outTex']);
-const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph'], ['tAsD', 'tAsN']);
+const matRoad = mkMat('road', VS_COL, FS_ROAD, ['position', 'color', 'uv'], ['uOrg', 'uAsph', 'uSF'], ['tAsD', 'tAsN']);
 matRoad.setVector2('uOrg', new BABYLON.Vector2(0, 0)); matRoad.setFloat('uAsph', 0);
 const matQuay = mkMat('quay', VS_BASIC, FS_QUAY, ['position']);
 const matSea = mkMat('sea', VS_BASIC, FS_SEA, ['position'], ['uSize'], ['coastTex', 'uShore', 'groundTex']);
