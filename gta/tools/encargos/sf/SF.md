@@ -32,3 +32,35 @@ envejecimiento (Naixement más oscura, lo nuevo más claro). A pie desde las dos
 Iluminación nocturna (focos, vidrieras encendidas desde dentro, estrella y cruz), cerámicas con brillo, ajuste de niveles
 de detalle y coste, y repaso con dureza frente a las referencias: lista de diferencias y arreglo de las más visibles. Hoja
 ANTES/DESPUÉS (día y noche, dron y a pie) y una hoja de 6 vistas «de postal».
+
+## Referencias del usuario (fotos que ha mandado: OBLIGATORIAS para SF3, prioridad sobre el resto de SF3)
+Están en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/sf/ref/`: **míralas con Read antes de
+empezar** y compara tus capturas con ellas.
+1. `usuario_torres_dia.jpg` (remates a pleno sol):
+   - **Torre de Jesucrist**: cono que se estrecha con una piel de piedra ocre dorada cubierta por una **retícula fina de
+     huecos en rombo y triángulo** (no una rejilla de ventanas rectangulares), por bandas que se afinan hacia arriba; bajo
+     la cruz, una corona con celosía más fina. **La cruz**: grande, blanca, de cuatro brazos tridimensionales con los
+     extremos ensanchados y en punta, algo más ancha que el remate.
+   - **Torre de la Mare de Déu**: la misma piel; remate con la **estrella de 12 puntas** (vidrio y acero, con brillo).
+   - **Torres de los evangelistas**: más esbeltas, con la misma retícula; en lo alto, **sus símbolos como esculturas
+     blancas y doradas con las alas abiertas** (ángel, león, buey, águila).
+   - **Pináculos de los apóstoles**: remates de trencadís de colores vivos (dorado, rojo, blanco) con mitra, anillo y cruz,
+     y pequeñas esferas.
+   - Color general: **ocre dorado cálido** a pleno sol; nada de gris ni de bloques de ladrillo.
+2. `usuario_noche_cruz.jpg` (render oficial de noche):
+   - **La cruz de Jesucrist brilla en blanco y lanza haces de luz al cielo** en abanico (8–12 haces largos, como
+     reflectores: conos aditivos alargados y suaves que se desvanecen con la distancia, sin quemar la imagen).
+   - La torre de Jesucrist **encendida desde dentro**: la retícula de huecos brilla cálida y las aristas se marcan.
+   - Luces puntuales cálidas en lo alto de los evangelistas y al pie de las torres; pináculos y cubiertas de las naves con
+     **luz fría azulada**; cielo azul marino.
+3. `usuario_gloria_maqueta.png` (maqueta de la fachada de la Glòria acabada, de frente): **compón la Glòria así**,
+   sustituyendo la estimación de SF1–SF2:
+   - **Cuatro torres de apóstoles** altas y esbeltas: tramo bajo macizo, tramo medio con celosía de rombos, tramo alto con
+     ranuras verticales finas y remate con corona.
+   - Entre y delante de ellas, una **cascada de linternas**: muchos conos apuntados en forma de gota o bulbo, de alturas
+     escalonadas (más altas en el centro; en el eje, un cono puntiagudo destacado), sobre **columnas que se ramifican como
+     árboles** (el bosque de columnas del pórtico).
+   - A los dos lados, **dos torres más bajas y cónicas**, con huecos y remate.
+   - En las esquinas bajas, **piñones triangulares con celosía hexagonal** (panal) y pináculos pequeños.
+   - Abajo, un **basamento ancho con escalinata frontal** (ENTORNO hace la escalinata de la Glòria: casa con ella).
+Si no te da para todo, haz primero 3 (la Glòria) y 2 (la cruz y la noche), y deja lo menos visible para SFR diciéndolo.
