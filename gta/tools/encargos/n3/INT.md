@@ -55,3 +55,9 @@ final para el usuario con lo mejor del día (de día y de noche) en
 - **Aeropuerto (tras AE4)**: queda un bloque blanco liso (`lm_aero_edificis`, hacia 3777, 2759; vista `pie_lejos` de
   `ae4/`) sin fachada, el techo del viaducto de la T1 muy oscuro de noche y ningún carguero visible en la plataforma de
   carga. Arréglalo solo si cabe entre los 10 defectos más visibles.
+- **El mar de noche (prioritario, lo ha pedido ver el usuario)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
+  `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces
+  de la costa. En las fotos de referencia de noche, cada foco de la orilla deja una estela vertical temblorosa en el agua,
+  cálida en el paseo y blanca en el puerto, y la ciudad se duplica en el mar cerca de la orilla. Añade en FS_SEA esas
+  estelas (por ejemplo, muestreando la máscara de luz de noche de la costa a lo largo de la vertical de la pantalla, con
+  rizado del oleaje) y un brillo suave del agua bajo la ciudad, sin quemar. Comprueba con las tres vistas de esa carpeta.
