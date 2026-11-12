@@ -15,7 +15,7 @@
 (function () {
 'use strict';
 const GEO = window.BCN_GEO;
-const { K, GB, rect, jamb, hpl, shade, mixc, seed, R, pick } = GEO;
+const { K, GB, rect, jamb, hpl, box, lattice, latticeSide, pbrAux, shade, mixc, seed, R, pick } = GEO;
 
 // paletas (de Transeúnte)
 const SHUTTERS = [[43, 77, 51], [84, 87, 69], [36, 59, 77], [107, 77, 48], [60, 92, 64], [120, 118, 104]];
@@ -184,6 +184,36 @@ void main(){
       alb *= mix(1.05, 0.74, w); rough = mix(rough, 0.92, w); metal *= 1.0 - 0.6*w;
     }
     emis = emit(alb, vInfo.w*2.04);
+  } else if (kind > 15.5 && kind < 19.5) {          // muros de los estilos por barrio: 16 ladrillo visto · 17 gresite · 18 revoco gastado · 19 hormigón
+    rough = 0.88;
+    vec3 tx = texture2D(tPlD, P*0.21).rgb; float lum = dot(tx, vec3(0.3,0.6,0.1));
+    float grime = smoothstep(0.4, 0.88, vnoise(P*0.08)*0.65 + vnoise(P*0.55)*0.35);
+    vec2 q = P/vec2(0.25, 0.065); q.x += 0.5*mod(floor(q.y), 2.0);   // aparejo de ladrillo (también bajo los desconchados)
+    if (kind < 16.5) {
+      vec2 f = fract(q), fw = fwidth(q); float far = smoothstep(0.2, 0.55, max(fw.x, fw.y));
+      float dm = min(min(f.x, 1.0 - f.x)*0.25, min(f.y, 1.0 - f.y)*0.065);
+      float mort = mix(1.0 - smoothstep(0.004, 0.009, dm), 0.2, far);
+      vec3 brick = mix(alb*mix(0.8, 1.16, hash21(floor(q) + 0.5))*mix(0.92, 1.06, vnoise(P*5.0)), alb, far);
+      alb = mix(brick, mix(alb, vec3(0.70, 0.67, 0.60), 0.6), mort)*mix(1.0, 0.84, grime);
+    } else if (kind < 17.5) {
+      vec2 g = P/0.025, f = fract(g); float far = smoothstep(0.25, 0.6, fwidth(g.x));
+      float joint = 1.0 - smoothstep(0.07, 0.15, min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)));
+      vec3 t = alb*mix(0.8, 1.16, hash21(floor(g)));
+      alb = mix(mix(t, alb*0.8 + 0.08, joint), alb*0.98, far)*mix(1.0, 0.9, grime);
+      rough = mix(0.28, 0.5, far);
+    } else if (kind < 18.5) {
+      alb *= mix(0.74, 1.16, smoothstep(0.15, 0.75, lum))*mix(1.0, 0.74, grime);
+      float s = vnoise(vec2(P.x*1.3, P.y*0.07))*0.75 + vnoise(vec2(P.x*3.1, P.y*0.15))*0.25; alb *= mix(1.02, 0.82, smoothstep(0.5, 0.9, s));
+      // desconchados pequeños y sueltos, más en la parte baja de cada paño; borde claro de mortero
+      float sp = vnoise(P*vec2(1.7, 2.3))*0.55 + vnoise(P*5.3)*0.45, lo = 0.845 + 0.03*sin(P.y*0.35);
+      float mk = smoothstep(lo, lo + 0.015, sp), rim = smoothstep(lo - 0.035, lo - 0.01, sp)*(1.0 - mk);
+      alb = mix(alb, alb*vec3(1.04, 1.02, 0.97) + 0.04, rim*0.6);
+      alb = mix(alb, mix(alb, vec3(0.52, 0.33, 0.24)*mix(0.82, 1.12, hash21(floor(q))), 0.55), mk);
+      vec3 tn = texture2D(tPlN, P*0.21).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.9*nearF);
+    } else {
+      float b = vnoise(vec2(P.x*0.35, floor(P.y/0.12)*3.1));
+      alb *= mix(0.86, 1.06, b)*mix(0.9, 1.05, lum)*mix(1.0, 0.8, grime);
+    }
   }` + GEO.kindsGLSL() + ` else {                                            // hojas
     alb *= 0.6 + 0.7*vnoise(P*9.0); N = normalize(n + vec3(vnoise(P*7.0) - 0.5, 0.0, vnoise(P*7.0 + 3.0) - 0.5)*1.4);
   }
@@ -388,6 +418,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function genB(lay, b, W0, W1, ox, oz) {
     const { d, gHi, H, runs } = lay;
     const rnd = (i, j, k) => seed(b, i, j, k);
+    const V = varOf(b);                               // variante de estilo por barrio (null: la fachada de antes, details.js)
     rnd();                                            // ámbito del edificio
     const cls6 = d.cls === 6;
     const style = cls6 ? 'sobrio' : H > 30 ? (R() < 0.7 ? 'sobrio' : 'clasico') : pick(['clasico', 'clasico', 'modernista', 'sobrio']);
@@ -397,13 +428,20 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const shops = !cls6 && H >= 10;
     const G = shops ? 4.3 : 3.25;
     let F1 = gHi + G, C = d.y1 - 0.85;
-    let Rm = C - F1, nF = Rm >= 2.5 ? Math.max(1, Math.round(Rm / 3.15)) : 0;
+    let Rm = C - F1, nF = Rm >= 2.5 ? Math.max(1, Math.round(Rm / (V ? V.hp : 3.15))) : 0;
     if (!nF) F1 = C;
     const m = nF ? Rm / nF : 0;
     const shopsHere = shops && F1 - gHi > 3.6;
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
       p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd };
+    if (V) {                                          // ámbito (b, 6): tonos y banderas de la variante
+      rnd(6, 1); const r = [R(), R(), R(), R(), R()];
+      Object.assign(env, { V, kw: KW[V.acab], uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
+        marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
+        galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
+        losaV: r[4] < 0.55 ? shade(mixc(p, [92, 88, 82], 0.7), 0.62) : r[4] < 0.8 ? [72, 70, 66] : [58, 66, 62] });   // bajo la losa: piedra a la sombra, gris o verde oscuro
+    }
 
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
@@ -420,10 +458,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       // cota de la acera al pie de la fachada: la misma que usa la malla de acera, para que puertas y escaparates casen con ella
       const gnd = c => walkAt(r.ax + r.tx * c + r.nx * 0.3, r.az + r.tz * c + r.nz * 0.3);
       const wallC = street ? p : shade(p, 0.95);
-      run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd;
+      run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd; run.rM = rM;
       I.groundFloor(env, run);
-      D.floors(env, run);
-      D.crown(env, run);
+      if (V) { pisosV(env, run); coronaV(env, run); }
+      else { D.floors(env, run); D.crown(env, run); }
     }
     return true;
 
@@ -431,8 +469,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     // hueco con derrame: paños de muro alrededor, jambas, dintel, alféizar, vidrio y persiana
     // gq (opcional): quien pinta el vidrio en lugar del K.GLASS de siempre, gq(W0, F, tt, ct, st, qt, d) (ventanas abiertas de details.js)
     function windowHole(W0, F, a0, a1, tt, ct, k, P, st, yt, dep, col, kind, se, gq) {
-      rect(W0, F, a0, tt, k, P, 0, col, kind); rect(W0, F, ct, a1, k, P, 0, col, kind);
-      rect(W0, F, tt, ct, yt, P, 0, col, kind); if (st > k) rect(W0, F, tt, ct, k, st, 0, col, kind);
+      wr(W0, F, a0, tt, k, P, col, kind); wr(W0, F, ct, a1, k, P, col, kind);
+      wr(W0, F, tt, ct, yt, P, col, kind); if (st > k) wr(W0, F, tt, ct, k, st, col, kind);
       const rc = shade(col, 0.62);
       jamb(W0, F, tt, st, yt, -dep, 0, rc, kind); jamb(W0, F, ct, st, yt, -dep, 0, rc, kind);
       hpl(W0, F, tt, ct, yt, -dep, 0, shade(col, 0.45), kind); hpl(W0, F, tt, ct, st, -dep, 0, shade(col, 0.8), kind);
@@ -441,6 +479,347 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
     }
   }
+
+  // ---------------------------------------------------------------- estilos por barrio (fachadas_estilos.js)
+  // La variante de cada edificio sale de su familia de barrio (BCN_BARRI.at en el centro de su caja) y de su semilla, ámbito
+  // (b, 6); se guarda por edificio. Depuración: ?fxv=familia:n fuerza la variante n en todos; ?fxv=familia, la familia;
+  // ?fxv=off, la fachada de antes. Las familias sin variantes en el catálogo siguen con details.js.
+  const EST = window.BCN_FX_ESTILOS, VAR = new Array(NB); let FXV = new URLSearchParams(location.search).get('fxv');
+  const KW = { estuco: K.STUCCO, piedra: K.FXPIEDRA || K.STONE, ladrillo: 16, gresite: 17, revoco: 18, hormigon: 19 };
+  const famOf = b => { const B = window.BCN_BARRI; return EST ? EST.familia(B ? B.at((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2) : null) : null; };
+  // Repaso de variedad (FX2): (1) con probabilidad EST.MEZCLA[fam].p el edificio toma una variante de la familia «hermana»
+  // (las calles reales mezclan estilos); (2) nunca repite la variante de un vecino pegado de índice menor (coloreado voraz por
+  // índice: no depende del orden de carga); (3) cada edificio desplaza un poco el ritmo de vanos, el vuelo y el tono de los
+  // remates. Todo sale del ámbito (b, 6) y se guarda por edificio.
+  function vecinos(b) {
+    const out = [], x0 = BB[b * 4] - 1.5, z0 = BB[b * 4 + 1] - 1.5, x1 = BB[b * 4 + 2] + 1.5, z1 = BB[b * 4 + 3] + 1.5;
+    rangeCells(x0, z0, x1, z1, c => { for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) { const n = ALL.list[k];
+      if (n < b && BREC.elig[n] && out.indexOf(n) < 0 && BB[n * 4] < x1 && BB[n * 4 + 2] > x0 && BB[n * 4 + 1] < z1 && BB[n * 4 + 3] > z0) out.push(n); } });
+    return out;
+  }
+  function varOf(b, dep) {
+    if (VAR[b] !== undefined) return VAR[b];
+    let V = null;
+    if (EST && FXV !== 'off') {
+      const fv = FXV ? FXV.split(':') : null, fam = fv ? fv[0] : famOf(b);
+      seed(b, 6); const r = R(), rm = R(), j = [R(), R(), R(), R()];
+      const mz = !fv && EST.MEZCLA && EST.MEZCLA[fam], L = EST.FAM[mz && rm < mz.p && EST.FAM[mz.f] ? mz.f : fam];
+      if (L && L.length) {
+        if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
+        else {
+          let i0 = (r * L.length) | 0;
+          if (bget(b).cls === 6) {                    // clase 6 (sin comercios): si la familia tiene nave o fábrica, esa
+            const T = []; L.forEach((v, k) => { if (v.hueco === 'taller') T.push(k); }); if (T.length) { i0 = T[(r * T.length) | 0]; dep = 400; }
+          }
+          if ((dep | 0) < 400) {                      // no repetir la variante de los vecinos pegados (los de índice menor)
+            const usados = vecinos(b).map(n => { const v = varOf(n, (dep | 0) + 1); return v && v.id; });
+            for (let t = 0; t < L.length; t++) { const k = (i0 + t) % L.length; if (usados.indexOf(L[k].id) < 0) { i0 = k; break; } }
+          }
+          const V0 = L[i0];
+          V = Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
+            remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
+        }
+      }
+    }
+    return (VAR[b] = V);
+  }
+  // paño de muro: los acabados propios (16–19) se solapan 12 mm como el estuco y la piedra, para que no haya grietas
+  function wr(B, F, u0, u1, y0, y1, col, kw) { if (kw >= 16) { u0 -= 0.012; u1 += 0.012; y0 -= 0.012; y1 += 0.012; } rect(B, F, u0, u1, y0, y1, 0, col, kw); }
+  const ROPA = [[232, 230, 222], [150, 62, 60], [64, 86, 132], [206, 190, 150], [118, 160, 190], [222, 168, 176], [96, 128, 96], [52, 52, 60], [240, 240, 236], [170, 150, 190]];
+  const VID = [148, 158, 156], VIDA = pbrAux(0.32, 0.1, 0, 0), PERFIL = [176, 180, 182], RQV = () => window.BCN_INTERIORS && window.BCN_INTERIORS.roomQuad;
+  // auxiliar del vidrio de barandilla (K.FXVIDRIO, fachadas_estilos.js): u y v del panel, distancia al muro y medio ancho del hueco
+  function vidAux(dep, hw) { const q = Math.max(0, Math.min(15, Math.round((dep - 0.25) / 0.1))), h = Math.max(0, Math.min(15, Math.round(hw * 30))), z = q * 16 + h || 1;
+    return [0, 0, z, 0, 255, 0, z, 0, 255, 255, z, 0, 0, 255, z, 0]; }
+  // barandilla de balcón de e0 a e1, de y hacia arriba, con el frente a jt; sl/sr: lados; vw: ancho del hueco de detrás (vidrio)
+  function rail(env, F, e0, e1, y, jt, sl, sr, vw) {
+    const { W0, W1, V, iron, uV, kw } = env, t = y + 1.02, wc = env.runWall;
+    if (V.bar === 'forja') {
+      lattice(W0, F, e0, e1, y, t - 0.05, jt - 0.03, iron, K.IRON, V.forja);
+      if (sl) latticeSide(W0, F, e0 + 0.02, y, t - 0.05, 0, jt - 0.03, iron, K.IRON, 0);
+      if (sr) latticeSide(W0, F, e1 - 0.02, y, t - 0.05, 0, jt - 0.03, iron, K.IRON, 0);
+      box(W1, F, e0, e1, t - 0.05, t, jt - 0.06, jt, iron, K.METAL);
+      if (sl) box(W1, F, e0, e0 + 0.05, t - 0.05, t, 0, jt, iron, K.METAL);
+      if (sr) box(W1, F, e1 - 0.05, e1, t - 0.05, t, 0, jt, iron, K.METAL);
+    } else if (V.bar === 'balaustre') {
+      lattice(W0, F, e0, e1, y + 0.08, t - 0.14, jt - 0.12, uV, K.BAL, 0);
+      box(W0, F, e0, e1, t - 0.14, t, jt - 0.24, jt, shade(uV, 1.04), K.STUCCO, 3);
+      if (sl) { latticeSide(W0, F, e0 + 0.06, y + 0.08, t - 0.14, 0, jt - 0.12, uV, K.BAL, 0); box(W0, F, e0, e0 + 0.12, t - 0.14, t, 0, jt - 0.24, uV, K.STUCCO, 1); }
+      if (sr) { latticeSide(W0, F, e1 - 0.06, y + 0.08, t - 0.14, 0, jt - 0.12, uV, K.BAL, 0); box(W0, F, e1 - 0.12, e1, t - 0.14, t, 0, jt - 0.24, uV, K.STUCCO, 1); }
+    } else if (V.bar === 'obra') {                    // peto de obra bajo (0,45 m) y fino, con barandilla calada encima hasta ~1 m
+      const to = y + 0.45, mc = env.marcoV, th = 0.09;
+      box(W0, F, e0, e1, y, to, jt - th, jt, wc, kw, 1);
+      if (sl) box(W0, F, e0, e0 + th, y, to, 0, jt - th, wc, kw, 5);
+      if (sr) box(W0, F, e1 - th, e1, y, to, 0, jt - th, wc, kw, 5);
+      box(W0, F, e0 - 0.015, e1 + 0.015, to, to + 0.04, jt - th - 0.02, jt + 0.02, uV, K.STUCCO);
+      lattice(W0, F, e0, e1, to + 0.04, t - 0.04, jt - 0.05, mc, K.IRON, 0);
+      if (sl) latticeSide(W0, F, e0 + 0.02, to + 0.04, t - 0.04, 0, jt - 0.05, mc, K.IRON, 0);
+      if (sr) latticeSide(W0, F, e1 - 0.02, to + 0.04, t - 0.04, 0, jt - 0.05, mc, K.IRON, 0);
+      box(W0, F, e0, e1, t - 0.05, t, jt - 0.08, jt - 0.02, mc, K.METAL, 3);
+    } else if (V.bar === 'vidrio') {
+      // vidrio que deja ver (atenuado) el muro y la balconera de detrás, con perfil metálico arriba y abajo y pinzas
+      const KV = K.FXVIDRIO || K.PBR, wcv = wc || env.p;
+      rect(W0, F, e0, e1, y + 0.06, t - 0.05, jt - 0.03, K.FXVIDRIO ? wcv : VID, KV, K.FXVIDRIO ? vidAux(jt - 0.03, (vw || 0) / 2 / Math.max(0.5, e1 - e0)) : VIDA);
+      if (sl) jamb(W0, F, e0 + 0.02, y + 0.06, t - 0.05, 0, jt - 0.03, K.FXVIDRIO ? wcv : VID, KV, K.FXVIDRIO ? vidAux(0.8, 0) : VIDA);
+      if (sr) jamb(W0, F, e1 - 0.02, y + 0.06, t - 0.05, 0, jt - 0.03, K.FXVIDRIO ? wcv : VID, KV, K.FXVIDRIO ? vidAux(0.8, 0) : VIDA);
+      box(W0, F, e0, e1, t - 0.05, t, jt - 0.06, jt, PERFIL, K.METAL, 3);
+      box(W0, F, e0, e1, y, y + 0.06, jt - 0.05, jt, shade(PERFIL, 0.8), K.METAL, 1);
+      if (W1) { const n = Math.max(1, Math.round((e1 - e0) / 1.25)); for (let q = 1; q < n; q++) { const x = e0 + (e1 - e0) * q / n; box(W1, F, x - 0.012, x + 0.012, y + 0.06, t - 0.05, jt - 0.035, jt - 0.015, shade(PERFIL, 0.7), K.METAL, 4); } }
+    } else {                                          // tubo: pasamanos y dos barras
+      const mc = env.marcoV;
+      for (const [h0, h1, B] of [[t - 0.05, t, W0], [y + 0.62, y + 0.66, W1], [y + 0.3, y + 0.34, W1]]) {
+        box(B, F, e0, e1, h0, h1, jt - 0.05, jt, mc, K.METAL, 3);
+        if (sl) box(B, F, e0, e0 + 0.04, h0, h1, 0, jt, mc, K.METAL, 3);
+        if (sr) box(B, F, e1 - 0.04, e1, h0, h1, 0, jt, mc, K.METAL, 3);
+      }
+      const n = Math.max(1, Math.round((e1 - e0) / 1.2));
+      for (let q = 0; q <= n; q++) { const x = e0 + (e1 - e0 - 0.04) * q / n; box(W1, F, x, x + 0.04, y, t, jt - 0.05, jt, mc, K.METAL, 4); }
+    }
+  }
+  // ropa tendida en la barandilla (frente a d)
+  function ropa(W0, F, e0, e1, y, d, r) {
+    // prendas sueltas y separadas, de tonos apagados (nunca franjas de colores seguidas)
+    const n = 2 + ((r * 3) | 0); let x = e0 + 0.12 + r * 0.25;
+    for (let q = 0; q < n && x < e1 - 0.35; q++) { const w = 0.26 + (((q * 37 + r * 91) | 0) % 10) / 40, h = 0.3 + (((q * 53 + r * 71) | 0) % 10) / 25;
+      rect(W0, F, x, Math.min(e1 - 0.1, x + w), y - h, y, d, ROPA[(q * 3 + ((r * 97) | 0)) % ROPA.length], K.PLAIN); x += w + 0.22 + (q % 2) * 0.15; }
+  }
+  // tribuna acristalada en voladizo (un vano, una planta)
+  function tribunaV(env, F, a, bw, k, P) {
+    const { W0, W1, uV, glass, marcoV, kw } = env, wc = env.runWall, zt = a + 0.25, te = a + bw - 0.25;
+    wr(W0, F, a, zt, k, P, wc, kw); wr(W0, F, te, a + bw, k, P, wc, kw);
+    box(W0, F, zt, te, k, k + 0.75, 0, 0.95, uV, K.STUCCO); box(W0, F, zt, te, P - 0.3, P, 0, 1.05, uV, K.STUCCO);
+    rect(W0, F, zt, te, k + 0.75, P - 0.3, 0.85, glass, K.GLASS);
+    jamb(W0, F, zt + 0.02, k + 0.75, P - 0.3, 0, 0.85, glass, K.GLASS); jamb(W0, F, te - 0.02, k + 0.75, P - 0.3, 0, 0.85, glass, K.GLASS);
+    if (W1) {
+      for (let h = 0; h <= 4; h++) { const pe = zt + (te - zt) * h / 4; box(W1, F, pe - 0.04, pe + 0.04, k + 0.75, P - 0.3, 0.82, 0.96, marcoV, K.WOOD); }
+      const hm = (k + 0.75 + P - 0.3) / 2; box(W1, F, zt, te, hm + 0.25, hm + 0.3, 0.82, 0.95, marcoV, K.WOOD);
+      box(W1, F, zt - 0.05, te + 0.05, k - 0.1, k, 0, 1.0, shade(uV, 0.9), K.STUCCO);
+    }
+  }
+  // galería cerrada (bloques de los 60–70): antepecho de obra, carpintería de aluminio claro o lacado (no negra), vidrio con
+  // reflejo, hojas correderas con travesaño y, en muchas, persiana enrollable a media altura o cortina (vida detrás del vidrio)
+  const GALM = [[206, 206, 200], [188, 190, 188], [226, 224, 216], [170, 160, 140], [120, 128, 120], [150, 116, 84]];
+  const GALP = [[214, 210, 198], [196, 188, 170], [180, 184, 182], [150, 160, 150], [206, 196, 160], [160, 130, 100]];
+  function galeriaV(env, F, a, bw, k, P, rr) {
+    const { W0, W1, uV, glass, kw } = env, wc = env.runWall, e0 = a + 0.06, e1 = a + bw - 0.06, dg = 0.62;
+    const mc = env.galM, g0 = k + 1.0, g1 = P - 0.16, tr = g0 + (g1 - g0) * 0.72;
+    box(W0, F, e0, e1, k, g0, 0, dg + 0.04, wc, kw, 5);
+    box(W0, F, e0 - 0.02, e1 + 0.02, g0 - 0.04, g0, 0, dg + 0.08, uV, K.STUCCO, 1);   // vierteaguas
+    box(W0, F, e0, e1, g1, P, 0, dg + 0.08, uV, K.STUCCO, 6);
+    hpl(W0, F, e0, e1, k, 0, dg + 0.04, env.losaV, K.STUCCO);
+    rect(W0, F, e0 + 0.04, e1 - 0.04, g0, g1, dg, glass, K.GLASS);
+    jamb(W0, F, e0 + 0.04, g0, g1, 0, dg, glass, K.GLASS); jamb(W0, F, e1 - 0.04, g0, g1, 0, dg, glass, K.GLASS);
+    // persianas enrollables (por hojas): unas bajadas a medias, otras arriba; el tono, uno por edificio
+    const n = Math.max(2, Math.round((e1 - e0) / 0.9)), hw = (e1 - e0) / n;
+    for (let q = 0; q < n; q++) { const h = ((rr[(q + 4) % 12] * 7.3) % 1);
+      if (h < 0.55) { const yb = g1 - (g1 - g0) * (0.15 + h * 1.2); rect(W0, F, e0 + q * hw + 0.03, e0 + (q + 1) * hw - 0.03, yb, g1, dg + 0.012, env.galP, K.SHUT); } }
+    if (W1) {
+      for (let q = 0; q <= n; q++) { const x = e0 + 0.02 + (e1 - e0 - 0.1) * q / n; box(W1, F, x, x + 0.06, g0, g1, dg, dg + 0.05, mc, K.METAL, 4); }
+      box(W1, F, e0, e1, g0, g0 + 0.06, dg, dg + 0.05, mc, K.METAL, 1); box(W1, F, e0, e1, tr, tr + 0.05, dg, dg + 0.05, mc, K.METAL, 3);
+      box(W1, F, e0, e1, g1 - 0.06, g1, dg, dg + 0.05, mc, K.METAL, 2);
+      if (rr[11] < 0.1) planter(W1, F, e0 + 0.3 + rr[4] * Math.max(0, e1 - e0 - 0.7), dg + 0.02, g0, rr[5], rr[2], rr[6]);   // maceta en el vierteaguas
+    }
+    wr(W0, F, a, e0, k, P, wc, kw); wr(W0, F, e1, a + bw, k, P, wc, kw);
+  }
+  const planter = (...a) => { if (D.planter) D.planter(...a); };   // maceta de details.js
+  // pisos de un tramo según la variante
+  function pisosV(env, run) {
+    const { W0, W1, V, kw, uV, iron, F1, nF, m, y0, shutV, marcoV, windowHole } = env;
+    const { F, L, cover, street, wallC } = run, RQ = RQV();
+    env.runWall = wallC;
+    const nb = Math.max(1, Math.round(L / (street ? V.bay : 3.2))), bw = L / nb;
+    const Mt = street && env.tribV && nb >= 3 && nF >= 3 && run.rM < 0.6 ? nb >> 1 : -9;
+    if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, uV, K.STUCCO);
+    for (let D = 1; D <= nF; D++) {
+      const k = F1 + (D - 1) * m, P = k + m, top = D === nF;
+      if (P <= cover + 0.2) continue;
+      const atico = street && top && V.coron === 'atico', low = top && V.ultimo === 'bajo' && !atico;
+      const tipo = atico ? 'terraza' : low ? 'ninguno' : D === 1 && V.princ ? V.princ : V.bal;
+      const corr = tipo === 'corrido' || tipo === 'terraza';
+      if (D > 1 && V.imposta === 3 && k > cover) box(W0, F, 0, L, k - 0.24, k + 0.06, 0, 0.05, env.forjV, 19, 3);   // canto de forjado visto
+      else if (D > 1 && V.imposta && k > cover) box(W0, F, 0, L, k - 0.14, k + 0.05, 0, (V.imposta > 1 ? 0.16 : 0.07) * (street ? 1 : 0.6), uV, K.STUCCO);
+      for (let W = 0; W < nb; W++) {
+        const a = W * bw, c = a + bw / 2;
+        env.rnd(3, run.i, W * 64 + D);
+        const rr = [R(), R(), R(), R(), R(), R(), R(), R(), R(), R(), R(), R()];
+        if (k < cover) { wr(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, wallC, kw); continue; }
+        if (!street) { patioV(env, F, a, bw, c, k, P, wallC, rr); continue; }
+        if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
+        if (tipo === 'galeria' && (nb < 3 || W % 3 !== 2)) { galeriaV(env, F, a, bw, k, P, rr); continue; }   // 1 de cada 3 vanos, ventana
+        const tall = V.hueco === 'taller' && !low;   // ventanal de taller (fábricas): ancho, alto y con retícula de acero
+        const vent = tall || (!low && !corr && (V.hueco === 'ventana' || (V.hueco === 'mixto' && W % 2 === 1)));
+        const Vw = Math.min(V.win * (vent && !tall ? 1.12 : tipo === 'terraza' ? 1.3 : 1), bw - (tipo === 'terraza' ? 0.7 : 0.95));
+        let Bh, Q;
+        if (low) { Bh = Math.min(1.5, m - 1.15); Q = Math.min(0.85, m - Bh - 0.32); }
+        else if (tall) { Q = 0.7; Bh = Math.min(2.7, m - 1.15); }
+        else if (vent) { Q = 0.9; Bh = Math.min(1.45, m - 1.35); }
+        else { Q = 0.08; Bh = tipo === 'terraza' ? Math.min(2.5, m - 0.42) : Math.min(2.45, m * V.alto); }
+        const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh, car = V.carp;
+        // cierre: persiana interior (se), ventanas abiertas con habitación (~25 %), hojas, cadeneta
+        const open = rr[7] < 0.25 && RQ && car !== 'mallorquina' && car !== 'alicantina';
+        const se = open || car === 'ninguna' ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.6 ? 0.15 + rr[1] * 0.55 : 0;
+        const room = open ? { x0: tt - 0.55, W: Vw + 1.1, yF: k + 0.02, H: Math.max(2.6, yt - k + 0.15), D: 4, mode: 1, seed: 1 + ((rr[8] * 254) | 0) } : null;
+        if (open && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz, +((st + yt) / 2).toFixed(1), D]);
+        windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.3, wallC, kw, se, room && ((B, F, u0, u1, y0, y1, d) => RQ(B, F, u0, u1, y0, y1, d, room)));
+        const qt = yt - se * Bh;
+        if (W1 && tall) {                             // retícula de acero del ventanal
+          const nv = Math.max(2, Math.round(Vw / 0.55));
+          for (let q = 1; q < nv; q++) { const x = tt + Vw * q / nv; box(W1, F, x - 0.025, x + 0.025, st, qt, -0.3, -0.25, marcoV, K.METAL, 4); }
+          for (const f of [0.36, 0.7]) { const y = st + (qt - st) * f; if (y < qt - 0.1) box(W1, F, tt, ct, y - 0.025, y + 0.025, -0.3, -0.25, marcoV, K.METAL, 1); }
+          box(W1, F, tt, tt + 0.06, st, qt, -0.3, -0.24, marcoV, K.METAL, 4); box(W1, F, ct - 0.06, ct, st, qt, -0.3, -0.24, marcoV, K.METAL, 4);
+        } else if (W1) {                              // marco y montantes
+          box(W1, F, c - 0.03, c + 0.03, st, qt, -0.3, -0.25, marcoV, K.WOOD, 4);
+          box(W1, F, tt, tt + 0.06, st, qt, -0.3, -0.24, marcoV, K.WOOD, 4); box(W1, F, ct - 0.06, ct, st, qt, -0.3, -0.24, marcoV, K.WOOD, 4);
+          box(W1, F, tt, ct, Math.min(qt, yt) - 0.06, Math.min(qt, yt), -0.3, -0.24, marcoV, K.WOOD, 2);
+          if (car === 'enrollable') { box(W1, F, tt - 0.02, tt + 0.03, st, yt, -0.06, 0, marcoV, K.METAL, 4); box(W1, F, ct - 0.03, ct + 0.02, st, yt, -0.06, 0, marcoV, K.METAL, 4); }
+        }
+        const lw = Math.min(Vw / 2, (bw - Vw) / 2 - 0.1);
+        if ((car === 'librillo' || car === 'porticon') && lw > 0.2 && rr[5] < 0.85) {
+          const kk = car === 'librillo' ? K.SHUT : K.WOOD;
+          rect(W0, F, tt - lw - 0.03, tt - 0.03, st + 0.02, yt, 0.05, shutV, kk); rect(W0, F, ct + 0.03, ct + lw + 0.03, st + 0.02, yt, 0.05, shutV, kk);
+          if (W1) { jamb(W1, F, tt - lw - 0.03, st + 0.02, yt, 0, 0.05, shade(shutV, 0.7), K.WOOD); jamb(W1, F, ct + lw + 0.03, st + 0.02, yt, 0, 0.05, shade(shutV, 0.7), K.WOOD); }
+        } else if (car === 'mallorquina') {           // hojas de lamas en el hueco, a medio cerrar
+          const f0 = 0.25 + rr[5] * 0.75, f1 = rr[6] < 0.5 ? f0 : 0.2 + rr[4] * 0.8;
+          rect(W0, F, tt, tt + Vw / 2 * f0, st, yt, -0.12, shutV, K.SHUT); rect(W0, F, ct - Vw / 2 * f1, ct, st, yt, -0.12, shutV, K.SHUT);
+        } else if (car === 'alicantina' && !vent && rr[5] < 0.8) {   // persiana de cadeneta colgada por fuera, a media altura
+          const h = (0.25 + rr[4] * 0.75) * Bh, kb = yt - h;
+          rect(W0, F, tt - 0.06, ct + 0.06, kb, yt + 0.05, 0.11, shutV, K.PBR, pbrAux(0.75, 0, 1, 0));
+          box(W1, F, tt - 0.06, ct + 0.06, kb - 0.07, kb + 0.02, 0.06, 0.16, shade(shutV, 0.85), K.WOOD);
+        }
+        // recercado, guardapolvo, clave y frontón
+        const rc = V.recerc;
+        if (rc >= 1) { box(W1, F, tt - 0.14, tt, st - 0.02, yt, 0, 0.08, shade(uV, 0.96), K.STUCCO, 4); box(W1, F, ct, ct + 0.14, st - 0.02, yt, 0, 0.08, shade(uV, 0.96), K.STUCCO, 4); }
+        if (rc >= 2 || (rc >= 1 && vent)) box(W0, F, tt - 0.12, ct + 0.12, yt, yt + 0.16, 0, 0.14, uV, K.STUCCO);
+        if (rc >= 3 && !low) { box(W1, F, c - 0.13, c + 0.13, yt - 0.05, yt + 0.38, 0, 0.18, shade(uV, 1.05), K.STUCCO);
+          if (D <= 2) box(W1, F, tt - 0.2, ct + 0.2, yt + 0.16, yt + 0.25, 0, 0.22, shade(uV, 1.05), K.STUCCO); }
+        if (V.pil && !low) { box(W1, F, a - 0.12, a + 0.12, k + 0.12, P - 0.22, 0, 0.1, shade(uV, 0.94), K.STUCCO, 4); box(W1, F, a - 0.18, a + 0.18, P - 0.22, P - 0.1, 0, 0.16, shade(uV, 1.02), K.STUCCO); }
+        if (!low && (V.esgr === 2 || (V.esgr === 1 && D % 2 === 0))) rect(W1, F, a + 0.13, a + bw - 0.13, P - 0.5, P - 0.16, 0.012, wallC, K.SGRAF);
+        // balcón
+        if (vent) { box(W0, F, tt - 0.08, ct + 0.08, st - 0.07, st, 0, 0.1, uV, K.STUCCO); continue; }
+        const hasB = corr || (tipo === 'indiv' && rr[2] < V.balP);
+        if (!hasB) {                                  // balcón francés: barandilla en el plano del hueco
+          if (st - k < 0.5) { if (V.bar === 'forja' || V.bar === 'balaustre') lattice(W0, F, tt, ct, st + 0.02, st + 0.95, 0.06, iron, K.IRON, V.forja); else box(W0, F, tt, ct, st + 0.9, st + 0.95, 0, 0.06, marcoV, K.METAL); }
+          continue;
+        }
+        const ter = tipo === 'terraza', jt = (ter ? Math.min(1.15, V.vuelo) : V.vuelo + (D === 1 && !corr ? 0.25 : 0)) + (D === 1 && corr ? 0.15 : 0);
+        const e0 = corr ? a : c - Math.min(Vw / 2 + 0.4, bw / 2 - 0.06), e1 = corr ? a + bw : 2 * c - e0;
+        const sl = !corr || W === 0, sr = !corr || W === nb - 1, slab = shade(mixc(uV, [168, 166, 160], 0.35), 0.92), KS = K.FXPIEDRA || K.STONE;
+        // losa fina (14 cm; terraza, 16) con la cara de abajo oscura: piedra a la sombra o pintada (nada de beis claro desde la acera)
+        const lb = k - (ter ? 0.04 : 0.02), sub = env.losaV;
+        box(W0, F, e0, e1, lb, k + 0.12, 0, jt, ter ? env.forjV : slab, ter ? K.STUCCO : KS, (sl ? 4 : 0) | 1);
+        hpl(W0, F, e0, e1, lb, 0, jt, sub, K.STUCCO);
+        rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr, Vw);
+        if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.07, k - 0.2, lb, 0, jt * 0.5, shade(sub, 1.15), KS, 5);
+        if (rr[9] < V.ropa) ropa(W0, F, e0, e1, k + 1.08, jt + 0.03, rr[10]);
+        if (W1 && rr[3] < V.mac && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
+        if (W1 && ter && rr[11] < 0.22 && e1 - e0 > 1.6) planter(W1, F, e1 - 0.75 - rr[1] * 0.3, Math.max(0.3, jt - 0.6), k + 0.12, rr[6], rr[4], rr[1]);   // terraza: otra maceta al fondo
+      }
+    }
+  }
+  // ventana de patio de manzana (con tendedero a veces)
+  function patioV(env, F, a, bw, c, k, P, col, rr) {
+    const { W0, W1, uV, iron, kw, windowHole, V } = env;
+    const ww = Math.min(1.05, bw - 0.8), tt = c - ww / 2, ct = c + ww / 2, st = k + 0.95, yt = Math.min(P - 0.35, st + 1.4);
+    if (yt - st < 0.5) { wr(W0, F, a, a + bw, k, P, col, kw); return; }
+    windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.2, col, kw, rr[0] < 0.65 ? 0.2 + rr[1] * 0.7 : V.carp === 'enrollable' ? 0.3 : 0);
+    box(W1, F, tt - 0.06, ct + 0.06, st - 0.07, st, 0, 0.09, uV, K.STUCCO);
+    if (rr[2] < 0.15 + V.ropa * 0.5) {                // tendedero: dos varillas y ropa
+      box(W1, F, tt - 0.1, ct + 0.1, st + 0.02, st + 0.05, 0, 0.5, iron, K.METAL, 3);
+      ropa(W0, F, tt - 0.1, ct + 0.1, st + 0.03, 0.45, rr[3]);
+    } else if (W1 && rr[2] < 0.4) lattice(W1, F, tt - 0.1, ct + 0.1, st, st + 0.9, 0.12, iron, K.IRON, 0);
+  }
+  // coronación de un tramo según la variante
+  function coronaV(env, run) {
+    const { W0, W1, d, V, kw, uV, C, wood } = env, { F, L, cover, street, wallC } = run, y1 = d.y1;
+    env.rnd(4, run.i); const cr = R(); env.cr = cr;
+    if (C <= cover) return;
+    if (!street) { wr(W0, F, 0, L, C, y1 + 0.3, wallC, kw); box(W0, F, 0, L, y1 + 0.3, y1 + 0.4, -0.03, 0.12, uV, K.STUCCO); return; }
+    const nb = Math.max(1, Math.round(L / V.bay)), bw = L / nb, co = V.coron;
+    if (co === 'cornisa' || co === 'balaustrada') {
+      box(W0, F, 0, L, C, C + 0.16, 0, 0.22, uV, K.STUCCO); box(W0, F, 0, L, C + 0.16, C + 0.32, 0, 0.42, uV, K.STUCCO); box(W0, F, 0, L, C + 0.32, C + 0.48, 0, 0.66, shade(uV, 1.05), K.STUCCO);
+      if (W1) { const nd = Math.round(L / 0.36); for (let q = 0; q < nd; q += 2) { const uu = q * L / nd; box(W1, F, uu, uu + L / nd * 0.8, C + 0.04, C + 0.15, 0.2, 0.34, shade(uV, 0.94), K.STUCCO); }
+        if (cr < 0.7) for (let W = 0; W <= nb; W++) { const a = Math.min(L - 0.1, Math.max(0.1, W * bw)); box(W1, F, a - 0.09, a + 0.09, C - 0.35, C + 0.32, 0, 0.5, shade(uV, 1.02), K.STUCCO); } }
+      wr(W0, F, 0, L, C, y1, wallC, kw);
+      if (co === 'balaustrada') {
+        box(W0, F, 0, L, y1, y1 + 0.2, -0.02, 0.2, uV, K.STUCCO);
+        lattice(W0, F, 0, L, y1 + 0.2, y1 + 0.76, 0.09, uV, K.BAL, 0);
+        for (let W = 0; W <= nb; W++) { const a = Math.min(L - 0.15, Math.max(0.15, W * bw)); box(W0, F, a - 0.16, a + 0.16, y1 + 0.2, y1 + 0.76, -0.02, 0.22, uV, K.STUCCO); }
+      } else wr(W0, F, 0, L, y1, y1 + 0.76, wallC, kw);
+      box(W0, F, 0, L, y1 + 0.76, y1 + 0.9, -0.05, 0.26, shade(uV, 1.04), K.STUCCO);
+    } else if (co === 'atico') {                      // última planta en terraza: losa, peto bajo y barandilla
+      box(W0, F, 0, L, C - 0.05, C + 0.2, 0, 0.3, uV, K.STUCCO);
+      wr(W0, F, 0, L, C + 0.2, y1 + 0.35, wallC, kw);
+      box(W0, F, 0, L, y1 + 0.35, y1 + 0.45, -0.03, 0.1, uV, K.STUCCO);
+      if (V.bar === 'vidrio') {
+        rect(W0, F, 0, L, y1 + 0.45, y1 + 1.1, 0.02, K.FXVIDRIO ? shade(wallC, 0.9) : VID, K.FXVIDRIO || K.PBR, K.FXVIDRIO ? vidAux(1.7, 0) : VIDA);
+        box(W0, F, 0, L, y1 + 1.1, y1 + 1.15, -0.02, 0.05, PERFIL, K.METAL, 3); }
+      else { box(W0, F, 0, L, y1 + 1.06, y1 + 1.1, -0.02, 0.03, env.marcoV, K.METAL, 3); for (let q = 0; q <= nb * 2; q++) { const x = Math.min(L - 0.04, q * bw / 2); box(W1, F, x, x + 0.04, y1 + 0.45, y1 + 1.06, -0.02, 0.03, env.marcoV, K.METAL, 4); } }
+    } else if (co === 'frontis') {                    // peto con frontón escalonado en el centro (fábricas y casas obreras)
+      box(W0, F, 0, L, C + 0.05, C + 0.22, 0, 0.1, uV, K.STUCCO);
+      wr(W0, F, 0, L, C, y1 + 0.9, wallC, kw);
+      const w = Math.min(L * 0.42, 9), a0 = (L - w) / 2, h = 0.7 + cr * 0.6;
+      if (L > 6) {
+        wr(W0, F, a0, a0 + w, y1 + 0.9, y1 + 0.9 + h, wallC, kw);
+        box(W0, F, a0 - 0.06, a0 + w + 0.06, y1 + 0.9 + h, y1 + 1.0 + h, -0.03, 0.14, uV, K.STUCCO, 3);
+        box(W0, F, 0, a0, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO); box(W0, F, a0 + w, L, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO);
+        if (W1) box(W1, F, a0 + 0.3, a0 + w - 0.3, y1 + 1.1, y1 + 0.8 + h, 0, 0.04, uV, K.STUCCO);   // cartela lisa
+      } else box(W0, F, 0, L, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO);
+    } else if (co === 'alero') {                      // alero de teja sobre canecillos
+      wr(W0, F, 0, L, C, y1, wallC, kw);
+      // alero: canto de teja árabe (cobijas, en ondas) sobre un tablero pintado y canecillos de madera
+      box(W0, F, 0, L, y1 + 0.04, y1 + 0.16, 0, 0.72, [150, 74, 50], K.STUCCO, 1);
+      hpl(W0, F, 0, L, y1 + 0.04, 0, 0.72, env.cr < 0.5 ? [214, 206, 190] : shade(wood, 1.1), env.cr < 0.5 ? K.STUCCO : K.WOOD);
+      lattice(W0, F, 0, L, y1 + 0.04, y1 + 0.24, 0.72, [146, 70, 46], K.BAL, 0);
+      if (W1) for (let x = 0.2; x < L - 0.1; x += 0.6) box(W1, F, x, x + 0.08, y1 - 0.12, y1 + 0.04, 0, 0.62, wood, K.WOOD, 6);
+    } else {                                          // peto liso con albardilla
+      box(W0, F, 0, L, C + 0.05, C + 0.22, 0, 0.1, uV, K.STUCCO);
+      wr(W0, F, 0, L, C, y1 + 0.9, wallC, kw);
+      box(W0, F, 0, L, y1 + 0.9, y1 + 1.0, -0.03, 0.14, uV, K.STUCCO);
+    }
+  }
+  // depuración: punto de calle frente a un edificio de la familia (k-ésimo), mirando su fachada
+  function spot(fam, k, up) {
+    let n = 0;
+    for (let b = 0; b < NB; b++) {
+      if (!BREC.elig[b] || famOf(b) !== fam) continue;
+      const lay = layoutB(b); if (!lay || lay.H < 11 || lay.H > 30) continue;
+      for (const r of lay.runs) {
+        if (r.kind !== 'street' || r.L < 13) continue;
+        const mx = r.ax + r.tx * r.L / 2, mz = r.az + r.tz * r.L / 2; let w = 0;
+        for (let t = 1.5; t <= 16; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
+        if (w < 6) continue;
+        const dc = Math.min(w - 1, Math.max(3.5, w * 0.8)), o = Math.min(r.L * 0.3, 7), x = mx + r.nx * dc - r.tx * o, z = mz + r.nz * dc - r.tz * o;
+        if (coverAt(x, z, -1) > -1e8 || roadDist(x, z) > 7) continue;
+        if (n++ < k) break;
+        const ty = lay.gHi + Math.min(lay.H * 0.5, 10) * (up === undefined ? 1 : up), dx = mx - x, dz = mz - z, hd = Math.hypot(dx, dz);
+        return { x, z, walk: true, yaw: Math.atan2(dx, dz), pitch: -Math.atan2(ty - heightAt(x, z) - 1.75, hd), b, V: varOf(b) && varOf(b).id };
+      }
+    }
+    return null;
+  }
+
+  // depuración (FX3): vista a pie a lo largo de una calle cerca de (x, z): busca la calzada más cercana, el eje de la calle (la
+  // dirección con más espacio libre entre fachadas) y se pone en la acera del lado «side» (+1/−1), a ~1,8 m de las fachadas,
+  // mirando a lo largo de la calle (sentido «dir» ±1) y algo girado hacia la acera de enfrente
+  function calle(x, z, side, dir, giro) {
+    const free = (px, pz) => coverAt(px, pz, -1) <= -1e8;
+    let bx = x, bz = z, bd = 1e9;
+    for (let r = 0; r <= 40 && bd > 1e8; r += 2) for (let a = 0; a < 6.283; a += 0.3) { const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (free(px, pz) && roadDist(px, pz) < 1.5) { const d = Math.hypot(px - x, pz - z); if (d < bd) { bd = d; bx = px; bz = pz; } } }
+    const run = (px, pz, ux, uz, mx) => { let t = 0; while (t < mx && free(px + ux * (t + 0.5), pz + uz * (t + 0.5))) t += 0.5; return t; };
+    let best = 0, ba = 0;
+    for (let a = 0; a < Math.PI; a += Math.PI / 72) { const ux = Math.cos(a), uz = Math.sin(a), l = run(bx, bz, ux, uz, 120) + run(bx, bz, -ux, -uz, 120); if (l > best) { best = l; ba = a; } }
+    const wl = run(bx, bz, -Math.sin(ba), Math.cos(ba), 30), wr2 = run(bx, bz, Math.sin(ba), -Math.cos(ba), 30), Wt = wl + wr2;
+    for (const [dd, gg] of [[dir || 1, giro], [-(dir || 1), giro], [dir || 1, 0], [-(dir || 1), 0]]) {
+      const ux = Math.cos(ba) * dd, uz = Math.sin(ba) * dd, px = -uz * (side || 1), pz = ux * (side || 1);
+      const w = run(bx, bz, px, pz, 30), o = Wt < 9 ? Wt / 2 : Math.min(3.4, Wt * 0.22);   // estrecha: en medio; ancha: en la acera
+      const ex = bx + px * (w - o), ez = bz + pz * (w - o);
+      const g = gg === undefined ? (Wt < 9 ? 0.12 : 0.26) : gg, vx = ux * Math.cos(g) - px * Math.sin(g), vz = uz * Math.cos(g) - pz * Math.sin(g);
+      if (run(ex, ez, vx, vz, 40) < 14 && gg !== 0) continue;
+      return { x: ex, z: ez, walk: true, yaw: Math.atan2(vx, vz), pitch: Wt < 9 ? -0.36 : -0.24, ancho: Wt, largo: best, fam: (b => b < 0 ? null : famOf(b))(nearestB(ex + px * o, ez + pz * o)) };
+    }
+    return { x: bx, z: bz, walk: true, yaw: Math.atan2(Math.cos(ba), Math.sin(ba)), pitch: -0.2 };
+  }
+  function nearestB(x, z) { let b = -1; rangeCells(x - 3, z - 3, x + 3, z + 3, c => { for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) { const n = ALL.list[k]; if (b < 0 && BB[n * 4] < x + 3 && BB[n * 4 + 2] > x - 3 && BB[n * 4 + 1] < z + 3 && BB[n * 4 + 3] > z - 3) b = n; } }); return b; }
 
   // ---------------------------------------------------------------- celdas: construir, mostrar, liberar
   const cells = new Map();   // índice → { base, hi, lay: Map, blds }
@@ -533,7 +912,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   }
   function setRange(q) {   // 0 apagado · 1 normal · 2 alto
     S.on = q > 0;
-    const k = q >= 2 ? 1.45 : 1;
+    const k = q >= 2 ? 1.45 : q < 1 ? q : 1;   // q < 1: radios reducidos (hojas de depuración)
     Object.assign(S, { R0: 170 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 70 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
     ctx.matBld.setVector2('uFx', new BABYLON.Vector2(S.R0, S.R1));
     matB.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1)); matH.setVector2('uFade', new BABYLON.Vector2(S.H0, S.H1));
@@ -542,7 +921,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     planT = 0;
   }
   setRange(1);
-  return { update, setRange, nElig, busy: () => !!job || queue.length > 0,
+  // depuración: fuerza un estilo («familia:n», «familia», «off» o null) y rehace las celdas
+  function force(v) { FXV = v; VAR.fill(undefined); dropAll(); planT = 0; }
+  return { update, setRange, nElig, spot, calle, famOf, varOf, force, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();
