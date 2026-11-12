@@ -861,6 +861,7 @@ function sfZone(D, X, Z, e) {
   if (inE) { const d = edgeDist(D.estanque, X, Z); if (d < D.orilla.albardilla) return [6, [176, 170, 158], 0.12]; if (d < D.orilla.paseo) return D.orilla.pav; if (d < D.orilla.paseo + 0.3) return [6, SF_CURB, 0.2]; }
   for (const p of D.caminos) { if (X < p.bb[0] || X > p.bb[2] || Z < p.bb[1] || Z > p.bb[3]) continue; const d = polyD(p.poly, X, Z);
     if (d < p.w / 2) return d > p.w / 2 - 0.3 && p.pav[0] !== 10 ? [6, SF_CURB, 0.2] : p.pav; }
+  if (D.fondo) return D.fondo;                                     // ENT2: eje de la Glòria (fondo de granito o de césped)
   if (e < 2.6) return [1, C.granite, 0.3];
   if (e < 2.9) return [6, SF_CURB, 0.2];
   return [5, SF_GRASS[Math.floor(hash2(Math.round(X / 11), Math.round(Z / 11)) * 3)], 0];
@@ -957,7 +958,7 @@ function sfObjs(S, D) {
       // seto bajo de boj al otro lado del paseo, donde hay parterre
       for (const s of [-1.6, 1.6]) { const hx = p[0] + nx * (D.orilla.paseo + 0.75) + nz * s * 0, hz = p[1] + nz * (D.orilla.paseo + 0.75); if (lawn(hx + (-nz) * s, hz + nx * s)) W('hedge', hx + (-nz) * s, hz + nx * s, ang, { len: 3.0, hh: 0.55, w: 0.3 }); } } }
   // ---- caminos: setos a los lados (los marcados), farolas cada 16 m alternando lados
-  for (const p of D.caminos) { if (p.pav[0] === 10) continue; const P = p.poly; let acc = 8, side = 1;
+  for (const p of D.caminos) { if (p.pav[0] === 10 || p.nolamp) continue; const P = p.poly; let acc = 8, side = 1;
     for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 1e-3) continue; const tx = (b[0] - a[0]) / L, tz = (b[1] - a[1]) / L, ang = sfA(tx, tz);
       for (let s = 0; s < L; s += 1) { acc += 1; const X = a[0] + tx * s, Z = a[1] + tz * s;
         if (acc % 16 === 0) { side = -side; W('lamp', X - tz * side * (p.w / 2 + 0.7), Z + tx * side * (p.w / 2 + 0.7), 0, { H: p.eje ? 4.8 : 4.2 }); }
@@ -967,7 +968,9 @@ function sfObjs(S, D) {
   for (const q of D.puntos) {
     if (q.t === 'mono') continue;
     if (q.t === 'terraces') { for (let k = 0; k < (q.n || 4); k++) W('terrace', q.X + (k - (q.n - 1) / 2) * 3.6, q.Z, 0); continue; }
-    W(q.t, q.X, q.Z, sfA(Math.cos(q.a || 0), Math.sin(q.a || 0)), { force: q.t === 'ovalp' ? 1 : 0, rx: q.rx, rz: q.rz }); }
+    W(q.t, q.X, q.Z, sfA(Math.cos(q.a || 0), Math.sin(q.a || 0)), { force: q.t === 'ovalp' || q.t === 'fontR' ? 1 : 0, rx: q.rx, rz: q.rz, L: q.L, W: q.W, H: q.H }); }
+  // ---- ENT2: hileras de árboles a lo largo de Z (paseo de la Glòria)
+  for (const f of (D.filas || [])) for (const X of f.X) for (let Z = f.Z[0]; Z <= f.Z[1] + 1e-6; Z += f.paso) W('tree', X, Z, 0, { sp: f.sp });
   for (const z of D.zonas) if (z.t === 'circ' && z.pav[0] === 1) { const nB = Math.max(3, Math.round(z.r * 0.7));   // bancos y farolas en los bordes de las explanadas
     for (let k = 0; k < nB; k++) { const a = (k + 0.5) / nB * 2 * Math.PI, X = z.c[0] + Math.cos(a) * (z.r - 1.2), Z = z.c[1] + Math.sin(a) * (z.r - 1.2);
       if (D.estanque && (inPoly(D.estanque, X, Z) || edgeDist(D.estanque, X, Z) < 1.2)) continue;   // el mirador pisa el estanque: nada dentro del agua
@@ -989,6 +992,11 @@ function sfSing(key, near, k) { SING.push({ key, near, ax: 44,
   after: k === 'gaudi' ? (o, A) => (SFE && o.sfLw !== undefined ? A.pond(o, SFE.gaudi) : null) : null }); }
 sfSing('Plaça de Gaudí', [12681.5, 15990.4], 'gaudi');
 sfSing('Plaça de la Sagrada Família', [12485.9, 15790.7], 'sagrada_familia');
+// ENT2: el eje de la Glòria (data/sf_ent_gloria.json; la escalinata y la losa sobre Mallorca son hitos de gloria.js): explanada al
+// pie de la escalinata, Passeig de la Glòria (manzana València–Aragó) y placeta de la Diagonal. Plazas añadidas con su polígono.
+sfSing('Esplanada de la Glòria', [12706.1, 15763.1], 'gl_expl');
+sfSing('Passeig de la Glòria', [12772.6, 15694.4], 'gl_av');
+sfSing('Placeta de la Glòria', null, 'gl_tri');
 
 // ------------------------------------------------------------------ paseos y ramblas: equipamiento de los andenes centrales y laterales
 // El suelo lo hace SUELOS. Aquí, por teselas de 160 m a lo largo de las avenidas anchas y de los paseos con nombre (data/plazas_p2.json):
@@ -1110,6 +1118,8 @@ window.BCN_PLAZAS = { async init(ctx) {
   let P2 = {}; try { P2 = await fetch('data/plazas_p2.json').then(r => r.json()); } catch (e) { console.warn('Plazas: sin data/plazas_p2.json', e); }
   // ENT1: trazado de las dos plazas de la Sagrada Família
   try { SFE = await fetch('data/sf_ent_plazas.json').then(r => r.json()); sfPrep(SFE.gaudi); sfPrep(SFE.sagrada_familia); } catch (e) { SFE = null; console.warn('Plazas: sin data/sf_ent_plazas.json', e); }
+  // ENT2: el eje de la Glòria (tres plazas con su polígono) y la losa sobre Mallorca (sin árboles de calle debajo)
+  let GLO = null; try { GLO = await fetch('data/sf_ent_gloria.json').then(r => r.json()); if (SFE) for (const q of GLO.plazas) { SFE[q.id] = q; sfPrep(q); } } catch (e) { GLO = null; console.warn('Plazas: sin data/sf_ent_gloria.json', e); }
   // ENT1: el agua del estanque de la Plaça de Gaudí con reflejo plano (MirrorTexture) de la basílica y de la plaza
   const POND = { mat: null, mir: null, it: null, on: false, n: 0 };
   const AFT = { pond(o, D) {
@@ -1129,6 +1139,9 @@ window.BCN_PLAZAS = { async init(ctx) {
   function pondUpd(P) { const it = POND.it; if (!it || !it.o.st) return; const near = Math.hypot(P.x - it.c[0], P.z - it.c[1]) < 420 && P.y > it.Lw + 0.3;
     if (near && (!POND.on || ++POND.n % 120 === 0)) POND.mir.renderList = ctx.scene.meshes.filter(m => (/sagrada/i.test(m.name) || m.name === 'plo' + it.o.i || m.name === 'plh' + it.o.i) && m.isEnabled());
     if (near !== POND.on) { if (near) { ctx.scene.customRenderTargets.push(POND.mir); POND.on = true; POND.mat.setVector4('uReflOn', new BABYLON.Vector4(1, 0, 0, 0)); } else pondOff(); } }
+  if (GLO && SFE) for (const q of GLO.plazas) { const r = q.poly_mundo; let A = 0, cx = 0, cz = 0;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const f = r[j][0] * r[i][1] - r[i][0] * r[j][1]; A += f; cx += (r[j][0] + r[i][0]) * f; cz += (r[j][1] + r[i][1]) * f; }
+    A /= 2; data.plazas.push({ n: q.nombre, t: Math.abs(A) > 2500 ? 'mitjana' : 'petita', a: Math.round(Math.abs(A)), cat: ['highway:pedestrian'], r, c: [cx / (6 * A), cz / (6 * A)], ang: 44 }); }
   const nP1 = data.plazas.length; data.plazas.push(...extraPlazas(P2));
   const PL = data.plazas.map((p, i) => {
     const sg = SING.find(s => s.key === p.n && (!s.near || Math.hypot(p.c[0] - s.near[0], p.c[1] - s.near[1]) < 300)) || null, o = { i, n: p.n, t: p.t, a: p.a, cat: p.cat, r: p.r, c: p.c, ang: (sg && sg.ax !== undefined ? sg.ax : p.ang) * D2R, sg, id: sid(p.n) };
@@ -1145,7 +1158,8 @@ window.BCN_PLAZAS = { async init(ctx) {
     bb: [p.r[0][0], p.r[0][1], p.r[2][0], p.r[2][1]], hu: TS / 2, hv: TS / 2, cu: 1, su: 0, st: null }; PL.push(o); }
   // INT3: ¿hay pavimento de plaza (plataforma) en (x, z)? Lo consulta transporte.js para no poner bocas de metro debajo de la
   // plataforma (la tapa del hueco queda bajo el pavimento levantado y la boca se ve enterrada: Plaça de Catalunya)
-  window.BCN_PLAZAS.pavAt = (x, z) => { for (const o of PL) { if (o.tile || o.noPav || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
+  const gloLosa = (x, z) => { if (!GLO) return false; const [X, Z] = (SFE ? sfL : () => [1e9, 0])(x, z); return Math.abs(X) < GLO.franja_X + 0.5 && Z > GLO.losa.Z[0] - 1 && Z < GLO.losa.Z[1] + 1; };
+  window.BCN_PLAZAS.pavAt = (x, z) => { if (gloLosa(x, z)) return true; for (const o of PL) { if (o.tile || o.noPav || x < o.bb[0] || x > o.bb[2] || z < o.bb[1] || z > o.bb[3] || !inPoly(o.r, x, z)) continue;
       if (o.excl && o.excl.some(q => inPoly(q.r, x, z))) continue; return true; } return false; };
   // REV4: ¿alguna plaza con pavimento toca el rectángulo? (nature.js lo pregunta por celda antes de usar pavAt planta a planta)
   // ENT1: cota del suelo de las plazas cuya plataforma sube mucho sobre la calle (el talud del estanque de la Plaça de Gaudí):
