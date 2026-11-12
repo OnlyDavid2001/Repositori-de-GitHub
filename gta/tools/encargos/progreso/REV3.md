@@ -14,8 +14,8 @@ Estado: HECHO (con lo flojo abajo). Capturas en `scratchpad/n3/rev3/` (arnés `r
    La primera versión (13 pasos a lo largo de la recta) no daba nada; la segunda quemaba el agua; la final (D4_mar_*) es
    discreta: estelas visibles desde la barca y apenas desde mar_23 (orilla a 2–3 km).
 5. **Aeropuerto**: el bloque blanco era una «caseta técnica» de 10 m (3783, 2766): las casetas de 8 m o más pasan a oficinas
-   (también corregido el ramal de oficinas: de hormigón de `aero_edificis` (el bloque blanco liso de `pie_lejos`) con cuerpo gris arena y
-   bandas corridas de vidrio oscuro por planta; cara inferior del viaducto de salidas con paños emisivos suaves solo de noche.
+   con cuerpo de hormigón gris arena y bandas corridas de vidrio oscuro por planta (antes, bloque blanco liso en `pie_lejos`);
+   cara inferior del viaducto de salidas con paños emisivos suaves solo de noche.
    `window.BCN_AEROED` (pruebas) lista los volúmenes de esa ficha.
 9. **Árboles de calle en las plazas** (streets.js `treesOf`): ni árboles ni alcorques sobre `BCN_PLAZAS.pavAt(x, z)`.
 3. **Plazas**: granito (dibujos 1 y 9) con grano, losas de tono distinto y manchas a pie; de noche el charco de farola del
