@@ -58,8 +58,13 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // texturas (lo que fijen en él los demás módulos y la luz vale también aquí) y se da de alta en ctx.mats (sombras, LDR)
   const mb = detail.matB, sp = mb.shaderPath, OLD = 'if (vInfo.w > 0.99 && uCellHi > 0.5 && dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;';
   if (!sp || !sp.fragmentSource || sp.fragmentSource.indexOf(OLD) < 0) throw new Error('rooftops: no encuentro el fundido del shader de detalle');
+  // y de noche, a partir de ~150 m, las piezas se oscurecen como las cubiertas y muros de FS_BLD (masas oscuras): de cerca,
+  // como las fachadas de detalle
+  const ALB = 'vec3 alb = vCol.rgb;';
+  let fsrc = sp.fragmentSource.replace(OLD, 'if (dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;');
+  if (fsrc.indexOf(ALB) >= 0) fsrc = fsrc.replace(ALB, ALB + ' alb *= 1.0 - 0.7*uNight*smoothstep(150.0, 330.0, dist);');
   const op = mb.options;
-  const matR = new BABYLON.ShaderMaterial('roofDet', scene, { vertexSource: sp.vertexSource, fragmentSource: sp.fragmentSource.replace(OLD, 'if (dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;') },
+  const matR = new BABYLON.ShaderMaterial('roofDet', scene, { vertexSource: sp.vertexSource, fragmentSource: fsrc },
     { attributes: op.attributes.slice(), uniforms: op.uniforms.slice(), samplers: op.samplers.slice(), defines: op.defines.slice(), needAlphaBlending: false });
   matR.backFaceCulling = mb.backFaceCulling;
   for (const k of ['_textures', '_floats', '_ints', '_vectors2', '_vectors3', '_vectors4', '_colors3', '_colors4', '_matrices', '_floatsArrays'])

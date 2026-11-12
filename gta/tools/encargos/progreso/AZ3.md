@@ -33,6 +33,41 @@ Parte de AZ2 (cubierta uniforme por edificio con textura alineada, `rooftops.js`
   ve de lejos. A veces una antena en la cumbrera. Proyecta sombra cerca (nivel 1, capa `furn`); los niveles 2 y 3 llevan
   los faldones y hastiales (4–6 triángulos por casa) hasta 800 m.
 
+- **Noche**: con los niveles medio y lejano por fin visibles, sus piezas salían claras sobre las masas oscuras de las 23:00.
+  El material propio las oscurece de noche a partir de 150–330 m como FS_BLD (de cerca quedan como las fachadas de detalle):
+  n600 vuelve a ser como antes.
+
+## Coste (BCN.detailStats().roof, triángulos cerca + medio + lejos = total)
+| vista | AZ2 (antes) | AZ3 (después) |
+|---|---|---|
+| roof_eix | 405k + 268k + 73k = 746k | 102k + 72k + 47k = 221k |
+| roof_gra | 519k + 309k + 52k = 880k | 151k + 104k + 50k = 305k |
+| roof_gra_lo | 566k + 299k + 54k = 919k | 159k + 105k + 51k = 315k |
+| roof_cv | 487k + 248k + 41k = 776k | 159k + 101k + 39k = 300k |
+| roof_e150 | 376k + 268k + 73k = 717k | 101k + 71k + 48k = 220k |
+| d600 | 281k + 277k + 59k = 617k | 50k + 59k + 44k = 153k |
+| sarria | 206k + 100k + 19k = 325k | 97k + 52k + 22k = 171k |
+Del nivel cercano en roof_gra_lo: peto 28k, antenas 27k, chimeneas 23k, casetas 14k, depósitos 11k, aires 11k, teja 6k.
+Sin instancias: las piezas se hornean por celda en una sola malla (una llamada de dibujo por celda y nivel); instanciar no
+bajaría los triángulos, que es lo que se pidió medir.
+
+## Verificado (scratchpad `n2/az3/`)
+- `hoja_az3_azoteas.jpg` (roof_eix, roof_gra, roof_gra_lo, roof_cv, roof_e150): mismas azoteas con un tercio de triángulos;
+  las losas naranjas de teja son tejados con pendiente.
+- `hoja_az3_tejados_noche.jpg` (d600, sarria, horta, n600, sarria_n) y `cmp_noche.jpg` (n600 y sarria_n tras el arreglo
+  nocturno). Sin errores ni avisos de consola en ninguna captura.
+
+## Pendiente / flojo
+- Sin medir fps (SwiftShader no sirve para eso); solo triángulos.
+- Las celdas de 100 m en la franja de fundido llevan los dos niveles: hay ~50–100k triángulos «dobles» en el nivel medio.
+- La franja 1→2 (170–200 m) coincide con la de las fachadas; de 200 a 360 m las azoteas son cajas y la ropa son paños.
+- Tejado: sobre el rectángulo orientado, así que en casas que no son rectángulos perfectos el alero puede pisar un poco al
+  vecino o dejar un pico de losa plana a la vista; las de planta irregular (< 78–80 % de llenado) o con patio quedan con
+  azotea de rasilla. Dos aguas siempre con la cumbrera a lo largo del lado largo (no mira a la calle).
+- Las casas que antes eran teja grande ahora son rasilla: su color de cubierta ha cambiado (igual a cualquier distancia).
+- La vista «horta» cae en un sitio con pocas casas de teja (Horta tiene menos de las esperadas en esa caja).
+- DESARROLLO.md (material propio de rooftops con fundido por malla, tipo TEJA id 120, uv2 de los volúmenes) sin actualizar.
+
 ## Cómo se prueba
 `node tools/shot.js <prefijo> @all2.json` (scratchpad `n2/az3/`: roof_eix, roof_gra, roof_gra_lo, roof_cv, roof_e150,
 d600, sarria, horta, n600 y sarria_n a las 23:00; «sarria» y «horta» buscan solas el grupo de casas con teja más denso del
