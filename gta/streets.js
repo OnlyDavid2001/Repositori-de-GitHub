@@ -252,7 +252,7 @@ void main(){
   // ARB4: tutores de pino claro con atados de cinta (atlas propio, TR.stakeCanvas) y copa joven verde claro
   const SAPG = TR.sapling(), sapSp = (bark, leaf) => ({ bark, leaf: leaf || TR.SP[0].leaf, fl: 0, bm: 0 });
   const tStake = canvasTex(TR.stakeCanvas()), tFlat = canvasTex(TR.flatCanvas());
-  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.32, 1.5, 0.92, 0.95])),
+  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.22, 1.4, 0.86, 0.92])),
     stakesA: mkTreeMat('sapA', 0, tStake, tFlat, sapSp([1, 1, 1, 1])), stakesB: mkTreeMat('sapB', 0, tStake, tFlat, sapSp([1, 1, 1, 1])),
     guard: mkTreeMat('sapG', 0, tBkD, tBkN, sapSp([0.30, 0.31, 0.32, 0])) };
   const SAP = {}; for (const k of ['trunk', 'leaf', 'stakesA', 'stakesB', 'guard']) { SAP[k] = mkGeoMesh('tNS' + k, SAPG[k], SAPM[k]); reg(SAP[k], k === 'leaf' ? { cast: true, alphaTex: tLeafN[0], layer: 'tree' } : { cast: true, layer: 'tree' }); }
