@@ -242,6 +242,13 @@ void main(){
     if (dark) { SH.flushed = false; return; }
     // las cascadas crecen con la altura sobre el suelo, en escalones del 25 % (para no repintar a cada metro que se sube)
     const s = Math.min(10, Math.pow(1.25, Math.round(Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25))));
+    // rango de profundidad (a lo largo del sol) de los mapas: ha de abarcar el suelo de toda la cascada lejana, que está a la
+    // altura de la cámara por debajo de su centro y, con el sol bajo, a semilado/tan(altura) más allá. Con el rango fijo de
+    // 4 km, desde el aire (3–4 km de altura) todo lo que quedaba más lejos que eso del centro salía «detrás» del mapa y, por
+    // tanto, en sombra: media ciudad oscura, con un borde recto (el plano a 4 km). Escalones ×1,25 (cambiarlo repinta todo)
+    { const el = Math.max(0.12, S.y), need = 1.15 * (Math.max(0, Pc.y - groundY) + SH.base[1] * s * Math.sqrt(1 - el * el)) / el + 300;
+      const R = need <= 4000 ? 4000 : 4000 * Math.pow(1.25, Math.ceil(Math.log(need / 4000) / Math.log(1.25)));
+      if (R !== SH.R) { SH.R = R; SH.uP.y = 1 / (2 * R); for (const c of SH.casc) c.dirty = true; } }
     const check = ctx.reg.ver !== SH.ver || ++SH.tick >= 30;
     if (check) { SH.ver = ctx.reg.ver; SH.tick = 0; }
     let did = 0;

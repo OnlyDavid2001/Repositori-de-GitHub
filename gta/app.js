@@ -267,13 +267,18 @@ const VS_COL = `precision highp float;
 attribute vec3 position; attribute vec4 color; attribute vec4 uv; uniform mat4 world; uniform mat4 viewProjection;
 varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; gl_Position = viewProjection*wp; }`;
+// volúmenes: además, el eje del edificio (uv2 = cos, sin del ángulo de sus muros) para alinear la textura de la cubierta
+const VS_BLD = `precision highp float;
+attribute vec3 position; attribute vec4 color; attribute vec4 uv; attribute vec2 uv2; uniform mat4 world; uniform mat4 viewProjection;
+varying vec3 vPos; varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx;
+void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vCol = color; vInfo = uv; vAx = uv2; gl_Position = viewProjection*wp; }`;
 const VS_NRM = `precision highp float;
 attribute vec3 position; attribute vec3 normal; uniform mat4 world; uniform mat4 viewProjection; varying vec3 vPos; varying vec3 vN;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_Position = viewProjection*wp; }`;
 
 const FS_BLD = `
-varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; uniform vec2 uFx;
-uniform sampler2D uStreet; uniform vec4 uStreetR;
+varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec2 vAx; uniform vec2 uFx;
+uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uRoofPal;
 void main(){
   vec3 n = normalize(cross(dFdx(vLoc), dFdy(vLoc)));
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
@@ -283,14 +288,11 @@ void main(){
   float a255 = floor(vCol.a*255.0 + 0.5); float style = floor(a255/16.0); float seed = (a255 - style*16.0)/15.0;
   vec3 base = vCol.rgb; vec3 glow = vec3(0.0);
   float h = vInfo.x*0.1, Ht = vInfo.y*0.1;
-  // DIA: mosaico de colores de fachada como en las fotos (crema, ocre, blanco roto, arena y algo de ladrillo) en las de
-  // vivienda; de noche (uNight) el color de siempre, para no tocar la noche calibrada
-  if (style < 0.5 || abs(style-2.0) < 0.5 || abs(style-6.0) < 0.5) {
-    float hb = hash21(vec2(vInfo.y*0.137 + seed*7.3, vCol.r*31.0 + vCol.g*17.0));
-    vec3 tq = hb < 0.30 ? vec3(1.03, 0.99, 0.91) : (hb < 0.50 ? vec3(1.05, 0.89, 0.68) : (hb < 0.68 ? vec3(1.08, 1.07, 1.05) :
-              (hb < 0.87 ? vec3(1.01, 0.94, 0.82) : vec3(0.88, 0.60, 0.45))));
-    base = mix(min(base*tq, vec3(0.95)), base, uNight);
-  }
+  // el color de fachada y de cubierta viene horneado por edificio (palette.js): el mismo a cualquier distancia y el mismo que
+  // usa la fachada de detalle. En las clases con paleta (0, 2 y 6) el índice de cubierta va en los 2 bits bajos de cada canal
+  bool palB = style < 0.5 || abs(style-2.0) < 0.5 || abs(style-6.0) < 0.5;
+  // de noche, la paleta de colores se acerca al tono medio de siempre, para no mover la noche calibrada
+  if (palB) base = mix(base, vec3(0.847, 0.784, 0.706)*(0.75 + 0.25*dot(base, vec3(0.30, 0.59, 0.11))/0.78), 0.6*uNight);
   float fade = 1.0 - smoothstep(260.0, 1100.0, dist);
   if (abs(n.y) < 0.5) {
     float u = vInfo.z*0.1;
@@ -340,7 +342,9 @@ void main(){
       base = mix(base, glass, mix(0.20, w*amt, fade));
       base *= 1.0 - 0.07*(1.0 - smoothstep(0.02,0.06,fy))*fade*step(0.5, fl);
     } else {
-      base *= 0.96 + 0.08*vnoise(vec2(u*0.4, h*0.4));
+      // grano de revoco: se apaga cuando la celda de ruido baja de unos pocos píxeles (de lejos, ni moiré ni parpadeo)
+      float pxw = max(length(vec2(dFdx(u), dFdy(u))), length(vec2(dFdx(h), dFdy(h))));
+      base *= 1.0 + 0.08*(vnoise(vec2(u*0.4, h*0.4)) - 0.5)*(1.0 - smoothstep(0.6, 2.5, pxw));
     }
     glow = mix(farG, glow, fade);
     base *= mix(0.74, 1.0, smoothstep(-2.0, 8.0, h));
@@ -349,26 +353,63 @@ void main(){
     // Solo los muros que dan a una calle (máscara de calles, 3 m por delante del muro): los patios de manzana quedan a oscuras
     if (uGlow.y > 0.001) glow += kAura*base*(exp(-max(h, 0.0)/6.0)*uGlow.y*mix(0.08, 1.0, texture2D(uStreet, (vPos.xz + normalize(n.xz + vec2(1e-4))*3.0 - uStreetR.xy)*uStreetR.zw).r)*mix(0.45, 1.0, smoothstep(90.0, 380.0, dist))*(1.0 - 0.8*smoothstep(200.0, 380.0, vPos.y)));
   } else {
-    vec3 roof;
+    // CUBIERTA: una por edificio, de un material y un color (palette.js), con su textura fina ALINEADA con los muros del
+    // propio edificio (vAx = su eje) y en metros de la propia cubierta: ni costuras por triángulo ni cambios de tono. Toda la
+    // textura tiene media cero y se apaga cuando su motivo baja de ~2 píxeles, así que de lejos queda exactamente el color
+    // de la tabla: el mismo a cualquier distancia
+    vec3 roof; float rt = -1.0;
     float r = hash21(vCol.rg*91.7 + seed);
-    if (style < 0.5) {
-      // DIA: azoteas claras (la mayoría), teja terracota y algo de gris, como en las fotos; de noche, las de siempre
-      vec3 rD = r < 0.30 ? mix(vec3(0.74,0.43,0.30), vec3(0.64,0.38,0.28), fract(r*7.0)) : (r < 0.86 ? mix(vec3(0.82,0.75,0.63), vec3(0.73,0.67,0.58), fract(r*5.0)) : vec3(0.60,0.58,0.55));
-      roof = mix(rD, mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r)), uNight);
+    if (palB) {
+      vec3 c8 = floor(vCol.rgb*255.0 + 0.5);
+      float ri = mod(c8.r, 4.0) + 4.0*mod(c8.g, 4.0) + 16.0*mod(c8.b, 4.0);
+      vec3 rD = texture2D(uRoofPal, vec2((ri + 0.5)/64.0, 0.5)).rgb;
+      rt = floor(ri/16.0);
+      vec3 rN = abs(style-2.0) < 0.5 ? mix(vec3(0.60,0.50,0.42), vec3(0.52,0.50,0.48), r) : abs(style-6.0) < 0.5 ? mix(vec3(0.72,0.44,0.32), vec3(0.64,0.40,0.30), r) :
+                mix(mix(vec3(0.66,0.47,0.38), vec3(0.70,0.62,0.54), r), vec3(0.56,0.55,0.54), step(0.72, r));
+      roof = mix(rD, rN, uNight);
+      if (rt < 0.5 && mod(ri, 16.0) > 7.5) rt = 4.0;          // baldosa clara (losas más grandes que la rasilla)
     }
-    else if (abs(style-1.0) < 0.5) roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r);
-    else if (abs(style-2.0) < 0.5) roof = mix(vec3(0.60,0.50,0.42), vec3(0.52,0.50,0.48), r);
+    else if (abs(style-1.0) < 0.5) { roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r); rt = 2.0; }
     else if (abs(style-3.0) < 0.5) roof = vec3(0.46,0.48,0.52);
-    else if (abs(style-6.0) < 0.5) roof = mix(vec3(0.72,0.44,0.32), vec3(0.64,0.40,0.30), r);
-    else if (abs(style-9.0) < 0.5) roof = vec3(0.76,0.76,0.77);
-    else if (abs(style-10.0) < 0.5) roof = vec3(0.80,0.82,0.84);
-    else roof = base*0.95;
-    float nz = vnoise(vPos.xz*0.35);
-    base = roof*(0.93 + 0.12*nz);
+    else if (abs(style-9.0) < 0.5) { roof = vec3(0.76,0.76,0.77); rt = 2.0; }
+    else if (abs(style-10.0) < 0.5) { roof = vec3(0.80,0.82,0.84); rt = 2.0; }
+    else { roof = base*0.95; rt = 3.0; }
+    vec2 ax = vAx/max(length(vAx), 1e-3);
+    vec2 q = vec2(dot(vLoc.xz, ax), dot(vLoc.xz, vec2(-ax.y, ax.x))) + seed*vec2(37.0, 53.0);   // metros, en ejes del edificio
+    float pw = max(length(fwidth(q)), 1e-4);                  // metros por píxel
+    float tx = 0.0;                                           // relieve de la textura (media cero)
+    if (rt > -0.5) {
+      if (rt < 0.5 || rt > 3.5) {
+        // rasilla (28 × 14 cm, a soga) o baldosa clara (40 cm): juntas claras y algo de tono por pieza
+        vec2 sz = rt < 0.5 ? vec2(0.28, 0.14) : vec2(0.40, 0.40);
+        vec2 g = q/sz; g.x += 0.5*step(1.0, mod(floor(g.y), 2.0));
+        vec2 f = abs(fract(g) - 0.5)*sz;                       // distancia al centro de la pieza (m)
+        float jw = 0.012, lj = 1.0 - smoothstep(-0.5, 0.5, (min(sz.x*0.5 - f.x, sz.y*0.5 - f.y) - jw)/max(pw, 1e-4));
+        float jf = 2.0*jw*(1.0/sz.x + 1.0/sz.y);               // fracción media de junta
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/sz.y);
+        tx = (0.10*(hash21(floor(g) + seed*7.0) - 0.5) + 0.22*(lj - jf))*fs;
+      } else if (rt < 1.5) {
+        // teja árabe: canales de 22 cm a lo largo del eje y cursos de 40 cm (borde de cada teja, en sombra)
+        float cu = q.x/0.22, co = q.y/0.40 + 0.5*step(1.0, mod(floor(cu), 2.0));
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.22);
+        float sh = sin(6.2832*cu)*0.16, cv = (smoothstep(0.80, 0.95, fract(co)) - 0.15)*-0.16;
+        tx = (sh + cv + 0.12*(hash21(vec2(floor(cu), floor(co)) + seed*5.0) - 0.5))*fs;
+      } else if (rt < 2.5) {
+        // tela asfáltica: rollos de 1 m solapados (junta clara) y algún tono distinto por rollo
+        float rl = q.y/1.0, fr = fract(rl);
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.5);
+        tx = ((smoothstep(0.90, 0.94, fr) - smoothstep(0.97, 1.0, fr) - 0.045)*0.20 + 0.07*(hash21(vec2(floor(rl), seed*3.0)) - 0.5))*fs;
+      } else {
+        // grava
+        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.12);
+        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.45, 0.9, pw/0.6));
+      }
+      // manchas de uso y de humedad (escala de metros), también de media cero
+      tx += 0.07*(vnoise(q*0.21) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/3.0));
+    }
+    base = roof*(1.0 + tx*(1.0 - 0.7*uNight));
     // de noche las cubiertas son masas oscuras: la grava y la tela asfáltica claras no deben brillar bajo la luna
     base *= 1.0 - 0.55*uNight;
-    // peto / borde de cubierta
-    base *= 1.0;
   }
   // de noche, los volúmenes lejanos son masas oscuras: solo se ve lo que emite (ventanas, bajos bañados por las farolas)
   // DIA: de lejos (sin mapa de sombras) la parte baja de los muros queda en la sombra de la acera de enfrente: calle de
@@ -617,7 +658,9 @@ function setLDR() {
   for (const m of mats) m.options.defines.push('#define LDR');
   for (const f of OUT.onLDR) { try { f(); } catch (e) { console.warn(e); } }
 }
-const matBld = mkMat('bld', VS_COL, FS_BLD, ['position', 'color', 'uv'], ['uFx', 'uStreetR'], ['uStreet']);
+const matBld = mkMat('bld', VS_BLD, FS_BLD, ['position', 'color', 'uv', 'uv2'], ['uFx', 'uStreetR'], ['uStreet', 'uRoofPal']);
+// tabla de colores de cubierta de palette.js (64 × 1, sin filtrar)
+if (window.BCN_PAL) matBld.setTexture('uRoofPal', BABYLON.RawTexture.CreateRGBATexture(window.BCN_PAL.ROOF, 64, 1, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE));
 matBld.setVector2('uFx', new BABYLON.Vector2(230, 290));
 const matTer = mkMat('ter', VS_BASIC, FS_TER, ['position'], ['uSize', 'uGrid', 'uCell', 'uStreetR'], ['groundTex', 'normTex', 'uStreet']);
 // máscara de calles (la luz de las farolas, de noche): hasta que se trazan las calles, «todo es calle»
@@ -923,6 +966,9 @@ const PAL = {
   12: [[92, 118, 172]], 13: [[226, 229, 233]],
   14: [[214, 204, 186], [196, 188, 174], [98, 76, 58]], 15: [[104, 150, 84], [66, 112, 62], [82, 128, 68]],
 };
+// barrios: cajas y consulta, ANTES de los edificios (la paleta elige el color por familia de barrio al cargarlos)
+for (const b of META.barris) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const r of b.r) for (const q of r) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1]; } b.bb = [x0, z0, x1, z1]; }
+window.BCN_BARRI = { at: (x, z) => barriAt(x, z), barris: META.barris, districtes: META.districtes };   // consulta de barrio para otros módulos (paleta, fachadas)
 const bldChunks = []; let bldTris = 0, bldCount = 0;
 // registro compacto de cada edificio, para releer su planta cuando haga falta la fachada de detalle
 const BREC = { dv: [], n: 0 };
@@ -935,13 +981,14 @@ const BREC = { dv: [], n: 0 };
   for (const c of conts) { total += c.meta.chunks.length; for (const ck of c.meta.chunks) nTot += ck[4]; }
   BREC.cont = new Uint8Array(nTot); BREC.off = new Int32Array(nTot); BREC.chunk = new Int32Array(nTot);
   BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot);
+  const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
     const dv = c.view('data'); BREC.dv.push(dv);
     for (const ck of c.meta.chunks) {
       const [cx, cz, off, len, nB, nV, nR] = ck;
       const maxV = (nV + nR) * 2, maxI = nV * 6 + (nV + 2 * nR) * 3;
-      const pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4);
+      const pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4), axv = new Int8Array(maxV * 2);
       const idx = maxV > 65535 ? new Uint32Array(maxI) : new Uint16Array(maxI);
       let vp = 0, ip = 0, p = off; const end = off + len; const flat = [], holes = [], rsz = [], topIdx = [];
       const ox = cx * CH, oz = cz * CH;
@@ -951,10 +998,27 @@ const BREC = { dv: [], n: 0 };
         const yb = dv.getInt16(p + 6, true), ybot = dv.getInt16(p + 8, true), ytop = dv.getInt16(p + 10, true); p += 12;
         rsz.length = 0;
         if (nRings > 1) { for (let r = 0; r < nRings; r++, p += 2) rsz.push(dv.getUint16(p, true)); } else rsz.push(n);
-        const pal = PAL[cls] || PAL[0], c3 = pal[seed % pal.length], a = (cls << 4) | (seed & 15);
         const Ht = ytop - yb, hb = ybot - yb, y0 = ybot / 10, y1 = ytop / 10;
         flat.length = 0;
         for (let k = 0; k < n; k++, p += 4) flat.push(dv.getInt16(p, true) / 10, dv.getInt16(p + 2, true) / 10);
+        let bx0 = 1e9, bx1 = -1e9, bz0 = 1e9, bz1 = -1e9;
+        for (let k = 0; k < flat.length; k += 2) { const x = flat[k], z = flat[k + 1]; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (z < bz0) bz0 = z; if (z > bz1) bz1 = z; }
+        // color horneado: el de la paleta por familia de barrio (palette.js) o, en las clases sin paleta, el de PAL
+        const pal = PAL[cls] || PAL[0], a = (cls << 4) | (seed & 15);
+        // eje del edificio (para alinear la textura de su cubierta con sus muros): media de la dirección de las aristas del
+        // anillo exterior, ponderada por longitud, con el ángulo ×4 (así las aristas a 0°, 90°, 180° y 270° suman a lo mismo)
+        let s4c = 0, s4s = 0;
+        for (let k = 0, m0 = rsz[0]; k < m0; k++) { const j = (k + 1) % m0, dx = flat[j * 2] - flat[k * 2], dz = flat[j * 2 + 1] - flat[k * 2 + 1], L = Math.hypot(dx, dz);
+          if (L > 0.05) { const a4 = 4 * Math.atan2(dz, dx); s4c += L * Math.cos(a4); s4s += L * Math.sin(a4); } }
+        const axA = Math.atan2(s4s, s4c) / 4, axC = Math.round(Math.cos(axA) * 127), axS = Math.round(Math.sin(axA) * 127);
+        // planta: área (anillo exterior) y cuánto llena su rectángulo mínimo orientado con ese eje (la teja con pendiente solo
+        // va en plantas casi rectangulares: palette.js lo decide con estos dos números)
+        let pA = 0, u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9;
+        { const ca = Math.cos(axA), sa = Math.sin(axA);
+          for (let k = 0, m0 = rsz[0]; k < m0; k++) { const j = (k + 1) % m0, x = flat[k * 2], z = flat[k * 2 + 1], u = x * ca + z * sa, w = z * ca - x * sa;
+            pA += x * flat[j * 2 + 1] - flat[j * 2] * z; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < w0) w0 = w; if (w > w1) w1 = w; } }
+        pA = Math.abs(pA) / 2;
+        const c3 = (PALJ && PALJ.pick(bi, cls, seed, (bx0 + bx1) / 2 + ox, (bz0 + bz1) / 2 + oz, Ht / 10, pA, pA / Math.max(1, (u1 - u0) * (w1 - w0)))) || pal[seed % pal.length];
         let rs = 0; holes.length = 0;
         for (let r = 0; r < rsz.length; r++) {
           const m = rsz[r]; if (r > 0) holes.push(rs);
@@ -966,6 +1030,7 @@ const BREC = { dv: [], n: 0 };
             let o = vp * 3; pos[o] = x; pos[o + 1] = y0; pos[o + 2] = z; pos[o + 3] = x; pos[o + 4] = y1; pos[o + 5] = z;
             o = vp * 4; col[o] = c3[0]; col[o + 1] = c3[1]; col[o + 2] = c3[2]; col[o + 3] = a; col[o + 4] = c3[0]; col[o + 5] = c3[1]; col[o + 6] = c3[2]; col[o + 7] = a;
             inf[o] = hb; inf[o + 1] = Ht; inf[o + 2] = uq; inf[o + 4] = Ht; inf[o + 5] = Ht; inf[o + 6] = uq;
+            o = vp * 2; axv[o] = axC; axv[o + 1] = axS; axv[o + 2] = axC; axv[o + 3] = axS;
             if (k < m) topIdx[kk] = vp + 1;
             if (k > 0) { const a0 = vp - 2; idx[ip++] = a0; idx[ip++] = vp; idx[ip++] = vp + 1; idx[ip++] = a0; idx[ip++] = vp + 1; idx[ip++] = a0 + 1; }
             vp += 2;
@@ -976,8 +1041,6 @@ const BREC = { dv: [], n: 0 };
         for (let k = 0; k < tr.length; k++) idx[ip++] = topIdx[tr[k]];
         bldCount++;
         BREC.v1[bi] = vp;
-        let bx0 = 1e9, bx1 = -1e9, bz0 = 1e9, bz1 = -1e9;
-        for (let k = 0; k < flat.length; k += 2) { const x = flat[k], z = flat[k + 1]; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (z < bz0) bz0 = z; if (z > bz1) bz1 = z; }
         BREC.bb[bi * 4] = bx0 + ox; BREC.bb[bi * 4 + 1] = bz0 + oz; BREC.bb[bi * 4 + 2] = bx1 + ox; BREC.bb[bi * 4 + 3] = bz1 + oz;
         // ¿vivienda susceptible de fachada de detalle? (ni torres, ni naves, ni volúmenes elevados)
         const Hm = Ht / 10, area = (bx1 - bx0) * (bz1 - bz0);
@@ -986,7 +1049,7 @@ const BREC = { dv: [], n: 0 };
       const infBuf = inf.subarray(0, vp * 4);
       const vbInfo = new VB(engine, infBuf, 'uv', true, false, 4, false, 0, 4, VB.SHORT, false);
       const mesh = mkMesh('b' + cx + '_' + cz, pos.subarray(0, vp * 3), idx.subarray(0, ip), matBld,
-        [vbuf(col.subarray(0, vp * 4), 'color', 4, VB.UNSIGNED_BYTE, true), vbInfo], cx * CH, cz * CH);
+        [vbuf(col.subarray(0, vp * 4), 'color', 4, VB.UNSIGNED_BYTE, true), vbInfo, vbuf(axv.subarray(0, vp * 2), 'uv2', 2, VB.BYTE, true)], cx * CH, cz * CH);
       reg(mesh, { cast: true, layer: 'coarse' });
       bldChunks.push({ mesh, x: (cx + 0.5) * CH, z: (cz + 0.5) * CH, ox, oz, inf: infBuf, vbInfo, dirty: false });
       bldTris += ip / 3;
@@ -1003,8 +1066,6 @@ const addLabel = (txt, cls, x, y, z) => { const e = document.createElement('div'
   for (const b of META.barris) add(b.n, 'b', b.c[0], heightAt(b.c[0], b.c[1]) + 45, b.c[1]);
   for (const d of META.districtes) add(d.n, 'd', d.c[0], heightAt(d.c[0], d.c[1]) + 160, d.c[1]);
   for (const q of META.poi) add(q.n, 'p', q.p[0], q.p[1] + (q.n.indexOf('Torre') >= 0 ? 300 : q.n === 'Sagrada Família' ? 185 : 70), q.p[2]);
-  for (const b of META.barris) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const r of b.r) for (const q of r) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1]; } b.bb = [x0, z0, x1, z1]; }
-window.BCN_BARRI = { at: (x, z) => barriAt(x, z), barris: META.barris, districtes: META.districtes };   // consulta de barrio para otros módulos (paleta, fachadas)
 }
 function barriAt(x, z) {
   for (const b of META.barris) {
@@ -1049,6 +1110,8 @@ const FXS = await addMod('fx', 'BCN_FACADES', 'fachadas de detalle');
 setMsg('Preparando calles: aceras, árboles y mobiliario…', 0.985);
 await tick();
 const STS = FXS ? await addMod('st', 'BCN_STREETS', 'calles de detalle') : null;
+// azoteas con detalle (rooftops.js): usa los índices de las fachadas y su shader de detalle
+if (FXS) await addMod('roof', 'BCN_ROOFTOPS', 'azoteas con detalle');
 // iluminación: siempre el último
 const LIGHT = QS.get('nolight') === '1' ? null : await addMod('light', 'BCN_LIGHTING', 'módulo de iluminación');   // ?nolight=1: prueba del respaldo
 if (!LIGHT) setLDR();                                         // sin módulo de luz no hay postproceso: tono y gamma en los shaders

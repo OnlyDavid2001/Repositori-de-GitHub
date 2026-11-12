@@ -287,7 +287,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const ch = bldChunks[BREC.chunk[b]], rings = [];
     for (const m of rsz) { const a = new Float64Array(m * 2); for (let j = 0; j < m; j++, p += 4) { a[j * 2] = dv.getInt16(p, true) / 10 + ch.ox; a[j * 2 + 1] = dv.getInt16(p + 2, true) / 10 + ch.oz; } rings.push(a); }
     const pal = PAL[cls] || PAL[0];
-    r = { cls, seed, yb, y0, y1, rings, col: pal[seed % pal.length] };
+    r = { cls, seed, yb, y0, y1, rings, col: (window.BCN_PAL && window.BCN_PAL.wall(b)) || pal[seed % pal.length] };   // el color horneado en el volumen (palette.js)
     cache.set(b, r); return r;
   }
   function inside(d, x, z) {
