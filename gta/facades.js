@@ -205,10 +205,10 @@ void main(){
       alb *= mix(0.74, 1.16, smoothstep(0.15, 0.75, lum))*mix(1.0, 0.74, grime);
       float s = vnoise(vec2(P.x*1.3, P.y*0.07))*0.75 + vnoise(vec2(P.x*3.1, P.y*0.15))*0.25; alb *= mix(1.02, 0.82, smoothstep(0.5, 0.9, s));
       // desconchados pequeños y sueltos, más en la parte baja de cada paño; borde claro de mortero
-      float sp = vnoise(P*vec2(1.7, 2.3))*0.55 + vnoise(P*5.3)*0.45, lo = 0.8 + 0.04*sin(P.y*0.35);
+      float sp = vnoise(P*vec2(1.7, 2.3))*0.55 + vnoise(P*5.3)*0.45, lo = 0.845 + 0.03*sin(P.y*0.35);
       float mk = smoothstep(lo, lo + 0.015, sp), rim = smoothstep(lo - 0.035, lo - 0.01, sp)*(1.0 - mk);
       alb = mix(alb, alb*vec3(1.04, 1.02, 0.97) + 0.04, rim*0.6);
-      alb = mix(alb, mix(alb, vec3(0.52, 0.33, 0.24)*mix(0.82, 1.12, hash21(floor(q))), 0.75), mk);
+      alb = mix(alb, mix(alb, vec3(0.52, 0.33, 0.24)*mix(0.82, 1.12, hash21(floor(q))), 0.55), mk);
       vec3 tn = texture2D(tPlN, P*0.21).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*0.9*nearF);
     } else {
       float b = vnoise(vec2(P.x*0.35, floor(P.y/0.12)*3.1));
@@ -511,7 +511,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
             for (let t = 0; t < L.length; t++) { const k = (i0 + t) % L.length; if (usados.indexOf(L[k].id) < 0) { i0 = k; break; } }
           }
           const V0 = L[i0];
-          V = Object.assign(Object.create(V0), { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
+          V = Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
             remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
         }
       }
@@ -537,11 +537,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       box(W0, F, e0, e1, t - 0.14, t, jt - 0.24, jt, shade(uV, 1.04), K.STUCCO, 3);
       if (sl) { latticeSide(W0, F, e0 + 0.06, y + 0.08, t - 0.14, 0, jt - 0.12, uV, K.BAL, 0); box(W0, F, e0, e0 + 0.12, t - 0.14, t, 0, jt - 0.24, uV, K.STUCCO, 1); }
       if (sr) { latticeSide(W0, F, e1 - 0.06, y + 0.08, t - 0.14, 0, jt - 0.12, uV, K.BAL, 0); box(W0, F, e1 - 0.12, e1, t - 0.14, t, 0, jt - 0.24, uV, K.STUCCO, 1); }
-    } else if (V.bar === 'obra') {
-      box(W0, F, e0, e1, y, t, jt - 0.13, jt, wc, kw, 1);
-      if (sl) box(W0, F, e0, e0 + 0.13, y, t, 0, jt - 0.13, wc, kw, 5);
-      if (sr) box(W0, F, e1 - 0.13, e1, y, t, 0, jt - 0.13, wc, kw, 5);
-      box(W1, F, e0 - 0.02, e1 + 0.02, t, t + 0.05, jt - 0.16, jt + 0.03, uV, K.STUCCO);
+    } else if (V.bar === 'obra') {                    // antepecho de obra bajo (0,62 m) y pasamanos de tubo encima (deja ver los huecos)
+      const to = y + 0.62, mc = env.marcoV;
+      box(W0, F, e0, e1, y, to, jt - 0.13, jt, wc, kw, 1);
+      if (sl) box(W0, F, e0, e0 + 0.13, y, to, 0, jt - 0.13, wc, kw, 5);
+      if (sr) box(W0, F, e1 - 0.13, e1, y, to, 0, jt - 0.13, wc, kw, 5);
+      box(W0, F, e0 - 0.02, e1 + 0.02, to, to + 0.05, jt - 0.16, jt + 0.03, uV, K.STUCCO);
+      box(W0, F, e0, e1, t - 0.05, t, jt - 0.09, jt - 0.04, mc, K.METAL, 3);
+      if (W1) { const n = Math.max(1, Math.round((e1 - e0) / 1.4)); for (let q = 0; q <= n; q++) { const x = e0 + 0.04 + (e1 - e0 - 0.12) * q / n; box(W1, F, x, x + 0.04, to + 0.05, t - 0.05, jt - 0.09, jt - 0.05, mc, K.METAL, 4); } }
     } else if (V.bar === 'vidrio') {
       rect(W0, F, e0, e1, y + 0.05, t - 0.04, jt - 0.03, VID, K.PBR, VIDA);
       if (sl) jamb(W0, F, e0 + 0.02, y + 0.05, t - 0.04, 0, jt - 0.03, VID, K.PBR, VIDA);
@@ -614,7 +617,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (k < cover) { wr(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, wallC, kw); continue; }
         if (!street) { patioV(env, F, a, bw, c, k, P, wallC, rr); continue; }
         if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
-        if (tipo === 'galeria') { galeriaV(env, F, a, bw, k, P); continue; }
+        if (tipo === 'galeria' && (nb < 3 || W % 3 !== 2)) { galeriaV(env, F, a, bw, k, P); continue; }   // 1 de cada 3 vanos, ventana
         const tall = V.hueco === 'taller' && !low;   // ventanal de taller (fábricas): ancho, alto y con retícula de acero
         const vent = tall || (!low && !corr && (V.hueco === 'ventana' || (V.hueco === 'mixto' && W % 2 === 1)));
         const Vw = Math.min(V.win * (vent && !tall ? 1.12 : 1), bw - 0.95);
@@ -670,12 +673,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
           if (st - k < 0.5) { if (V.bar === 'forja' || V.bar === 'balaustre') lattice(W0, F, tt, ct, st + 0.02, st + 0.95, 0.06, iron, K.IRON, V.forja); else box(W0, F, tt, ct, st + 0.9, st + 0.95, 0, 0.06, marcoV, K.METAL); }
           continue;
         }
-        const ter = tipo === 'terraza', jt = (ter ? V.vuelo : V.vuelo + (D === 1 && !corr ? 0.25 : 0)) + (D === 1 && corr ? 0.15 : 0);
+        const ter = tipo === 'terraza', jt = (ter ? Math.min(1.15, V.vuelo) : V.vuelo + (D === 1 && !corr ? 0.25 : 0)) + (D === 1 && corr ? 0.15 : 0);
         const e0 = corr ? a : c - Math.min(Vw / 2 + 0.4, bw / 2 - 0.06), e1 = corr ? a + bw : 2 * c - e0;
-        const sl = !corr || W === 0, sr = !corr || W === nb - 1, slab = mixc(uV, env.stone, 0.35);
-        box(W0, F, e0, e1, k - (ter ? 0.2 : 0.06), k + 0.12, 0, jt, ter ? uV : slab, ter ? K.STUCCO : K.STONE, (sl ? 4 : 0) | 3);
+        const sl = !corr || W === 0, sr = !corr || W === nb - 1, slab = shade(mixc(uV, [168, 166, 160], 0.35), 0.92), KS = K.FXPIEDRA || K.STONE;
+        box(W0, F, e0, e1, k - (ter ? 0.2 : 0.06), k + 0.12, 0, jt, ter ? uV : slab, ter ? K.STUCCO : KS, (sl ? 4 : 0) | 3);
         rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr);
-        if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.08, k - 0.26, k - 0.06, 0, jt * 0.55, shade(slab, 0.88), K.STONE);
+        if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.08, k - 0.26, k - 0.06, 0, jt * 0.55, shade(slab, 0.88), KS);
         if (rr[9] < V.ropa) ropa(W0, F, e0, e1, k + 1.08, jt + 0.03, rr[10]);
         if (W1 && rr[3] < V.mac && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
       }
