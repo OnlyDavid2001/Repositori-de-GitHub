@@ -41,3 +41,11 @@ Capturas en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scrat
    las naves; recupera ese contraste sin apagarla. La cruz con sus haces está bien: consérvala.
 3. **Torre de Jesucrist**: en la foto es un cono largo que se va estrechando poco a poco; compárala con
    `usuario_torres_dia.jpg` y corrige el perfil si sale cilíndrica con una punta.
+
+## Biblioteca de fotos reales (para SFR: úsala para comparar elemento a elemento)
+En `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/sf/ref_web/` se está montando una biblioteca
+de fotos de referencia por elemento: `fachadas/`, `torres/` y `pinaculos/`, cada carpeta con un `INDEX.md` que dice qué
+muestra cada foto y qué hay que copiar. Si al empezar SFR ya existen, compara tus capturas con ellas (mismo encuadre
+aproximado) y empieza tus arreglos por las diferencias más visibles en las fachadas, las torres y los pináculos. Para
+capturar más fotos, el método está en la cabecera de esos INDEX.md (Firecrawl: captura de la página y descarga desde
+storage.googleapis.com).
