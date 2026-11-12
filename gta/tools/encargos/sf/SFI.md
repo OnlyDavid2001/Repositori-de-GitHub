@@ -19,3 +19,14 @@ todos los que puedas (cualquier fichero), volviendo a capturar. Sube. Monta la h
 una comprobada a ojo): la basílica desde el dron por los cuatro lados, de día y de noche; desde el estanque de la Plaça de
 Gaudí; desde la Plaça de la Sagrada Família; la escalinata de la Glòria desde abajo y el eje hasta la Diagonal; a pie ante
 el Naixement y ante la Passió; y una vista lejana con la ciudad.
+
+## Referencias del usuario (fotos que ha mandado; obligatorias para SFI y SFR)
+En `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/sf/ref/` hay tres fotos del usuario,
+descritas en la sección «Referencias del usuario» de `SF.md` (rama de la basílica): los remates de las torres a pleno sol
+(retícula de rombos en la piel, cruz blanca de cuatro brazos, estrella de 12 puntas, símbolos alados de los evangelistas,
+pináculos de trencadís de colores), la noche con la cruz lanzando haces de luz al cielo, y la maqueta de la fachada de la
+Glòria (cuatro torres, cascada de linternas en gota sobre columnas arborescentes, dos torres laterales bajas, piñones con
+celosía de panal y basamento con escalinata). **SFI**: comprueba que la escalinata de ENTORNO casa con el basamento de la
+Glòria de esa maqueta. **SFR**: míralas con Read y empieza tus 10 defectos por las diferencias con ellas (encuadres
+parecidos a los de las fotos, de día y a las 23:00); la hoja final debe incluir una vista lo más parecida posible a cada
+una de las tres fotos.
