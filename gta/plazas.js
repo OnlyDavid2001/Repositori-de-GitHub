@@ -25,7 +25,7 @@ attribute vec3 position; attribute vec4 color; attribute vec4 uv; uniform mat4 w
 varying vec3 vPos; varying vec4 vCol; varying vec4 vInfo;
 void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vCol = color; vInfo = uv; gl_Position = viewProjection*wp; }`;
 const FS_PAV = `
-varying vec4 vCol; varying vec4 vInfo; uniform vec2 uPavFade;
+varying vec4 vCol; varying vec4 vInfo; uniform vec2 uPavFade; uniform vec2 uRose;
 void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   if (dith() < smoothstep(uPavFade.x, uPavFade.y, dist)) discard;
@@ -54,10 +54,30 @@ void main(){
   } else if (pat < 7.5) {                           // 7: reja de fundición del alcorque, con tierra debajo
     vec2 q = fract(W*4.0) - 0.5; float b = step(0.36, max(abs(q.x), abs(q.y)));
     alb = mix(vec3(0.34, 0.27, 0.19)*(0.7 + 0.6*vnoise(W*9.0)), vec3(0.08), b*0.85*(1.0 - smoothstep(0.05, 0.2, fw*4.0)));
-  } else {                                          // 8: llambordes (adoquín de piedra de 20×12 a matajunta: Ciutat Vella)
+  } else if (pat < 8.5) {                           // 8: llambordes (adoquín de piedra de 20×12 a matajunta: Ciutat Vella)
     vec2 q = W/vec2(0.2, 0.12); q.x += 0.5*floor(q.y); vec2 id = floor(q), f = fract(q);
     float j = min(min(f.x, 1.0 - f.x)*0.2, min(f.y, 1.0 - f.y)*0.12), jt = smoothstep(0.004, 0.014, j), aa = smoothstep(0.012, 0.06, fw);
     alb *= mix(mix(0.62, 1.0, jt)*mix(0.82, 1.12, hash21(id)), 0.9, aa)*mix(0.86, 1.06, n1); rough = 0.7;
+  } else if (pat < 9.5) {                           // 9: explanada central de la Plaça de Catalunya: rosa de los vientos de piedras de colores
+    vec2 d = W - uRose; float r = length(d), th = atan(d.y, d.x), PI4 = 0.7853982;
+    vec3 cW = vec3(0.84, 0.81, 0.75), cL = vec3(0.70, 0.68, 0.64), cG = vec3(0.52, 0.51, 0.52), cK = vec3(0.22, 0.22, 0.24), cR = vec3(0.60, 0.37, 0.29), cY = vec3(0.76, 0.63, 0.42);
+    float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 15.5 : 10.0;
+    float lat = abs(sin(da))*r, hw = Rp*0.19*max(0.0, 1.0 - r/Rp), aw = max(fw*1.5, 0.02);
+    float inS = (1.0 - smoothstep(hw - aw, hw + aw, lat))*step(cos(da), 1.1)*step(0.0, cos(da));
+    vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cK) : (da > 0.0 ? cR : cY);
+    // fondo por anillos: disco gris, anillos negro, blanco y rojo, campo de sectores claros con líneas rojas, cenefa exterior negra
+    float s16 = mod(floor(th/(PI4*0.5) + 8.0), 2.0);
+    vec3 bg = r < 16.4 ? cG : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 45.0 ? mix(cL, cW, s16*0.55) : r < 45.8 ? cK : cR;
+    if (r > 18.5 && r < 45.0 && abs(fract((r - 18.5)/6.6 + 0.5) - 0.5)*6.6 < 0.18) bg = cR;
+    vec3 c = mix(bg, star, inS*step(r, Rp));
+    if (r < 1.3) c = r < 0.9 ? cY : cK;
+    // juntas: losas de ~0,8 m en anillos de 0,75 m
+    float ring = floor(r/0.75), nb = max(8.0, floor(6.2832*(ring + 0.5)*0.75/0.8)), ja = abs(fract(th/6.2832*nb) - 0.5)*6.2832/nb*r, jr = abs(fract(r/0.75) - 0.5)*0.75;
+    float jt = smoothstep(0.004, 0.012, min(jr, ja)), aj = smoothstep(0.02, 0.1, fw);
+    alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4); rough = 0.6;
+  } else {                                          // 10: macizo de flores: hojas verdes con manchas de flor del color del vértice
+    float g = vnoise(W*0.7)*0.4 + vnoise(W*5.0)*0.35 + vnoise(W*0.12)*0.25, fl = smoothstep(0.42, 0.62, vnoise(W*3.3 + 7.0)*0.7 + vnoise(W*11.0)*0.3);
+    alb = mix(vec3(0.27, 0.38, 0.18)*mix(0.7, 1.15, g), vCol.rgb*mix(0.8, 1.1, vnoise(W*17.0)), fl*0.85); rough = 0.92;
   }
   alb *= mix(1.0, mix(0.7, 1.0, n1), pWear);         // suciedad y desgaste
   if (uGlow.x > 0.001) {                            // de noche: aura de la calle + charcos de las farolas de la plaza (cocidos)
@@ -92,6 +112,10 @@ function inPoly(r, x, z) { let c = false; for (let i = 0, j = r.length - 1; i < 
   if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
 function edgeDist(r, x, z) { let d = 1e9; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[j], b = r[i], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
   let t = l2 > 0 ? ((x - a[0]) * dx + (z - a[1]) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t)); } return d; }
+function solve3(A, y) { const d = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const D = d(A); if (Math.abs(D) < 1e-9) return null; return [0, 1, 2].map(c => d(A.map((r, i) => r.map((v, j) => j === c ? y[i] : v))) / D); }
+// especies de plaza → índice de trees.js (el ciprés no está en trees.js: sigue con la pieza propia)
+const TSP = { platan: 0, lledoner: 1, taronger: 2, jacaranda: 4, tipuana: 5, pi: 6 };
 const sid = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) % 1000003; };
 
 // ------------------------------------------------------------------ colores
@@ -211,6 +235,63 @@ function fountainRect(B, F, y, L, Wd) {
   statue(B, F, y + 1.6, 0.3, [214, 206, 190], A0.STONE);
 }
 
+// ------------------------------------------------------------------ P3: piezas de la Plaça de Catalunya
+// figura sobre pedestal (zócalo, dado y cornisa): cinco actitudes (de pie, brazo alzado, drapeada, sedente, con las manos en la cabeza)
+function figure(B, F, y, col, ac, pose, sc, ph) {
+  ph = ph === undefined ? 1.7 : ph; sc = sc || 1; const S = v => v * sc, st = [192, 186, 172];
+  if (ph > 0) { box(B, F, -0.85, 0.85, y - 0.2, y + 0.25, -0.85, 0.85, shade(st, 0.9), K.FURN, 7, A0.STONE); box(B, F, -0.6, 0.6, y + 0.25, y + ph, -0.6, 0.6, st, K.FURN, 7, A0.STONE);
+    box(B, F, -0.72, 0.72, y + ph, y + ph + 0.14, -0.72, 0.72, shade(st, 1.05), K.FURN, 7, A0.STONE); }
+  const b = y + ph + (ph > 0 ? 0.14 : 0), o = { aux: ac };
+  if (pose === 3) { box(B, F, -S(0.35), S(0.35), b, b + S(0.5), -S(0.3), S(0.3), shade(st, 0.95), K.FURN, 7, A0.STONE);            // sedente: banco de piedra
+    for (const s of [-1, 1]) tube(B, F, [[S(0.1 * s), b + S(0.05), S(0.42)], [S(0.1 * s), b + S(0.48), S(0.4)], [S(0.1 * s), b + S(0.55), 0]], S(0.08), 5, col, K.FURN, o);
+    rev(B, F, 0, 0, [[S(0.18), b + S(0.52)], [S(0.15), b + S(0.8)], [S(0.2), b + S(1.08)], [S(0.07), b + S(1.15)]], 7, col, K.FURN, o);
+    sphere(B, F, 0, b + S(1.3), S(0.02), S(0.12), 6, 4, col, K.FURN, ac, 1.15);
+    for (const s of [-1, 1]) tube(B, F, [[S(0.21 * s), b + S(1.05), 0], [S(0.25 * s), b + S(0.78), S(0.15)], [S(0.12 * s), b + S(0.6), S(0.32)]], S(0.055), 4, col, K.FURN, o); return; }
+  if (pose === 2) rev(B, F, 0, 0, [[S(0.34), b], [S(0.3), b + S(0.5)], [S(0.2), b + S(0.98)]], 8, col, K.FURN, o);            // drapeada: túnica hasta los pies
+  else for (const s of [-1, 1]) tube(B, F, [[S(0.12 * s), b, s * S(pose === 1 ? 0.1 : 0)], [S(0.1 * s), b + S(0.5), 0], [S(0.11 * s), b + S(0.98), 0]], S(0.085), 5, col, K.FURN, o);
+  rev(B, F, 0, 0, [[S(0.18), b + S(0.92)], [S(0.15), b + S(1.18)], [S(0.21), b + S(1.48)], [S(0.08), b + S(1.56)], [S(0.06), b + S(1.62)]], 7, col, K.FURN, o);
+  sphere(B, F, 0, b + S(1.74), S(0.01), S(0.12), 6, 4, col, K.FURN, ac, 1.15);
+  const sh = s => [S(0.22 * s), b + S(1.46), 0];
+  const hand = [[[0.27, 0.95, 0.05], [-0.27, 0.95, 0.05]], [[0.34, 2.15, 0.06], [-0.27, 0.95, 0.05]], [[0.16, 1.2, 0.32], [-0.16, 1.2, 0.32]], null, [[0.12, 1.86, 0.02], [-0.12, 1.86, 0.02]]][pose];
+  const elb = [[0.27, 1.2, 0], [0.3, 1.8, 0.04], [0.26, 1.24, 0.12], null, [0.36, 1.62, 0]][pose];
+  for (let q = 0; q < 2; q++) { const s = q ? -1 : 1, hd = hand[q], e2 = pose === 1 && q ? [-0.27, 1.2, 0] : [elb[0] * s, elb[1], elb[2]];
+    tube(B, F, [sh(s), [S(e2[0]), b + S(e2[1]), S(e2[2])], [S(hd[0]), b + S(hd[1]), S(hd[2])]], S(0.055), 4, col, K.FURN, o); }
+}
+const P3PIECE = {
+  figure(B, F, y, h, ex) { figure(B, F, y, ex.bronze ? [88, 72, 52] : [214, 206, 190], ex.bronze ? A0.BRONZE : A0.STONE, ex.pose || 0, 1.05, 1.5 + h * 0.5); },
+  // fuente de la plaza: vaso de piedra moldurado, lámina de agua, grupo escultórico central, chorros en arco desde los lados y surtidores
+  fontC(B, F, y, h, ex) { const L = ex.L, Wd = ex.W, rim = [196, 190, 176], wa = [0, 150, 0, 0], w4 = wa.concat(wa, wa, wa), jc = [214, 230, 238];
+    for (const [u0, u1, d0, d1] of [[-L / 2 - 0.6, L / 2 + 0.6, -Wd / 2 - 0.6, -Wd / 2], [-L / 2 - 0.6, L / 2 + 0.6, Wd / 2, Wd / 2 + 0.6], [-L / 2 - 0.6, -L / 2, -Wd / 2, Wd / 2], [L / 2, L / 2 + 0.6, -Wd / 2, Wd / 2]]) {
+      box(B, F, u0, u1, y - 0.2, y + 0.5, d0, d1, rim, K.FURN, 7, A0.STONE); box(B, F, u0 - 0.06, u1 + 0.06, y + 0.5, y + 0.62, d0 - 0.06, d1 + 0.06, shade(rim, 1.06), K.FURN, 7, A0.STONE); }
+    box(B, F, -L / 2, L / 2, y - 0.2, y + 0.05, -Wd / 2, Wd / 2, [70, 92, 98], K.FURN, 1, A0.STONE);
+    quad(B, F, -L / 2, y + 0.42, -Wd / 2, L / 2, y + 0.42, -Wd / 2, L / 2, y + 0.42, Wd / 2, -L / 2, y + 0.42, Wd / 2, C.water, K.PLZ_WATER, w4);
+    const nj = Math.max(4, Math.round(L / 1.6));
+    for (let k = 0; k < nj; k++) { const u = -L / 2 + 0.8 + k * (L - 1.6) / (nj - 1);
+      for (const s of [-1, 1]) { const pts = []; for (let q = 0; q <= 5; q++) { const t = q / 5; pts.push([u, y + 0.55 + 1.5 * t * (1 - t) * 2.2 - 0.15 * t, s * (Wd / 2 - 0.1 - t * Math.min(2.4, Wd / 2 - 1.4))]); }
+        tube(B, F, pts, 0.035, 4, jc, K.PLZ_WATER, { aux: wa }); } }
+    box(B, F, -1.6, 1.6, y + 0.2, y + 1.1, -1.1, 1.1, rim, K.FURN, 7, A0.STONE);
+    figure(B, F, y + 1.1, [214, 206, 190], A0.STONE, 2, 1.1, 0); for (const s of [-1, 1]) { const F2 = Object.assign({}, F, { x: F.x + F.tx * s * 1.0, z: F.z + F.tz * s * 1.0 }); figure(B, F2, y + 1.1, [214, 206, 190], A0.STONE, 3, 0.95, 0); }
+    for (const s of [-1, 1]) rev(B, F, s * (L / 2 - 2.2), 0, [[0.09, y + 0.42], [0.05, y + 2.6], [0.0, y + 3.0]], 5, jc, K.PLZ_WATER, { aux: wa, cap: 0 });
+    return 1.4; },
+  // la Deessa (Clarà) en su estanque redondo: borde de piedra, agua, roca y figura; surtidores alrededor
+  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 150, 0, 0];
+    rev(B, F, 0, 0, [[r + 0.55, y - 0.2], [r + 0.55, y + 0.45], [r + 0.7, y + 0.55], [r + 0.2, y + 0.6]], 32, [196, 190, 176], K.FURN, { aux: A0.STONE, cap: 0 });
+    rev(B, F, 0, 0, [[0, y + 0.4], [r + 0.2, y + 0.4]], 32, C.water, K.PLZ_WATER, { aux: wa });
+    rev(B, F, 0, 0, [[1.3, y + 0.3], [1.1, y + 0.9], [0.8, y + 1.2]], 9, [150, 144, 132], K.FURN, { aux: A0.STONE, cap: 1 });
+    figure(B, F, y + 1.2, [226, 218, 204], A0.STONE, 4, 1.15, 0);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 2 * Math.PI, pts = []; for (let q = 0; q <= 4; q++) { const t = q / 4; pts.push([Math.cos(a) * (r - 0.3 - t * 2.4), y + 0.42 + 1.4 * t * (1 - t) * 2, Math.sin(a) * (r - 0.3 - t * 2.4)]); }
+      tube(B, F, pts, 0.03, 4, [214, 230, 238], K.PLZ_WATER, { aux: wa }); }
+    return 1.2; },
+  hedge(B, F, y, h, ex) { const l = ex.len || 6; box(B, F, -l / 2, l / 2, y - 0.1, y + 0.78, -0.38, 0.38, shade([46, 80, 48], 0.9 + 0.2 * h), K.PLZ_LEAF, 7, null); },
+  pigeons(B, F, y, h) { for (let k = 0; k < 24; k++) { const a = hash2(k, 11) * 6.28, r = Math.sqrt(hash2(k, 5)) * 4.5, u = Math.cos(a) * r, d = Math.sin(a) * r, dir = hash2(k, 3) * 6.28, cg = [104 + 30 * hash2(k, 7), 104 + 30 * hash2(k, 7), 112 + 30 * hash2(k, 7)];
+    sphere(B, F, u, y + 0.13, d, 0.11, 5, 3, cg, K.FURN, A0.MATTE, 0.75); sphere(B, F, u + Math.cos(dir) * 0.12, y + 0.24, d + Math.sin(dir) * 0.12, 0.05, 4, 3, shade(cg, 0.8), K.FURN, A0.MATTE); } },
+  // escalinata de la plataforma a la acera (si hay desnivel): peldaños de 16 cm con huella de 36 cm, hacia fuera, y pedestales a los lados
+  stairs(B, F, y, h, ex, X) { const w = ex.w || 8, g = X.gAt(X.x + Math.cos(X.a) * 3.5, X.z + Math.sin(X.a) * 3.5), drop = y - g; if (drop < 0.22) return;
+    const n = Math.round(drop / 0.16), ri = drop / n, tr = 0.36, st = [176, 170, 158];
+    for (let k = 0; k < n; k++) box(B, F, k * tr, n * tr + 0.2, g - 0.4, y - (k + 1) * ri + 0.005, -w / 2, w / 2, shade(st, k % 2 ? 0.97 : 1.02), K.FURN, 7, A0.STONE);
+    for (const s of [-1, 1]) box(B, F, -0.3, n * tr + 0.2, g - 0.4, y + 0.55, s < 0 ? -w / 2 - 0.5 : w / 2, s < 0 ? -w / 2 : w / 2 + 0.5, shade(st, 0.92), K.FURN, 7, A0.STONE); },
+};
+
 // ------------------------------------------------------------------ hitos de las plazas (BCN_LM): se dan de alta en cuanto landmarks.js publica window.BCN_LM
 const LMQ = [];
 function lmLater(f) { LMQ.push(f); }
@@ -285,29 +366,40 @@ const CAT = { c: [12207.5, 14056.0], deessa: [12212.5, 13989.6], macia: [12212.3
     [12168.2, 14087.9], [12176.8, 14117.4], [12155.2, 14100.9], [12178.7, 14109.3]],
   corners: [[12206.6, 14146.2], [12293.7, 14050.0], [12212.3, 13933.1], [12105.8, 14097.6]] };
 const segD = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz; let t = ((x - a[0]) * dx + (z - a[1]) * dz) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
-SING.push({ key: 'Plaça de Catalunya', ax: 136,
+const FLW = [[178, 50, 46], [200, 164, 50], [124, 70, 146], [206, 200, 186], [196, 96, 128]];
+SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4,
   zone(u, v, x, z, e) { const r = Math.hypot(x - CAT.c[0], z - CAT.c[1]);
-    if (r < 47) return [1, C.graniteL, 0.15];
-    if (r < 63 || e < 3.5) return [1, C.granite, 0.25];
-    for (const k of CAT.corners) if (segD(x, z, CAT.c, k) < 6) return [1, C.granite, 0.3];
-    if (Math.hypot(x - CAT.deessa[0], z - CAT.deessa[1]) < 12 || Math.hypot(x - CAT.macia[0], z - CAT.macia[1]) < 9) return [1, C.granite, 0.25];
-    if (r < 64 || e < 4.3) return [6, C.curb, 0.2];
-    for (const k of CAT.corners) if (segD(x, z, CAT.c, k) < 6.8) return [6, C.curb, 0.2];
+    if (r < 46) return [9, C.graniteL, 0.06];                      // explanada: rosa de los vientos (dibujo 9 del sombreador)
+    if (r < 47.2) return [6, C.curb, 0.12];                        // cenefa de piedra
+    if (r < 63 || e < 3.5) return [1, C.granite, 0.22];
+    let dc = 1e9; for (const k of CAT.corners) dc = Math.min(dc, segD(x, z, CAT.c, k));
+    if (dc < 6) return [1, C.granite, 0.28];
+    if (Math.hypot(x - CAT.deessa[0], z - CAT.deessa[1]) < 12 || Math.hypot(x - CAT.macia[0], z - CAT.macia[1]) < 9) return [1, C.granite, 0.22];
+    if (r < 64 || e < 4.3 || dc < 6.8) return [6, C.curb, 0.18];
+    if (r < 66.6 || dc < 9.2 || e < 6.4) { const s = Math.floor((Math.atan2(z - CAT.c[1], x - CAT.c[0]) + Math.PI) / (2 * Math.PI) * 20); return [10, FLW[s % FLW.length], 0]; }   // macizos de flores junto a los paseos
     return [5, C.grass, 0]; },
   objs(S) { const W = S.putW, c = CAT.c;
-    W('rose', c[0], c[1], 0, { a0: 0 });
     for (const [x, z, twin] of CAT.fonts) { const a = Math.atan2(z - c[1], x - c[0]) + Math.PI / 2;
-      if (twin) for (const s of [-1, 1]) W('fontR', x + Math.cos(a) * s * 8, z + Math.sin(a) * s * 8, a, { L: 13, W: 6.5 });
-      else W('fontR', x, z, a, { L: 22, W: 7.5 }); }
-    for (const [x, z] of CAT.art) W('statue', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2);
-    W('pond', CAT.deessa[0], CAT.deessa[1], 0, { r: 6 });
+      if (twin) for (const s of [-1, 1]) W('fontC', x + Math.cos(a) * s * 8, z + Math.sin(a) * s * 8, a, { L: 13, W: 6.5 });
+      else W('fontC', x, z, a, { L: 22, W: 7.5 }); }
+    CAT.art.forEach(([x, z], k) => W('figure', x, z, Math.atan2(c[1] - z, c[0] - x) - Math.PI / 2, { pose: k % 5, bronze: k % 3 !== 0 }));
+    W('pondC', CAT.deessa[0], CAT.deessa[1], 0, { r: 6 });
     W('macia', CAT.macia[0], CAT.macia[1], Math.atan2(c[1] - CAT.macia[1], c[0] - CAT.macia[0]) - Math.PI / 2);
     W('kiosk', 12250, 14112, 0.8); W('kiosk', 12160, 14000, -0.7);
     W('canaletes', 12196, 14004, 0); W('canaletes', 12240, 14100, 0);
-    for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 45, c[1] + Math.sin(a) * 45, a); }
-    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 42, c[1] + Math.sin(a) * 42, a + Math.PI); }
-    S.grid(8, 3, (u, v, x, z, e, zz) => zz && zz[0] === 5 && e > 5 && S.put('tree', u, v, 0, { sp: 'platan' }));
-    S.grid(16, 5, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && S.put('lampC', u, v, 0));
+    // escalinatas en las esquinas (bajan de la plataforma a la acera cuando hay desnivel)
+    for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), dl = Math.hypot(k[0] - c[0], k[1] - c[1]) - 1.5; W('stairs', c[0] + Math.cos(a) * dl, c[1] + Math.sin(a) * dl, a, { w: 10 }); }
+    for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * 2 * Math.PI; W('lampC', c[0] + Math.cos(a) * 48.5, c[1] + Math.sin(a) * 48.5, a); }
+    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI; W('bench', c[0] + Math.cos(a) * 49.5, c[1] + Math.sin(a) * 49.5, a + Math.PI); }
+    for (let k = 0; k < 4; k++) { const a = k * 1.7 + 0.4, r = 14 + k * 7; W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a); }
+    // setos: anillo de boj tras los macizos de flores, cortado en los paseos
+    for (let k = 0; k < 56; k++) { const a = (k + 0.5) / 56 * 2 * Math.PI, x = c[0] + Math.cos(a) * 67.6, z = c[1] + Math.sin(a) * 67.6, zz = S.zone(x, z);
+      if (zz && zz[0] === 5) W('hedge', x, z, a + Math.PI / 2, { len: 6.6 }); }
+    // árboles: hileras de plátanos en el perímetro y grupos sueltos en los parterres (no en retícula)
+    S.grid(8.5, 3, (u, v, x, z, e, zz) => { if (!zz || zz[0] !== 5 || zz[1] !== C.grass || e < 5) return; const h = hash2(Math.round(x), Math.round(z));
+      if (e < 11 || h < 0.3) S.put('tree', u + (h - 0.5) * 2, v, 0, { sp: e < 11 ? 'platan' : h < 0.12 ? 'pi' : h < 0.22 ? 'lledoner' : 'platan' }); });
+    S.grid(18, 5, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && S.put('lampC', u, v, 0));
+    S.grid(13, 2, (u, v, x, z, e, zz) => zz && zz[0] === 1 && Math.hypot(x - c[0], z - c[1]) > 66 && hash2(Math.round(x), Math.round(z)) < 0.5 && S.put('bench', u, v, hash2(Math.round(z), 3) * 6.28));
   } });
 // Plaça d'Espanya: la isla central de la rotonda. La fuente es un hito (font_pl_espanya); alrededor, anillo de granito, parterres y farolas
 SING.push({ key: "Plaça d'Espanya", ax: 63, center: [10446.2, 12741.6], disc: 58,
@@ -343,7 +435,9 @@ SING.push({ key: 'Plaça de Lesseps',
   zone(u, v, x, z, e, P) { if (e < 2.5) return [1, C.granite, 0.3]; const b = Math.abs(((u + 1000) % 14) - 7) < 0.6; return b ? [6, C.graniteD, 0.2] : [1, mixc(C.granite, C.pink, 0.25), 0.25]; },
   objs(S) { const { P } = S;
     S.put('play', P.hu * 0.4, -P.hv * 0.25, 0); S.put('canaletes', -P.hu * 0.15, P.hv * 0.3, 0); S.put('kiosk', -P.hu * 0.55, -P.hv * 0.35, 0); S.put('bikes', P.hu * 0.65, P.hv * 0.45, 0, { n: 6 });
-    S.grid(9, 4.5, (u, v, x, z, e, zz) => e > 3 && S.put('tree', u, v, 0, { sp: hash2(Math.round(u), Math.round(v)) < 0.7 ? 'platan' : 'tipuana', alc: true }));
+    // árboles (P3): hileras en los bordes y dos grupos; el centro, despejado
+    S.grid(8, 2, (u, v, x, z, e) => { const h = hash2(Math.round(x), Math.round(z)), g = Math.min(Math.hypot(u + P.hu * 0.45, v - P.hv * 0.1), Math.hypot(u - P.hu * 0.2, v + P.hv * 0.45));
+      if ((e > 3 && e < 7.5 && h < 0.8) || (g < 9 && e > 3 && h < 0.7)) S.put('tree', u, v, 0, { sp: h < 0.55 ? 'platan' : h < 0.75 ? 'tipuana' : 'jacaranda', alc: true }); });
     S.grid(14, 0, (u, v, x, z, e) => e > 3 && S.put('sbench', u, v + 3.5, 0, { len: 3.2, wood: true }));
     S.grid(21, 10, (u, v, x, z, e) => e > 2 && S.put('lamp', u, v, 0, { H: 8 })); } });
 
@@ -694,8 +788,38 @@ window.BCN_PLAZAS = { async init(ctx) {
   if (!city || !ctx.detail) throw new Error('las plazas necesitan las fachadas de detalle (ctx.city)');
   const { walkAt, coverAt, nearestCar } = city, matB = ctx.detail.matB, mkMesh = ctx.detail.mkMesh;
   const [AS, AH] = FUR ? FUR.levels : [null, null];
-  const matP = ctx.mkMat('plazaPav', VS_PAV, FS_PAV, ['position', 'color', 'uv'], ['uPavFade']);
-  matP.setVector2('uPavFade', new BABYLON.Vector2(560, 640));
+  const matP = ctx.mkMat('plazaPav', VS_PAV, FS_PAV, ['position', 'color', 'uv'], ['uPavFade', 'uRose']);
+  matP.setVector2('uPavFade', new BABYLON.Vector2(560, 640)); matP.setVector2('uRose', new BABYLON.Vector2(CAT.c[0], CAT.c[1]));
+  // ---- árboles de plaza con las especies de trees.js: las mismas mallas y materiales que streets.js (por nombre), con instancias propias
+  const TRS = window.BCN_TREES, TM = {};
+  function treeMeshes(k) {
+    if (TM[k] !== undefined) return TM[k];
+    const sc = ctx.scene, mat = n => sc.getMaterialByName(n + k);
+    if (!TRS || !mat('barkN') || !mat('leafF') || !mat('imp')) return (TM[k] = null);
+    const G = TRS.build(k), mk = (name, g, m, alpha) => { const me = new BABYLON.Mesh(name + k + 'p', sc);
+      me.setVerticesData('position', g.P, false); me.setVerticesData('normal', g.N, false); me.setVerticesData('uv', g.U, false); me.setIndices(g.I);
+      me.material = m; me.isPickable = false; me.renderingGroupId = 1; me.alwaysSelectAsActiveMesh = true; me.doNotSyncBoundingInfo = true;
+      me.thinInstanceSetBuffer('matrix', new Float32Array(16), 16, false); me.thinInstanceCount = 0;
+      const o = { cast: name !== 'tI', layer: name === 'tI' ? 'imp' : 'tree' }; if (alpha && m._textures && m._textures.tMap) o.alphaTex = m._textures.tMap; reg(me, o); return me; };
+    const band = m => { const v = m._vectors4 && m._vectors4.uBand; return v ? [v.x, v.y, v.z, v.w] : null; };
+    TM[k] = { lv: [[mk('tNB', G.nearBark, mat('barkN')), mk('tNL', G.nearLeaf, mat('leafN'), 1)], [mk('tFB', G.farBark, mat('barkF')), mk('tFL', G.farLeaf, mat('leafF'), 1)], [mk('tI', G.imp, mat('imp'), 1)]],
+      bands: [band(mat('barkN')) || [-2, -1, 55, 70], band(mat('barkF')) || [55, 70, 430, 520], band(mat('imp')) || [430, 520, 1900, 2100]],
+      tri: [(G.nearBark.I.length + G.nearLeaf.I.length) / 3, (G.farBark.I.length + G.farLeaf.I.length) / 3, G.imp.I.length / 3] };
+    return TM[k];
+  }
+  let treeDirty = true, tCam = null, nTreeLv = [0, 0, 0], treeTris = 0;
+  function treeInst(P) {
+    const sel = {};
+    for (const o of PL) { const s = o.st; if (!s || !s.trees) continue; const T = s.trees;
+      for (let k = 0; k < T.k.length; k++) { const e = T.k[k], M = TM[e], x = T.m[k * 16 + 12], y = T.m[k * 16 + 13], z = T.m[k * 16 + 14], d = Math.hypot(x - P.x, y + 6 - P.y, z - P.z);
+        const L = sel[e] || (sel[e] = [[], [], []]);
+        for (let g = 0; g < 3; g++) { const b = M.bands[g]; if (d > b[0] - 2 && d < b[3] + 2) L[g].push(T.m, k * 16); } } }
+    nTreeLv = [0, 0, 0]; treeTris = 0;
+    for (const e in TM) { const M = TM[e]; if (!M) continue; const L = sel[e] || [[], [], []];
+      for (let g = 0; g < 3; g++) { const n = L[g].length / 2, b = new Float32Array(Math.max(16, n * 16));
+        for (let q = 0; q < L[g].length; q += 2) b.set(L[g][q].subarray(L[g][q + 1], L[g][q + 1] + 16), q * 8);
+        for (const me of M.lv[g]) { me.thinInstanceSetBuffer('matrix', b, 16, false); me.thinInstanceCount = n; } nTreeLv[g] += n; treeTris += n * M.tri[g]; } }
+  }
   const data = await fetch('data/plazas.json').then(r => r.json());
   let P2 = {}; try { P2 = await fetch('data/plazas_p2.json').then(r => r.json()); } catch (e) { console.warn('Plazas: sin data/plazas_p2.json', e); }
   const nP1 = data.plazas.length; data.plazas.push(...extraPlazas(P2));
@@ -742,13 +866,32 @@ window.BCN_PLAZAS = { async init(ctx) {
     const U2W = (u, v) => [o.c[0] + u * o.cu - v * o.su, o.c[1] + u * o.su + v * o.cu];
     const fits = (x, z, r) => { if (!free(o, x, z)) return false; for (const [a, b] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!free(o, x + a, z + b)) return false;
       for (const q of occ) if (Math.hypot(q[0] - x, q[1] - z) < q[2] + r) return false; return true; };
-    const RAD = { bin: 0.5, pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
+    const RAD = { hedge: 0, figure: 1.0, fontC: 0, pondC: 0, stairs: 0, pigeons: 0, bin: 0.5, pond: 0, tree: 1.6, bench: 1.0, sbench: 1.2, lamp: 0.6, lampC: 0.6, canaletes: 0.9, play: 6.5, kiosk: 2.2, pergola: 4, pingpong: 1.8, bikes: 2.2, statue: 1.0, macia: 3.4, fontR: 0, rose: 0, balus: 0 };
     const put = (t, u, v, a, x) => { const [wx, wz] = U2W(u, v), r = t in P2RAD ? P2RAD[t] : RAD[t] || 1; if (r > 0 && !fits(wx, wz, r)) return false; occ.push([wx, wz, r]); items.push([t, wx, wz, a + o.ang, x || {}, u, v]); return true; };
     // zona de juegos genérica (se decide antes del pavimento: lleva caucho)
     if (!o.sg && (o.t === 'gran' || o.t === 'mitjana')) {
       for (let k = 0; k < 40 && !o.play; k++) { const u = (R() * 2 - 1) * o.hu * 0.7, v = (R() * 2 - 1) * o.hv * 0.7, [wx, wz] = U2W(u, v);
         if (edgeDist(o.r, wx, wz) > 9 && fits(wx, wz, 6.5)) o.play = [u, v]; } }
     yield;
+    // ---- plataforma (P3): el suelo de la plaza es un plano ajustado al relieve por mínimos cuadrados y levantado lo justo para que
+    // no asome ningún triángulo del terreno ni de la acera; en los bordes, faldón de piedra hasta la calle (y escalinatas donde
+    // haga falta). Si el relieve es demasiado accidentado para un plano, una envolvente (máximo del suelo en ±1 m) sin bultos que asomen
+    const gAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05);
+    let hAt = (x, z) => Math.max(gAt(x, z), gAt(x + 1, z), gAt(x - 1, z), gAt(x, z + 1), gAt(x, z - 1)) + 0.03;
+    o.plat = null;
+    if (!o.noPav) {
+      const sp = o.a > 30000 ? 3 : 2, M = new Float64Array(9), smp = []; let ns = 0;
+      for (let z = o.bb[1] + sp / 2; z < o.bb[3]; z += sp) { for (let x = o.bb[0] + sp / 2; x < o.bb[2]; x += sp) { if (!free(o, x, z)) continue;
+          const dx = x - o.c[0], dz = z - o.c[1], g = gAt(x, z); smp.push(dx, dz, g);
+          M[0] += 1; M[1] += dx; M[2] += dz; M[3] += dx * dx; M[4] += dx * dz; M[5] += dz * dz; M[6] += g; M[7] += dx * g; M[8] += dz * g; }
+        if (++ns % 25 === 0) yield; }
+      const sol = M[0] >= 8 ? solve3([[M[0], M[1], M[2]], [M[1], M[3], M[4]], [M[2], M[4], M[5]]], [M[6], M[7], M[8]]) : null;
+      if (sol) { const [a, b, c] = sol; let lift = -1e9, low = 1e9;
+        for (let k = 0; k < smp.length; k += 3) { const r = smp[k + 2] - (a + b * smp[k] + c * smp[k + 1]); if (r > lift) lift = r; if (r < low) low = r; }
+        const cap = o.sg && o.sg.lift !== undefined ? o.sg.lift : 0.45;
+        o.plat = { slope: +Math.hypot(b, c).toFixed(3), lift: +lift.toFixed(2), wall: +(lift - low).toFixed(2), plane: lift <= cap && lift - low < 2.2 };
+        if (o.plat.plane) { const L = lift + 0.05; hAt = (x, z) => a + b * (x - o.c[0]) + c * (z - o.c[1]) + L; } } }
+    o.hAt = hAt;
     // ---- pavimento: bloques de 4 m enteros si están libres y en una sola zona; si no, celdas de 1 m
     const ZK = z => z ? z[0] * 1e7 + z[1][0] * 65536 + z[1][1] * 256 + z[1][2] : -1;
     const [bx0, bz0, bx1, bz1] = o.bb, gx0 = Math.floor(bx0 / 4) * 4, gz0 = Math.floor(bz0 / 4) * 4;
@@ -764,7 +907,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     yield;
     // ---- objetos de la plaza
     const putW = (t, x, z, a, ex) => { const dx = x - o.c[0], dz = z - o.c[1]; return put(t, dx * o.cu + dz * o.su, -dx * o.su + dz * o.cu, a - o.ang, ex); };
-    const S = { P: o, put, putW, grid(sp, ph, f) { for (let v = -o.hv + ph; v <= o.hv; v += sp) for (let u = -o.hu + ph; u <= o.hu; u += sp) { const [x, z] = U2W(u, v); if (!free(o, x, z)) continue; f(u, v, x, z, edgeDist(o.r, x, z), zoneOf(o, x, z)); } } };
+    const S = { P: o, put, putW, zone: (x, z) => free(o, x, z) ? zoneOf(o, x, z) : null, grid(sp, ph, f) { for (let v = -o.hv + ph; v <= o.hv; v += sp) for (let u = -o.hu + ph; u <= o.hu; u += sp) { const [x, z] = U2W(u, v); if (!free(o, x, z)) continue; f(u, v, x, z, edgeDist(o.r, x, z), zoneOf(o, x, z)); } } };
     if (o.sg) { const g = o.sg.objs(S); if (g && typeof g.next === 'function') yield* g; }
     else {
       const A = o.a, n0 = items.length;
@@ -788,14 +931,20 @@ window.BCN_PLAZAS = { async init(ctx) {
     }
     yield;
     // ---- mallas: objetos (la cota, la de la acera en su sitio)
-    const yAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05) + 0.04;
+    const yAt = o.noPav ? (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05) + 0.04 : (x, z) => hAt(x, z) + 0.02;
+    const trees = { m: [], k: [] }, tm = new BABYLON.Matrix(), tq = new BABYLON.Quaternion(), tv = new BABYLON.Vector3(), ts = new BABYLON.Vector3();
     const fr = (x, z, a) => ({ x: x - ox, z: z - oz, tx: Math.cos(a), tz: Math.sin(a), nx: -Math.sin(a), nz: Math.cos(a) });
     let ni = 0;
     for (const [t, x, z, a, ex, u, v] of items) {
       if (++ni % 60 === 0) yield;
       const y = yAt(x, z), F = fr(x, z, a), h = hash2(Math.round(x * 5), Math.round(z * 5));
       if (P2PIECE[t]) { const L = P2PIECE[t](Wo, F, y, h, ex, Wh); if (L) lamps.push([x, z, L]); continue; }
-      if (t === 'tree') { tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc); if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
+      if (t === 'tree') { const k = TSP[ex.sp];
+        if (k !== undefined && treeMeshes(k)) { const sc = (ex.alc ? 0.8 : 0.88) + 0.26 * h; BABYLON.Quaternion.RotationYawPitchRollToRef(h * 40, 0, 0, tq); tv.set(x, y - 0.12, z); ts.set(sc, sc * (0.95 + 0.12 * ((h * 13) % 1)), sc);
+          BABYLON.Matrix.ComposeToRef(ts, tq, tv, tm); for (let q = 0; q < 16; q++) trees.m.push(tm.m[q]); trees.k.push(k); }
+        else tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc);
+        if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
+      else if (P3PIECE[t]) { const L = P3PIECE[t](Wo, F, y, h, ex, { o, gAt, hAt, x, z, a, Wh }); if (L) lamps.push([x, z, L]); }
       else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); }
       else if (t === 'bench') { if (FUR) { FUR.bench(Wo, AS, F, y); FUR.bench(Wh, AH, F, y); } else stoneBench(Wo, F, y, 1.8, true); }
       else if (t === 'bin') { if (FUR) { FUR.bin(Wo, AS, F, y, [40, 96, 70]); FUR.bin(Wh, AH, F, y, [40, 96, 70]); } }
@@ -813,7 +962,6 @@ window.BCN_PLAZAS = { async init(ctx) {
       else if (t === 'fontR') fountainRect(Wo, F, y, ex.L, ex.W);
       else if (t === 'balus') { const [x1, z1] = U2W(ex.u1, ex.v1), l = Math.hypot(x1 - x, z1 - z), aa = Math.atan2(z1 - z, x1 - x), Fb = fr(x, z, aa);
         G.lattice(Wo, Fb, 0, l, y, y + 0.85, 0, C.stone, K.BAL, 1); box(Wo, Fb, -0.1, l + 0.1, y + 0.85, y + 1.0, -0.18, 0.18, C.stone, K.FURN, 7, A0.STONE); box(Wo, Fb, -0.1, l + 0.1, y, y + 0.12, -0.15, 0.15, C.stone, K.FURN, 7, A0.STONE); }
-      else if (t === 'rose') rose(Wp, x - ox, z - oz, y + 0.006, ex.a0 || 0);
     }
     yield;
     // ---- malla de pavimento con la luz de las farolas cocida en los vértices
@@ -822,34 +970,31 @@ window.BCN_PLAZAS = { async init(ctx) {
     let nq = 0;
     for (const [x, z, s, zz, top] of quads) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
-      for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(yAt(xs[i], zs[j]) - 0.02 + dy); gs.push(glowAt(xs[i], zs[j])); }
+      for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
       quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, 0, pav(zz[0], gs, wear));
-      if (++nq % 400 === 0) yield;
+      // faldón de piedra en el borde exterior del pavimento: del canto de la plataforma hasta el suelo de fuera (algo enterrado)
+      if (!top) for (const [i0, i1, nx, nz] of [[0, 1, 0, -1], [1, 2, 1, 0], [2, 3, 0, 1], [3, 0, -1, 0]]) {
+        const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]], A = P4[i0], Bq = P4[i1], mx = (A[0] + Bq[0]) / 2 + nx * 0.5, mz = (A[1] + Bq[1]) / 2 + nz * 0.5;
+        if (free(o, mx, mz) && zoneOf(o, mx, mz)) continue;
+        const ga = gAt(A[0] + nx * 0.4, A[1] + nz * 0.4) - 0.12, gb = gAt(Bq[0] + nx * 0.4, Bq[1] + nz * 0.4) - 0.12;
+        if (ys[i0] - ga < 0.14 && ys[i1] - gb < 0.14) continue;
+        quad(Wp, F0, A[0] - ox, ys[i0], A[1] - oz, Bq[0] - ox, ys[i1], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35)); }
+      if (++nq % 300 === 0) yield;
     }
-    return { Wp, Wo, Wh, lamps: lamps.length, nItems: items.length, nQuads: quads.length };
+    return { Wp, Wo, Wh, lamps: lamps.length, nItems: items.length, nQuads: quads.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
   }
-  // rosa de los vientos de piedra (Plaça de Catalunya): estrella de ocho puntas en dos tonos dentro de un anillo, a ras de suelo
-  function rose(B, cx, cz, y, a0) {
-    const dark = [72, 70, 74], light = [214, 204, 186], mid = [170, 132, 112], aux = pav(6, [0, 0, 0, 0], 0.05);
-    const P = (r, a) => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
-    for (let k = 0; k < 48; k++) { const a = k / 48 * 2 * Math.PI, b = (k + 1) / 48 * 2 * Math.PI, p = [P(12, a), P(12, b), P(13, b), P(13, a)];
-      quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[3], dark, 0, aux); }
-    for (let k = 0; k < 8; k++) { const a = a0 + k * Math.PI / 4, r = k % 2 ? 7.5 : 11.5, w = Math.PI / 8, c = P(0, 0);
-      for (const s of [-1, 1]) { const t = P(r, a), side = P(r * 0.3, a + s * w); quad(B, F0, ...c, ...t, ...side, ...side, s < 0 ? dark : (k % 2 ? mid : light), 0, aux); } }
-    for (let k = 0; k < 16; k++) { const a = k / 16 * 2 * Math.PI, b = (k + 1) / 16 * 2 * Math.PI, p = [P(0, 0), P(1.4, a), P(1.4, b)]; quad(B, F0, ...p[0], ...p[1], ...p[2], ...p[2], [150, 120, 70], 0, aux); }
-  }
-
   function* runJob(o) {
     const r = yield* buildPlaza(o);
     const pc = { hi: null };
     const mp = reg(mkMesh(r.Wp, matP, 'plp' + o.i), { cast: false, layer: 'walk' });
     const mo = reg(mkMesh(r.Wo, matB, 'plo' + o.i), { cast: true, layer: 'furn', cell: pc });
     if (mo) mo.setEnabled(false);
-    o.st = { pc, mp, mo, on: false, triO: r.Wo.ni / 3, triP: r.Wp.ni / 3, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
+    if (r.trees) treeDirty = true;
+    o.st = { trees: r.trees, pc, mp, mo, on: false, triO: r.Wo.ni / 3, triP: r.Wp.ni / 3, Wh: r.Wh, mh: null, tris: (r.Wp.ni + r.Wo.ni) / 3, triH: r.Wh.ni / 3, lamps: r.lamps, items: r.nItems, quads: r.nQuads };
     tris += o.st.tris; built++;
   }
-  function drop(o) { const s = o.st; if (!s) return; if (s.on) trisOn -= s.triO; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
+  function drop(o) { const s = o.st; if (!s) return; if (s.trees) treeDirty = true; if (s.on) trisOn -= s.triO; if (s.mp) s.mp.dispose(); if (s.mo) s.mo.dispose(); dropHi(o); tris -= s.tris; built--; o.st = null; }
   function dropHi(o) { const s = o.st; if (s && s.mh) { s.mh.dispose(); s.mh = null; s.pc.hi = null; trisHi -= s.triH; } }
   function step(P, budget) {
     const t0 = performance.now();
@@ -859,6 +1004,7 @@ window.BCN_PLAZAS = { async init(ctx) {
       else if (d > R_HI[1] && s.mh) dropHi(o);
       if (s.mo) { const on = d < R_OBJ; if (on !== s.on) { s.mo.setEnabled(on); s.on = on; trisOn += (on ? 1 : -1) * s.triO; } }
       if (d > (o.rb || R_SIMPLE)[1]) drop(o); }
+    if (treeDirty || !tCam || Math.hypot(P.x - tCam[0], P.y - tCam[1], P.z - tCam[2]) > 6) { treeInst(P); treeDirty = false; tCam = [P.x, P.y, P.z]; }
     while (performance.now() - t0 < budget) {
       if (!job) { const cand = PL.filter(o => !o.st && !o.fail && bbDist(o, P) < (o.rb || R_SIMPLE)[0]); if (!cand.length) return; cand.sort((a, b) => bbDist(a, P) - bbDist(b, P)); job = { o: cand[0], g: runJob(cand[0]) }; }
       let r; try { r = job.g.next(); } catch (e) { console.warn('Plaza «' + job.o.n + '»: ha fallado al construirse', e); job.o.fail = true; job = null; continue; }
@@ -870,8 +1016,8 @@ window.BCN_PLAZAS = { async init(ctx) {
     update(P) { lastP = P; step(P, 4); },
     busy() { if (job) return true; if (!lastP) return false; return PL.some(o => !o.st && !o.fail && bbDist(o, lastP) < (o.rb || R_SIMPLE)[0]); },
     flush(P) { lastP = P; for (let k = 0; k < 400 && this.busy(); k++) step(P, 1e9); step(P, 0); },
-    stats: () => ({ plazas: PL.filter(o => !o.tile).length, singulares: PL.filter(o => o.sg && !o.tile).length, paseos: PL.filter(o => o.tile).length, hechas: built, tris: Math.round(tris), trisVisibles: Math.round(trisOn + PL.reduce((a, o) => a + (o.st ? o.st.triP : 0), 0)), trisHi: Math.round(trisHi) }),
-    list: () => PL.map(o => ({ n: o.n, t: o.t, a: o.a, c: o.c, sg: !!o.sg, st: o.st && { tris: o.st.tris, items: o.st.items, lamps: o.st.lamps } })),
+    stats: () => ({ plazas: PL.filter(o => !o.tile).length, singulares: PL.filter(o => o.sg && !o.tile).length, paseos: PL.filter(o => o.tile).length, hechas: built, tris: Math.round(tris), trisVisibles: Math.round(trisOn + PL.reduce((a, o) => a + (o.st ? o.st.triP : 0), 0)), trisHi: Math.round(trisHi), arboles: nTreeLv, trisArboles: Math.round(treeTris) }),
+    list: () => PL.map(o => ({ n: o.n, t: o.t, a: o.a, c: o.c, sg: !!o.sg, plat: o.plat, st: o.st && { tris: o.st.tris, items: o.st.items, lamps: o.st.lamps } })),
   };
 } };
 })();
