@@ -121,3 +121,8 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
    cercanas salen como manchas negras a las 23:00 (`scratchpad/n3/p3/d3_cat_*.jpg`). Dale vida y relieve: parterres más
    generosos alrededor de la explanada como en la real, anillos con canto o junta de piedra que se lean, gente sentada en
    los bordes de las fuentes y palomas visibles, y que de noche se vea espectacular desde el dron.
+9. **Árboles de calle sobre el pavimento de las plazas (tras P4)**: streets.js planta árboles de acera dentro de la
+   explanada de la Plaça de Catalunya (círculo de r ≈ 66 m alrededor de 12207,5; 14056) y junto a la Deessa
+   (12212,5; 13989,6); se ven troncos en medio de la explanada (`scratchpad/n3/p4/` vistas `cat_macia` y `cat_fuente`).
+   Que streets.js no plante árboles ni alcorques dentro de los polígonos de pavimento de plazas.js (todas las plazas).
+   Y de P4 quedan: Macià no se lee como escalera invertida de frente y el estanque de la Deessa sale sobreexpuesto de noche.
