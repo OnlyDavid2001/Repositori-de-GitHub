@@ -73,7 +73,8 @@ window.BCN_TRANSPORTE = { LINES, async init(ctx) {
   const lawnAt = (x, z) => { const i = Math.floor(x / GPX), j = Math.floor((WZ - z) / GPX); if (i < 0 || j < 0 || i >= gW || j >= gH) return false;
     const T = lawnTile(i / GT | 0, j / GT | 0); return !!(T && T[(j % GT) * GT + (i % GT)]); };
   // ¿algún punto del rectángulo del marco (con margen) sobre césped?
-  const lawnRect = (F, u0, u1, d0, d1, m) => { for (let a = 0; a <= 3; a++) for (let b = 0; b <= 2; b++) { const [x, z] = toL(F, u0 - m + (u1 - u0 + 2 * m) * a / 3, d0 - m + (d1 - d0 + 2 * m) * b / 2); if (lawnAt(x, z)) return true; } return false; };
+  const lawnRect = (F, u0, u1, d0, d1, m) => { const na = Math.ceil((u1 - u0 + 2 * m) / 2), nb = Math.ceil((d1 - d0 + 2 * m) / 2);
+    for (let a = 0; a <= na; a++) for (let b = 0; b <= nb; b++) { const [x, z] = toL(F, u0 - m + (u1 - u0 + 2 * m) * a / na, d0 - m + (d1 - d0 + 2 * m) * b / nb); if (lawnAt(x, z)) return true; } return false; };
 
   // ---------------------------------------------------------------- atlas de rótulos (8×8 celdas de 128 px)
   const tex = new BABYLON.DynamicTexture('trSign', { width: 1024, height: 1024 }, scene, true);
@@ -564,7 +565,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     if (!lastP || Math.abs(P.x - lastP[0]) + Math.abs(P.z - lastP[2]) + Math.abs(P.y - lastP[1]) > 12) { lastP = [P.x, P.y, P.z]; plan(P); }
     const t0 = performance.now();
     if (!stepPlace(t0, ms)) return;
-    if (dirty.size) { for (const k of dirty) for (let l = 1; l <= 2; l++) if (want.has(k * 4 + l) && queue.indexOf(k * 4 + l) < 0) queue.unshift(k * 4 + l); dirty.clear(); }
+    if (dirty.size) { plan(P); for (const k of dirty) for (let l = 1; l <= 2; l++) if (want.has(k * 4 + l) && queue.indexOf(k * 4 + l) < 0) queue.unshift(k * 4 + l); dirty.clear(); }
     while (queue.length && performance.now() - t0 < ms) { const key = queue.shift(), l = want.get(key), a = performance.now(); if (l) build(key >> 2, l);
       const d = performance.now() - a; if (d > (count.maxBuildMs || 0)) count.maxBuildMs = +d.toFixed(1); }
   }
