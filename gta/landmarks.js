@@ -15,7 +15,7 @@ const { GB, F0, quad, rev, tube, sphere, obox, bar, cyl } = GEO;
 // ------------------------------------------------------------------ tipos de material (shader propio de los hitos)
 // El auxiliar (4 bytes por vértice) lo leen algunos tipos; créalo con las funciones lib.aux…, nunca a mano.
 const K = { PIEDRA: 1, LISO: 2, VENTANAS: 3, CORTINA: 4, METAL: 5, TEJA: 6, TRENCADIS: 7, CESPED: 8, GRADA: 9, AGUA: 10, EMISIVO: 11, LADRILLO: 12 };
-const NOCHE = { nada: 0, focos: 1, led: 2, ventanas: 3 };
+const NOCHE = { nada: 0, focos: 1, led: 2, ventanas: 3, suelo: 4 };
 
 // ------------------------------------------------------------------ registro de fichas
 const FICHAS = [], IDS = new Set();
@@ -455,6 +455,11 @@ void main(){
       vec3 lc = dot(uLmN.yzw, vec3(1.0)) > 0.01 ? uLmN.yzw : alb/max(max(alb.r, max(alb.g, alb.b)), 0.05);
       lc = clamp(mix(vec3(dot(lc, vec3(0.3, 0.59, 0.11))), lc, 1.7), 0.0, 1.0);
       emis += emit(lc, 0.5*pz*uDusk*(1.0 - 0.45*uLate)*(1.0 - 0.7*smoothstep(0.5, 0.95, -n.y))*(1.0 - 0.45*win));
+    } else if (mode > 3.5) {
+      // 4 suelo: explanadas y escalinatas con sus farolas: luz cálida pareja en todas las caras, también en las horizontales
+      // (con «focos» los rellanos y las terrazas, que miran arriba, se quedaban negros entre los tramos encendidos)
+      float f = 0.55 + 0.25*exp(-max(y, 0.0)/6.0);
+      emis += emit(alb*vec3(1.0, 0.82, 0.60), 0.9*f*uDusk*(1.0 - 0.45*uLate));
     } else if (mode > 2.5) {
       emis += emit(wcol*win, 0.7*wl);
     }

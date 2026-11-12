@@ -160,8 +160,8 @@
 
   // la ficha base: mismo centro y giro que la basílica
   const base = { nivel: 'B', x: C0[0], z: C0[1], rot: ROT, ancho: 70, largo: 140, edificios: [] };
-  LM.add(Object.assign({}, base, { id: 'sf_gloria', nombre: 'Escalinata de la Glòria', alto: 26, noche: 'focos', build: (B, h, L) => (D ? obra(B, h, L) : null) }));
-  LM.add(Object.assign({}, base, { id: 'sf_gloria_detall', nombre: 'Escalinata de la Glòria (detall)', etiqueta: false, alto: 8, noche: 'focos', sombra: false, build: (B, h, L) => (D ? detalle(B, h, L) : null) }));
+  LM.add(Object.assign({}, base, { id: 'sf_gloria', nombre: 'Escalinata de la Glòria', alto: 26, noche: 'suelo', build: (B, h, L) => (D ? obra(B, h, L) : null) }));
+  LM.add(Object.assign({}, base, { id: 'sf_gloria_detall', nombre: 'Escalinata de la Glòria (detall)', etiqueta: false, alto: 8, noche: 'suelo', sombra: false, build: (B, h, L) => (D ? detalle(B, h, L) : null) }));
   LM.add(Object.assign({}, base, { id: 'sf_gloria_edificis', nombre: 'Façanes de l’avinguda de la Glòria', etiqueta: false, alto: 30, noche: 'ventanas', build: (B, h, L) => (D ? edificis(B, h, L) : null) }));
 
   // ------------------------------------------------------------ el init de los hitos espera al JSON y elige los volúmenes

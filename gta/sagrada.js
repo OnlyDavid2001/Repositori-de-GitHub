@@ -859,45 +859,55 @@ const base = { nivel: 'A', x: fp.x, z: fp.z, rot: fp.rot, alto: fp.alto, ancho: 
 LM.add(Object.assign({}, base, { id: 'sagrada_familia_lluny', nombre: 'Sagrada Família (lluny)', build: (B, h, L) => construir(B, h, L, 0) }));
 LM.add(Object.assign({}, base, { id: 'sagrada_familia_detall', nombre: 'Sagrada Família (detall)', build: (B, h, L) => construir(B, h, L, 2) }));
 
-// ---- SF3: haces de luz de la cruz de Jesucrist de noche (render oficial): 12 conos largos y suaves en abanico desde los
+// ---- SF3: haces de luz de la cruz de Jesucrist de noche (render oficial): 8 conos largos y suaves en abanico hacia el cielo desde los
 // brazos, aditivos (en HDR se suman a lo pintado, sin niebla), que se desvanecen con la distancia y solo con uDusk. Una sola
-// malla de 24 triángulos (dos planos cruzados por haz) y nada por fotograma: el material lee uDusk y uLate del preludio.
+// malla de 16 triángulos (una tira por haz que mira a la cámara) y nada por fotograma: el material lee uDusk y uLate del preludio.
 const VS_HZ = `precision highp float;
-attribute vec3 position; attribute vec2 uv; uniform mat4 world; uniform mat4 viewProjection;
-varying vec3 vPos; varying vec2 vUv;
-void main(){ vec4 wp = world*vec4(position, 1.0); vPos = wp.xyz; vUv = uv; gl_Position = viewProjection*wp; }`;
-const FS_HZ = `varying vec2 vUv;
+attribute vec3 position; attribute vec3 normal; attribute vec2 uv; uniform mat4 world; uniform mat4 viewProjection; uniform vec3 uCam;
+varying vec3 vPos; varying vec2 vUv; varying float vEnd;
+void main(){
+  // cada haz es una tira que mira a la cámara girando sobre su eje: cono suave desde cualquier lado, sin planos que se vean de canto
+  vec3 wp = (world*vec4(position, 1.0)).xyz, ax = normalize((world*vec4(normal, 0.0)).xyz);
+  vec3 tc = uCam - wp; tc /= max(length(tc), 1e-3);
+  vec3 sd = cross(ax, tc); float ls = length(sd); sd = ls > 1e-4 ? sd/ls : vec3(0.0, 1.0, 0.0);
+  wp += sd*uv.x;
+  vPos = wp; vUv = vec2(uv.x > 0.0 ? 1.0 : 0.0, uv.y); vEnd = abs(dot(ax, tc));
+  gl_Position = viewProjection*vec4(wp, 1.0); }`;
+const FS_HZ = `varying vec2 vUv; varying float vEnd;   // vPos ya lo declara el preludio
 void main(){
   float a = uDusk*(1.0 - 0.35*uLate);
   if (a < 0.002) discard;
   float across = 1.0 - abs(vUv.x*2.0 - 1.0), along = vUv.y;
-  float f = pow(across, 2.2)*pow(1.0 - along, 1.6)*smoothstep(0.0, 0.04, along)*a;
+  float f = pow(across, 2.4)*pow(1.0 - along, 1.9)*smoothstep(0.0, 0.05, along)*a;
+  f *= 1.0 - smoothstep(0.80, 0.98, vEnd);                  // mirando a lo largo del haz: se apaga en vez de hacer un destello
+  f *= smoothstep(8.0, 60.0, length(uCam - vPos));          // de cerca (en el mirador, junto a la cruz) no tapa la vista
   vec3 c = vec3(0.86, 0.90, 1.0);
 #ifdef LDR
-  FRAGA(c, 0.32*f);
+  FRAGA(c, 0.26*f);
 #else
-  gl_FragColor = vec4(toLin(c)*0.07*f, 0.0);
+  gl_FragColor = vec4(toLin(c)*0.055*f, 0.0);
 #endif
 }`;
 function haces(ctx, m) {
+  // a petición del usuario: solo hacia el cielo (fuera los que bajaban hacia los evangelistas y la ciudad); 4 en la dirección
+  // de los brazos, algo levantados, y 4 más empinados entre ellos
   const a = (m.rot || 136) * PI / 180, cs = Math.cos(a), sn = Math.sin(a), [px, py, pz] = SF.cruz;
   const ox = px * cs + pz * sn, oz = -px * sn + pz * cs;                        // centro de la cruz relativo a la malla
   const D = [];
-  for (let i = 0; i < 4; i++) { const b = a + i * PI / 2; D.push([b, 0.06, 230, 7.0]); }               // a lo largo de los brazos, casi horizontales
-  for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2; D.push([b, 0.62, 260, 9.0]); }       // hacia arriba, entre los brazos
-  for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2 + 0.2; D.push([b, -0.5, 130, 6.0]); } // hacia abajo, hacia los evangelistas
-  const P = [], U = [], I = [];
+  for (let i = 0; i < 4; i++) { const b = a + i * PI / 2; D.push([b, 0.16, 210, 7.0]); }               // en la dirección de los brazos, un poco hacia arriba
+  for (let i = 0; i < 4; i++) { const b = a + (i + 0.5) * PI / 2; D.push([b, 0.66, 260, 9.0]); }       // hacia arriba, entre los brazos
+  const P = [], N = [], U = [], I = [];
   for (const [az, el, len, rad] of D) {
     const d = [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
-    const u1 = [Math.cos(az), 0, -Math.sin(az)], u2 = [-Math.sin(el) * Math.sin(az), Math.cos(el), -Math.sin(el) * Math.cos(az)];
     const s0 = [ox + d[0] * 3, py + d[1] * 3, oz + d[2] * 3], s1 = [ox + d[0] * len, py + d[1] * len, oz + d[2] * len];
-    for (const uu of [u1, u2]) { const v0 = P.length / 3, r0 = 0.9;
-      for (const [p, r, vy] of [[s0, -r0, 0], [s0, r0, 0], [s1, rad, 1], [s1, -rad, 1]]) { P.push(p[0] + uu[0] * r, p[1] + uu[1] * r, p[2] + uu[2] * r); U.push(r < 0 ? 0 : 1, vy); }
-      I.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3); }
+    const v0 = P.length / 3;
+    for (const [p, r, vy] of [[s0, -0.9, 0], [s0, 0.9, 0], [s1, rad, 1], [s1, -rad, 1]]) { P.push(p[0], p[1], p[2]); N.push(d[0], d[1], d[2]); U.push(r, vy); }
+    I.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3);
   }
   const mesh = new BABYLON.Mesh('sf_haces', ctx.scene), VD = new BABYLON.VertexData();
-  VD.positions = P; VD.uvs = U; VD.indices = I; VD.applyToMesh(mesh);
-  const mat = ctx.mkMat('sf_haces', VS_HZ, FS_HZ, ['position', 'uv'], [], [], { blend: true });
+  VD.positions = P; VD.normals = N; VD.uvs = U; VD.indices = I; VD.applyToMesh(mesh);
+  const mat = ctx.mkMat('sf_haces', VS_HZ, FS_HZ, ['position', 'normal', 'uv'], [], [], { blend: true });
+  mat.backFaceCulling = false;
   mat.onBindObservable.add(() => { if (ctx.out && ctx.out.hdr) ctx.engine.alphaState.setAlphaBlendFunctionParameters(1, 1, 0, 1); });
   mesh.material = mat; mesh.isPickable = false; mesh.renderingGroupId = 1;
   mesh.position.set(m.mesh.position.x, m.mesh.position.y, m.mesh.position.z); mesh.freezeWorldMatrix(); mesh.alwaysSelectAsActiveMesh = true;
