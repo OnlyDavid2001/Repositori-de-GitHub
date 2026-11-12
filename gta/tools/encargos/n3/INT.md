@@ -42,3 +42,7 @@ final para el usuario con lo mejor del día (de día y de noche) en
   ficha en landmarks.js, y dilo.
 - **Etapas de repaso**: además de las 12 etapas, hay PU3 (puerto) y AE3 (aeropuerto), en las mismas ramas `wt-n3-puerto` y
   `wt-n3-aero`. Sus informes van también en int_args.json.
+- **PU3 dejó sin revisar** (su informe lo dice): las aduanas recolocadas (capturas `D_vB2_*` en `scratchpad/n3/pu3/`) y
+  las vistas a pie `sts_cerca2`, `dep_pie2` y `cru_pie2` (tanda `DE_vE`). Míralas y, si la aduana de la ZAL Prat cae sobre
+  una vía pública, fíjala a mano en la entrada del recinto. La noche industrial y los cascos sí están vistos y bien
+  (`pu3/hoja_noche.jpg`, `pu3/hoja_buques.jpg`).
