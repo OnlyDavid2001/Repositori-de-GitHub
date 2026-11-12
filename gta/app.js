@@ -282,7 +282,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vN = normal; gl_
 // (piezas y tejados, con la misma constante: igual de cerca que de lejos). up = componente vertical de la normal.
 // Se atenúa algo de madrugada (uLate: el alumbrado ornamental se apaga y la bruma refleja menos)
 const ROOF_NIGHT = `vec3 roofNight(vec3 alb, float up){
-  return alb*vec3(0.105, 0.100, 0.118)*(uNight*(1.0 - 0.25*uLate)*(0.35 + 0.65*clamp(up, 0.0, 1.0)));
+  return alb*vec3(0.120, 0.114, 0.134)*(uNight*(1.0 - 0.25*uLate)*(0.35 + 0.65*clamp(up, 0.0, 1.0)));
 }`;
 window.BCN_ROOF_NIGHT = ROOF_NIGHT;
 const FS_BLD = `
@@ -441,7 +441,8 @@ void main(){
   if (abs(n.y) < 0.5) { float hs = clamp(19.0 - 14.0*sunTan(), 0.0, 19.0), so = shOut()*(1.0 - uNight);
     if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
-  if (abs(n.y) >= 0.5) c += roofNight(base, n.y);
+  // de lejos, algo más (la bruma nocturna se come la penumbra y las cubiertas volvían a leerse como un agujero negro desde el aire)
+  if (abs(n.y) >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
