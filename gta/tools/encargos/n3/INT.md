@@ -93,6 +93,10 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
    hasta que Glòries a pie quede por debajo de ~120 k en árboles, sin que se vea pelado desde el dron.
 
 ### Para REV3 (defectos visibles; empieza por estos)
+0. **Antes de nada**: la etapa P4 está mejorando otra vez la Plaça de Catalunya en `wt-n3-plazas`. Cuando exista
+   `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/n3/p4.done`, fusiona de nuevo `wt-n3-plazas`
+   (`git merge --no-edit origin/wt-n3-plazas` tras `git fetch`), relanza `node tools/mz_partidas.js` si cambian las fichas
+   de hitos y vuelve a capturar Catalunya. Mientras no exista, trabaja en lo demás; espera como mucho 60 minutos en total.
 1. **El mar de noche (prioritario: el usuario lo pidió ver)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
    `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces de
    la costa. Cada foco de la orilla debe dejar una estela vertical temblorosa en el agua, cálida en el paseo y blanca en
