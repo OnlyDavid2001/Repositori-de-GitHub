@@ -160,20 +160,20 @@ void main(){
     bool nu = abs(mdl - 3.0) < 0.5, su = mdl > 3.5;
     alb = tx*mix(nu ? 0.90 : 0.74, nu ? 1.06 : 1.12, n1)*mix(nu ? 0.95 : 0.88, nu ? 1.04 : 1.08, n2);
     if (nu) alb *= vec3(1.07, 1.07, 1.06);
-    if (su) alb *= vec3(0.86, 0.84, 0.80);
+    if (su) alb *= vec3(0.94, 0.92, 0.88);
     vec2 cl = floor(gP), tf = fract(gP); float h0 = hash21(cl), rep = step(0.9, vnoise(P*0.08)*0.9 + h0*0.12)*(nu ? 0.0 : 1.0);
     alb *= mix(1.0, mix(nu ? 0.98 : 0.94, nu ? 1.02 : 1.05, h0), tileK); alb = mix(alb, alb*vec3(1.05, 1.03, 0.99), rep*tileK);
-    float gum = step(su ? 0.90 : nu ? 0.995 : 0.965, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
-    float dirt = smoothstep(mix(0.38, 0.22, wr), 0.75, n1g)*(nu ? 0.35 : 1.0); alb *= mix(1.0, mix(0.72, 0.58, wr), dirt*mix(0.45, smoothstep(0.0, 0.16, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5)) + dirt*0.12), tileK));
+    float gum = step(su ? 0.945 : nu ? 0.995 : 0.968, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
+    float dirt = smoothstep(mix(0.38, 0.22, wr), 0.75, n1g)*(nu ? 0.35 : 1.0); alb *= mix(1.0, mix(0.72, 0.64, wr), dirt*mix(0.45, smoothstep(0.0, 0.16, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5)) + dirt*0.12), tileK));
     vec3 tn = texture2D(tPanN, gP).xyz*2.0 - 1.0; tn.xy *= nu ? 1.4 : 1.25; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
     if (su) {
       // manchas de aceite y de humedad, piezas rotas (remiendo de cemento o grieta) y juntas negras
-      float st = smoothstep(0.62, 0.8, vnoise(P*0.55 + 4.0)); alb *= mix(1.0, 0.68, st)*mix(vec3(1.0), vec3(1.0, 0.97, 0.9), st);
+      float st = smoothstep(0.62, 0.8, vnoise(P*0.55 + 4.0)); alb *= mix(1.0, 0.78, st)*mix(vec3(1.0), vec3(1.0, 0.97, 0.9), st);
       float hb = hash21(cl + 13.0);
-      if (hb > 0.94) { alb = mix(alb, vec3(0.44, 0.42, 0.39)*(0.85 + 0.3*vnoise(P*20.0)), tileK); N = mix(N, vec3(0.0, 1.0, 0.0), tileK); }
-      else if (hb > 0.88) { vec2 cd = tf - 0.5; float ln = abs(dot(cd, normalize(vec2(hash21(cl + 1.0) - 0.5, 0.6))) + 0.03*sin(cd.x*30.0));
+      if (hb > 0.975) { alb = mix(alb, dot(alb, vec3(0.33))*vec3(1.08, 1.05, 1.0)*(0.9 + 0.2*vnoise(P*20.0)), tileK); N = mix(N, vec3(0.0, 1.0, 0.0), tileK); }
+      else if (hb > 0.93) { vec2 cd = tf - 0.5; float ln = abs(dot(cd, normalize(vec2(hash21(cl + 1.0) - 0.5, 0.6))) + 0.03*sin(cd.x*30.0));
         alb *= 1.0 - 0.6*(1.0 - smoothstep(0.01, 0.03, ln))*tileK; }
-      alb *= 1.0 - 0.3*(1.0 - smoothstep(0.02, 0.06, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5))))*tileK;
+      alb *= 1.0 - 0.18*(1.0 - smoothstep(0.02, 0.06, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5))))*tileK;
     }
   }
   if (f.a > 0.5) {                                      // alcorque: tierra y reja de fundición

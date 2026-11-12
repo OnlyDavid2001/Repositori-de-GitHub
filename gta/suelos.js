@@ -50,7 +50,7 @@ const nuevoAt = (x, z) => { const b = barri(x, z); return !!b && NUEVO.has(b.n);
 const AVE = [
   { id: 'diagonal', tol: 40, P: [[7326, 13796], [8652, 14274], [10079, 14712], [12198, 15395], [13552, 15727], [16580, 16670]] },
   { id: 'granvia', tol: 34, P: [[9301, 11743], [10392, 12684], [11737, 13916], [12661, 14903], [13552, 15727], [15622, 17464]] },
-  { id: 'pgracia', tol: 32, P: [[12133, 14123], [11261, 15189]] },
+  { id: 'pgracia', tol: 30, P: [[12047, 14394], [11261, 15189]] },
 ];
 function avenida(x0, z0, x1, z1) {
   const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, L = Math.hypot(x1 - x0, z1 - z0) || 1, tx = (x1 - x0) / L, tz = (z1 - z0) / L;
