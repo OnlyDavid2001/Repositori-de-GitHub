@@ -283,7 +283,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // suelo: el interior entero (bajo las cubiertas no se ve) en tierra, sauló, césped o baldosa según el tipo
     const GC = { talleres: [[150, 146, 138], [138, 132, 122]], jardines: [[150, 136, 108], [170, 150, 118], [140, 132, 120]], mixto: [[146, 140, 130], [164, 150, 122]],
       publico: [[196, 178, 140], [188, 170, 132]], aparcamiento: [[160, 146, 120], [150, 144, 132]] }[tipo];
-    items.push({ t: 'ground', P: sp.inner, col: GC[Math.floor(g[0] * GC.length)], x: C[0], z: C[1], y: 0, a: 0 });
+    items.push({ t: 'ground', P: sp.inner, col: shade(GC[Math.floor(g[0] * GC.length)], 0.78), x: C[0], z: C[1], y: 0, a: 0 });
     if (tipo === 'publico' || (tipo === 'jardines' && g[1] < 0.6)) {           // césped en el centro (jardín)
       // césped partido en cuatro parterres por dos paseos (de 1,6 m) que se cruzan en el centro, cada uno con su tono
       const L = sp.free.map(p => [C[0] + (p[0] - C[0]) * 0.78, C[1] + (p[1] - C[1]) * 0.78]), ca = Math.cos(ang), sa = Math.sin(ang);
@@ -463,7 +463,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
     const y = it.y;
     switch (it.t) {
       case 'floor': fillPoly(W, it.P, () => y, it.col, A_TILE, 1e9, ox, oz); return true;
-      case 'ground': { const up = it.up || 0.08; fillPoly(W, it.P, (x, z) => gY(x, z) + up, it.col, A_MATTE, lvl === 1 ? 8 : 16, ox, oz); return true; }
+      case 'ground': { const up = it.up || 0.08; fillPoly(W, it.P, (x, z) => gY(x, z) + up, it.col, A_MATTE, lvl === 1 ? 12 : 24, ox, oz); return true; }
       case 'tree': treeE(W, it, ox, oz, lvl); return true;
       case 'pool': poolE(W, it, ox, oz, lvl); return true;
       case 'rail': if (lvl !== 3) railE(W, it, ox, oz, lvl); return true;
