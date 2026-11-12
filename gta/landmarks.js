@@ -573,8 +573,9 @@ window.BCN_LANDMARKS = { init(ctx) {
   try { applyEdits(); } catch (e) { console.warn('Hitos: no se han podido retocar los volúmenes simples', e); }
   // FIX3: nivel de detalle por ficha (§10.9): con puerto, aeropuerto y plazas los hitos suman ~700 k triángulos. Las fichas
   // pequeñas se ocultan a distancia (LOD de Babylon con malla nula, como hace aeropuerto.js con las suyas): a lim m una ficha de
-  // tamaño s (alto o radio del modelo) ocupa ~1/80 del alto de la vista. Las grandes (s ≥ 30 m) no cambian: se ven desde el aire
-  for (const r of ST.list) { if (!r.mesh) continue; const sz = Math.max(r.alto || 0, r.r || 0); if (sz >= 30) continue;
+  // tamaño s (alto o radio del modelo) ocupa ~1/80 del alto de la vista (una de 100 m, a 8 km; las del aeropuerto y el puerto
+  // siguen viéndose desde el aire sobre ellas)
+  for (const r of ST.list) { if (!r.mesh) continue; const sz = Math.max(r.alto || 0, r.r || 0);
     r.lim = Math.max(450, 80 * sz); r.mesh.addLODLevel(r.lim, null); }
 
   // vista de cámara que encuadra el hito: órbita a k veces su tamaño (alto y ancho/largo de la ficha; sin ellos, el radio del
