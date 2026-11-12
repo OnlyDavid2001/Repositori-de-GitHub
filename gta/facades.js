@@ -801,19 +801,23 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // calle lo bastante ancho para ver de la 1.ª a la última planta con la cámara a 1,75 m y mirando «pitch» rad hacia arriba
   // (fov vertical 0,86). Devuelve la vista con más holgura (la k-ésima de las válidas, por orden de holgura)
   function spotFull(fam, k, pitch) {
-    const pt = pitch === undefined ? 0.3 : pitch, top = Math.tan(pt + 0.43 - 0.04), out = [];
-    for (let b = 0; b < NB && out.length < 400; b++) {
+    const p0 = pitch === undefined ? 0.3 : pitch, out = [];
+    for (let b = 0; b < NB && out.length < 1500; b++) {
       if (!BREC.elig[b] || famOf(b) !== fam) continue;
+      const V = varOf(b); if (V && V.fam && V.fam !== fam) continue;       // solo variantes de la propia familia
       const lay = layoutB(b); if (!lay || lay.H < 9 || lay.H > 34) continue;
       for (const r of lay.runs) {
         if (r.kind !== 'street' || r.L < 12) continue;
         const mx = r.ax + r.tx * r.L / 2, mz = r.az + r.tz * r.L / 2; let w = 0;
         for (let t = 1.5; t <= 40; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
-        const dc = w - 1.6, need = (lay.H + 0.8 - 1.75) / top;
-        if (w < 8 || w >= 40 || dc < need) continue;
-        const x = mx + r.nx * dc, z = mz + r.nz * dc;
-        if (coverAt(x, z, -1) > -1e8) continue;
-        out.push({ x, z, walk: true, yaw: Math.atan2(mx - x, mz - z), pitch: -pt, b, V: varOf(b) && varOf(b).id, H: lay.H, w, s: Math.min(r.L, 30) + (dc - need) * 0.5 });
+        if (w < 7 || w >= 40) continue;
+        const dc = w - 1.6, x = mx + r.nx * dc, z = mz + r.nz * dc, g = heightAt(x, z);
+        if (coverAt(x, z, -1) > -1e8 || Math.abs(g - heightAt(mx + r.nx * 2, mz + r.nz * 2)) > 1.2) continue;
+        // inclinación justa para ver la cornisa (fov vertical 0,86): entre 15° y 24°
+        const pt = Math.max(p0 - 0.04, Math.atan2(lay.gHi + lay.H + 0.8 - g - 1.75, dc) - 0.40);
+        if (pt > 0.42) continue;
+        out.push({ x, z, walk: true, yaw: Math.atan2(mx - x, mz - z), pitch: -pt, b, V: V && V.id, H: +lay.H.toFixed(1), w,
+          s: Math.min(r.L, 30) + Math.min(lay.H, 20) - 1.5 * Math.abs(pt - p0) * 20 - Math.max(0, w - 26) });
         break;
       }
     }
