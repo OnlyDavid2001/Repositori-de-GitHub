@@ -228,7 +228,7 @@ function build(k) {
 function sapling() {
   seed(991, 3);
   const mk = () => ({ P: [], N: [], U: [], I: [] });
-  const tube = (G, pts, rad, sides) => {
+  const tube = (G, pts, rad, sides, u0 = 0) => {   // u0: columna del atlas (0 madera o corteza, 0,5 cinta del atado)
     let prev = -1, v = 0;
     for (let k = 0; k < pts.length; k++) {
       const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)], ax = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...ax); ax[0] /= l; ax[1] /= l; ax[2] /= l;
@@ -236,12 +236,12 @@ function sapling() {
       let ux = -ax[2], uz = ax[0], ul = Math.hypot(ux, uz); if (ul < 1e-4) { ux = 1; uz = 0; ul = 1; } ux /= ul; uz /= ul;
       const wx = ax[1] * uz, wy = ax[2] * ux - ax[0] * uz, wz = -ax[1] * ux, r = rad(k / (pts.length - 1)), c = pts[k], base = G.P.length / 3;
       for (let q = 0; q <= sides; q++) { const an = q / sides * 6.2832, ca = Math.cos(an), sa = Math.sin(an), nx = ux * ca + wx * sa, ny = wy * sa, nz = uz * ca + wz * sa;
-        G.P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); G.N.push(nx, ny, nz); G.U.push(q / sides * 0.25, v * 2); }
+        G.P.push(c[0] + nx * r, c[1] + ny * r, c[2] + nz * r); G.N.push(nx, ny, nz); G.U.push(u0 + q / sides * 0.25, v * 2); }
       if (prev >= 0) for (let q = 0; q < sides; q++) G.I.push(prev + q, base + q, base + q + 1, prev + q, base + q + 1, prev + q + 1);
       prev = base;
     }
   };
-  const rod = (G, a, b, r, sides) => tube(G, [a, b], () => r, sides);
+  const rod = (G, a, b, r, sides, u0 = 0) => tube(G, [a, b], () => r, sides, u0);
   const trunk = mk(), leaf = mk(), stakesA = mk(), stakesB = mk(), guard = mk();
   // tronco: algo torcido, de 3,5 a 1,2 cm de radio, y cuatro ramitas en la punta
   const H = 2.3, tp = [];
@@ -251,22 +251,31 @@ function sapling() {
   for (let b = 0; b < 4; b++) { const a = b * 1.57 + R(-0.4, 0.4), y0 = H - 0.12 - b * 0.11, L = R(0.32, 0.5);
     const s = [top[0] * y0 / H, y0, top[2] * y0 / H], e = [s[0] + Math.cos(a) * L * 0.75, y0 + L * 0.66, s[2] + Math.sin(a) * L * 0.75];
     tube(trunk, [s, [(s[0] + e[0]) / 2, (s[1] + e[1]) / 2 + 0.03, (s[2] + e[2]) / 2], e], t => 0.011 - 0.006 * t, 3); tips.push(e); }
-  // copita: 22 tarjetas pequeñas del atlas del plátano alrededor de las puntas
-  for (let q = 0; q < 22; q++) {
-    const W = tips[q % tips.length], x = W[0] + R(-0.16, 0.16), y = W[1] + R(-0.14, 0.1), z = W[2] + R(-0.16, 0.16), sz = R(0.1, 0.16), th = R(6.28), c = R(-1, 1);
+  // ARB4: copa joven pequeña pero visible: ~1 m de diámetro (elipsoide de 0,5 × 0,42 m alrededor de la punta), 44 tarjetas
+  // del atlas del plátano algo separadas (se ve a través) y normales hacia fuera; verde claro en el material (sapL)
+  const cc = [top[0], H + 0.06, top[2]];
+  for (let q = 0; q < 44; q++) {
+    const f = R(6.2832), ct = R(-0.75, 0.95), rr = Math.cbrt(R(0.25, 1)), x = cc[0] + Math.cos(f) * Math.sqrt(1 - ct * ct) * 0.5 * rr,
+      y = cc[1] + ct * 0.42 * rr, z = cc[2] + Math.sin(f) * Math.sqrt(1 - ct * ct) * 0.5 * rr, sz = R(0.15, 0.24), th = R(6.28), c = R(-1, 1);
     const a = [Math.cos(th), 0, Math.sin(th)], bb = [-Math.sin(th) * Math.sin(c), Math.cos(c), Math.cos(th) * Math.sin(c)], base = leaf.P.length / 3;
     for (const [w, e] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const px = x + (a[0] * w + bb[0] * e) * sz, py = y + (a[1] * w + bb[1] * e) * sz, pz = z + (a[2] * w + bb[2] * e) * sz;
-      leaf.P.push(px, py, pz); const nx = px, ny = py - H + 0.8, nz = pz, l = Math.hypot(nx, ny, nz); leaf.N.push(nx / l, ny / l, nz / l); leaf.U.push((w + 1) / 2 * 0.5, (e + 1) / 2 * 0.5);
+      leaf.P.push(px, py, pz); const nx = px - cc[0], ny = (py - cc[1]) * 1.2 + 0.25, nz = pz - cc[2], l = Math.hypot(nx, ny, nz); leaf.N.push(nx / l, ny / l, nz / l); leaf.U.push((w + 1) / 2 * 0.5, (e + 1) / 2 * 0.5);
     }
     leaf.I.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
+  // atado de cinta: anillo ancho alrededor del tronco a la altura y (columna de cinta del atlas de madera)
+  const tieRing = (G, y, r) => tube(G, [[top[0] * y / H, y - 0.025, top[2] * y / H], [top[0] * y / H, y + 0.025, top[2] * y / H]], () => r, 7, 0.5);
   // A: tres tutores (Ø 6 cm, 1,8 m) en triángulo de 30 cm de radio, dos travesaños y tres atados al tronco a 1,35 m
   const SA = [0, 2.094, 4.189].map(a => [Math.cos(a + 0.3) * 0.3, Math.sin(a + 0.3) * 0.3]);
-  for (const [x, z] of SA) { rod(stakesA, [x, -0.1, z], [x, 1.8, z], 0.03, 5); rod(stakesA, [x, 1.36, z], [x * 0.12, 1.36, z * 0.12], 0.009, 3); }
+  for (const [x, z] of SA) { rod(stakesA, [x, -0.1, z], [x, 1.8, z], 0.03, 5); rod(stakesA, [x, 1.36, z], [x * 0.12, 1.36, z * 0.12], 0.012, 4, 0.5);
+    rod(stakesA, [x, 1.33, z], [x, 1.39, z], 0.036, 5, 0.5); }
+  tieRing(stakesA, 1.36, 0.042);
   for (let i = 0; i < 3; i++) { const a = SA[i], b = SA[(i + 1) % 3]; for (const y of [0.5, 1.62]) rod(stakesA, [a[0], y, a[1]], [b[0], y, b[1]], 0.018, 4); }
   // B: dos tutores con travesaño arriba y atados; protector de 8 varillas y dos aros (Ø 40 cm, 1,2 m)
-  for (const x of [-0.32, 0.32]) { rod(stakesB, [x, -0.1, 0.02], [x, 1.85, 0.02], 0.03, 5); rod(stakesB, [x, 1.4, 0.02], [x * 0.1, 1.4, 0.01], 0.009, 3); }
+  for (const x of [-0.32, 0.32]) { rod(stakesB, [x, -0.1, 0.02], [x, 1.85, 0.02], 0.03, 5); rod(stakesB, [x, 1.4, 0.02], [x * 0.1, 1.4, 0.01], 0.012, 4, 0.5);
+    rod(stakesB, [x, 1.37, 0.02], [x, 1.43, 0.02], 0.036, 5, 0.5); }
+  tieRing(stakesB, 1.4, 0.04);
   rod(stakesB, [-0.32, 1.7, 0.02], [0.32, 1.7, 0.02], 0.02, 4);
   for (let k = 0; k < 8; k++) { const a = k / 8 * 6.2832; rod(guard, [Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2], [Math.cos(a) * 0.2, 1.2, Math.sin(a) * 0.2], 0.007, 3); }
   for (const y of [0.08, 0.62, 1.16]) for (let k = 0; k < 8; k++) { const a = k / 8 * 6.2832, b = (k + 1) / 8 * 6.2832;
@@ -371,5 +380,76 @@ function impCanvas(k) {
   return cv;
 }
 
-window.BCN_TREES = { SP, pick, build, sapling, leafCanvas, impCanvas, familyOf };
+
+// ---------------------------------------------------------------- ARB4: tutor de pino, alcorque cuadrado y su reja
+// atlas del tutor: columna 0–0,5 madera de pino clara con veta a lo largo (v), columna 0,5–1 cinta del atado (caucho verde oscuro)
+function stakeCanvas() {
+  const [cv, g] = canvas(128); seed(993, 0);
+  g.fillStyle = rgb(168, 138, 96); g.fillRect(0, 0, 64, 128);
+  for (let k = 0; k < 26; k++) { const x = R(64), w = R(0.6, 2.2), c = R(118, 150); g.fillStyle = rgb(c, c * 0.8, c * 0.55); g.fillRect(x, 0, w, 128); }
+  for (let k = 0; k < 5; k++) { g.fillStyle = rgb(120, 92, 60); g.beginPath(); g.ellipse(R(6, 58), R(128), R(1.5, 3), R(3, 6), 0, 0, 6.3); g.fill(); }   // nudos
+  g.fillStyle = rgb(36, 46, 34); g.fillRect(64, 0, 64, 128);
+  for (let y = 0; y < 128; y += 9) { g.fillStyle = rgb(48, 60, 44); g.fillRect(64, y, 64, 2); }
+  return cv;
+}
+// normal plana (para materiales de corteza que no la necesitan)
+function flatCanvas() { const [cv, g] = canvas(8); g.fillStyle = rgb(128, 128, 255); g.fillRect(0, 0, 8, 8); return cv; }
+// alcorque de 1,2 m (marco de piedra de 10 cm y 1 m de tierra) visto desde arriba; con reja: rejilla radial de fundición
+// fina (ranuras de ~2 cm) sobre la tierra, en dos mitades y con el hueco central para el tronco (Ø 40 cm)
+function pitCanvas(grate) {
+  const N = 512, [cv, g] = canvas(N), m = N / 1.2, F = 0.1 * m; seed(grate ? 995 : 994, 0);
+  // marco: piedra gris clara con grano y junta de mortero oscura en los bordes y en las esquinas a inglete
+  g.fillStyle = rgb(112, 108, 100); g.fillRect(0, 0, N, N);
+  for (let k = 0; k < 2600; k++) { const c = R(88, 134); g.fillStyle = rgb(c, c * 0.97, c * 0.92); g.fillRect(R(N), R(N), R(1, 3), R(1, 3)); }
+  g.strokeStyle = rgb(52, 49, 45); g.lineWidth = 3; g.strokeRect(1.5, 1.5, N - 3, N - 3); g.lineWidth = 2;
+  g.beginPath(); for (const [a, b] of [[0, 0], [N, 0], [N, N], [0, N]]) { g.moveTo(a, b); g.lineTo(a ? N - F : F, b ? N - F : F); } g.stroke();
+  // tierra con hojarasca (hojas secas de plátano, pardas y ocres) y alguna ramita
+  g.fillStyle = rgb(56, 43, 32); g.fillRect(F, F, N - 2 * F, N - 2 * F);
+  for (let k = 0; k < 900; k++) { const c = R(34, 84); g.fillStyle = rgb(c, c * 0.8, c * 0.6); g.beginPath(); g.arc(R(F, N - F), R(F, N - F), R(1, 5), 0, 6.3); g.fill(); }
+  for (let k = 0; k < 46; k++) { const x = R(F, N - F), y = R(F, N - F), sc = R(6, 12), t = R(6.3), c = [[118, 92, 62], [98, 76, 52], [132, 110, 74], [84, 66, 48]][k % 4];
+    g.save(); g.translate(x, y); g.rotate(t); g.fillStyle = rgb(c[0] * R(0.8, 1.1), c[1] * R(0.8, 1.1), c[2]); g.beginPath();
+    for (let a = 0; a < 10; a++) { const an = a / 10 * 6.2832, r = sc * (a % 2 ? 0.55 : 1); g.lineTo(Math.cos(an) * r, Math.sin(an) * r * 0.85); } g.fill(); g.restore(); }
+  g.strokeStyle = rgb(60, 44, 30); g.lineWidth = 2; for (let k = 0; k < 6; k++) { const x = R(F, N - F), y = R(F, N - F), t = R(6.3), l = R(15, 40); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(t) * l, y + Math.sin(t) * l); g.stroke(); }
+  // sombra de contacto junto al marco (la tierra queda 2 cm por debajo)
+  for (let k = 0; k < 6; k++) { g.strokeStyle = `rgba(0,0,0,${0.16 - k * 0.025})`; g.lineWidth = 2; g.strokeRect(F + k * 2 + 1, F + k * 2 + 1, N - 2 * F - k * 4 - 2, N - 2 * F - k * 4 - 2); }
+  if (grate) {
+    // reja: placa de fundición gris oscura con ranuras radiales en cuatro coronas y marco liso; el hueco central muestra la tierra
+    const c0 = N / 2, Ri = 0.2 * m, img = g.getImageData(0, 0, N, N), soil = new Uint8ClampedArray(img.data);
+    g.fillStyle = rgb(60, 60, 62); g.fillRect(F, F, N - 2 * F, N - 2 * F);
+    for (let k = 0; k < 1500; k++) { const c = R(40, 70); g.fillStyle = rgb(c, c * 0.98, c * 0.96); g.fillRect(R(F, N - F), R(F, N - F), R(1, 3), R(1, 3)); }
+    g.fillStyle = rgb(20, 16, 12);
+    const rings = [[Ri + 8, Ri + 0.075 * m, 40], [Ri + 0.095 * m, Ri + 0.17 * m, 56], [Ri + 0.19 * m, Ri + 0.265 * m, 72], [Ri + 0.285 * m, 0.475 * m, 88]];
+    for (const [r0, r1, n] of rings) for (let k = 0; k < n; k++) { const a = (k + 0.5) / n * 6.2832, ca = Math.cos(a), sa = Math.sin(a);
+      g.save(); g.translate(c0, c0); g.rotate(a); g.fillRect(r0, -2.2, r1 - r0, 4.4); g.restore();
+      void ca; void sa; }
+    g.strokeStyle = rgb(30, 30, 32); g.lineWidth = 2; g.strokeRect(F + 4, F + 4, N - 2 * F - 8, N - 2 * F - 8);
+    g.beginPath(); g.moveTo(c0, F); g.lineTo(c0, N - F); g.stroke();   // junta entre las dos mitades
+    // el hueco central y las esquinas fuera del último anillo: tierra (se copia la de antes)
+    const out = g.getImageData(0, 0, N, N), d = out.data;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const r = Math.hypot(x - c0, y - c0), q = (y * N + x) * 4;
+      if (r < Ri) for (let c = 0; c < 3; c++) d[q + c] = soil[q + c];
+      else if (r < Ri + 8 && x > F && y > F) for (let c = 0; c < 3; c++) d[q + c] = 46; }
+    g.putImageData(out, 0, 0);
+  }
+  return cv;
+}
+// geometría del alcorque (local: centro en el origen, y = 0 la acera): marco de 1,2 m con su canto 1,5 cm sobre la acera y
+// faldón hasta 4 cm por debajo (absorbe la pendiente), paredes interiores y la tierra 1 cm sobre la acera (2 cm hundida).
+// uv: planta del atlas (v ×2, el sombreado de corteza la divide entre dos)
+function pitGeo() {
+  const P = [], N = [], U = [], I = [], A = 0.6, a = 0.5, yT = 0.025, yS = 0.008, yB = -0.04;
+  const uv = (x, z) => [x / 1.2 + 0.5, (z / 1.2 + 0.5) * 2];
+  const quad = (p, n) => { const b = P.length / 3; for (const q of p) { P.push(...q); N.push(...n); U.push(...uv(q[0], q[2])); } I.push(b, b + 2, b + 1, b, b + 3, b + 2); };
+  quad([[-a, yS, -a], [a, yS, -a], [a, yS, a], [-a, yS, a]], [0, 1, 0]);                       // tierra
+  for (let s = 0; s < 4; s++) {
+    const r = (x, z) => s === 0 ? [x, z] : s === 1 ? [-z, x] : s === 2 ? [-x, -z] : [z, -x], P2 = (x, y, z) => { const [u, v] = r(x, z); return [u, y, v]; }, n2 = (x, y, z) => { const [u, v] = r(x, z); return [u, y, v]; };
+    quad([P2(-A, yT, -A), P2(A, yT, -A), P2(a, yT, -a), P2(-a, yT, -a)], n2(0, 1, 0));             // canto del marco
+    quad([P2(-a, yT, -a), P2(a, yT, -a), P2(a, yS, -a), P2(-a, yS, -a)], n2(0, 0, 1));             // pared interior
+    quad([P2(-A, yB, -A), P2(A, yB, -A), P2(A, yT, -A), P2(-A, yT, -A)], n2(0, 0, -1));            // faldón exterior
+  }
+  // las caras van en sentido horario visto desde fuera (Babylon, mano izquierda); se dibujan sin recorte de caras ocultas
+  return { P: new Float32Array(P), N: new Float32Array(N), U: new Float32Array(U), I: new Uint32Array(I) };
+}
+
+window.BCN_TREES = { SP, pick, build, sapling, leafCanvas, impCanvas, familyOf, stakeCanvas, flatCanvas, pitCanvas, pitGeo };
 })();

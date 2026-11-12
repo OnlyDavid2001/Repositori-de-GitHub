@@ -249,13 +249,20 @@ void main(){
     TMS.push(t); TRIS.push([(G.nearBark.I.length + G.nearLeaf.I.length) / 3, (G.farBark.I.length + G.farLeaf.I.length) / 3, G.imp.I.length / 3]); }
   // ARB3: plantón (TR.sapling) en cinco mallas: tronco y copita (todos), tutores A (tres) o B (dos) y protector (solo B).
   // Solo nivel cercano (se funde entre 38 y 50 m); nombres tNS* para que lighting.js los ponga en la cascada cercana
-  const SAPG = TR.sapling(), sapSp = (bark) => ({ bark, leaf: TR.SP[0].leaf, fl: 0, bm: 0 });
-  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, TR.SP[0]),
-    stakesA: mkTreeMat('sapA', 0, tBkD, tBkN, sapSp([1.05, 0.86, 0.62, 0.12])), stakesB: mkTreeMat('sapB', 0, tBkD, tBkN, sapSp([1.05, 0.86, 0.62, 0.12])),
+  // ARB4: tutores de pino claro con atados de cinta (atlas propio, TR.stakeCanvas) y copa joven verde claro
+  const SAPG = TR.sapling(), sapSp = (bark, leaf) => ({ bark, leaf: leaf || TR.SP[0].leaf, fl: 0, bm: 0 });
+  const tStake = canvasTex(TR.stakeCanvas()), tFlat = canvasTex(TR.flatCanvas());
+  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.32, 1.5, 0.92, 0.95])),
+    stakesA: mkTreeMat('sapA', 0, tStake, tFlat, sapSp([1, 1, 1, 1])), stakesB: mkTreeMat('sapB', 0, tStake, tFlat, sapSp([1, 1, 1, 1])),
     guard: mkTreeMat('sapG', 0, tBkD, tBkN, sapSp([0.30, 0.31, 0.32, 0])) };
   const SAP = {}; for (const k of ['trunk', 'leaf', 'stakesA', 'stakesB', 'guard']) { SAP[k] = mkGeoMesh('tNS' + k, SAPG[k], SAPM[k]); reg(SAP[k], k === 'leaf' ? { cast: true, alphaTex: tLeafN[0], layer: 'tree' } : { cast: true, layer: 'tree' }); }
+  // ARB4: alcorque cuadrado de 1,2 m como instancias propias (marco de piedra, tierra 2 cm hundida con hojarasca; con o sin reja
+  // radial de fundición), en todas las posiciones de árbol de calle (adulto y alcorque −1: reja; plantón y −2: tierra).
+  // Solo cerca (fundido tramado de 60 a 75 m); el campo de aceras ya no pinta alcorques (canal alfa a 0)
+  const PITG = TR.pitGeo(), PITM = [mkTreeMat('pitG', 0, canvasTex(TR.pitCanvas(true)), tFlat, sapSp([1, 1, 1, 1])), mkTreeMat('pitS', 0, canvasTex(TR.pitCanvas(false)), tFlat, sapSp([1, 1, 1, 1]))];
+  const PIT = PITM.map((M, k) => reg(mkGeoMesh(k ? 'pitS' : 'pitG', PITG, M), { cast: false }));
   const SAPT = [SAPG.trunk.I.length / 3 + SAPG.leaf.I.length / 3 + SAPG.stakesA.I.length / 3, SAPG.trunk.I.length / 3 + SAPG.leaf.I.length / 3 + (SAPG.stakesB.I.length + SAPG.guard.I.length) / 3];
-  const allTM = TMS.flatMap(t => Object.values(t)).concat(Object.values(SAP));
+  const allTM = TMS.flatMap(t => Object.values(t)).concat(Object.values(SAP), PIT);
 
   // ---------------------------------------------------------------- tramos: utilidades
   const segIn = (ci, f) => { // tramos de la celda y de sus 8 vecinas, sin repetir
@@ -332,12 +339,19 @@ void main(){
       }
     }
     t = new Float32Array(out);
+    // ARB4: matriz del alcorque (y = acera; giro con la calle; inclinado con la pendiente de la acera)
+    const pm = new Float32Array(t.length / 7 * 16);
+    for (let k = 0, w = 0; k < t.length; k += 7, w += 16) {
+      const x = t[k], z = t[k + 2], e = t[k + 6], y = t[k + 1] + (e < 0 ? 0 : e >= NSP ? 0.04 : 0.17), an = t[k + 5], ex = Math.cos(an), ez = Math.sin(an), ns = nearestCar(x, z)[0];
+      const gx = walkY(ns, x + 0.5, z) - walkY(ns, x - 0.5, z), gz = walkY(ns, x, z + 0.5) - walkY(ns, x, z - 0.5), sl = (gx < 0.15 && gx > -0.15 && gz < 0.15 && gz > -0.15) ? 1 : 0;
+      pm.set([ex, sl * (gx * ex + gz * ez), ez, 0, 0, 1, 0, 0, -ez, sl * (-gx * ez + gz * ex), ex, 0, x, y, z, 1], w);
+    }
     const mats = new Float32Array(t.length / 7 * 16), m = new BABYLON.Matrix(), q = new BABYLON.Quaternion(), v = new BABYLON.Vector3(), sc = new BABYLON.Vector3();
     for (let k = 0, w = 0; k < t.length; k += 7, w += 16) {
       BABYLON.Quaternion.RotationYawPitchRollToRef(t[k + 3], 0, 0, q); v.set(t[k], t[k + 1], t[k + 2]); sc.set(t[k + 4], t[k + 4] * (0.95 + 0.17 * ((t[k + 3] * 7) % 1)), t[k + 4]);
       BABYLON.Matrix.ComposeToRef(sc, q, v, m); mats.set(m.m, w);
     }
-    t.mats = mats; treeCache.set(ci, t); return t;
+    t.mats = mats; t.pm = pm; treeCache.set(ci, t); return t;
   }
 
   // ---------------------------------------------------------------- atlas del campo de aceras (una textura para todas las celdas)
@@ -374,7 +388,7 @@ void main(){
     yield;
     // árboles de la celda y vecinas (para los alcorques)
     const pits = [];
-    for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const T = treesOf(j * NX + i); for (let k = 0; k < T.length; k += 7) pits.push(T[k], T[k + 2], T[k + 5], T[k + 6] === -2 ? 175 : 255); }
+    for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) { if (i < 0 || j < 0 || i >= NX || j >= NZ) continue; const T = treesOf(j * NX + i); void T; }   // ARB4: los alcorques son instancias propias (PIT); el canal alfa del campo queda a 0
     yield;
     // campo → RGBA
     const F = new Uint8Array(NT * NT * 4);
@@ -563,7 +577,7 @@ void main(){
   let pendingTrees = [];
   function instances(P) {
     const r = S.tI + 60, c0 = Math.floor((P.x - r) / CS), c1 = Math.floor((P.x + r) / CS), d0 = Math.floor((P.z - r) / CS), d1 = Math.floor((P.z + r) / CS);
-    const sel = [], cnt = [], sap = [[], []];   // por nivel g y especie k: índice g*NSP + k; plantones A y B (solo cerca)
+    const sel = [], cnt = [], sap = [[], []], pit = [[], []];   // por nivel g y especie k: índice g*NSP + k; plantones A y B (solo cerca)
     for (let q = 0; q < 3 * NSP; q++) { sel.push([]); cnt.push(0); }
     pendingTrees = [];
     for (let j = Math.max(0, d0); j <= Math.min(NZ - 1, d1); j++) for (let i = Math.max(0, c0); i <= Math.min(NX - 1, c1); i++) {
@@ -571,7 +585,9 @@ void main(){
       const ci = j * NX + i, T = treeCache.get(ci);
       if (!T) { pendingTrees.push([Math.hypot(dx, dz), ci]); continue; }
       for (let k = 0, w = 0; k < T.length; k += 7, w += 16) {
-        const e = T[k + 6]; if (e < 0) continue;                    // alcorque vacío: solo el campo de aceras
+        const e = T[k + 6], dp = Math.hypot(T[k] - P.x, T[k + 1] - P.y, T[k + 2] - P.z);
+        if (dp < 76) pit[e === -2 || e >= NSP ? 1 : 0].push(T.pm, w);   // alcorque (ARB4)
+        if (e < 0) continue;                                         // alcorque vacío: solo el alcorque
         if (e >= NSP) { if (Math.hypot(T[k] - P.x, T[k + 1] + 1 - P.y, T[k + 2] - P.z) < 52) sap[e - NSP].push(T.mats, w); continue; }
         const d = Math.hypot(T[k] - P.x, T[k + 1] + 6 - P.y, T[k + 2] - P.z);
         if (d < S.tN[1] + 2) { sel[e].push(T.mats, w); cnt[e]++; }
@@ -591,9 +607,12 @@ void main(){
     const sb = sap.map(L => { const b = new Float32Array(Math.max(16, L.length * 8)); for (let k = 0, w = 0; k < L.length; k += 2, w += 16) b.set(L[k].subarray(L[k + 1], L[k + 1] + 16), w); return b; });
     const nA = sap[0].length / 2, nB = sap[1].length / 2, sAB = new Float32Array(Math.max(16, (nA + nB) * 16)); sAB.set(sb[0].subarray(0, nA * 16)); sAB.set(sb[1].subarray(0, nB * 16), nA * 16);
     for (const [me, b, n] of [[SAP.trunk, sAB, nA + nB], [SAP.leaf, sAB, nA + nB], [SAP.stakesA, sb[0], nA], [SAP.stakesB, sb[1], nB], [SAP.guard, sb[1], nB]]) { me.thinInstanceSetBuffer('matrix', b, 16, false); me.thinInstanceCount = n; }
+    for (let v = 0; v < 2; v++) { const L = pit[v], b = new Float32Array(Math.max(16, L.length * 8)); for (let k = 0, w = 0; k < L.length; k += 2, w += 16) b.set(L[k].subarray(L[k + 1], L[k + 1] + 16), w);
+      PIT[v].thinInstanceSetBuffer('matrix', b, 16, false); PIT[v].thinInstanceCount = L.length / 2; }
+    nPit = (pit[0].length + pit[1].length) / 2;
     nTrees = n3; treeTris = ntri; treeSp = nsp; nSap = nA + nB; sapTris = nA * SAPT[0] + nB * SAPT[1];
   }
-  let nSap = 0, sapTris = 0;
+  let nSap = 0, sapTris = 0, nPit = 0;
   let nTrees = [0, 0, 0], treeTris = [0, 0, 0], treeSp = [];
   const band = (m, a, b, c, d) => m.setVector4('uBand', new BABYLON.Vector4(a, b, c, d));
   function setBands() {
@@ -602,6 +621,7 @@ void main(){
       band(M.barkF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]); band(M.leafF, S.tN[0], S.tN[1], S.tF[0], S.tF[1]);
       band(M.imp, S.tF[0], S.tF[1], S.tI - 200, S.tI); }
     for (const m of Object.values(SAPM)) band(m, -2, -1, 38, 50);
+    for (const m of PITM) band(m, -2, -1, 60, 75);
     matW.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1));
   }
   function update(P, groundY, dt) {
@@ -626,7 +646,7 @@ void main(){
     const k = q >= 2 ? 1.4 : 1;
     Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [430 * k, 520 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
     setBands();
-    if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = 0; }
+    if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = nPit = 0; }
     lastIP = null; planT = 0;
   }
   setRange(1);
@@ -634,9 +654,9 @@ void main(){
   // vaciado de golpe (arnés de capturas): hasta que no quede nada pendiente, y una pasada más para asentar las instancias
   function flush(P, groundY) { let n = 0; for (let pass = 0; pass < 2; pass++) do { update(P, groundY, 0.5, 0); } while (busy() && ++n < 100000); update(P, groundY, 0.5, 0); }   // dos pasadas: la segunda planifica el mobiliario de detalle de las celdas recién hechas
   // árbol de la especie k más cercano a (x, z) entre las celdas ya calculadas (pruebas y hojas de contacto): [x, y, z, ángulo de la calle]
-  // k = −1: cualquier adulto; −2: alcorque vacío; NSP: plantón (cualquiera de las dos variantes)
+  // k = −1: cualquier adulto; −2: alcorque vacío (−3 con reja, −4 tierra sola); NSP: plantón (cualquiera de las dos variantes)
   function findTree(k, x, z) { let best = null, bd = 1e18;
-    const ok = e => k === -1 ? e >= 0 && e < NSP : k === -2 ? e < 0 : k >= NSP ? e >= NSP : e === k;
+    const ok = e => k === -1 ? e >= 0 && e < NSP : k === -2 ? e < 0 : k === -3 ? e === -1 : k === -4 ? e === -2 : k >= NSP ? e >= NSP : e === k;
     for (const T of treeCache.values()) for (let i = 0; i < T.length; i += 7) if (ok(T[i + 6])) { const d = (T[i] - x) ** 2 + (T[i + 2] - z) ** 2; if (d < bd) { bd = d; best = [T[i], T[i + 1], T[i + 2], T[i + 5]]; } }
     if (best) {                                         // para las vistas de prueba: dirección (unitaria) del árbol al eje de la calzada y distancia
       const o = nearestCar(best[0], best[2])[0] * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L2 = dx * dx + dz * dz || 1;
@@ -649,7 +669,7 @@ void main(){
   function countAll() { const c = { adult: 0, sap: 0, pit: 0 }; for (let ci = 0; ci < NX * NZ; ci++) { const T = treesOf(ci);
     for (let i = 6; i < T.length; i += 7) { const e = T[i]; if (e < 0) c.pit++; else if (e >= NSP) c.sap++; else c.adult++; } } return c; }
   const api = { update, setRange, flush, busy, findTree, free, countAll, lastCam: null,
-    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, sap: nSap, sapTris, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
+    stats: () => ({ cells: cells.size, tris, furn: furnTris[0], furnHi: furnTris[1], hi: [...cells.values()].filter(c => c.hiDone).length, cam: api.lastCam, trees: nTrees, treeTris, sap: nSap, sapTris, pit: nPit, treeSp: TR.SP.map((sp, k) => sp.id + ':' + (treeSp[k] || 0)).join(' '), treeCells: treeCache.size, queue: queue.length, pending: pendingTrees.length }) };
   return api;
 } };
 })();
