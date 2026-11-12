@@ -46,3 +46,9 @@ final para el usuario con lo mejor del día (de día y de noche) en
   las vistas a pie `sts_cerca2`, `dep_pie2` y `cru_pie2` (tanda `DE_vE`). Míralas y, si la aduana de la ZAL Prat cae sobre
   una vía pública, fíjala a mano en la entrada del recinto. La noche industrial y los cascos sí están vistos y bien
   (`pu3/hoja_noche.jpg`, `pu3/hoja_buques.jpg`).
+- **Árboles de las plazas** (`p1/hoja_antes_despues.jpg`, fila `les_pie`; `p1/hoja_genericas.jpg`): plazas.js planta
+  copas de elipsoide facetado («piruletas») y demasiados árboles en plazas que en la realidad son duras (Sol, Diamant,
+  Virreina, Revolució, Lesseps). Usa las especies de trees.js, con muchos menos árboles, y respeta la tercera persona
+  (ÁRBOLES 3 quitó árboles de las calles por eso). Las plazas duras de Gràcia van casi sin árboles, con alguno en el borde.
+- **Plaça de Catalunya a pie**: el granito es demasiado uniforme. **Fuente de Espanya**: los grupos escultóricos son
+  bultos. **Canòpia de Glòries**: los pilares con bola verde quedan raros.
