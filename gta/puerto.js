@@ -116,87 +116,127 @@ function defensa(B) { bx(B, 0, 0.25, -1.6, 2.4, 0.5, 2.6, 0, C.defensa, K.LISO, 
 function pila(B, x, z, y0, n, a, col, largo) { bx(B, x, z, y0, 2.44, largo || 12.19, 2.59 * n, a, col, K.METAL, PCONT); }
 
 // ---------------------------------------------------------------- buques (origen en el centro de la flotación, +Z proa)
-// casco: planta con proa afilada y popa recta; de -calado a francobordo
+// PU3: casco por secciones (loft): fondo más estrecho y proa recogida bajo el agua, costados con abanico (flare) y proa
+// lanzada hacia la cubierta, espejo de popa con vuelo, regala con arrufo (sube hacia proa) y franjas de color opcionales.
+// media planta de popa a proa (x ≥ 0) cerrada por el otro costado: s = escala de manga, dp = avance de la proa, dq = de la popa
+function plantaCasco(h, b, pr, ps, ns, s, dp, dq, esp) {
+  const R = [[b * s * esp, -h - dq], [b * s, -h - dq + ps * 1.6], [b * s, h - pr]];
+  for (let k = 1; k < ns; k++) { const t = k / ns; R.push([b * s * (1 - Math.pow(t, 2.1)), h - pr + (pr + dp) * t]); }
+  return R.concat([[0, h + dp]], R.slice().reverse().map(p => [-p[0], p[1]]));
+}
+// o: proa, popa, cubierta (color), quilla (manga del fondo, 0–1), abanico, lanzamiento (m), vuelo (m), regala (m), arrufo (m),
+//    franjas [[y0, y1, col]], ns (puntos de la ojiva de proa), espejo (manga del espejo, 0–1)
 function casco(B, Ls, Bm, y0, y1, col, colObra, o) {
-  o = o || {}; const h = Ls / 2, b = Bm / 2, pr = o.proa || Bm * 0.9, ps = o.popa || Bm * 0.12;
-  const pl = [[-b * 0.86, -h], [-b, -h + ps * 1.6], [-b, h - pr], [-b * 0.6, h - pr * 0.3], [0, h], [b * 0.6, h - pr * 0.3], [b, h - pr], [b, -h + ps * 1.6], [b * 0.86, -h]];
-  L.prisma(B, pl, y0, 1.2, colObra || C.rojoCasco, K.LISO, { aux: PLISO, sinTecho: true });
-  L.prisma(B, pl, 1.2, y1, col, K.METAL, { aux: AUX.panel(3, 0.08, 0), techo: o.cubierta || [96, 98, 96], kTecho: K.LISO });
-  return pl;
+  o = o || {}; const h = Ls / 2, b = Bm / 2, pr = o.proa || Bm * 0.9, ps = o.popa || Bm * 0.12, ns = o.ns || 4, esp = o.espejo || 0.8;
+  const fl = o.abanico || 1.05, rk = o.lanzamiento !== undefined ? o.lanzamiento : pr * 0.14, ov = o.vuelo !== undefined ? o.vuelo : Math.min(2.5, ps * 0.5);
+  const yw = Math.min(1.2, Math.max(0.3, y1 * 0.45));
+  const lv = y => { const t = Math.max(0, Math.min(1, (y - yw) / Math.max(y1 - yw, 0.1))); return plantaCasco(h, b, pr, ps, ns, 1 + (fl - 1) * t, rk * t, ov * t, esp); };
+  L.loft(B, [[y0, plantaCasco(h, b, pr * 1.25, ps, ns, o.quilla || 0.8, -pr * 0.28, -ps * 0.6, esp)], [yw, lv(yw)]], colObra || C.rojoCasco, K.LISO, { aux: PLISO, sinTecho: true });
+  const cortes = [yw]; for (const f of (o.franjas || [])) { if (f[0] > yw && f[0] < y1) cortes.push(f[0]); if (f[1] > yw && f[1] < y1) cortes.push(f[1]); }
+  cortes.push(y1); cortes.sort((p, q) => p - q);
+  for (let i = 0; i + 1 < cortes.length; i++) { const ya = cortes[i], yb = cortes[i + 1]; if (yb - ya < 0.05) continue;
+    const f = (o.franjas || []).find(f => ya >= f[0] - 1e-3 && yb <= f[1] + 1e-3), last = i + 2 === cortes.length;
+    L.loft(B, [[ya, lv(ya)], [yb, lv(yb)]], f ? f[2] : col, f ? K.LISO : K.METAL, Object.assign({ aux: f ? PLISO : AUX.panel(3, 0.08, 0) },
+      last ? { techo: o.cubierta || [96, 98, 96], kTecho: K.LISO } : { sinTecho: true })); }
+  // regala con arrufo: el costado sigue por encima de la cubierta y sube hacia proa
+  const pd = lv(y1), rg = o.regala !== undefined ? o.regala : Math.max(0.35, Bm * 0.03), ar = o.arrufo !== undefined ? o.arrufo : Ls * 0.012;
+  L.prisma(B, pd, y1, (x, z) => y1 + rg + ar * Math.pow(Math.max(0, z / h), 2), col, K.METAL, { aux: PCH, sinTecho: true });
+  return pd;
+}
+// bloque de superestructura con el frente (hacia proa, +Z) achaflanado; techo opcional
+function sup(B, z0, z1, w, y0, y1, col, k, aux, o) {
+  o = o || {}; const c = Math.min(w * (o.chaflan !== undefined ? o.chaflan : 0.35), (z1 - z0) * 0.45), r = w * (o.punta || 0.3);
+  L.prisma(B, [[-w / 2, z0], [w / 2, z0], [w / 2, z1 - c], [r, z1], [-r, z1], [-w / 2, z1 - c]], y0, y1, col, k, { aux, techo: o.techo || [206, 206, 202], kTecho: K.LISO });
+}
+// caseta con parabrisas inclinado (el techo se retrasa): yates y puentes pequeños
+function cabina(B, z0, z1, w, y0, y1, col, aux, o) {
+  o = o || {}; const lz = z1 - z0, pl = (a, b2, ww) => { const c = Math.min(ww * 0.4, (b2 - a) * 0.45); return [[-ww / 2, a], [ww / 2, a], [ww / 2, b2 - c], [ww * 0.22, b2], [-ww * 0.22, b2], [-ww / 2, b2 - c]]; };
+  L.loft(B, [[y0, pl(z0, z1, w)], [y1, pl(z0 + lz * (o.atras || 0.06), z1 - lz * (o.parabrisas || 0.3), w * 0.86)]], col, K.VENTANAS, { aux: aux || AUX.ventanas(y1 - y0, 1.2, 0.8, 0.5), techo: o.techo || [226, 226, 222], kTecho: K.LISO });
 }
 function portacontenedores(B, Ls, Bm, R, colCasco) {
   const fb = 12, yd = fb;
-  casco(B, Ls, Bm, -2, fb, colCasco, C.rojoCasco, { proa: Bm * 1.1 });
+  casco(B, Ls, Bm, -2, fb, colCasco, C.rojoCasco, { proa: Bm * 1.25, popa: Bm * 0.3, quilla: 0.84, abanico: 1.03, arrufo: 3.2, regala: 1.1, franjas: [[fb - 0.6, fb, [226, 226, 222]]] });
   const h = Ls / 2, zAcc = -h + Ls * 0.18;
-  // castillo (habilitación) y chimenea
-  bx(B, 0, zAcc, yd, Bm * 0.72, 13, 26, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.9, 2.2, 0.5, 0.45));
-  bx(B, 0, zAcc + 1, yd + 26, Bm * 1.0, 6, 3.2, 0, C.blanco, K.VENTANAS, AUX.ventanas(3.2, 1.6, 0.7, 0.55));   // puente con alerones
-  bx(B, 0, zAcc - 16, yd, 8, 9, 22, 0, mix(colCasco, C.negro, 0.3), K.METAL, PCH);                              // chimenea
-  bx(B, 0, zAcc + 2, yd + 29.2, 1.4, 1.4, 5, 0, C.gris);
-  bx(B, 0, zAcc + 2, yd + 34.2, 0.5, 0.5, 0.5, 0, [255, 245, 220], K.EMISIVO, LUZ(1.5));
+  // habilitación en escalones (cubiertas que se estrechan) con el puente y sus alerones arriba, y chimenea
+  for (let t = 0; t < 4; t++) sup(B, zAcc - 6.5 + t * 0.8, zAcc + 6.5 - t * 0.4, Bm * (0.74 - t * 0.06), yd + t * 6.2, yd + (t + 1) * 6.2, C.blanco, K.VENTANAS, AUX.ventanas(3.1, 2.2, 0.5, 0.45), { chaflan: 0.12, punta: 0.42 });
+  bx(B, 0, zAcc + 2.4, yd + 24.8, Bm * 1.0, 5.4, 3.0, 0, C.blanco, K.VENTANAS, AUX.ventanas(3.0, 1.6, 0.7, 0.55));   // puente con alerones
+  bx(B, 0, zAcc + 2.4, yd + 27.8, Bm * 0.5, 4.4, 0.4, 0, [96, 98, 100]);
+  { const v0 = B.nv; L.loft(B, [[yd, L.rect(8, 9)], [yd + 22, L.mover(L.rect(6.4, 7.6), 0, -1.6, 0)]], mix(colCasco, C.negro, 0.3), K.METAL, { aux: PCH, techo: C.negro }); L.xf(B, v0, 0, zAcc - 15, 0, 1, 1, 0); }
+  bx(B, 0, zAcc + 2, yd + 28.2, 1.4, 1.4, 5, 0, C.gris);
+  bx(B, 0, zAcc + 2, yd + 33.2, 0.5, 0.5, 0.5, 0, [255, 245, 220], K.EMISIVO, LUZ(1.5));
   // bodegas: bahías de 13 m con pilas de contenedores en cubierta (4 grupos a lo ancho)
   const nW = 4, gw = (Bm - 3) / nW;
-  for (let z = -h + 14; z < h - Bm * 1.1; z += 13.2) {
-    if (Math.abs(z - zAcc) < 9 || Math.abs(z - (zAcc - 16)) < 6) continue;
+  for (let z = -h + 14; z < h - Bm * 1.3; z += 13.2) {
+    if (Math.abs(z - zAcc) < 9 || Math.abs(z - (zAcc - 15)) < 6) continue;
     bx(B, 0, z + 6.3, yd - 0.4, Bm - 2, 0.6, 1.6, 0, [88, 92, 92]);                                           // brazola
-    for (let i = 0; i < nW; i++) { const n = 2 + Math.floor(R() * 6); if (R() < 0.08) continue;
-      bx(B, -Bm / 2 + 1.5 + gw * (i + 0.5), z, yd + 1, gw - 0.3, 12.2, 2.59 * n, 0, CONT[Math.floor(R() * CONT.length)], K.METAL, PCONT); }
+    const ancho = Math.min(1, (h - Bm * 0.9 - z) / (Bm * 0.6));                                                 // a proa, la manga se estrecha
+    for (let i = 0; i < nW; i++) { const n = 2 + Math.floor(R() * 6); if (R() < 0.08) continue; const xx = -Bm / 2 + 1.5 + gw * (i + 0.5);
+      if (ancho < 1 && Math.abs(xx) + gw / 2 > Bm / 2 * Math.max(0.3, ancho)) continue;
+      bx(B, xx, z, yd + 1, gw - 0.3, 12.2, 2.59 * n, 0, CONT[Math.floor(R() * CONT.length)], K.METAL, PCONT); }
   }
-  bx(B, 0, h - Bm * 0.55, yd, Bm * 0.5, Bm * 0.5, 2.4, 0, [88, 92, 92]);                                        // castillo de proa
-  bx(B, 0, h - 6, yd + 2.4, 0.5, 0.5, 0.5, 0, [255, 245, 220], K.EMISIVO, LUZ(1.2));
+  // castillo de proa (cubierta alzada con rompeolas) y mástil
+  sup(B, h - Bm * 1.25 - 6, h - Bm * 0.3, Bm * 0.92, yd, yd + 2.6, colCasco, K.METAL, PCH, { chaflan: 0.55, punta: 0.12, techo: [88, 92, 92] });
+  bx(B, 0, h - Bm * 1.25 - 6, yd + 2.6, Bm * 0.9, 0.5, 3.4, 0, [226, 226, 222]);                                 // rompeolas
+  bx(B, 0, h - 8, yd + 2.6, 0.5, 0.5, 6, 0, C.gris); bx(B, 0, h - 8, yd + 8.6, 0.5, 0.5, 0.5, 0, [255, 245, 220], K.EMISIVO, LUZ(1.2));
 }
 function crucero(B, Ls, Bm, R) {
   const fb = 14, h = Ls / 2;
-  casco(B, Ls, Bm, -2, fb, C.blanco, [38, 54, 84], { proa: Bm * 1.4, cubierta: [180, 172, 160] });
-  bx(B, 0, 0, 4, Bm + 0.2, Ls * 0.62, 2.2, 0, [30, 46, 78], K.LISO, PLISO, { sinTecho: true });               // franja oscura del casco
-  // bloque de cabinas con balcones, retranqueado hacia proa
-  const decks = [[fb, Ls * 0.86, Bm * 0.98], [fb + 12, Ls * 0.8, Bm * 0.96], [fb + 27, Ls * 0.7, Bm * 0.9], [fb + 36, Ls * 0.5, Bm * 0.8]];
-  for (let i = 0; i < decks.length - 1; i++) { const [y0, l, w] = decks[i], y1 = decks[i + 1][0];
-    bx(B, 0, -h * 0.08 + (Ls * 0.86 - l) * -0.05, y0, w, l, y1 - y0, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.85, 2.0, 0.94, 0.4)); }
-  const [yt, lt, wt] = decks[decks.length - 1];
-  bx(B, 0, -h * 0.1, yt, wt, lt, 3, 0, [200, 200, 196], K.LISO, PLISO);
+  casco(B, Ls, Bm, -2, fb, C.blanco, [38, 54, 84], { proa: Bm * 1.5, popa: Bm * 0.35, quilla: 0.78, abanico: 1.02, arrufo: 2.2, regala: 1.2, cubierta: [180, 172, 160],
+    franjas: [[1.2, 4.2, [30, 46, 78]], [4.2, 4.8, [200, 160, 60]]] });
+  // bloque de cabinas con balcones, en terrazas hacia popa y con el frente redondeado hacia proa
+  const decks = [[fb, -h * 0.9, h * 0.66, Bm * 0.98], [fb + 12, -h * 0.82, h * 0.6, Bm * 0.96], [fb + 21, -h * 0.7, h * 0.52, Bm * 0.92], [fb + 30, -h * 0.58, h * 0.42, Bm * 0.84], [fb + 36, 0, 0, 0]];
+  for (let i = 0; i < decks.length - 1; i++) { const [y0, z0, z1, w] = decks[i], y1 = decks[i + 1][0];
+    sup(B, z0, z1, w, y0, y1, C.blanco, K.VENTANAS, AUX.ventanas(2.85, 2.0, 0.94, 0.4), { chaflan: 0.5, punta: 0.22, techo: [196, 190, 180] });
+    bx(B, 0, z0 + 0.4, y1 - 0.2, w * 0.96, 0.8, 1.1, 0, [226, 226, 222], K.LISO, PLISO); }                        // barandilla de la terraza de popa
+  const yt = fb + 36, z0t = -h * 0.5, z1t = h * 0.34, wt = Bm * 0.8;
+  bx(B, 0, (z0t + z1t) / 2, yt, wt, z1t - z0t, 3, 0, [200, 200, 196], K.LISO, PLISO);
   bx(B, 0, -h * 0.1 + 6, yt + 3, wt * 0.4, 16, 0.4, 0, [60, 150, 200], K.AGUA);                                  // piscina
-  bx(B, 0, h * 0.32, yt - 4, wt + 2, 7, 4, 0, C.blanco, K.VENTANAS, AUX.ventanas(4, 1.8, 0.8, 0.6));            // puente
-  bx(B, 0, -h * 0.55, yt + 3, 11, 16, 13, 0, C.blanco, K.METAL, PCH);                                             // chimenea
-  bx(B, 0, -h * 0.55, yt + 13, 11.4, 16.4, 3, 0, [40, 50, 84], K.METAL, PCH);
+  sup(B, h * 0.28, h * 0.42, Bm + 2, yt - 6, yt - 1, C.blanco, K.VENTANAS, AUX.ventanas(4, 1.8, 0.8, 0.6), { chaflan: 0.15 });   // puente con alerones
+  { const v0 = B.nv; L.loft(B, [[0, L.rect(11, 18)], [13, L.mover(L.rect(10, 14), 0, -3, 0)]], C.blanco, K.METAL, { aux: PCH, sinTecho: true });   // chimenea inclinada a popa
+    L.loft(B, [[13, L.mover(L.rect(10, 14), 0, -3, 0)], [16, L.mover(L.rect(10.2, 13), 0, -3.8, 0)]], [40, 50, 84], K.METAL, { aux: PCH, techo: C.negro });
+    L.xf(B, v0, 0, -h * 0.55, 0, 1, 1, yt + 3); }
   for (const sx of [-1, 1]) for (let z = -h * 0.55; z < h * 0.45; z += 14) {                                      // botes salvavidas
     bx(B, sx * (Bm / 2 - 0.6), z, fb + 5.5, 3.2, 10, 3, 0, C.naranja, K.LISO, PLISO); }
   bx(B, 0, h * 0.2, yt + 3, 0.5, 0.5, 0.5, 0, [255, 245, 220], K.EMISIVO, LUZ(1.5));
 }
 function ferry(B, Ls, Bm, R) {
   const fb = 11, h = Ls / 2;
-  casco(B, Ls, Bm, -2, fb, [236, 236, 232], [40, 60, 110], { proa: Bm * 1.2, cubierta: [160, 160, 156] });
-  bx(B, 0, 0, 3, Bm + 0.2, Ls * 0.75, 3, 0, [40, 60, 110], K.LISO, PLISO, { sinTecho: true });
-  bx(B, 0, h * 0.05, fb, Bm * 0.94, Ls * 0.62, 12, 0, C.blanco, K.VENTANAS, AUX.ventanas(3, 2.6, 0.7, 0.5));
-  bx(B, 0, h * 0.12, fb + 12, Bm * 0.8, Ls * 0.36, 6, 0, C.blanco, K.VENTANAS, AUX.ventanas(3, 2.2, 0.6, 0.5));
-  bx(B, 0, h * 0.42, fb + 15, Bm + 1, 6, 3.4, 0, C.blanco, K.VENTANAS, AUX.ventanas(3.4, 1.6, 0.8, 0.55));
-  bx(B, 0, -h * 0.35, fb + 12, 8, 10, 12, 0, [40, 60, 110], K.METAL, PCH);
-  bx(B, 0, -h + 1, 1.2, Bm * 0.6, 1.2, 9, 0, [90, 92, 94], K.METAL, PCH);                                        // rampa de popa
+  casco(B, Ls, Bm, -2, fb, [236, 236, 232], [40, 60, 110], { proa: Bm * 1.3, popa: Bm * 0.2, quilla: 0.8, arrufo: 2.0, regala: 1.1, cubierta: [160, 160, 156],
+    franjas: [[1.2, 5.0, [40, 60, 110]]] });
+  sup(B, -h * 0.88, h * 0.56, Bm * 0.96, fb, fb + 6, C.blanco, K.VENTANAS, AUX.ventanas(3, 2.6, 0.7, 0.5), { chaflan: 0.45, punta: 0.25 });
+  sup(B, -h * 0.72, h * 0.48, Bm * 0.92, fb + 6, fb + 12, C.blanco, K.VENTANAS, AUX.ventanas(3, 2.6, 0.7, 0.5), { chaflan: 0.45, punta: 0.25 });
+  sup(B, -h * 0.4, h * 0.38, Bm * 0.8, fb + 12, fb + 17, C.blanco, K.VENTANAS, AUX.ventanas(2.5, 2.2, 0.6, 0.5), { chaflan: 0.4, punta: 0.3 });
+  sup(B, h * 0.32, h * 0.44, Bm + 1, fb + 15, fb + 18.4, C.blanco, K.VENTANAS, AUX.ventanas(3.4, 1.6, 0.8, 0.55), { chaflan: 0.1 });   // puente
+  { const v0 = B.nv; L.loft(B, [[0, L.rect(8, 10)], [12, L.mover(L.rect(7, 8), 0, -2, 0)]], [40, 60, 110], K.METAL, { aux: PCH, techo: C.negro }); L.xf(B, v0, 0, -h * 0.3, 0, 1, 1, fb + 12); }
+  bx(B, 0, -h - 0.4, 1.2, Bm * 0.6, 1.2, 9, 0, [90, 92, 94], K.METAL, PCH);                                        // rampa de popa
 }
 function golondrina(B, Ls, Bm) {
-  casco(B, Ls, Bm, -1, 1.6, C.blanco, [32, 86, 140], { proa: Bm * 0.9, cubierta: [150, 112, 72] });
-  bx(B, 0, -1, 1.6, Bm * 0.86, Ls * 0.62, 2.4, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.4, 1.6, 0.8, 0.6));
+  casco(B, Ls, Bm, -1, 1.6, C.blanco, [32, 86, 140], { proa: Bm * 1.0, popa: Bm * 0.25, quilla: 0.6, arrufo: 0.5, regala: 0.5, ns: 3, cubierta: [150, 112, 72] });
+  sup(B, -Ls * 0.32, Ls * 0.28, Bm * 0.86, 1.6, 4.0, C.blanco, K.VENTANAS, AUX.ventanas(2.4, 1.6, 0.8, 0.6), { chaflan: 0.4 });
   bx(B, 0, -1, 4.0, Bm * 0.9, Ls * 0.66, 0.3, 0, [210, 214, 216]);
   for (const sx of [-1, 1]) for (const z of [-Ls * 0.3, 0, Ls * 0.28]) bx(B, sx * Bm * 0.4, z - 1, 4.3, 0.12, 0.12, 2, 0, C.gris);
   bx(B, 0, -1, 6.3, Bm * 0.9, Ls * 0.6, 0.2, 0, [32, 86, 140], K.LISO, PLISO);                                  // toldo de la cubierta alta
 }
 function remolcador(B, Ls, Bm) {
-  casco(B, Ls, Bm, -2, 2.4, [40, 40, 44], C.rojoCasco, { proa: Bm * 0.8, popa: Bm * 0.4, cubierta: [120, 50, 40] });
-  bx(B, 0, Ls * 0.08, 2.4, Bm * 0.6, Ls * 0.32, 3, 0, [200, 60, 40], K.METAL, PCH);
-  bx(B, 0, Ls * 0.1, 5.4, Bm * 0.5, Ls * 0.16, 2.6, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.6, 1.3, 0.75, 0.6));
-  bx(B, 0, -Ls * 0.06, 5.4, 1.6, 2, 4, 0, [200, 60, 40]); bx(B, 0, Ls * 0.1, 8, 0.3, 0.3, 4, 0, C.gris);
-  for (const sx of [-1, 1]) for (let z = -Ls * 0.3; z < Ls * 0.3; z += 3) bx(B, sx * Bm / 2, z, 1.2, 0.6, 1.4, 1.0, 0, C.defensa, K.LISO, PLISO);
-  bx(B, 0, Ls / 2 - 1, 0.6, Bm * 0.5, 1.4, 1.8, 0, C.defensa, K.LISO, PLISO);
+  casco(B, Ls, Bm, -2, 2.4, [40, 40, 44], C.rojoCasco, { proa: Bm * 0.9, popa: Bm * 0.45, quilla: 0.6, espejo: 0.9, arrufo: 1.6, regala: 0.7, ns: 3, cubierta: [120, 50, 40] });
+  sup(B, -Ls * 0.1, Ls * 0.26, Bm * 0.62, 2.4, 5.2, [200, 60, 40], K.METAL, PCH, { chaflan: 0.3 });
+  cabina(B, Ls * 0.02, Ls * 0.2, Bm * 0.56, 5.2, 7.8, C.blanco, AUX.ventanas(2.6, 1.3, 0.75, 0.6), { parabrisas: 0.12, atras: 0.12 });
+  bx(B, 0, -Ls * 0.06, 5.2, 1.6, 2, 4, 0, [200, 60, 40]); bx(B, 0, Ls * 0.1, 7.8, 0.3, 0.3, 4, 0, C.gris);
+  for (const sx of [-1, 1]) for (let z = -Ls * 0.3; z < Ls * 0.3; z += 3) bx(B, sx * Bm * 0.52, z, 1.2, 0.6, 1.4, 1.0, 0, C.defensa, K.LISO, PLISO);
+  bx(B, 0, Ls / 2 + Ls * 0.02, 0.6, Bm * 0.5, 1.4, 1.8, 0, C.defensa, K.LISO, PLISO);
 }
 function yate(B, Ls, R) {
-  const Bm = Ls * (Ls > 25 ? 0.19 : 0.32), vela = Ls < 16 && R() < 0.55, oscuro = R() < 0.18;
-  casco(B, Ls, Bm, -0.8, Ls > 25 ? 3.2 : 1.1, oscuro ? [32, 44, 70] : C.blanco, [180, 180, 176], { proa: Bm * 1.4, popa: Bm * 0.2, cubierta: [168, 132, 90] });
-  if (vela) { bx(B, 0, -Ls * 0.12, 1.1, Bm * 0.5, Ls * 0.32, 0.8, 0, C.blanco, K.VENTANAS, AUX.ventanas(0.8, 1, 0.6, 0.5));
-    barra(B, [0, 1.1, Ls * 0.06], [0, 1.1 + Ls * 1.25, Ls * 0.06], 0.08, [220, 220, 220]);
-    barra(B, [0, 2.4, Ls * 0.06], [0, 2.4, -Ls * 0.38], 0.07, [200, 200, 200]); bx(B, 0, -Ls * 0.15, 2.3, 0.4, Ls * 0.4, 0.4, 0, [30, 60, 110], K.LISO, PLISO); return; }
-  const n = Ls > 45 ? 3 : Ls > 25 ? 2 : 1, y0 = Ls > 25 ? 3.2 : 1.1;
-  for (let i = 0; i < n; i++) bx(B, 0, -Ls * (0.06 + 0.04 * i), y0 + i * 2.7, Bm * (0.86 - 0.1 * i), Ls * (0.58 - 0.1 * i), 2.7, 0, C.blanco, K.VENTANAS, AUX.ventanas(2.7, 1.4, 0.85, 0.42));
-  bx(B, 0, -Ls * 0.1, y0 + n * 2.7, 0.3, 0.3, Ls > 25 ? 3.5 : 1.2, 0, C.gris);
+  const Bm = Ls * (Ls > 25 ? 0.19 : 0.32), vela = Ls < 16 && R() < 0.55, oscuro = R() < 0.18, fb = Ls > 25 ? 3.2 : 1.1;
+  // casco en cuña: fondo en V (quilla estrecha), proa lanzada y espejo ancho
+  casco(B, Ls, Bm, -0.8, fb, oscuro ? [32, 44, 70] : C.blanco, [180, 180, 176], { proa: Bm * 1.5, popa: Bm * 0.15, quilla: 0.3, espejo: 0.92, abanico: 1.06,
+    lanzamiento: Ls * 0.04, vuelo: 0.2, arrufo: Ls * 0.012, regala: Ls > 25 ? 0.6 : 0.25, ns: 3, cubierta: [168, 132, 90] });
+  if (vela) { cabina(B, -Ls * 0.3, Ls * 0.04, Bm * 0.5, fb, fb + 0.8, C.blanco, AUX.ventanas(0.8, 1, 0.6, 0.5), { parabrisas: 0.25 });
+    barra(B, [0, fb, Ls * 0.06], [0, fb + Ls * 1.25, Ls * 0.06], 0.08, [220, 220, 220]);
+    barra(B, [0, fb + 1.3, Ls * 0.06], [0, fb + 1.3, -Ls * 0.38], 0.07, [200, 200, 200]); bx(B, 0, -Ls * 0.15, fb + 1.2, 0.4, Ls * 0.4, 0.4, 0, [30, 60, 110], K.LISO, PLISO); return; }
+  const n = Ls > 45 ? 3 : Ls > 25 ? 2 : 1;
+  for (let i = 0; i < n; i++) cabina(B, -Ls * (0.34 - 0.04 * i), Ls * (0.24 - 0.08 * i), Bm * (0.84 - 0.1 * i), fb + i * 2.7, fb + (i + 1) * 2.7, C.blanco,
+    AUX.ventanas(2.7, 1.6, 0.8, oscuro ? 0.6 : 0.42), { parabrisas: 0.3, atras: 0.04 });
+  bx(B, 0, -Ls * 0.1, fb + n * 2.7, 0.3, 0.3, Ls > 25 ? 3.5 : 1.2, 0, C.gris);
 }
 
 // ---------------------------------------------------------------- ficha genérica: ayuda a pasar de mundo a local
@@ -205,6 +245,118 @@ const TIEMPOS = {}; window.BCN_PUERTO = { t: TIEMPOS };
 function ficha(o) { const b = o.build; add(Object.assign({ y: 0, rot: 0, nivel: 'A', noche: 'ventanas' }, o, { build(B, h, lib) {
   const t0 = performance.now(); b(B, h, lib); TIEMPOS[o.id] = Math.round(performance.now() - t0); } })); }
 const ctr = pts => { let x = 0, z = 0; for (const p of pts) { x += p[0]; z += p[1]; } return [x / pts.length, z / pts.length]; };
+
+// ================================================================ PU3 · noche industrial, piezas pequeñas con nivel de detalle, viario
+// · LUCES: charcos de luz de noche (torres de focos, grúas, muelles de carga): [x, z, radio, intensidad] en mundo. Se pintan en
+//   una textura de luminancia (4–6 m/píxel) que lee una copia del shader de los hitos (solo las fichas industriales, NOCHE_IND):
+//   de noche esas fichas pierden color y luz (como las azoteas y muros de la ciudad), sin el aura de calle, y solo se ven
+//   claras bajo los focos (luz blanca, más en lo horizontal).
+// · PEQ: lo pequeño (vehículos, remolques, vagones, contenedores sueltos, norays, defensas, soportes, vallas) va a mallas aparte
+//   por celda de 250 m con addLODLevel(PEQ_D, null): no se dibuja a más de PEQ_D m de la cámara.
+// · Viario: el constructor de un hito no recibe el contexto, así que se guarda al iniciarse BCN_LANDMARKS (envoltorio de init)
+//   para que las fichas comprueben con ctx.SEG que nada pisa la calzada y para encontrar la entrada real de cada recinto.
+const LUCES = [], PEQ = new Map(), PEQ_D = 700, GEOM = window.BCN_GEO;
+const NOCHE_IND = new Set(['pu_moll_sud', 'pu_moll_prat', 'pu_vias', 'pu_zal', 'pu_zal_prat', 'pu_mercabarna', 'pu_zf0', 'pu_zf1', 'pu_zf2', 'pu_zf3', 'pu_energia', 'pu_contradic']);
+let PCTX = null, SEGI = null;
+function luz(h, lx, lz, r, I) { LUCES.push([lx + h.x, lz + h.z, r, I === undefined ? 1 : I]); }
+function peq(h, lx, lz) { const i = Math.floor((lx + h.x) / 250), j = Math.floor((lz + h.z) / 250), k = h.id + ':' + i + ':' + j;
+  let q = PEQ.get(k); if (!q) PEQ.set(k, q = { id: h.id, x: h.x, z: h.z, B: new GEOM.GB(0, 0) }); return q.B; }
+// ¿(x, z) de mundo sobre la calzada (semiancho + m)? Rejilla de 50 m de los tramos de ctx.SEG, montada al primer uso
+function enCalle(x, z, m) {
+  const S = PCTX && PCTX.SEG; if (!S) return false;
+  if (!SEGI) { SEGI = new Map(); for (let i = 0; i < S.length; i += 6) { const r = S[i + 4] + 6;
+    const i0 = Math.floor((Math.min(S[i], S[i + 2]) - r) / 50), i1 = Math.floor((Math.max(S[i], S[i + 2]) + r) / 50), j0 = Math.floor((Math.min(S[i + 1], S[i + 3]) - r) / 50), j1 = Math.floor((Math.max(S[i + 1], S[i + 3]) + r) / 50);
+    if ((i1 - i0) * (j1 - j0) > 400) continue;
+    for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) { const k = a * 100000 + b; let l = SEGI.get(k); if (!l) SEGI.set(k, l = []); l.push(i); } } }
+  const l = SEGI.get(Math.floor(x / 50) * 100000 + Math.floor(z / 50)); if (!l) return false;
+  for (const i of l) { const ax = S[i], az = S[i + 1], dx = S[i + 2] - ax, dz = S[i + 3] - az, L2 = dx * dx + dz * dz;
+    const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)) : 0, ex = ax + dx * t - x, ez = az + dz * t - z, r = S[i + 4] + (m || 0);
+    if (ex * ex + ez * ez < r * r) return true; }
+  return false;
+}
+// entrada de un recinto: el tramo de calle más ancho que cruza su contorno (a igualdad, el más cercano al punto de los datos).
+// Devuelve el cruce, el rumbo hacia dentro y el semiancho de la calle
+function entrada(P, g) {
+  const S = PCTX && PCTX.SEG; if (!S || !P) return null; let best = null;
+  for (let i = 0; i < S.length; i += 6) { const ax = S[i], az = S[i + 1], bx2 = S[i + 2], bz = S[i + 3], w = S[i + 4];
+    if (w < 3) continue; const ia = pip(ax, az, P), ib = pip(bx2, bz, P); if (ia === ib) continue;
+    let lo = 0, hi = 1; for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (pip(ax + (bx2 - ax) * m, az + (bz - az) * m, P) === ia) lo = m; else hi = m; }
+    const x = ax + (bx2 - ax) * lo, z = az + (bz - az) * lo, d = Math.hypot(x - g[1], z - g[2]), sc = Math.min(w, 9) * 60 - d * 0.25;
+    if (!best || sc > best.sc) best = { x, z, w, sc, d, ang: ib ? hd(bx2 - ax, bz - az) : hd(ax - bx2, az - bz) }; }
+  return best;
+}
+// charcos de luz: textura de luminancia en mundo
+function texLuces(scene) {
+  if (!LUCES.length) return null;
+  let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const [x, z, r] of LUCES) { x0 = Math.min(x0, x - r); z0 = Math.min(z0, z - r); x1 = Math.max(x1, x + r); z1 = Math.max(z1, z + r); }
+  let res = 4; while ((x1 - x0) / res > 2048 || (z1 - z0) / res > 2048) res += 1;
+  const W = Math.ceil((x1 - x0) / res) + 1, H = Math.ceil((z1 - z0) / res) + 1, F = new Float32Array(W * H);
+  for (const [x, z, r, I] of LUCES) { const i0 = Math.max(0, Math.floor((x - r - x0) / res)), i1 = Math.min(W - 1, Math.ceil((x + r - x0) / res)), j0 = Math.max(0, Math.floor((z - r - z0) / res)), j1 = Math.min(H - 1, Math.ceil((z + r - z0) / res));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = x0 + (i + 0.5) * res - x, dz = z0 + (j + 0.5) * res - z, q = (dx * dx + dz * dz) / (r * r);
+      if (q < 1) { const f = 1 - q; F[j * W + i] += f * f * I; } } }
+  const U = new Uint8Array(W * H); for (let k = 0; k < U.length; k++) U[k] = Math.min(255, Math.round(255 * Math.min(1, F[k])));
+  const t = BABYLON.RawTexture.CreateLuminanceTexture(U, W, H, scene, false, false, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
+  t.wrapU = t.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
+  return { t, r: [x0, z0, 1 / (W * res), 1 / (H * res)] };
+}
+const PARCHE = `
+  // PU3 (puerto.js): noche industrial. Sin color ni luz propia, salvo bajo los focos (textura de charcos de luz uPool)
+  vec3 albP = alb;
+  bool lum = kind > 9.5 && kind < 11.5;
+  if (uNight > 0.001 && !lum) alb = mix(alb, vec3(dot(alb, vec3(0.3, 0.59, 0.11))), 0.5*uNight)*(1.0 - uNight*(horiz ? 0.74 : 0.6));
+  if (uDusk > 0.001 && !lum) {
+    vec2 pt = (vPos.xz - uPoolR.xy)*uPoolR.zw;
+    float pl = pt.x > 0.0 && pt.y > 0.0 && pt.x < 1.0 && pt.y < 1.0 ? texture2D(uPool, pt).r : 0.0;
+    float fy = 1.0 - smoothstep(32.0, 52.0, vPos.y);
+    emis += emit(mix(albP, vec3(dot(albP, vec3(0.3, 0.59, 0.11))), 0.25)*vec3(0.94, 0.97, 1.0), 1.25*pl*pl*uDusk*(horiz ? max(n.y, 0.0) : 0.4)*fy);
+  }
+`;
+function matNoche(ctx, mb, pool) {
+  const sp = mb.shaderPath, A = '  // NOCHE (por hito)', AU = 'if (uGlow.y > 0.001 && !horiz) emis', U = 'uniform vec4 uLmN;';
+  let fs = sp && sp.fragmentSource; if (!fs || fs.indexOf(A) < 0 || fs.indexOf(AU) < 0 || fs.indexOf(U) < 0) throw new Error('no encuentro el shader de los hitos');
+  fs = fs.replace(U, 'uniform vec4 uPoolR; uniform sampler2D uPool; ' + U).replace(A, PARCHE + A).replace(AU, 'if (false) emis');
+  const op = mb.options;
+  const m = new BABYLON.ShaderMaterial('lmPuerto', ctx.scene, { vertexSource: sp.vertexSource, fragmentSource: fs },
+    { attributes: op.attributes.slice(), uniforms: op.uniforms.concat(['uPoolR']), samplers: op.samplers.concat(['uPool']), defines: op.defines.slice(), needAlphaBlending: false });
+  m.backFaceCulling = mb.backFaceCulling;
+  for (const k of ['_textures', '_floats', '_ints', '_vectors2', '_vectors3', '_vectors4', '_colors3', '_colors4', '_matrices', '_floatsArrays'])
+    if (mb[k] && typeof mb[k] === 'object') m[k] = mb[k];
+  ctx.mats.push(m);
+  m.onBindObservable.add(mesh => { const e = m.getEffect(), o = mesh && mesh.metadata && mesh.metadata.bcn && mesh.metadata.bcn.lm; if (!e) return;
+    if (o) { e.setFloat4('uLmN', o.n[0], o.n[1], o.n[2], o.n[3]); e.setFloat4('uLmH', o.h[0], o.h[1], 0, 0); }
+    e.setTexture('uPool', pool.t); e.setFloat4('uPoolR', pool.r[0], pool.r[1], pool.r[2], pool.r[3]); });
+  return m;
+}
+// tras construir los hitos: mallas de lo pequeño (con nivel de detalle) y material nocturno de las fichas industriales
+function trasHitos(ctx) {
+  const scene = ctx.scene, VB = BABYLON.VertexBuffer; let mb = null;
+  for (const id of NOCHE_IND) { const me = scene.getMeshByName('lm_' + id); if (me && me.material) { mb = me.material; break; } }
+  if (!mb) { const me = scene.getMeshByName('lm_pu_creuers'); mb = me && me.material; }
+  if (!mb) return;
+  let mi = mb; const pool = texLuces(scene);
+  if (pool) { try { mi = matNoche(ctx, mb, pool); } catch (e) { console.warn('puerto.js: sin noche industrial', e); mi = mb; } }
+  for (const id of NOCHE_IND) { const me = scene.getMeshByName('lm_' + id); if (me) me.material = mi; }
+  let tris = 0, n = 0;
+  for (const [k, q] of PEQ) { const B = q.B; if (!B.nv || !B.ni) continue;
+    const rec = window.BCN.lm && window.BCN.lm.get(q.id); if (!rec || !rec.ok) continue;
+    const me = new BABYLON.Mesh('lmq_' + k, scene);
+    me.setVerticesData('position', B.p.slice(0, B.nv * 3), false);
+    me.setVerticesBuffer(new VB(ctx.engine, B.c.slice(0, B.nv * 4), 'color', false, false, 4, false, 0, 4, VB.UNSIGNED_BYTE, true));
+    me.setVerticesBuffer(new VB(ctx.engine, B.a.slice(0, B.nv * 4), 'uv', false, false, 4, false, 0, 4, VB.UNSIGNED_BYTE, true));
+    me.setVerticesBuffer(new VB(ctx.engine, B.n.slice(0, B.nv * 4), 'nrm', false, false, 4, false, 0, 4, VB.UNSIGNED_BYTE, true));
+    me.setIndices(B.i.slice(0, B.ni), B.nv);
+    me.material = NOCHE_IND.has(q.id) ? mi : mb; me.isPickable = false; me.renderingGroupId = 1;
+    me.position.set(q.x, 0, q.z); me.freezeWorldMatrix(); me.addLODLevel(PEQ_D, null);
+    const src = rec.mesh && rec.mesh.metadata && rec.mesh.metadata.bcn && rec.mesh.metadata.bcn.lm;
+    ctx.reg(me, { cast: true, layer: 'lm', lm: src || { id: q.id, n: [3, 0, 0, 0], h: [20, 0] } });
+    tris += B.ni / 3; n++; q.B = null; }
+  window.BCN_PUERTO.peq = { mallas: n, tris, luces: LUCES.length };
+}
+{ const LMOD = window.BCN_LANDMARKS;
+  if (LMOD && LMOD.init) { const I0 = LMOD.init;
+    LMOD.init = function (ctx) { PCTX = ctx; const r = I0.call(this, ctx);
+      try { trasHitos(ctx); } catch (e) { console.warn('puerto.js: no se han podido montar las piezas pequeñas ni la noche del puerto', e); }
+      PCTX = null; SEGI = null; return r; }; } }
 
 // ---------------------------------------------------------------- terminal de contenedores (Moll Sud y Moll Prat)
 function terminal(id, nombre, T, o) {
@@ -224,8 +376,8 @@ function terminal(id, nombre, T, o) {
           pila(B, -T.bw / 2 + 1.45 + i * 2.9, -T.bl / 2 + 6.45 + j * 12.9, y0, n, 0, CONT[Math.floor(R() * CONT.length)]);
         }
         // grúas de patio sobre el bloque
-        for (let g = 0; g < o.gruas; g++) { const v1 = B.nv; gruaPatio(B, T.bw + 3, o.rail ? 24 : 21, o.colPatio, o.rail);
-          L.xf(B, v1, 0, -T.bl / 2 + (g + 0.5 + (R() - 0.5) * 0.6) * T.bl / o.gruas, 0, 1, 1, y0); }
+        for (let g = 0; g < o.gruas; g++) { const v1 = B.nv, zc = -T.bl / 2 + (g + 0.5 + (R() - 0.5) * 0.6) * T.bl / o.gruas; gruaPatio(B, T.bw + 3, o.rail ? 24 : 21, o.colPatio, o.rail);
+          L.xf(B, v1, 0, zc, 0, 1, 1, y0); luz(h, lx + Math.sin(T.ang * D2R) * zc, lz + Math.cos(T.ang * D2R) * zc, 26, 0.8); }
         L.xf(B, v0, lx, lz, T.ang, 1, 1, 0);
       }
       // 2) grúas pórtico a lo largo del muelle (unas trabajando sobre los buques, otras con la pluma levantada)
@@ -233,21 +385,23 @@ function terminal(id, nombre, T, o) {
       for (const s of o.buques) for (let u = s[0] - s[1] / 2 + 25; u < s[0] + s[1] / 2 - 25; u += s[1] / (o.porBuque + 0.4)) busy.push(u);
       const libres = []; for (let u = 60; u < T.len - 40; u += 70) if (!busy.some(b => Math.abs(b - u) < 45)) libres.push(u);
       for (const [lista, up] of [[busy, false], [libres.slice(0, o.libres), true]]) for (const u of lista) {
-        const [x, z] = at(u, 0), v0 = B.nv; gruaSTS(B, o.colSTS, up, o.altoSTS); L.xf(B, v0, x, z, M.angMar, 1, 1, gy(...M.at(u, 4)) ); }
+        const [x, z] = at(u, 0), v0 = B.nv; gruaSTS(B, o.colSTS, up, o.altoSTS); L.xf(B, v0, x, z, M.angMar, 1, 1, gy(...M.at(u, 4)) );
+        luz(h, ...at(u, 18), 30, 1); if (!up) luz(h, ...at(u, -24), 28, 0.9); }
       // 3) buques atracados
       for (const s of o.buques) { const [x, z] = at(s[0], -(2 + s[2] / 2)), v0 = B.nv;
         portacontenedores(B, s[1], s[2], R, s[3]); L.xf(B, v0, x, z, M.angU + (s[4] ? 180 : 0), 1, 1, 0); }
       // 4) norays y defensas cada 24 m, focos cada 90 m (detrás de las grúas)
-      for (let u = 12; u < T.len - 6; u += 24) { const [x, z] = at(u, 0), y = gy(...M.at(u, 3)); let v0 = B.nv; noray(B); defensa(B); L.xf(B, v0, x, z, M.angMar, 1, 1, y); }
-      for (let u = 40; u < T.len - 20; u += 95) { const [x, z] = at(u, 62), v0 = B.nv; torreFocos(B, 30); L.xf(B, v0, x, z, M.angMar, 1, 1, gy(...M.at(u, 62))); }
+      for (let u = 12; u < T.len - 6; u += 24) { const [x, z] = at(u, 0), y = gy(...M.at(u, 3)); const Bq = peq(h, x, z); let v0 = Bq.nv; noray(Bq); defensa(Bq); L.xf(Bq, v0, x, z, M.angMar, 1, 1, y); }
+      for (let u = 40; u < T.len - 20; u += 95) { const [x, z] = at(u, 62), v0 = B.nv; torreFocos(B, 30); L.xf(B, v0, x, z, M.angMar, 1, 1, gy(...M.at(u, 62))); luz(h, x, z, 46, 1); }
       for (const bk of T.blocks) if (R() < 0.35) { const [x, z] = loc(bk[0], bk[1]), v0 = B.nv; torreFocos(B, 32);
-        L.xf(B, v0, x + Math.sin(T.ang * D2R) * (T.bl / 2 + 6), z + Math.cos(T.ang * D2R) * (T.bl / 2 + 6), T.ang, 1, 1, gy(bk[0], bk[1])); }
+        const tx = x + Math.sin(T.ang * D2R) * (T.bl / 2 + 6), tz = z + Math.cos(T.ang * D2R) * (T.bl / 2 + 6);
+        L.xf(B, v0, tx, tz, T.ang, 1, 1, gy(bk[0], bk[1])); luz(h, tx, tz, 48, 1); }
       // 5) carretillas pórtico y camiones en la explanada del muelle
-      for (let k = 0; k < o.straddle; k++) { const u = 50 + R() * (T.len - 100), v = 42 + R() * 18, [x, z] = at(u, v), v0 = B.nv;
-        straddle(B, o.colPatio); if (R() < 0.6) pila(B, 0, 0, 2.2, 1, 0, CONT[Math.floor(R() * CONT.length)]);
-        L.xf(B, v0, x, z, M.angTierra + (R() < 0.5 ? 0 : 180), 1, 1, gy(...M.at(u, v))); }
-      for (let k = 0; k < o.camiones; k++) { const u = 40 + R() * (T.len - 80), v = 38 + R() * 24, [x, z] = at(u, v), v0 = B.nv;
-        camion(B, CONT[Math.floor(R() * 5)], CONT[Math.floor(R() * CONT.length)], R() < 0.7); L.xf(B, v0, x, z, M.angU + (R() < 0.5 ? 0 : 180), 1, 1, gy(...M.at(u, v))); }
+      for (let k = 0; k < o.straddle; k++) { const u = 50 + R() * (T.len - 100), v = 42 + R() * 18, [x, z] = at(u, v), Bq = peq(h, x, z), v0 = Bq.nv;
+        straddle(Bq, o.colPatio); if (R() < 0.6) pila(Bq, 0, 0, 2.2, 1, 0, CONT[Math.floor(R() * CONT.length)]);
+        L.xf(Bq, v0, x, z, M.angTierra + (R() < 0.5 ? 0 : 180), 1, 1, gy(...M.at(u, v))); }
+      for (let k = 0; k < o.camiones; k++) { const u = 40 + R() * (T.len - 80), v = 38 + R() * 24, [x, z] = at(u, v), Bq = peq(h, x, z), v0 = Bq.nv;
+        camion(Bq, CONT[Math.floor(R() * 5)], CONT[Math.floor(R() * CONT.length)], R() < 0.7); L.xf(Bq, v0, x, z, M.angU + (R() < 0.5 ? 0 : 180), 1, 1, gy(...M.at(u, v))); }
       // 6) playa de vías al fondo de la terminal, paralela al muelle, con un tren de contenedores
       const vV = o.vias[0], nV = o.vias[1], u0 = o.vias[2], u1 = o.vias[3];
       for (let t = 0; t < nV; t++) { const v = vV + t * 5, a = at(u0, v), b = at(u1, v), y = gy(...M.at((u0 + u1) / 2, v)) + 0.02;
@@ -256,9 +410,9 @@ function terminal(id, nombre, T, o) {
         for (const s of [-0.72, 0.72]) { const p = M.angU * D2R, ox = Math.cos(p) * s, oz = -Math.sin(p) * s;
           bx(B, mx + ox, mz + oz, y + 0.25, 0.1, len, 0.16, M.angU, [120, 116, 110]); }
         if (t === 1 || t === 3) for (let w = 0; w < 34; w++) { const uw = u0 + 20 + w * 19.6; if (uw > u1 - 20) break; if (t === 3 && w > 18) break;
-          const [x, z] = at(uw, v), v0 = B.nv; bx(B, 0, 0, 0.6, 2.6, 19, 0.6, 0, [70, 60, 52]); for (const zz of [-6.2, 6.2]) bx(B, 0, zz, 0.25, 2, 2.4, 0.5, 0, C.negro);
-          if (R() < 0.85) pila(B, 0, -3.1, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); if (R() < 0.7) pila(B, 0, 3.1, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]);
-          L.xf(B, v0, x, z, M.angU, 1, 1, y + 0.25); } }
+          const [x, z] = at(uw, v), Bq = peq(h, x, z), v0 = Bq.nv; bx(Bq, 0, 0, 0.6, 2.6, 19, 0.6, 0, [70, 60, 52]); for (const zz of [-6.2, 6.2]) bx(Bq, 0, zz, 0.25, 2, 2.4, 0.5, 0, C.negro);
+          if (R() < 0.85) pila(Bq, 0, -3.1, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); if (R() < 0.7) pila(Bq, 0, 3.1, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]);
+          L.xf(Bq, v0, x, z, M.angU, 1, 1, y + 0.25); } }
       // 7) puerta de la terminal y edificio de control
       { const [x, z] = at(o.ctrl[0], o.ctrl[1]), v0 = B.nv;
         bx(B, 0, 0, 0, 22, 14, 16, 0, C.blanco, K.VENTANAS, AUX.ventanas(3.2, 2.4, 0.7, 0.5)); bx(B, 0, 0, 16, 18, 10, 4, 0, C.vidrio, K.CORTINA, AUX.cortina(4, 1.6, 0.2));
@@ -301,10 +455,10 @@ function deposits(id, nombre, lista) {
         const [x1, z1, r1] = pts[best], L2 = Math.hypot(x1 - x, z1 - z), ux = (x1 - x) / L2, uz = (z1 - z) / L2, y = Math.max(pts[i][3], pts[best][3]) + 1.6;
         const a = [x + ux * r, y, z + uz * r], b = [x1 - ux * r1, y, z1 - uz * r1];
         barra(B, a, b, 0.32, [150, 150, 146], K.METAL); barra(B, [a[0] - uz * 0.9, y + 0.2, a[2] + ux * 0.9], [b[0] - uz * 0.9, y + 0.2, b[2] + ux * 0.9], 0.22, [196, 170, 60], K.METAL);
-        for (let s = 6; s < L2 - r - r1; s += 8) { const px = a[0] + ux * s, pz = a[2] + uz * s; bx(B, px, pz, y - 1.8, 2.4, 0.3, 1.5, hd(ux, uz), C.hormOsc, K.LISO, PLISO); }
+        for (let s = 6; s < L2 - r - r1; s += 8) { const px = a[0] + ux * s, pz = a[2] + uz * s; bx(peq(h, px, pz), px, pz, y - 1.8, 2.4, 0.3, 1.5, hd(ux, uz), C.hormOsc, K.LISO, PLISO); }
       }
       // torres de focos repartidas
-      for (let k = 0; k < pts.length; k += 24) { const [x, z, r, y] = pts[k], v0 = B.nv; torreFocos(B, 22); L.xf(B, v0, x + r + 6, z, R() * 360, 1, 1, y); }
+      for (let k = 0; k < pts.length; k += 24) { const [x, z, r, y] = pts[k], v0 = B.nv; torreFocos(B, 22); L.xf(B, v0, x + r + 6, z, R() * 360, 1, 1, y); luz(h, x + r + 6, z, 36, 0.9); }
     } });
 }
 
@@ -333,12 +487,12 @@ function adossat() {
         for (const s of [-0.18, 0.12]) { const zz = zc + s * Ls, xi = inner(zz), [px, pz] = loc(xi - nx * 14, zz - nz * 14), v1 = B.nv, yq = h.y(px, pz);
           bx(B, 0, 0, yq, 5, 5, 22, 0, [200, 202, 204], K.METAL, AUX.panel(1.5, 0.1, 0.4)); bx(B, 0, 13, yq + 18, 3.2, 26, 3, 0, [190, 192, 196], K.METAL, AUX.panel(1.2, 0.1, 0.3));
           L.xf(B, v1, px, pz, ang - 90, 1, 1, 0); }
-        for (let u = -Ls / 2 + 10; u < Ls / 2; u += 25) { const zz = zc + u * Math.cos(0), xi = inner(zz); if (xi === null) continue; const [px, pz] = loc(xi, zz), v1 = B.nv;
-          noray(B); defensa(B); L.xf(B, v1, px, pz, ang - 90, 1, 1, h.y(px + 3, pz)); }
+        for (let u = -Ls / 2 + 10; u < Ls / 2; u += 25) { const zz = zc + u * Math.cos(0), xi = inner(zz); if (xi === null) continue; const [px, pz] = loc(xi, zz), Bq = peq(h, px, pz), v1 = Bq.nv;
+          noray(Bq); defensa(Bq); L.xf(Bq, v1, px, pz, ang - 90, 1, 1, h.y(px + 3, pz)); }
       }
       // aparcamiento de autocares junto a las terminales
-      for (let k = 0; k < 18; k++) { const zz = 9980 + k * 9, xi = inner(zz), xo = outer(zz); if (xi === null) continue; const [px, pz] = loc(xi + (xo - xi) * 0.55, zz), v0 = B.nv;
-        bx(B, 0, 0, 0.3, 2.55, 12.8, 3.4, 0, k % 3 ? C.blanco : [60, 90, 150], K.VENTANAS, AUX.ventanas(3.4, 1.4, 0.8, 0.45)); L.xf(B, v0, px, pz, 96, 1, 1, h.y(px, pz)); }
+      for (let k = 0; k < 18; k++) { const zz = 9980 + k * 9, xi = inner(zz), xo = outer(zz); if (xi === null) continue; const [px, pz] = loc(xi + (xo - xi) * 0.55, zz), Bq = peq(h, px, pz), v0 = Bq.nv;
+        bx(Bq, 0, 0, 0.3, 2.55, 12.8, 3.4, 0, k % 3 ? C.blanco : [60, 90, 150], K.VENTANAS, AUX.ventanas(3.4, 1.4, 0.8, 0.45)); L.xf(Bq, v0, px, pz, 96, 1, 1, h.y(px, pz)); }
     } });
   // dique de abrigo: espaldón y escollera por el borde exterior, faros en las dos puntas de la bocana sud
   ficha({ id: 'pu_dic', nombre: "Far del Dic de l'Est", x: PD.far[0], z: PD.far[1], alto: 26, ancho: 60, largo: 60, build(B, h) {
@@ -494,17 +648,19 @@ function naveLog(B, h, e, R, z, libre) {
     const [x3, z3] = at(eu, ev + 0.35); bx(B, x3, z3, yb + 0.6, 0.7, bl - 8, 0.65, ang, [60, 62, 64], K.LISO, PLISO); }   // andén
   const nT = merca ? Math.floor(R() * 5) + 1 : Math.floor(R() * Math.min(nd, 4)) + (best.s > 10 ? 1 : 0);
   if (best.s >= 6) for (let t = 0; t < nT; t++) { const k = Math.floor(R() * nd), u = eu - (bl - 8) / 2 + (k + 0.5) * du, furgo = merca && R() < 0.6, d = furgo ? 4.6 : 7.1;
-    const [x, zz] = at(u, ev + d); if (!libre(...at(u, ev + d + 6), e)) continue; const w0 = B.nv;
-    remolque(B, LONA[Math.floor(R() * LONA.length)], CONT[Math.floor(R() * 6)], R() < 0.4, furgo); L.xf(B, w0, x, zz, hd(nx, nz), 1, 1, h.y(x, zz)); }
+    const [x, zz] = at(u, ev + d); if (!libre(...at(u, ev + d + 6), e) || !libre(x, zz, e)) continue; const Bq = peq(h, x, zz), w0 = Bq.nv;
+    remolque(Bq, LONA[Math.floor(R() * LONA.length)], CONT[Math.floor(R() * 6)], R() < 0.4, furgo); L.xf(Bq, w0, x, zz, hd(nx, nz), 1, 1, h.y(x, zz)); }
+  for (let u = eu - (bl - 8) / 2 + 6; u < eu + (bl - 8) / 2; u += 14) luz(h, ...at(u, ev + 5), 9, 0.6);       // luz de los muelles de carga
   // explanada de remolques delante del muelle (aparcados en batería) y torre de focos
   if ((z === 'zal' || z === 'prat') && best.s >= 13 && bl > 50 && R() < 0.75) { const nr = Math.floor((bl - 20) / 3.8 * (0.4 + R() * 0.5));
-    for (let t = 0; t < nr; t++) { if (R() < 0.18) continue; const u = eu - (bl - 20) / 2 + t * 3.8, [x, zz] = at(u, ev + 28); if (!libre(x, zz, e)) continue;
-      const w0 = B.nv; remolque(B, LONA[Math.floor(R() * LONA.length)], C.negro, false); L.xf(B, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); } }
-  if (best.s >= 9 && R() < 0.55) { const [x, zz] = at(eu + bl * 0.3, ev + 19); if (libre(x, zz, e)) { const w0 = B.nv; torreFocos(B, 18); L.xf(B, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); } }
+    for (let t = 0; t < nr; t++) { if (R() < 0.18) continue; const u = eu - (bl - 20) / 2 + t * 3.8, [x, zz] = at(u, ev + 28); if (!libre(x, zz, e) || !libre(...at(u, ev + 21), e) || !libre(...at(u, ev + 35), e)) continue;
+      const Bq = peq(h, x, zz), w0 = Bq.nv; remolque(Bq, LONA[Math.floor(R() * LONA.length)], C.negro, false); L.xf(Bq, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); } }
+  if (best.s >= 9 && R() < 0.55) { const [x, zz] = at(eu + bl * 0.3, ev + 19); if (libre(x, zz, e)) { const w0 = B.nv; torreFocos(B, 18); L.xf(B, w0, x, zz, hd(-nx, -nz), 1, 1, h.y(x, zz)); luz(h, x, zz, 30, 0.9); } }
   // valla del patio de maniobras (tres lados, con puerta) si el patio está libre
   if (best.s >= 15 && R() < 0.7) { const D = 38, ua = eu - bl / 2 - 3, ub = eu + bl / 2 + 3, P = [at(ua, ev), at(ua, ev + D), at(ub - 16, ev + D)], Q = [at(ub, ev + D), at(ub, ev)];
-    if (P.every(p => libre(p[0], p[1], e)) && Q.every(p => libre(p[0], p[1], e))) { const y = (p) => h.y(p[0], p[1]);
-      valla(B, P[0], P[1], y(P[0]), y(P[1])); valla(B, P[1], P[2], y(P[1]), y(P[2])); valla(B, Q[0], Q[1], y(Q[0]), y(Q[1])); } }
+    const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], M3 = [mid(P[0], P[1]), mid(P[1], P[2]), mid(Q[0], Q[1])];
+    if (P.concat(Q, M3).every(p => libre(p[0], p[1], e))) { const y = (p) => h.y(p[0], p[1]), Bq = peq(h, ...M3[1]);
+      valla(Bq, P[0], P[1], y(P[0]), y(P[1])); valla(Bq, P[1], P[2], y(P[1]), y(P[2])); valla(Bq, Q[0], Q[1], y(Q[0]), y(Q[1])); } }
   // bloque de oficinas en un testero (naves grandes casi rectangulares)
   if (rect > 0.85 && area > 2500 && R() < 0.45) { const s = R() < 0.5 ? -1 : 1, [x, zz] = at(s > 0 ? u1 - 6 : u0 + 6, cv), w = Math.min(lv + 0.8, 40);
     bx(B, x, zz, yb, w, 12.8, H + 2.2, ang, [228, 228, 224], K.VENTANAS, AUX.ventanas(3.6, 1.5, 0.82, 0.48)); }
@@ -524,12 +680,18 @@ function zonaNaves(id, nombre, zn, Z) {
       // ¿punto (local) libre de edificios (salvo la nave e)? (cajas de todos los edificios del recinto, en rejilla de 100 m)
       const libre = (lx, lz, e) => { const x = lx + h.x, z = lz + h.z;
         for (const c of rejilla(x, z)) { if (Math.abs(x - c[0]) < c[2] + 2 && Math.abs(z - c[1]) < c[3] + 2) { if (e && Math.abs(c[0] - e.wx) < 2 && Math.abs(c[1] - e.wz) < 2) continue; return false; } }
-        return true; };
+        return !enCalle(x, z, 1.5); };
       for (const e of h.edif) { const pl = e.plantas[0]; if (!pl) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
         for (const p of pl) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
         e.wx = (x0 + x1) / 2 + h.x; e.wz = (z0 + z1) / 2 + h.z; naveLog(B, h, e, R, zn, libre); }
       // control de acceso con aduana en la entrada del recinto
-      for (const g of (PD2.aduanas || [])) if (g[0] === zn) { const [lx, lz] = [g[1] - h.x, g[2] - h.z], v0 = B.nv; aduana(B, g[4]); L.xf(B, v0, lx, lz, g[3], 1, 1, h.y(lx, lz)); }
+      // PU3: en la entrada real del recinto (la calle más ancha que cruza su contorno), 30 m hacia dentro, sobre la calzada de acceso
+      // y con tantos carriles como su anchura; la oficina queda fuera de la calzada
+      for (const g of (PD2.aduanas || [])) if (g[0] === zn) {
+        const E = entrada(PD2.zonas[zn], g); let gx = g[1], gz = g[2], ga = g[3], nl = g[4];
+        if (E && E.d < 1500) { const a = E.ang * D2R; gx = E.x + Math.sin(a) * 30; gz = E.z + Math.cos(a) * 30; ga = E.ang; nl = Math.max(2, Math.min(8, Math.round(E.w * 2 / 4.4))); }
+        (window.BCN_PUERTO.aduanas = window.BCN_PUERTO.aduanas || {})[zn] = [Math.round(gx), Math.round(gz), Math.round(ga), nl, E ? Math.round(E.d) : -1];
+        const [lx, lz] = [gx - h.x, gz - h.z], v0 = B.nv; aduana(B, nl); L.xf(B, v0, lx, lz, ga, 1, 1, h.y(lx, lz)); luz(h, lx, lz, 22, 0.8); }
     } });
 }
 // playa de vías de mercancías (Morrot / Can Tunis): vías paralelas recortadas al recinto, trenes de contenedores, tolvas,
@@ -539,7 +701,7 @@ function playaVias() {
   ficha({ id: 'pu_vias', nombre: 'Platja de vies de mercaderies', x: V.c[0], z: V.c[1], alto: 25, ancho: 600, largo: 1200, build(B, h) {
     const R = h.R, [ux, uz] = V.u, nx = -uz, nz = ux, CJ = PD2.cajas, ang = hd(ux, uz);
     const W = (u, v) => [V.c[0] + ux * u + nx * v, V.c[1] + uz * u + nz * v];
-    const ok = (x, z) => { if (!pip(x, z, P)) return false; for (const c of rejilla(x, z)) if (Math.abs(x - c[0]) < c[2] + 4 && Math.abs(z - c[1]) < c[3] + 4) return false; return true; };
+    const ok = (x, z) => { if (!pip(x, z, P) || enCalle(x, z, 2)) return false; for (const c of rejilla(x, z)) if (Math.abs(x - c[0]) < c[2] + 4 && Math.abs(z - c[1]) < c[3] + 4) return false; return true; };
     let umin = 1e9, umax = -1e9, vmin = 1e9, vmax = -1e9;
     for (const p of P) { const dx = p[0] - V.c[0], dz = p[1] - V.c[1], u = dx * ux + dz * uz, v = dx * nx + dz * nz; umin = Math.min(umin, u); umax = Math.max(umax, u); vmin = Math.min(vmin, v); vmax = Math.max(vmax, v); }
     const gy = (x, z) => h.y(x - h.x, z - h.z), tramos = [];
@@ -560,23 +722,23 @@ function playaVias() {
       // tren: una de cada dos vías tiene vagones
       if (R() < 0.45) continue;
       const tipo = Math.floor(R() * 4), nW = Math.floor((t.u1 - t.u0 - 30) / 19.5 * (0.4 + R() * 0.55)); let u = t.u0 + 12 + R() * 10;
-      if (R() < 0.7) { const [x, z] = loc(...W(u + 9, t.v)), y = h.y(x, z) + 0.45, v0 = B.nv;                       // locomotora diésel
-        bx(B, 0, 0, 0.6, 2.9, 19, 0.7, 0, C.negro); bx(B, 0, 0.6, 1.3, 2.7, 15, 2.9, 0, R() < 0.5 ? [226, 180, 40] : [70, 80, 96], K.METAL, AUX.panel(1.2, 0.06, 0));
-        bx(B, 0, 8.4, 1.3, 2.9, 2.6, 3.4, 0, [236, 236, 230], K.VENTANAS, AUX.ventanas(3.4, 1.4, 0.8, 0.4)); bx(B, 0, 9.75, 2.6, 0.6, 0.12, 0.4, 0, [255, 240, 210], K.EMISIVO, LUZ(1.3));
-        L.xf(B, v0, x, z, ang, 1, 1, y); u += 21; }
+      if (R() < 0.7) { const [x, z] = loc(...W(u + 9, t.v)), y = h.y(x, z) + 0.45, Bq = peq(h, x, z), v0 = Bq.nv;                       // locomotora diésel
+        bx(Bq, 0, 0, 0.6, 2.9, 19, 0.7, 0, C.negro); bx(Bq, 0, 0.6, 1.3, 2.7, 15, 2.9, 0, R() < 0.5 ? [226, 180, 40] : [70, 80, 96], K.METAL, AUX.panel(1.2, 0.06, 0));
+        bx(Bq, 0, 8.4, 1.3, 2.9, 2.6, 3.4, 0, [236, 236, 230], K.VENTANAS, AUX.ventanas(3.4, 1.4, 0.8, 0.4)); bx(Bq, 0, 9.75, 2.6, 0.6, 0.12, 0.4, 0, [255, 240, 210], K.EMISIVO, LUZ(1.3));
+        L.xf(Bq, v0, x, z, ang, 1, 1, y); u += 21; }
       for (let w = 0; w < nW && u < t.u1 - 12; w++, u += tipo === 0 ? 19.6 : 15.5) {
-        const [x, z] = loc(...W(u, t.v)), y = h.y(x, z) + 0.45, v0 = B.nv, k = tipo === 3 ? Math.floor(R() * 3) : tipo;
-        if (k === 0) { bx(B, 0, 0, 0.6, 2.6, 19, 0.6, 0, [70, 60, 52]); if (R() < 0.85) pila(B, 0, -4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); if (R() < 0.75) pila(B, 0, 4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); }
-        else if (k === 1) { bx(B, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); const t0 = B.nv; L.tambor(B, 0, 0, -6.6, 6.6, 1.45, { lados: 10, col: R() < 0.5 ? [214, 214, 210] : [52, 54, 58], k: K.METAL, aux: AUX.panel(1.5, 0.05, 0) });
-          rotX(B, t0, 90, 0, 0); L.xf(B, t0, 0, 0, 0, 1, 1, 2.6); bx(B, 0, 0, 3.9, 0.9, 0.9, 0.6, 0, C.gris); }
+        const [x, z] = loc(...W(u, t.v)), y = h.y(x, z) + 0.45, Bq = peq(h, x, z), v0 = Bq.nv, k = tipo === 3 ? Math.floor(R() * 3) : tipo;
+        if (k === 0) { bx(Bq, 0, 0, 0.6, 2.6, 19, 0.6, 0, [70, 60, 52]); if (R() < 0.85) pila(Bq, 0, -4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); if (R() < 0.75) pila(Bq, 0, 4.9, 1.2, 1, 0, CONT[Math.floor(R() * CONT.length)]); }
+        else if (k === 1) { bx(Bq, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); const t0 = Bq.nv; L.tambor(Bq, 0, 0, -6.6, 6.6, 1.45, { lados: 10, col: R() < 0.5 ? [214, 214, 210] : [52, 54, 58], k: K.METAL, aux: AUX.panel(1.5, 0.05, 0) });
+          rotX(Bq, t0, 90, 0, 0); L.xf(Bq, t0, 0, 0, 0, 1, 1, 2.6); bx(Bq, 0, 0, 3.9, 0.9, 0.9, 0.6, 0, C.gris); }
         else { const c = k === 2 ? [[140, 64, 44], [96, 70, 56], [70, 96, 120]][Math.floor(R() * 3)] : [150, 150, 146];
-          bx(B, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); bx(B, 0, 0, 1.1, 2.9, 14.2, k === 2 ? 3.1 : 2.8, 0, c, K.METAL, AUX.panel(k === 2 ? 1.2 : 0.8, 0.06, 0)); }
-        for (const s of [-1, 1]) bx(B, 0, s * (tipo === 0 ? 6.2 : 5), 0, 2.2, 2.6, 0.6, 0, C.negro);
-        L.xf(B, v0, x, z, ang, 1, 1, y); }
+          bx(Bq, 0, 0, 0.6, 2.8, 14.5, 0.5, 0, C.negro); bx(Bq, 0, 0, 1.1, 2.9, 14.2, k === 2 ? 3.1 : 2.8, 0, c, K.METAL, AUX.panel(k === 2 ? 1.2 : 0.8, 0.06, 0)); }
+        for (const s of [-1, 1]) bx(Bq, 0, s * (tipo === 0 ? 6.2 : 5), 0, 2.2, 2.6, 0.6, 0, C.negro);
+        L.xf(Bq, v0, x, z, ang, 1, 1, y); }
     }
     // torres de focos y gabinete de circulación junto a la vía central
     if (tramos.length) { const tm = tramos[Math.floor(tramos.length / 2)];
-      for (let u = tm.u0 + 30; u < tm.u1; u += 160) { const [x, z] = loc(...W(u, tm.v + 2.5)), v0 = B.nv; torreFocos(B, 26); L.xf(B, v0, x, z, ang + 90, 1, 1, h.y(x, z)); }
+      for (let u = tm.u0 + 30; u < tm.u1; u += 160) { const [x, z] = loc(...W(u, tm.v + 2.5)), v0 = B.nv; torreFocos(B, 26); L.xf(B, v0, x, z, ang + 90, 1, 1, h.y(x, z)); luz(h, x, z, 40, 1); }
       const t0 = tramos[0], [x, z] = loc(...W((t0.u0 + t0.u1) / 2, t0.v - 9)), v0 = B.nv, y = h.y(x, z);
       bx(B, 0, 0, 0, 8, 14, 7, 0, [222, 214, 196], K.VENTANAS, AUX.ventanas(3.5, 2.2, 0.7, 0.5)); bx(B, 0, 0, 7, 9, 15, 0.6, 0, [120, 124, 128]);
       L.xf(B, v0, x, z, ang, 1, 1, y); }
