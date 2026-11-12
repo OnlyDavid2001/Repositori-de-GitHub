@@ -1,0 +1,102 @@
+[
+{
+"name": "g_0",
+"n": "Plaça d'en Joanic",
+"x": 11565.0,
+"z": 16004.6,
+"agl": 80,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_1",
+"n": "Plaça de Gal·la Placídia",
+"x": 10739.9,
+"z": 15301.7,
+"agl": 104,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_2",
+"n": "Plaça de Sants",
+"x": 9251.1,
+"z": 12733.3,
+"agl": 89,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_3",
+"n": "Plaça de Maragall",
+"x": 13134.5,
+"z": 17634.7,
+"agl": 83,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_4",
+"n": "Plaça d'Eivissa",
+"x": 11456.8,
+"z": 18794.9,
+"agl": 79,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_5",
+"n": "Plaça de la Sagrada Família",
+"x": 12426.0,
+"z": 15626.0,
+"agl": 131,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_6",
+"n": "Plaça de Gaudí",
+"x": 12625.7,
+"z": 15837.1,
+"agl": 122,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_7",
+"n": "Plaça del Diamant",
+"x": 11014.6,
+"z": 15888.7,
+"agl": 57,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_8",
+"n": "Plaça de la Virreina",
+"x": 11129.2,
+"z": 15980.6,
+"agl": 60,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+},
+{
+"name": "g_9",
+"n": "Plaça del Sol",
+"x": 11082.7,
+"z": 15615.2,
+"agl": 58,
+"yaw": 0.3491,
+"pitch": 0.6435,
+"hour": 10.5
+}
+]

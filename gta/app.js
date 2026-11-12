@@ -1516,6 +1516,7 @@ await tick();
 const STS = FXS ? await addMod('st', 'BCN_STREETS', 'calles de detalle') : null;
 // azoteas con detalle (rooftops.js): usa los índices de las fachadas y su shader de detalle
 if (FXS) await addMod('roof', 'BCN_ROOFTOPS', 'azoteas con detalle');
+if (FXS) await addMod('plz', 'BCN_PLAZAS', 'plazas');                 // plazas (plazas.js): pavimento, equipamiento y plazas singulares
 // naturaleza: volumen en el monte, los parques grandes y el delta (necesita ctx.city de las fachadas para no invadir calles
 // ni edificios; sin él planta igual, solo por la máscara del suelo)
 setMsg('Plantando el monte…', 0.99);

@@ -26,7 +26,12 @@ Lee `n3/comun.md` y de DESARROLLO §3, §6, §9 y §10 (los hitos: no los tapes 
    Josep Oriol, Plaça de la Vila de Gràcia (torre del reloj), del Sol, del Diamant, de la Virreina, de la Revolució,
    Universitat, Urquinaona, Tetuan (monumento), Francesc Macià (óvalo con estanque), Molina, Sants, la Concòrdia, Sant Vicenç
    de Sarrià, el Sortidor, la Rambla del Raval (con su gato), Plaça dels Àngels (MACBA) y las que encuentres importantes.
-5. **El resto**: todas las demás con el equipamiento genérico. Repaso de coste y hoja final.
+5. **Paseos y ramblas** (añadido del usuario: «tema de paseos, tema de calles anchas, corrígelo y perfecciónalo»): La
+   Rambla, Rambla de Catalunya, Passeig de Sant Joan, Rambla del Poblenou, Passeig de Lluís Companys, Rambla del Raval,
+   Rambla de Sants, Passeig de Picasso, los andenes centrales y laterales de la Diagonal, la Gran Via y la Meridiana, el
+   Passeig de Gràcia (aceras anchas, bancos-farola de Gaudí): bancos, farolas, quioscos, parterres, alcorques, fuentes y la
+   continuidad del paseo central, sin huecos. (El pavimento y el asfalto los hace SUELOS; tú el equipamiento.)
+6. **El resto**: todas las demás con el equipamiento genérico. Repaso de coste y hoja final.
 
 ## Verificación
 Hoja ANTES/DESPUÉS de las plazas singulares a pie y desde el dron (10:30) y de noche (23:00) y una hoja con 20 plazas
