@@ -79,6 +79,15 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
 5. **Tirones**: la construcción de una celda de transporte.js tarda hasta ~45 ms sin trocear; trocéala. ground.webp se
    descodifica dos veces (nature.js y transporte.js): compártelo si es fácil.
 
+6. **Asfalto demasiado negro en calles reales (tras S3)**: S3 dio a cada estado un albedo absoluto y en calles reales el
+   Passeig de Gràcia y el Eixample salen casi negros, como «nuevo» (`scratchpad/n3/s3/hoja_calles_buena.jpg`). Comprueba
+   qué devuelve `BCN_SUELOS.asfalto()` allí (deberían ser seminuevo y gastado normal) y sube el albedo de los estados 0–1
+   lo justo para que nuevo y seminuevo se distingan del resto sin que la ciudad se vuelva negra; mira también la Diagonal
+   (el parche sobre el paso de cebra salía negro) y una calle muy gastada a la sombra. El uniforme de depuración `uSF`
+   (FS_ROAD y FS_WALK) debe quedar a (0, 0).
+7. **Carga del allanado**: `allanar` tarda ~2,3 s en un hilo (S3 lo repartió en workers sin medir mejora con la máquina
+   libre). Mídelo con todo junto; si pasa de 1,5 s, precalcula la corrección (S3 estimó ~2,9 MB a 2 cm) o hazlo perezoso.
+
 ### Para REV3 (defectos visibles; empieza por estos)
 1. **El mar de noche (prioritario: el usuario lo pidió ver)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
    `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces de
@@ -97,3 +106,5 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
    `scratchpad/n3/ae4/`) y el techo del viaducto de la T1 muy oscuro de noche.
 6. **Puerto**: PU3 dejó sin revisar las aduanas recolocadas (`scratchpad/n3/pu3/D_vB2_*`) y las vistas a pie
    `sts_cerca2`, `dep_pie2` y `cru_pie2`; si la aduana de la ZAL Prat cae sobre una vía pública, fíjala en la entrada.
+7. **Suelos en calles reales**: S3 no pudo capturar Tres Torres, Raval, Ciutat Meridiana, 22@ ni la noche en calles
+   reales; hazlo con todo junto y comprueba que los 5 asfaltos y los 6 modelos de acera se reconocen (con `uSF` a 0).
