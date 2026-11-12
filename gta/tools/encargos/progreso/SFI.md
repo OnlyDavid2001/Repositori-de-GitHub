@@ -8,7 +8,7 @@
 - [x] `node tools/mz_partidas.js` relanzado: resultado idéntico (593 manzanas, 294 037 edificios), el JSON no cambia y el
       juego usa la caché (`MZC.nB === nB0`).
 - [x] DESARROLLO.md §13.
-- [ ] Capturas 10:30 y 23:00 (DESPUÉS) y ANTES en la rama principal; hoja; triángulos y carga.
+- [x] Capturas 10:30 y 23:00 (DESPUÉS) y ANTES en la rama principal; hojas; triángulos y carga (ver «Resultado»).
 
 ## Arreglos de integración
 1. **Cota de la Glòria**: el suelo del templo (`yF`) queda ~2,3 m sobre Mallorca; la losa de ENTORNO va a Mallorca + 5,5
@@ -31,5 +31,32 @@ cruz procedural. Se conservan las franjas de vidrio que se encienden de noche y 
 triángulos (+13 596).
 
 ## Pendiente / flojo
-- La cruz del modelo del usuario ya está (ver «Cruz»); faltan los miradores de las puntas (procedurales, en DET) por
-  casar con su forma.
+
+
+## Resultado (capturas 960×540, 0 errores y 0 avisos de consola en las tres tandas)
+Carpeta `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/sf/sfi/`: `hoja_sfi.jpg` (ANTES rama
+principal / DESPUÉS, 6 vistas a las 10:30), `hoja_sfi_noche_cruz.jpg` (dron NO, Naixement a pie, 4 vistas a las 23:00 y la
+cruz del usuario de día y de noche). Vistas en `v_desp.json`, `v_antes.json`, `v_cruz.json` (generador `mkv.js`).
+
+| vista | hitos dibujados ANTES → DESPUÉS | basílica (`sf.tris`) |
+|---|---|---|
+| dron SE (≈ 385 m) | 478 418 → 559 493 | 40 516 |
+| Pl. de Gaudí a pie | 475 012 → 650 459 | 134 888 |
+| Pl. de la Sagrada Família a pie | 477 786 → 653 233 | 134 888 |
+| escalinata, desde abajo | 477 266 → 652 713 | 134 888 |
+| Diagonal mirando a la Glòria | 477 782 → 653 229 | 134 888 |
+| terraza ante la Glòria | 477 502 → 652 949 | 134 888 |
+| remates (con la cruz del usuario) | — → 666 829 | 148 484 |
+
+Hitos cargados 698 777 → 874 224 (887 820 con la cruz del usuario). Carga 17,0 s (rama principal) → 15,5 s / 14,4 s
+(máquina compartida; sin diferencia apreciable). Las manzanas usan la caché precalculada.
+
+## Flojo
+- Las dos manzanas delante de la Glòria salen vacías (césped) fuera de la franja de 60 m, como ya dijo ENT2; no he
+  encontrado qué las vacía (no es mz_partidas: el precálculo sale idéntico).
+- De noche, desde el dron, la basílica sigue casi blanca y uniforme (dron_se_n) y la escalinata quema con los focos.
+- Cruz del usuario de día: las franjas de vidrio (gris oscuro de día) y los puentes finos hacia los evangelistas se ven como
+  una banda oscura sobre los brazos; de noche se lee bien con los haces.
+- La escalera del nártex (≈ 20 peldaños de 0,32 m de huella) es una interpretación para salvar los 3,2 m entre el suelo del
+  templo del juego y la losa; con el terreno real (Mallorca ~4 m más baja) no haría falta.
+- Desde la terraza el surtidor de 20 m se ve como una barra blanca (terraza_pie).

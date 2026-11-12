@@ -342,7 +342,7 @@ function construir(B, h, L, q) {
           L.q4(B, [AX + dx * hs - px * ws, ya, CZ + dz * hs - pz * ws], [AX + dx * hs + px * ws, ya, CZ + dz * hs + pz * ws], [AX + dx * hs + px * ws, yb, CZ + dz * hs + pz * ws], [AX + dx * hs - px * ws, yb, CZ + dz * hs - pz * ws], GL, K.EMISIVO, aG); }
     }
     if (MED) SF.cruz = [AX, yX + yF, CZ];
-    if (DET) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {   // miradores (vidrio) en las puntas de los brazos
+    if (DET && !SF.cruzM) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {   // miradores (SFI: la cruz del usuario ya los lleva) (vidrio) en las puntas de los brazos
       const x = AX + dx * 6.8, z = CZ + dz * 6.8;
       L.caja(B, x, z, yX - 0.9, dx ? 0.2 : 2.2, dz ? 0.2 : 2.2, 1.8, 0, [150, 176, 196], K.CORTINA, { aux: L.aux.cortina(0.9, 0.6, 0.1) }); }
     // puentes de la torre de Jesucrist a las de los evangelistas
