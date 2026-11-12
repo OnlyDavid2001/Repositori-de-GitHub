@@ -17,7 +17,7 @@
      ni bancos encima.
    Niveles: celdas propias de 200 m; nivel 1 (≤ 165 m, con tapa, interior y vidrios) y nivel 2 (140–440 m: cajas, tótem y
    el hueco como un paño oscuro), fundidos con el tramado. Material: copia del shader de detalle (como rooftops.js) con
-   dos tipos propios: TRSIGN (140, rótulos de un atlas pintado al iniciar) y TRIN (141, interior: azulejo, granito,
+   dos tipos propios: TRSIGN (150, rótulos de un atlas pintado al iniciar) y TRIN (151, interior: azulejo, granito,
    penumbra por profundidad y luz propia que sube de la escalera de noche).
    Azar por ámbito: seed(150, estación, k), seed(151, tramo, n).
    window.BCN_TRANSPORTE = { LINES, init(ctx) → { update, busy, flush, stats, info } }. */
@@ -26,12 +26,12 @@
 const GEO = window.BCN_GEO;
 const { K, GB, quad, hpl, jamb, rect, obox, cyl, tube, quadN, pbrAux, seed, R, shade } = GEO;
 
-GEO.regKind('TRSIGN', 140, `
+GEO.regKind('TRSIGN', 150, `
     vec3 tx = texture2D(tTrSign, vInfo.xy*(255.0/256.0)).rgb;
     float fN = smoothstep(0.05, 0.3, uDusk), lt = vInfo.z;
     alb = tx*(1.0 - 0.55*lt*fN); rough = 0.3;
     emis = emit(tx, lt*mix(0.42, 1.25, fN));`, 'uniform sampler2D tTrSign;');
-GEO.regKind('TRIN', 141, `
+GEO.regKind('TRIN', 151, `
     float pat = floor(vInfo.x*255.0 + 0.5), lampF = vInfo.z, fN = smoothstep(0.05, 0.3, uDusk);
     ao = mix(0.35, 1.0, vInfo.y); rough = 0.7;
     if (pat > 0.5 && pat < 1.5) { vec2 g = abs(fract(P/0.15) - 0.5); float gr = smoothstep(0.43, 0.48, max(g.x, g.y))*nearF;
