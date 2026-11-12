@@ -316,7 +316,7 @@ const P3PIECE = {
       rev(B, F, s * (L / 2 - 2.2), 0, [[0.7, y + 0.42], [0.45, y + 0.7], [0.15, y + 1.0], [0, y + 1.05]], 7, [236, 242, 244], K.PLZ_WATER, { aux: wa, cap: 0 }); }
     return 1.4; },
   // la Deessa (Clarà) en su estanque redondo: borde de piedra, agua, roca y figura; surtidores alrededor
-  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 190, 0, 0];
+  pondC(B, F, y, h, ex) { const r = ex.r || 6, wa = [0, 150, 0, 0];
     rev(B, F, 0, 0, [[r + 0.55, y - 0.2], [r + 0.55, y + 0.45], [r + 0.7, y + 0.55], [r + 0.2, y + 0.6]], 32, [196, 190, 176], K.FURN, { aux: A0.STONE, cap: 0 });
     rev(B, F, 0, 0, [[0, y + 0.4], [r + 0.2, y + 0.4]], 32, C.water, K.PLZ_WATER, { aux: wa });
     box(B, F, -1.9, 1.9, y + 0.3, y + 1.15, -0.9, 0.9, [150, 144, 132], K.FURN, 7, A0.STONE); box(B, F, -2.0, 2.0, y + 1.15, y + 1.25, -1.0, 1.0, [170, 164, 152], K.FURN, 7, A0.STONE);
