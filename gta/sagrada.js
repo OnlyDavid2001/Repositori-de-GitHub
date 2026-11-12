@@ -457,13 +457,15 @@ function construir(B, h, L, q) {
         const arc = arcoC(hw + 2.75, 0, ys + 1.8, ya + 4.6, 14);
         for (let j = 2; j < arc.length - 2; j++) { const [u, y] = arc[j], p = X(u, y, 2.4), lg = 0.6 + ((j * 7) % 5) * 0.3; rv(p[0], p[2], [[0, y - lg], [0.42, y - 0.1], [0.3, y + 0.3]], 5, NX, K.PIEDRA, { cap: 0 }); }
         // vegetación esculpida en las enjutas (racimos de hojas y frutos de piedra a ambos lados del arco)
-        for (let j = 0; j < 22; j++) { const sg = j % 2 ? 1 : -1, t = j / 22, u = sg * (hw + 3.6 + (j % 3) * 0.7), y = ys + 1 + t * (ya - ys + 4), p = X(u, y, 1.2 + (j % 4) * 0.35);
-          L.esfera(B, p[0], p[1], p[2], 0.55 + (j % 3) * 0.25, { gajos: 6, anillos: 4, col: sh(NX, 0.92 + (j % 5) * 0.04), k: K.PIEDRA, sy: 0.8 }); }
+        for (let j = 0; j < 22; j++) { const sg = j % 2 ? 1 : -1, t = j / 22, u = sg * (hw + 3.3 + (j % 3) * 0.5), y = ys + 1 + t * (ya - ys + 4), p = X(u, y, 0.25);
+          L.esfera(B, p[0], p[1], p[2], 0.35 + (j % 3) * 0.12, { gajos: 6, anillos: 4, col: sh(NX, 0.96 + (j % 5) * 0.03), k: K.PIEDRA, sy: 1.5 }); }
+        // puertas de bronce con hiedra y hojas (Sotoo): dos hojas verdosas a cada lado del parteluz
+        for (const sg of [-1, 1]) { const p = X(sg * hw * 0.5, 0, 0.12); L.caja(B, p[0], p[2], 0, 0.1, hw * 0.88, ys * 0.62, 0, [66, 76, 56], K.METAL, { aux: L.aux.panel(0.9, 0.12, 0) }); }
         for (let u = -w / 2 + 0.3; u < w / 2; u += 0.5) { const p = X(u, 27.5, 0.45), lg = 0.6 + (Math.abs(Math.round(u * 13)) % 6) * 0.35; rv(p[0], p[2], [[0, 27.5 - lg], [0.4, 27.4], [0.3, 27.8]], 5, NX, K.PIEDRA, { cap: 0 }); }
         // parteluz (columna central con la genealogía)
         const pc = X(0, 0, 0.9); L.tambor(B, pc[0], pc[2], 0, ys - 0.4, w > 10 ? 0.55 : 0.42, { lados: 10, col: FG, k: K.PIEDRA });
         if (nom === 'caritat') {                                      // Nativitat: Maria, Josep, el Nen al pesebre, el buey y la mula
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.4, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.2, hw * 1.15, 0.6, 0, NX, K.PIEDRA);
           figura(...X(-1.7, yn, 1.1), A, 3.3, { col: FG, sentada: true, pose: 'rezar', aureola: true });
           figura(...X(1.8, yn, 1.1), A, 3.6, { col: FG, pose: 'delante', aureola: true });
           { const p = X(0, yn, 1.3); L.caja(B, p[0], p[2], yn, 0.8, 1.3, 0.55, 0, sh(NX, 0.9), K.PIEDRA); L.esfera(B, p[0], yn + 0.7, p[2], 0.28, { gajos: 6, anillos: 4, col: FG, k: K.PIEDRA, sy: 0.7 }); }
@@ -477,12 +479,12 @@ function construir(B, h, L, q) {
           for (let k = 0; k < 18; k++) { const b = k * 2.4, py = 45 + k * 0.7, rr = Math.max(0.6, 2.9 - (py - 48) * 0.16) + 0.25;   // palomas del ciprés
             L.esfera(B, x0 + 2.2 + Math.cos(b) * rr, py, zc + Math.sin(b) * rr, 0.38, { gajos: 5, anillos: 3, col: [240, 238, 232], k: K.LISO, sy: 0.7 }); }
         } else if (nom === 'esperanca') {                              // huida a Egipto y matanza de los inocentes
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.2, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.0, hw * 1.15, 0.6, 0, NX, K.PIEDRA);
           animal(...X(-0.3, yn, 0.9), A + 90, 2.2, 'mula', sh(NX, 0.92)); figura(...X(-0.3, yn + 0.95, 0.9), A, 1.9, { col: FG, sentada: true, pose: 'delante' });
           figura(...X(1.6, yn, 1.0), A + 70, 2.6, { col: FG, pose: 'delante' });
           figura(...X(-1.2, ya + 1.2, 2.0), A + 20, 2.6, { col: FG, pose: 'arriba' }); figura(...X(1.2, ya + 1.2, 2.0), A - 20, 2.4, { col: FG, pose: 'rezar' });
         } else {                                                       // Visitació y presentación en el templo
-          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.2, hw * 1.7, 0.6, 0, NX, K.PIEDRA);
+          const yn = ys - 0.4; L.caja(B, pc[0] + 0.1, zz, yn - 0.6, 2.0, hw * 1.15, 0.6, 0, NX, K.PIEDRA);
           figura(...X(-1.0, yn, 1.0), A + 25, 2.6, { col: FG, pose: 'delante', aureola: true }); figura(...X(1.0, yn, 1.0), A - 25, 2.5, { col: FG, pose: 'delante' });
           for (const u of [-1.6, 0, 1.6]) figura(...X(u, ya + 1.2, 2.0), A, u ? 2.4 : 2.7, { col: FG, pose: u ? 'rezar' : 'arriba', aureola: !u });
         }
