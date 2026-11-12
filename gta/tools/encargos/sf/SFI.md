@@ -30,3 +30,14 @@ celosía de panal y basamento con escalinata). **SFI**: comprueba que la escalin
 Glòria de esa maqueta. **SFR**: míralas con Read y empieza tus 10 defectos por las diferencias con ellas (encuadres
 parecidos a los de las fotos, de día y a las 23:00); la hoja final debe incluir una vista lo más parecida posible a cada
 una de las tres fotos.
+
+## Notas del coordinador tras ver la primera pasada de SF3 (para SFR, prioridad alta)
+Capturas en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/sf/vistazo/` (`g_*.jpg`, vistas en
+`v.json` de esa carpeta). Comparadas con las fotos del usuario:
+1. **Evangelistas**: sus torres acaban en esferas lisas; en la foto acaban en sus símbolos, esculturas blancas y doradas
+   con las alas abiertas (ángel, león, buey y águila). Hazlas reconocibles desde los remates y desde el dron.
+2. **Noche desde el dron** (`g_dron_gloria_n.jpg`): la basílica entera sale casi blanca y uniforme. En el render de
+   referencia es dorada, con la retícula encendida, las aristas marcadas y luz fría azulada en pináculos y cubiertas de
+   las naves; recupera ese contraste sin apagarla. La cruz con sus haces está bien: consérvala.
+3. **Torre de Jesucrist**: en la foto es un cono largo que se va estrechando poco a poco; compárala con
+   `usuario_torres_dia.jpg` y corrige el perfil si sale cilíndrica con una punta.
