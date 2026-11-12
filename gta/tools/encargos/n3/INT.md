@@ -88,6 +88,10 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
 7. **Carga del allanado**: `allanar` tarda ~2,3 s en un hilo (S3 lo repartió en workers sin medir mejora con la máquina
    libre). Mídelo con todo junto; si pasa de 1,5 s, precalcula la corrección (S3 estimó ~2,9 MB a 2 cm) o hazlo perezoso.
 
+8. **Coste de los árboles de plaza (tras P3)**: P3 pasó los árboles de plaza a las mallas de trees.js; en Glòries a pie
+   suman ~263 k triángulos (514 instancias en nivel medio). Baja la distancia del nivel medio o la densidad del parque
+   hasta que Glòries a pie quede por debajo de ~120 k en árboles, sin que se vea pelado desde el dron.
+
 ### Para REV3 (defectos visibles; empieza por estos)
 1. **El mar de noche (prioritario: el usuario lo pidió ver)**: desde el mar a las 23:00 (`scratchpad/mar/m_mar_23.jpg`,
    `m_mar_barca_23.jpg`; vistas en `scratchpad/mar/v.json`) el agua es un plano casi negro, sin el reflejo de las luces de
@@ -108,3 +112,8 @@ asfalto y acera, metro, puerto, aeropuerto, la ciudad desde el mar de noche) en
    `sts_cerca2`, `dep_pie2` y `cru_pie2`; si la aduana de la ZAL Prat cae sobre una vía pública, fíjala en la entrada.
 7. **Suelos en calles reales**: S3 no pudo capturar Tres Torres, Raval, Ciutat Meridiana, 22@ ni la noche en calles
    reales; hazlo con todo junto y comprueba que los 5 asfaltos y los 6 modelos de acera se reconocen (con `uSF` a 0).
+8. **Plaça de Catalunya (petición expresa del usuario: «muy espectacular»)**: tras P3 la explanada se ve muy grande, clara
+   y vacía desde el dron bajo, los anillos rojos se leen planos, las esculturas son figuras genéricas y algunas copas
+   cercanas salen como manchas negras a las 23:00 (`scratchpad/n3/p3/d3_cat_*.jpg`). Dale vida y relieve: parterres más
+   generosos alrededor de la explanada como en la real, anillos con canto o junta de piedra que se lean, gente sentada en
+   los bordes de las fuentes y palomas visibles, y que de noche se vea espectacular desde el dron.
