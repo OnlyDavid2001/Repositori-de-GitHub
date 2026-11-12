@@ -73,7 +73,7 @@ varying vec3 vPos; varying vec3 vLoc; varying vec2 vUV;
 void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position; vUV = uv; gl_Position = viewProjection*wp; }`;
   const FS_WALK = `
 varying vec3 vLoc; varying vec2 vUV;
-uniform vec2 uFade; uniform sampler2D tField; uniform sampler2D tKind; uniform sampler2D tPanD; uniform sampler2D tPanN; uniform sampler2D tGrD; uniform sampler2D tGrN;
+uniform vec2 uFade; uniform vec2 uSF; uniform sampler2D tField; uniform sampler2D tKind; uniform sampler2D tPanD; uniform sampler2D tPanN; uniform sampler2D tGrD; uniform sampler2D tGrN;
 // SUELOS (día 3): relieve de las baldosas propias (altura 0 en la junta, 1 en la cara de la pieza)
 // hexagonal del Passeig de Gràcia (25 cm entre caras): amonite, estrella de mar y alga, en relieve, como en el panot de Gaudí
 float hexH(vec2 P){
@@ -120,6 +120,7 @@ void main(){
   // SUELOS: modelo de acera (0 panot de flor · 1 hexagonal del Passeig de Gràcia · 2 Diagonal · 3 panot nuevo · 4 panot dejado ·
   // 5 losas grandes) y desgaste 0–1, por tramo (suelos.js), en un atlas aparte sin filtrar
   vec4 kd = texture2D(tKind, vUV); float mdl = floor(kd.r*255.0/40.0 + 0.5), wr = kd.g;
+  if (uSF.y > 0.5) { mdl = uSF.y - 1.0; wr = clamp((uSF.x - 1.0)/4.0, 0.0, 1.0); }   // muestras forzadas (depuración, S3)
   float tfw0 = fwidth(P.x) + fwidth(P.y);
   if (dA < 0.3) {                                       // bordillo: pieza de granito de 30 cm
     vec3 tx = texture2D(tGrD, P*0.6).rgb;
@@ -159,19 +160,19 @@ void main(){
     float tfw = fwidth(gP.x) + fwidth(gP.y), tileK = 1.0 - smoothstep(0.25, 0.9, tfw);   // de lejos, sin variación por baldosa (evita el muaré)
     bool nu = abs(mdl - 3.0) < 0.5, su = mdl > 3.5;
     alb = tx*mix(nu ? 0.90 : 0.74, nu ? 1.06 : 1.12, n1)*mix(nu ? 0.95 : 0.88, nu ? 1.04 : 1.08, n2);
-    if (nu) alb *= vec3(1.07, 1.07, 1.06);
-    if (su) alb *= vec3(1.0, 0.98, 0.94);
+    if (nu) alb *= vec3(1.22, 1.21, 1.18);              // S3: nuevo, claramente más claro y limpio
+    if (su) alb *= vec3(0.80, 0.76, 0.69);              // S3: dejado, más oscuro y pardo
     vec2 cl = floor(gP), tf = fract(gP); float h0 = hash21(cl), rep = step(0.9, vnoise(P*0.08)*0.9 + h0*0.12)*(nu ? 0.0 : 1.0);
     alb *= mix(1.0, mix(nu ? 0.98 : 0.94, nu ? 1.02 : 1.05, h0), tileK); alb = mix(alb, alb*vec3(1.05, 1.03, 0.99), rep*tileK);
-    float gum = step(su ? 0.945 : nu ? 0.995 : 0.968, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
+    float gum = step(su ? 0.90 : nu ? 0.995 : 0.968, hash21(cl + 7.0))*smoothstep(0.13, 0.06, length(tf - vec2(hash21(cl + 3.0), hash21(cl + 9.0))*0.6 - 0.2)); alb *= 1.0 - gum*0.62*tileK;
     float dirt = smoothstep(mix(0.38, 0.22, wr), 0.75, n1g)*(nu ? 0.35 : 1.0); alb *= mix(1.0, mix(0.74, 0.68, wr), dirt*mix(0.45, smoothstep(0.0, 0.16, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5)) + dirt*0.12), tileK));
     vec3 tn = texture2D(tPanN, gP).xyz*2.0 - 1.0; tn.xy *= nu ? 1.4 : 1.25; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
     if (su) {
       // manchas de aceite y de humedad, piezas rotas (remiendo de cemento o grieta) y juntas negras
-      float st = smoothstep(0.64, 0.8, vnoise(P*0.9 + 4.0)); alb *= mix(1.0, 0.84, st)*mix(vec3(1.0), vec3(1.0, 0.97, 0.9), st);
+      float st = max(smoothstep(0.52, 0.7, vnoise(P*0.9 + 4.0)), 0.8*smoothstep(0.6, 0.75, vnoise(P*2.7 + 1.0))); alb *= mix(1.0, 0.66, st)*mix(vec3(1.0), vec3(1.0, 0.95, 0.85), st);
       float hb = hash21(cl + 13.0);
-      if (hb > 0.975) { alb = mix(alb, dot(alb, vec3(0.33))*vec3(1.08, 1.05, 1.0)*(0.9 + 0.2*vnoise(P*20.0)), tileK); N = mix(N, vec3(0.0, 1.0, 0.0), tileK); }
-      else if (hb > 0.93) { vec2 cd = tf - 0.5; float ln = abs(dot(cd, normalize(vec2(hash21(cl + 1.0) - 0.5, 0.6))) + 0.03*sin(cd.x*30.0));
+      if (hb > 0.94) { alb = mix(alb, dot(alb, vec3(0.33))*vec3(1.08, 1.05, 1.0)*(0.9 + 0.2*vnoise(P*20.0)), tileK); N = mix(N, vec3(0.0, 1.0, 0.0), tileK); }
+      else if (hb > 0.86) { vec2 cd = tf - 0.5; float ln = abs(dot(cd, normalize(vec2(hash21(cl + 1.0) - 0.5, 0.6))) + 0.03*sin(cd.x*30.0));
         alb *= 1.0 - 0.6*(1.0 - smoothstep(0.01, 0.03, ln))*tileK; }
       alb *= 1.0 - 0.12*(1.0 - smoothstep(0.02, 0.06, 0.5 - max(abs(tf.x - 0.5), abs(tf.y - 0.5))))*tileK;
     }
@@ -198,7 +199,7 @@ void main(){
   }
   FRAG(c);
 }`;
-  const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade'], ['tField', 'tKind', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
+  const matW = mkMat('walk', VS_WALK, FS_WALK, ['position', 'uv'], ['uFade', 'uSF'], ['tField', 'tKind', 'tPanD', 'tPanN', 'tGrD', 'tGrN']);
   const VS_TREE = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>

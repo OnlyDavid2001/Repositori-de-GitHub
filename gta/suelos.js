@@ -112,11 +112,16 @@ function acera(cls, hw, x0, z0, x1, z1) {
 // app.js la usa en heightAt (FLAT.h: así la siguen calzada, aceras, bordillos, árboles y mobiliario) y hunde la malla del
 // terreno lo justo para que no asome por encima de las calles (low: mínimo de la corrección alrededor de cada nudo de 20 m).
 const RAS = new Set([2, 3, 4, 5, 6, 7, 8, 11]);
-function allanar(h0, polys, WX, WZ, GW, GH, CELL) {
-  const CS = 5, TN = 52, TS = CS * TN, NTX = Math.ceil(WX / TS), NTZ = Math.ceil(WZ / TS), RB = 10, Q = 0.01, MG = 6, N = TN + 2 * MG, BR = 2;
+function segsOf(polys) {
   const seg = [];
   for (const P of polys) { if (!RAS.has(P.cls)) continue;
     for (let k = 0; k + 1 < P.xs.length; k++) if (P.xs[k] !== P.xs[k + 1] || P.zs[k] !== P.zs[k + 1]) seg.push(P.xs[k], P.zs[k], P.xs[k + 1], P.zs[k + 1], P.hw); }
+  return Float64Array.from(seg);
+}
+// S3: el cálculo por teselas (calc) va aparte para poder repartirlo entre varios workers (allanarPar): part = [w, nW] hace solo
+// las teselas con clave % nW == w. low se combina con el mínimo y las teselas no se solapan: el resultado es idéntico
+function calc(h0, seg, WX, WZ, GW, GH, CELL, part) {
+  const CS = 5, TN = 52, TS = CS * TN, NTX = Math.ceil(WX / TS), NTZ = Math.ceil(WZ / TS), RB = 10, Q = 0.01, MG = 6, N = TN + 2 * MG, BR = 2;
   const NS = seg.length / 5, bucket = new Map(), RM = MG * CS;
   for (let s = 0; s < NS; s++) { const o = s * 5, r = seg[o + 4] + RB + RM;
     const i0 = Math.max(0, Math.floor((Math.min(seg[o], seg[o + 2]) - r) / TS)), i1 = Math.min(NTX - 1, Math.floor((Math.max(seg[o], seg[o + 2]) + r) / TS));
@@ -124,18 +129,24 @@ function allanar(h0, polys, WX, WZ, GW, GH, CELL) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = j * NTX + i; let l = bucket.get(k); if (!l) bucket.set(k, l = []); l.push(s); } }
   const tiles = new Array(NTX * NTZ).fill(null), low = new Float32Array(GW * GH);
   let nodes = 0, moved = 0, sum = 0, mx = 0;
-  const WG = new Float32Array(N * N), HH = new Float32Array(N * N), A = new Float32Array(N * N), B = new Float32Array(N * N), TMP = new Float32Array(N), OUT = new Float32Array(N);
-  // caja de radio BR, dos veces, por filas y por columnas (≈ gaussiana de σ ≈ 10 m)
-  const box = (F, st, n0, step) => { for (let r = 0; r < N; r++) { const o = r * st;
-      let nz = false; for (let k = 0; k < N; k++) { const v = F[o + k * step]; TMP[k] = v; if (v) nz = true; }
-      if (!nz) continue;
-      for (let pass = 0; pass < 2; pass++) { let acc = 0; for (let k = 0; k < BR; k++) acc += TMP[k];
-        for (let k = 0; k < N; k++) { if (k + BR < N) acc += TMP[k + BR]; if (k - BR - 1 >= 0) acc -= TMP[k - BR - 1]; OUT[k] = acc; }
-        TMP.set(OUT); }
-      for (let k = 0; k < N; k++) F[o + k * step] = TMP[k]; } };
-  for (const [key, list] of bucket) {
+  const WG = new Float32Array(N * N), HH = new Float32Array(N * N), A = new Float32Array(N * N), B = new Float32Array(N * N);
+  const TA = new Float32Array(N), TB = new Float32Array(N), OA = new Float32Array(N), OB = new Float32Array(N), RA = new Float32Array(N * N), RB2 = new Float32Array(N * N), FL = new Uint8Array(N * N);
+  // S3: caja de radio BR dos veces (≈ gaussiana de σ ≈ 10 m), A y B a la vez, filas vacías saltadas y, por columnas, solo las
+  // columnas de la tesela (las del margen no se usan). Mismo resultado que antes, ~3× más rápido
+  const pass2 = (n) => { for (let pass = 0; pass < 2; pass++) { let a = 0, b = 0; for (let k = 0; k < BR && k < n; k++) { a += TA[k]; b += TB[k]; }
+      for (let k = 0; k < n; k++) { if (k + BR < n) { a += TA[k + BR]; b += TB[k + BR]; } if (k - BR - 1 >= 0) { a -= TA[k - BR - 1]; b -= TB[k - BR - 1]; } OA[k] = a; OB[k] = b; }
+      TA.set(OA); TB.set(OB); } };
+  const box2 = () => {
+    for (let r = 0; r < N; r++) { const o = r * N; let nz = false; for (let k = 0; k < N; k++) if (B[o + k]) { nz = true; break; }
+      if (!nz) { RA.fill(0, o, o + N); RB2.fill(0, o, o + N); continue; }
+      for (let k = 0; k < N; k++) { TA[k] = A[o + k]; TB[k] = B[o + k]; } pass2(N);
+      for (let k = 0; k < N; k++) { RA[o + k] = TA[k]; RB2[o + k] = TB[k]; } }
+    for (let c = MG; c < MG + TN; c++) { let nz = false; for (let k = 0; k < N; k++) { const v = RB2[k * N + c]; TA[k] = RA[k * N + c]; TB[k] = v; if (v) nz = true; }
+      if (!nz) { for (let k = 0; k < N; k++) { A[k * N + c] = 0; B[k * N + c] = 0; } continue; }
+      pass2(N); for (let k = 0; k < N; k++) { A[k * N + c] = TA[k]; B[k * N + c] = TB[k]; } } };
+  for (const [key, list] of bucket) { if (part && key % part[1] !== part[0]) continue;
     const ti = key % NTX, tj = (key / NTX) | 0, bx = ti * TS - RM, bz = tj * TS - RM; let T = null;
-    WG.fill(0); A.fill(0); B.fill(0); HH.fill(NaN);
+    WG.fill(0); A.fill(0); B.fill(0); FL.fill(0);
     for (const s of list) { const o = s * 5, ax = seg[o], az = seg[o + 1], dx = seg[o + 2] - ax, dz = seg[o + 3] - az, hw = seg[o + 4], r = hw + RB;
       const l2 = dx * dx + dz * dz, ln = Math.sqrt(l2), ux = dx / ln, uz = dz / ln;
       const i0 = Math.max(0, Math.ceil((Math.min(ax, ax + dx) - r - bx) / CS)), i1 = Math.min(N - 1, Math.floor((Math.max(ax, ax + dx) + r - bx) / CS));
@@ -152,11 +163,11 @@ function allanar(h0, polys, WX, WZ, GW, GH, CELL) {
           const qx = px - dx * t, qz = pz - dz * t, e = Math.sqrt(qx * qx + qz * qz) - hw; if (e >= RB) continue;
           const q = j * N + i, w = e <= 3 ? 1 : 1 - (e - 3) / (RB - 3), ww = w * w * (3 - 2 * w);
           if (ww > WG[q]) WG[q] = ww;
-          if (e <= 1 && !B[q]) { B[q] = 1; const H = h0(bx + i * CS, z); HH[q] = H; A[q] = H; }
+          if (e <= 1 && !B[q]) { B[q] = 1; FL[q] = 1; const H = h0(bx + i * CS, z); HH[q] = H; A[q] = H; }
         } } }
-    box(A, N, 0, 1); box(B, N, 0, 1); box(A, 1, 0, N); box(B, 1, 0, N);
+    box2();
     for (let j = MG; j < MG + TN; j++) for (let i = MG; i < MG + TN; i++) { const q = j * N + i, w = WG[q]; if (!w || B[q] < 1e-3) continue;
-      const x = bx + i * CS, z = bz + j * CS, H = HH[q] === HH[q] ? HH[q] : h0(x, z), cf = Math.min(1, B[q] / 6);
+      const x = bx + i * CS, z = bz + j * CS, H = FL[q] ? HH[q] : h0(x, z), cf = Math.min(1, B[q] / 6);
       const dl = (A[q] / B[q] - H) * w * cf * cf * (3 - 2 * cf), v = Math.max(-32000, Math.min(32000, Math.round(dl / Q)));
       nodes++; if (!v) continue;
       if (!T) T = new Int16Array(TN * TN); T[(j - MG) * TN + (i - MG)] = v; moved++; sum += Math.abs(dl); mx = Math.max(mx, Math.abs(dl));
@@ -166,6 +177,10 @@ function allanar(h0, polys, WX, WZ, GW, GH, CELL) {
     }
     if (T) tiles[key] = T;
   }
+  return { tiles, low, stats: { nodes, moved, sum, max: mx } };
+}
+function finish(R, h0, WX, WZ) {
+  const CS = 5, TN = 52, TS = CS * TN, NTX = Math.ceil(WX / TS), NTZ = Math.ceil(WZ / TS), Q = 0.01, tiles = R.tiles, low = R.low, st = R.stats;
   const node = (i, j) => { const T = tiles[((j / TN) | 0) * NTX + ((i / TN) | 0)]; return T ? T[(j % TN) * TN + (i % TN)] : 0; };
   // cota corregida: donde hay corrección, interpolación bilineal de (terreno + corrección) en los nudos de 5 m (así las facetas de
   // 20 m del relieve no se cuelan en la calle); lejos de las calles, el terreno tal cual
@@ -177,8 +192,31 @@ function allanar(h0, polys, WX, WZ, GW, GH, CELL) {
     const X = i * CS, Z = j * CS;
     return ((h0(X, Z) + a * Q) * (1 - u) + (h0(X + CS, Z) + b * Q) * u) * (1 - v) + ((h0(X, Z + CS) + c * Q) * (1 - u) + (h0(X + CS, Z + CS) + d * Q) * u) * v;
   }
-  return { h, low, stats: { nodes, moved, mean: moved ? sum / moved : 0, max: mx, tiles: tiles.filter(Boolean).length } };
+  return { h, low, stats: { nodes: st.nodes, moved: st.moved, mean: st.moved ? st.sum / st.moved : 0, max: st.max, tiles: tiles.filter(Boolean).length } };
 }
-window.BCN_SUELOS = { asfalto, acera, avenida, nivel, barri, NIVEL, allanar };
+function allanar(h0, polys, WX, WZ, GW, GH, CELL) { return finish(calc(h0, segsOf(polys), WX, WZ, GW, GH, CELL), h0, WX, WZ); }
+// S3: lo mismo en paralelo (workers de un Blob). h0src es el código de la función de cota cruda y env sus variables libres
+// (tablas incluidas). Si no hay workers o algo falla, el que llama vuelve a allanar() en el hilo principal
+function allanarPar(h0, h0src, env, polys, WX, WZ, GW, GH, CELL, nW) {
+  const seg = segsOf(polys), names = Object.keys(env);
+  const src = "'use strict';const RAS=null;" + calc.toString() + "\nonmessage=e=>{const d=e.data;const h0=new Function(" + names.map(n => JSON.stringify(n)).join(',') +
+    ",'return '+d.h0src)(...d.vals);const R=calc(h0,d.seg,d.WX,d.WZ,d.GW,d.GH,d.CELL,d.part);const keys=[],bufs=[];" +
+    "R.tiles.forEach((T,k)=>{if(T){keys.push(k);bufs.push(T);}});postMessage({keys,bufs,low:R.low,stats:R.stats},[R.low.buffer].concat(bufs.map(b=>b.buffer)));};";
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  const vals = names.map(n => env[n]);
+  return Promise.all(Array.from({ length: nW }, (_, w) => new Promise((res, rej) => {
+    const wk = new Worker(url); wk.onerror = e => { wk.terminate(); rej(new Error(e.message || 'worker')); };
+    wk.onmessage = e => { wk.terminate(); res(e.data); };
+    wk.postMessage({ h0src, vals, seg, WX, WZ, GW, GH, CELL, part: [w, nW] });
+  }))).then(parts => {
+    URL.revokeObjectURL(url);
+    const TS = 5 * 52, tiles = new Array(Math.ceil(WX / TS) * Math.ceil(WZ / TS)).fill(null), low = parts[0].low, st = { nodes: 0, moved: 0, sum: 0, max: 0 };
+    for (const P of parts) { P.keys.forEach((k, i) => { tiles[k] = P.bufs[i]; });
+      if (P !== parts[0]) for (let i = 0; i < low.length; i++) if (P.low[i] < low[i]) low[i] = P.low[i];
+      st.nodes += P.stats.nodes; st.moved += P.stats.moved; st.sum += P.stats.sum; st.max = Math.max(st.max, P.stats.max); }
+    return finish({ tiles, low, stats: st }, h0, WX, WZ);
+  });
+}
+window.BCN_SUELOS = { asfalto, acera, avenida, nivel, barri, NIVEL, allanar, allanarPar };
 window.BCN_RENTA = { nivel, barri, NIVEL, PERIF };
 })();
