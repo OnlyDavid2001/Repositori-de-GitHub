@@ -414,6 +414,7 @@ function silos() {
 const PD2 = window.BCN_PUERTO2_DATA;
 const MUROS = [[214, 216, 214], [198, 202, 206], [226, 222, 210], [178, 188, 198], [158, 166, 172], [208, 200, 184], [190, 196, 188], [222, 224, 226]];
 const ACENTO = [[40, 86, 150], [176, 52, 42], [52, 120, 76], [70, 74, 80], [226, 160, 40], [30, 120, 150]];
+const TECHOS = [[150, 152, 152], [164, 166, 164], [132, 136, 138], [146, 110, 92], [122, 132, 128], [172, 172, 166], [140, 142, 146]];
 const PUERTA = [[96, 104, 112], [70, 92, 130], [180, 168, 120], [128, 134, 138], [60, 66, 72]];
 const LONA = [[232, 232, 228], [220, 220, 214], [150, 40, 36], [44, 70, 120], [236, 236, 230], [70, 110, 80], [200, 200, 196]];
 const pip = (x, z, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j];
@@ -471,7 +472,7 @@ function naveLog(B, h, e, R, z, libre) {
   const big = Math.max(u1 - u0, v1 - v0), ex = L.mover(pl.map(p => [p[0] - cx, p[1] - cz]), cx, cz, 0, 1 + 0.5 / big);
   // cuerpo: zócalo de hormigón, chapa grecada, franja de color arriba y cubierta de chapa
   L.prisma(B, ex, yb, yb + 1.8, [172, 170, 164], K.LISO, { aux: AUX.liso(6), sinTecho: true });
-  L.prisma(B, pl, yb + 1.8, yb + H, col, K.METAL, { aux: AUX.panel(0.9, 0.03, 0), techo: [176, 178, 178], kTecho: K.METAL, auxTecho: AUX.panel(1.6, 0.05, 0) });
+  L.prisma(B, pl, yb + 1.8, yb + H, col, K.METAL, { aux: AUX.panel(0.9, 0.03, 0), techo: TECHOS[Math.floor(R() * TECHOS.length)], kTecho: K.METAL, auxTecho: AUX.panel(1.6, 0.05, 0) });
   if (!merca && R() < 0.45) L.prisma(B, ex, yb + H - 1.4, yb + H + 0.3, ACENTO[Math.floor(R() * ACENTO.length)], K.METAL, { aux: AUX.panel(1.2, 0.02, 0), sinTecho: true });
   else L.prisma(B, ex, yb + H - 0.2, yb + H + 0.6, mix(col, C.gris, 0.4), K.LISO, { aux: PLISO, sinTecho: true });           // remate del peto
   // cubierta: lucernarios corridos (naves) o dientes de sierra (pabellones de Mercabarna) si la planta es casi rectangular
@@ -508,14 +509,21 @@ function naveLog(B, h, e, R, z, libre) {
   if (rect > 0.85 && area > 2500 && R() < 0.45) { const s = R() < 0.5 ? -1 : 1, [x, zz] = at(s > 0 ? u1 - 6 : u0 + 6, cv), w = Math.min(lv + 0.8, 40);
     bx(B, x, zz, yb, w, 12.8, H + 2.2, ang, [228, 228, 224], K.VENTANAS, AUX.ventanas(3.6, 1.5, 0.82, 0.48)); }
 }
+let REJ = null;
+function rejilla(x, z) {
+  if (!REJ) { REJ = new Map(); for (const c of PD2.cajas) { const r = Math.max(c[2], c[3]) + 8;
+    for (let i = Math.floor((c[0] - r) / 100); i <= Math.floor((c[0] + r) / 100); i++) for (let j = Math.floor((c[1] - r) / 100); j <= Math.floor((c[1] + r) / 100); j++) {
+      const k = i * 10000 + j; let l = REJ.get(k); if (!l) REJ.set(k, l = []); l.push(c); } } }
+  return REJ.get(Math.floor(x / 100) * 10000 + Math.floor(z / 100)) || [];
+}
 function zonaNaves(id, nombre, zn, Z) {
   if (!Z) return;
   ficha({ id, nombre: nombre || id, etiqueta: !!nombre, x: Z.c[0], z: Z.c[1], alto: 20, ancho: Math.min(Z.ext, 1600), largo: Math.min(Z.ext, 1600), edificios: Z.b,
     build(B, h) {
-      const R = h.R, CJ = PD2.cajas;
-      // ¿punto (local) libre de edificios (salvo la nave e) y dentro de un recinto? (las cajas son de todo el recinto)
+      const R = h.R;
+      // ¿punto (local) libre de edificios (salvo la nave e)? (cajas de todos los edificios del recinto, en rejilla de 100 m)
       const libre = (lx, lz, e) => { const x = lx + h.x, z = lz + h.z;
-        for (const c of CJ) { if (Math.abs(x - c[0]) < c[2] + 2 && Math.abs(z - c[1]) < c[3] + 2) { if (e && Math.abs(c[0] - e.wx) < 2 && Math.abs(c[1] - e.wz) < 2) continue; return false; } }
+        for (const c of rejilla(x, z)) { if (Math.abs(x - c[0]) < c[2] + 2 && Math.abs(z - c[1]) < c[3] + 2) { if (e && Math.abs(c[0] - e.wx) < 2 && Math.abs(c[1] - e.wz) < 2) continue; return false; } }
         return true; };
       for (const e of h.edif) { const pl = e.plantas[0]; if (!pl) continue; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
         for (const p of pl) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
@@ -531,7 +539,7 @@ function playaVias() {
   ficha({ id: 'pu_vias', nombre: 'Platja de vies de mercaderies', x: V.c[0], z: V.c[1], alto: 25, ancho: 600, largo: 1200, build(B, h) {
     const R = h.R, [ux, uz] = V.u, nx = -uz, nz = ux, CJ = PD2.cajas, ang = hd(ux, uz);
     const W = (u, v) => [V.c[0] + ux * u + nx * v, V.c[1] + uz * u + nz * v];
-    const ok = (x, z) => { if (!pip(x, z, P)) return false; for (const c of CJ) if (Math.abs(x - c[0]) < c[2] + 4 && Math.abs(z - c[1]) < c[3] + 4) return false; return true; };
+    const ok = (x, z) => { if (!pip(x, z, P)) return false; for (const c of rejilla(x, z)) if (Math.abs(x - c[0]) < c[2] + 4 && Math.abs(z - c[1]) < c[3] + 4) return false; return true; };
     let umin = 1e9, umax = -1e9, vmin = 1e9, vmax = -1e9;
     for (const p of P) { const dx = p[0] - V.c[0], dz = p[1] - V.c[1], u = dx * ux + dz * uz, v = dx * nx + dz * nz; umin = Math.min(umin, u); umax = Math.max(umax, u); vmin = Math.min(vmin, v); vmax = Math.max(vmax, v); }
     const gy = (x, z) => h.y(x - h.x, z - h.z), tramos = [];
