@@ -10,7 +10,30 @@
 - [x] `transporte.js` (módulo `addMod('transp', 'BCN_TRANSPORTE', …)`), script en `index.html` antes de `lighting.js`.
 - [x] Bocas: sitios automáticos (2–4 por estación según sus líneas), forma y profundidad, tótem, variantes.
 - [x] Paradas de bus: marquesinas y postes.
-- [ ] Hoja final y recuento (ver abajo).
+- [x] Hoja ANTES/DESPUÉS en el scratchpad (`n3/t/hoja_T.jpg`).
+
+## Recuento (todas las estaciones colocadas con `placeAll()`)
+158 estaciones, 354 bocas (68 con ascensor, 114 con marquesina), 484 marquesinas de bus y 1 583 postes.
+| Línea | Estaciones | Bocas |
+| --- | --- | --- |
+| L1 | 30 | 72 |
+| L2 | 18 | 44 |
+| L3 | 26 | 65 |
+| L4 | 22 | 52 |
+| L5 | 28 | 68 |
+| L9 Nord | 9 | 23 |
+| L9 Sud | 15 | 37 |
+| L10 Nord | 6 | 17 |
+| L10 Sud | 11 | 27 |
+| L11 | 5 | 12 |
+| L6 (FGC) | 9 | 23 |
+| L7 (FGC) | 7 | 17 |
+| L8 (FGC) | 9 | 21 |
+| L12 (FGC) | 2 | 6 |
+(una boca cuenta en cada línea de su estación). Coste de colocación en el arnés (SwiftShader): paradas 0,5–0,7 s al
+iniciar (una vez); bocas ≈ 55 ms por estación, en cola con presupuesto de 3 ms por fotograma pero sin trocear dentro de
+una estación (un tirón al acercarse a cada una: pendiente de trocear).
+
 
 ## Para DESARROLLO.md (sección nueva «Transporte»)
 - `transporte.js`, `window.BCN_TRANSPORTE = { LINES, init(ctx) → { update, busy, flush, stats, info, placeAll, entrances, stops } }`.

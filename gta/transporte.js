@@ -120,7 +120,8 @@ window.BCN_TRANSPORTE = { LINES, async init(ctx) {
   // adelantada 0–10 cm según lo lejos que quede detrás (así se ordenan entre sí escalones y paredes). Pasa por delante de la
   // acera (que está bajo el plano) y queda detrás de todo lo que se interponga (barandilla, un peatón, un edificio).
   // Lo que asoma por encima del plano (pasamanos) va con su profundidad de verdad. Bocas por malla: hasta 16 (uOp).
-  const matIn = ctx.mkMat('trIn', sp.vertexSource, `varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
+  const GL2 = ctx.engine.webGLVersion >= 2;          // gl_FragDepth: solo con WebGL2 (con WebGL1, el hueco es un paño oscuro)
+  const matIn = GL2 ? ctx.mkMat('trIn', sp.vertexSource, `varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm;
 uniform vec4 uOp[32]; uniform mat4 uVP;
 void main(){
   int id = int(floor(vInfo.w*255.0 + 0.5)); vec4 A = vec4(0.0), Bq = vec4(0.0);
@@ -142,9 +143,9 @@ void main(){
   else if (pat > 1.5 && pat < 2.5) { alb *= 0.86 + 0.24*vnoise(P*11.0); rough = 0.82; }
   else if (pat > 3.5 && pat < 4.5) { rough = 0.32; metal = 1.0; }
   if (pat > 2.5 && pat < 3.5) c = emit(vec3(0.95, 0.93, 0.86), mix(1.25, 2.3, fN));
-  else c = shade(alb*mix(0.12, 1.0, ab), n, V, rough, metal, mix(0.3, 1.0, ab))*mix(0.2, 1.0, ab) + emit(alb, lampF*mix(0.42, 0.95, fN));
-  FRAG(c); }`, ['position', 'color', 'uv', 'nrm'], ['uOp', 'uVP'], [], { defines: ['#extension GL_EXT_frag_depth : enable'] });
-  matIn.onBindObservable.add(mesh => { const e = matIn.getEffect(), o = mesh.metadata && mesh.metadata.op;
+  else c = shade(alb*mix(0.4, 1.0, ab), n, V, rough, metal, mix(0.5, 1.0, ab)) + emit(alb*mix(0.55, 1.0, ab), lampF*mix(0.8, 1.05, fN));
+  FRAG(c); }`, ['position', 'color', 'uv', 'nrm'], ['uOp', 'uVP'], []) : null;
+  if (matIn) matIn.onBindObservable.add(mesh => { const e = matIn.getEffect(), o = mesh.metadata && mesh.metadata.op;
     if (e && o) { e.setArray4('uOp', o); e.setMatrix('uVP', scene.getTransformMatrix()); } });
   // vidrio (marquesinas, ascensores, mampara de la parada): mezcla alfa, con el mismo fundido de salida que su nivel
   const matGl = ctx.mkMat('trGlass', sp.vertexSource, `varying vec3 vLoc; varying vec4 vCol; varying vec4 vInfo; varying vec3 vN; varying float vSm; uniform vec2 uFade;
@@ -294,7 +295,9 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     }
     cand.sort((a, b) => a[0] - b[0]);
     const got = [];
-    for (const c of cand) {
+    // dos pasadas: primero lejos de las fachadas (≥ 3,1 m: fuera de las terrazas de bares, que llegan a 2,9 m), luego, si faltan,
+    // a 1 m de ellas (ahí puede tocar alguna terraza)
+    for (const MARG of [3.1, 1.0]) for (const c of cand) {
       if (got.length >= want) break;
       const [, s, u, off, x, z, a0, cls, hw] = c;
       if (got.some(g => Math.hypot(g.x - x, g.z - z) < 28)) continue;
@@ -303,13 +306,14 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       const k = got.length, dir = rs[k] < 0.5 ? 1 : -1, ang = Math.atan2(tz * dir, tx * dir), F = { x, z, tx: Math.cos(ang), tz: Math.sin(ang), nx: -Math.sin(ang), nz: Math.cos(ang) };
       if (!PED.has(cls) && furnNear(a0, u, off > 0 ? 1 : -1, hw, cls, 4.2)) continue;
       { if (coverAt(x, z, -1) > -1e8) continue; const nc = nearestCar(x, z); if (nc[0] >= 0 && (nc[1] < 2.9 || (nc[1] > 9 && !(roadDist(x, z) < 0)))) continue; }
-      if (!freeRect(F, -3.7, 3.0, -1.3, 1.3, 0.8, 1.85, 9)) continue;
+      if (got.some(g => g.x === x && g.z === z) || !freeRect(F, -3.7, 3.0, -1.3, 1.3, MARG, 1.85, 9)) continue;
       const [lo, hi] = yRange(F, -2.7, 2.7, -0.9, 0.9); if (hi - lo > 0.4) continue;
       // tótem del lado de la calzada (el que se ve desde la calle)
       const [qx, qz] = toL(F, 0, 1), sideT = (nearestCar(qx, qz)[1] < nearestCar(...toL(F, 0, -1))[1]) ? 1 : -1;
       let lift = false; if (k === 0 && rs[10] < 0.55 && freeRect(F, 2.8, 5.6, -1.2, 1.2, 0.6, 1.85, 9)) lift = true;
       const canopy = rs[12 + k] < (isNew ? 0.6 : 0.2);
       got.push({ t: 'M', x, z, a: ang, y: hi, si, lines: st.l, sideT, lift, canopy, v: rs[18 + k] });
+      if (MARG < 3) count.nearFacade = (count.nearFacade || 0) + 1;
     }
     for (const g of got) { addItem(g); occAdd(g.x, g.z, g.lift ? 5.2 : 4.2); }
     count.stations++; count.entrances += got.length; for (const g of got) { if (g.lift) count.lifts++; if (g.canopy) count.canopies++; }
@@ -322,7 +326,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   function entrance(it, B, Bi, Bl, Bg, lvl, ox, oz) {
     const F = mkF(it.x, it.z, it.a, ox, oz), y0 = it.y, yb = y0 - NS * RISE, st = it.sideT, oid = Bl ? Bl.n : 0;
     const tin = (pat, ao, lamp) => [pat, Math.round(ao * 255), Math.round(lamp * 255), oid], MET = [4, 255, 0, oid];
-    const rail = it.v < 0.5 ? C_STEEL : C_DARK, RA = it.v < 0.5 ? STEEL : PAINT;
+    const rail = it.v < 0.3 ? [150, 152, 150] : it.v < 0.65 ? [72, 82, 80] : C_DARK, RA = it.v < 0.3 ? pbrAux(0.55, 0.5, 0, 0) : PAINT;
     if (lvl === 1) {
       // --- interior (grupo 3)
       const aoAt = y => Math.max(0, Math.min(1, 1 - (y0 - y) / 3.3));
@@ -331,7 +335,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       for (let i = 0; i < NS; i++) { const ua = US + i * RUN, ub = ua + RUN, yt = y0 - (i + 1) * RISE, a = tin(2, aoAt(yt), 0.45);
         jamb(Bi, F, ua, yt, yt + RISE, -HWI, HWI, shade(C_STEP, 0.9), K.TRIN, a);
         hpl(Bi, F, ua, ub, yt, -HWI, HWI, C_STEP, K.TRIN, a);
-        hpl(Bi, F, ua, ua + 0.05, yt + 0.002, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.2)); }
+        jamb(Bi, F, ua - 0.003, yt + RISE - 0.04, yt + RISE, -HWI, HWI, C_NOSE, K.TRIN, tin(0, aoAt(yt), 0.3)); }
       hpl(Bi, F, U0, US, y0 - 0.004, -HWI, HWI, C_STEP, K.TRIN, tin(2, 1, 0.3));                       // rellano de arriba
       hpl(Bi, F, US + NS * RUN, UE, yb, -HWI, HWI, [118, 116, 110], K.TRIN, tin(2, 0, 0.5));           // rellano del fondo
       hpl(Bi, F, U1, UE, y0 - 0.35, -HWI, HWI, [150, 150, 146], K.TRIN, tin(0, 0.2, 0.3));            // techo bajo la losa
@@ -401,7 +405,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       if (lvl === 1) {
         for (const d of [da, db]) rect(Bg, F, ua + 0.05, ub - 0.05, y0 + 0.12, hy, d, [150, 175, 172], K.PBR);
         jamb(Bg, F, ua, y0 + 0.12, hy, da + 0.05, db - 0.05, [150, 175, 172], K.PBR); jamb(Bg, F, ub, y0 + 0.12, hy, da + 0.05, db - 0.05, [150, 175, 172], K.PBR);
-        bx(B, F, ua + 0.25, ub - 0.25, y0 + 0.12, y0 + 2.3, da + 0.2, db - 0.2, [190, 192, 190], K.PBR, STEEL);              // cabina
+        bx(B, F, ua + 0.3, ub - 0.3, y0 + 0.12, y0 + 2.25, da + 0.3, db - 0.3, [214, 212, 204], K.PBR, PAINT);             // cabina
         bx(B, F, ua + 0.3, ub - 0.3, y0 + 2.3, y0 + 2.36, da + 0.25, db - 0.25, [250, 246, 236], K.PBR, LITW);            // luz de cabina
         hpl(B, F, ua - 0.05, ub + 0.05, hy - 0.01, da - 0.05, db + 0.05, [240, 238, 230], K.TRIN, tin(3, 1, 1));
         sign(B, F, ua - 0.052, -1, -0.4, 0.4, hy + 0.05, hy + 0.25, UV_METRO, true);
@@ -450,8 +454,10 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
   const cells = new Map(); let want = new Map(), queue = [], placeQ = [], lastP = null; const tris = [0, 0, 0, 0];
   function build(k, lvl) {
     const ox = (k % TNX) * TC, oz = Math.floor(k / TNX) * TC, B = new GB(ox, oz), Bi = lvl === 1 ? new GB(ox, oz) : null, Bg = lvl === 1 ? new GB(ox, oz) : null, Bl = { op: [], n: 0 };
+    const nIt = { M: 0, S: 0, P: 0 };
     for (const it of items.get(k) || []) {
-      if (it.t === 'M') entrance(it, B, Bl.n < 16 ? Bi : null, Bl.n < 16 || lvl > 1 ? Bl : null, Bg, Bl.n < 16 ? lvl : 2, ox, oz);
+      nIt[it.t]++;
+      if (it.t === 'M') entrance(it, B, Bl.n < 16 && GL2 ? Bi : null, Bl, Bg, Bl.n < 16 && GL2 ? lvl : 2, ox, oz);
       else if (it.t === 'S') shelter(it, B, Bg, lvl, ox, oz);
       else { const F = mkF(it.x, it.z, it.a, ox, oz); busPole(B, F, 0, 0.45, it.y, it.lines, lvl); }
     }
@@ -468,7 +474,7 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
       t += Bi.ni / 3 + Bg.ni / 3; tris[2] += Bi.ni / 3; tris[3] += Bg.ni / 3;
     }
     tris[lvl - 1] += B.ni / 3;
-    cells.set(k * 4 + lvl, { lvl, ms, t, tb: B.ni / 3, ti: Bi ? Bi.ni / 3 : 0, tg: Bg ? Bg.ni / 3 : 0 });
+    cells.set(k * 4 + lvl, { lvl, ms, t, tb: B.ni / 3, ti: Bi ? Bi.ni / 3 : 0, tg: Bg ? Bg.ni / 3 : 0, nIt });
   }
   function drop(key, c) { for (const m of c.ms) m.dispose(false, false); tris[c.lvl - 1] -= c.tb; tris[2] -= c.ti; tris[3] -= c.tg; cells.delete(key); }
   function plan(P) {
@@ -506,7 +512,8 @@ void main(){ float dist = length(vPos - uCam); if (dith() < smoothstep(uFade.x, 
     update(P) { work(P, 3); },
     busy: () => placeQ.length > 0 || queue.length > 0,
     flush(P) { lastP = null; work(P, 1e9); },
-    stats: () => ({ cells: cells.size, trisNear: Math.round(tris[0]), trisFar: Math.round(tris[1]), trisIn: Math.round(tris[2]), trisGlass: Math.round(tris[3]), queue: queue.length + placeQ.length }),
+    stats: () => { const n = [{ M: 0, S: 0, P: 0 }, { M: 0, S: 0, P: 0 }]; for (const c of cells.values()) for (const t in c.nIt) n[c.lvl - 1][t] += c.nIt[t];
+      return { cells: cells.size, near: n[0], far: n[1], nearFacade: count.nearFacade || 0, trisNear: Math.round(tris[0]), trisFar: Math.round(tris[1]), trisIn: Math.round(tris[2]), trisGlass: Math.round(tris[3]), queue: queue.length + placeQ.length }; },
     info: () => count,
     // todas las estaciones (para el recuento): coloca las que falten, sin construir mallas
     placeAll() { for (let si = 0; si < ST.length; si++) if (!placed[si]) placeStation(si); return count; },
