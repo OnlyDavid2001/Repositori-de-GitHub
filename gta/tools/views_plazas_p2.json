@@ -1,0 +1,110 @@
+[
+{
+"name": "reial_pie",
+"x": 12621.0,
+"z": 13299.0,
+"yaw": 2.32,
+"hour": 10.5,
+"walk": true,
+"pitch": -0.02
+},
+{
+"name": "reial_dron",
+"x": 12558.1,
+"z": 13357.6,
+"yaw": 2.32,
+"hour": 10.5,
+"agl": 75,
+"pitch": 0.5984
+},
+{
+"name": "reial_noche",
+"x": 12558.1,
+"z": 13357.6,
+"yaw": 2.32,
+"hour": 23,
+"agl": 75,
+"pitch": 0.5984
+},
+{
+"name": "gracia_pie",
+"x": 11170.6,
+"z": 15511.8,
+"yaw": 0.6,
+"hour": 10.5,
+"walk": true,
+"pitch": -0.02
+},
+{
+"name": "tetuan_dron",
+"x": 12639.6,
+"z": 14800.8,
+"yaw": 0.3,
+"hour": 10.5,
+"agl": 85,
+"pitch": 0.5791
+},
+{
+"name": "fmacia_dron",
+"x": 10016.7,
+"z": 14592.9,
+"yaw": 0.5,
+"hour": 10.5,
+"agl": 80,
+"pitch": 0.5517
+},
+{
+"name": "raval_pie",
+"x": 12110.2,
+"z": 13129.5,
+"yaw": 0.5,
+"hour": 10.5,
+"walk": true,
+"pitch": -0.02
+},
+{
+"name": "rambla_pie",
+"x": 12465.0,
+"z": 13429.5,
+"yaw": 2.4,
+"hour": 10.5,
+"walk": true,
+"pitch": -0.02
+},
+{
+"name": "pgracia_dron",
+"x": 11942.8,
+"z": 14398.5,
+"yaw": 0.6,
+"hour": 10.5,
+"agl": 30,
+"pitch": 0.4636
+},
+{
+"name": "diag_dron",
+"x": 10512.0,
+"z": 14848.1,
+"yaw": 1.2,
+"hour": 10.5,
+"agl": 35,
+"pitch": 0.4636
+},
+{
+"name": "catedral_dron",
+"x": 12764.8,
+"z": 13684.0,
+"yaw": -0.6,
+"hour": 10.5,
+"agl": 80,
+"pitch": 0.588
+},
+{
+"name": "felip_pie",
+"x": 12615.6,
+"z": 13637.5,
+"yaw": 0.9,
+"hour": 10.5,
+"walk": true,
+"pitch": -0.02
+}
+]

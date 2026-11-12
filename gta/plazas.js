@@ -471,7 +471,7 @@ const P2RAD = { palm: 1.0, glamp: 1.1, tgrac: 5.2, octf: 2.5, ovalp: 0, colmon: 
 
 // ------------------------------------------------------------------ hitos de P2 (siempre cargados, se ven desde el dron)
 // Torre del Rellotge de la Plaça de la Vila de Gràcia (1864, ~33 m): fuste de ladrillo y piedra, reloj en las cuatro caras y campanario
-lmLater({ id: 'rellotge_gracia', nombre: 'Torre del Rellotge (Gràcia)', nivel: 'B', x: 11183.5, z: 15530.5, rot: 41, alto: 33, ancho: 5, largo: 5, noche: 'focos',
+lmLater({ id: 'rellotge_gracia', nombre: 'Torre del Rellotge (Gràcia)', nivel: 'B', x: 11183.5, z: 15530.5, rot: 41, alto: 33, ancho: 5, largo: 5, noche: 'focos', edificios: [127605],   // 127605: la torre como volumen genérico de 9×9 m
   build(B, h, L) {
     const KK = window.BCN_LM.K, ST = [198, 186, 162], BR = [164, 112, 84], WH = [236, 232, 220];
     L.caja(B, 0, 0, -0.5, 5.0, 5.0, 3.5, 0, ST, KK.PIEDRA);
