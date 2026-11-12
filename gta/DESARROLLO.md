@@ -1422,3 +1422,98 @@ Q='?lmtest=1' python3 tools/hitos/hoja.py hotel_w --rumbos 30                   
 - El retoque de nivel C cambia los datos por vértice del volumen simple: color, estilo (el alfa) y altura. No puede
   cambiar la planta ni añadir detalle; para eso, un hito de nivel B.
 - Nada de rótulos, escudos ni logotipos reales; los nombres de los sitios sí (en la etiqueta).
+
+## 11. Noche 2: color fijo, azoteas, fachadas por barrio, especies de árbol y naturaleza
+
+Cinco carriles fusionados en la etapa INT (ramas `wt-n2-az`, `wt-n2-fx`, `wt-n2-arb`, `wt-n2-nat`). Progreso y medidas de
+cada etapa en `tools/encargos/progreso/{AZ,AZ2,AZ3,FX1,FX2,FX3,ARB,ARB2,NAT,NAT2,INT}.md`. Orden de scripts en
+`index.html`: `geo.js` → `palette.js` → … → `fachadas_estilos.js` → `facades.js` → `trees.js` → `streets.js` →
+`rooftops.js` → `nature.js` → `lighting.js` → hitos → `app.js`.
+
+### 11.1 Familias de barrio
+`window.BCN_BARRI.at(x, z)` → barrio `{ n, d, … }` o null (fuera de Barcelona). app.js calcula las cajas de los barrios y
+publica `BCN_BARRI` ANTES de cargar los edificios (la paleta lo necesita). Las 15 familias (`eixample`, `gracia`,
+`ciutat_vella`, `raval`, `barceloneta`, `poble_sec`, `sants`, `les_corts`, `sant_gervasi`, `sarria_pedralbes`, `poblenou`,
+`sant_andreu`, `horta_guinardo`, `nou_barris`, `periferia`) y su reparto por barrio están en `tools/encargos/n2/comun.md`;
+la tabla canónica es `BCN_PAL.FAMS` (palette.js) y `BCN_FX_ESTILOS.familia(nombre)` usa la misma.
+
+### 11.2 Paleta (`palette.js`, `window.BCN_PAL`)
+Regla: **un edificio tiene el mismo color a cualquier distancia**. El color de fachada y el de cubierta se deciden UNA vez
+por edificio al cargar (`BCN_PAL.pick(b, cls, seed, x, z, Hm, area, fill)`, solo clases 0, 2 y 6; el resto sigue con `PAL`
+de app.js) y se hornean en el color de vértice de los volúmenes. Lo leen igual FS_BLD (lejos), facades.js (`d.col =
+BCN_PAL.wall(b)`) y rooftops.js.
+- Índice de cubierta 0–63 en los **2 bits bajos de cada canal** del color (invisible). FS_BLD lo decodifica y lee el color en
+  la textura `uRoofPal` (`BCN_PAL.ROOF`, RGBA 64×1, NEAREST). `roofType(i)`: 0 azotea transitable (rasilla) · 1 teja árabe ·
+  2 tela asfáltica · 3 grava. La teja solo va a casas pequeñas y bajas (≤ 420 m², ≤ 17 m) que llenen ≥ 80 % de su rectángulo
+  orientado; las demás quedan en rasilla.
+- Los volúmenes llevan **`uv2`** = eje del edificio (cos, sin del ángulo ×4, en bytes normalizados; media de las aristas
+  ponderada por longitud) y usan `VS_BLD`. La textura fina de cubierta sigue ese eje y tiene media cero: se funde a su color
+  medio cuando el dibujo baja de ~2 px, así que no cambia de tono con la distancia.
+- FS_BLD ya no tiene el mosaico `tq` ni la paleta de cubiertas por hash; ruidos de muro y cubierta prefiltrados por tamaño
+  de píxel. De noche compensa con `mix(base, vec3(0.847,0.784,0.706)*…, 0.6*uNight)`.
+- No toques `d.col` en facades.js (`bget`): es el color de la paleta. Para la familia: `BCN_PAL.fam(b)`.
+
+### 11.3 Azoteas (`rooftops.js`, `window.BCN_ROOFTOPS`, `addMod('roof')`)
+Módulo de primer nivel (§6.3) con celdas de 100 m (las de `ctx.city`), cargado tras las calles. Tres niveles salidos del
+mismo plan (al fundirse nada se mueve), fundidos con tramado por distancia 3D:
+1. completo ≤ ~200 m, proyecta sombra en la cascada cercana (layer `furn`);
+2. cajas de lo que tiene bulto, cara interior del peto y ropa como paños, ~170–410 m (layer `roof`);
+3. casetas, depósitos, pérgolas y tejados, ~360–800 m (layer `roof`).
+Elementos: peto con albardilla, casetas de escalera, depósitos, antenas (≤ 3, piloto rojo en las altas), parabólicas,
+tendederos, aire acondicionado, claraboyas, chimeneas, pérgolas, jardineras, trasteros, placas solares (solo modernos) y
+tejados de **teja árabe** a dos o cuatro aguas (tipo de material `TEJA`, id 120).
+- **Material propio `roofDet`**: copia del shader de detalle de facades.js (`detail.matB`) en la que se sustituyen DOS
+  líneas exactas: `if (vInfo.w > 0.99 && uCellHi > 0.5 && dt >= smoothstep(uFadeHi.x, uFadeHi.y, dist)) discard;` (fundido de
+  sustitutos → fundido de entrada por malla, `metadata.rf`) y `vec3 alb = vCol.rgb;`. **Si cambias esas líneas en
+  facades.js, rooftops.js no arranca** (avisa en consola y la ciudad sigue sin azoteas). Comparte uniformes y texturas con
+  matB y está en `ctx.mats` (sombras y LDR).
+- Azar: `seed(b, 90, k)`. Coste: `BCN.detailStats().roof` (150–320 k triángulos en las vistas de dron).
+- Sombras: lighting.js amplía el rango de profundidad del mapa (`SH.R`, `uShP.y`) con la altura de la cámara, en escalones
+  ×1,25 desde 4000 m (antes era fijo: desde el aire media ciudad salía en sombra). No supongas `SH.R` = 4000.
+
+### 11.4 Fachadas por barrio (`fachadas_estilos.js`, `window.BCN_FX_ESTILOS`)
+Catálogo de datos que lee el generador de facades.js (`genB` → `varOf` → `pisosV`/`coronaV`): 15 familias, **70
+variantes** (5 por familia salvo gràcia, ciutat_vella, raval, barceloneta y poble_sec, con 4). Solo la parte de viviendas
+(1.ª planta hacia arriba y coronación); los bajos comerciales, portales e interiores (IY1/IY2) no cambian. Los campos de
+cada variante están documentados en la cabecera del fichero.
+- Familia del edificio: `BCN_BARRI.at` en el centro de su caja; variante por la semilla del edificio; `MEZCLA[fam]` presta
+  variantes de una familia afín; `varOf` impide repetir la variante de un vecino pegado de índice menor y varía un poco
+  vano, vuelo, altura de planta y tono de remates (resultado en caché, `VAR[b]`).
+- **Cómo añadir una variante**: un objeto más en `FAM[familia]` con su `id`; lo que falte sale de `BASE`.
+- Materiales: núcleo 16 ladrillo visto, 17 gresite, 18 revoco gastado, 19 hormigón (también banda de forjado);
+  `FXPIEDRA` (100, sillería en luminancia sobre d.col, para no cambiar el tono) y `FXVIDRIO` (101, barandilla de vidrio que
+  sigue el rayo hasta el muro de detrás). Ids ocupados de la noche 2: 16–19, 100, 101, 120.
+- Azar: ámbito `(b, 6)` saca 6 números; `(b, 6, 1)` usa un 4.º (`forjV`); el ámbito de vano saca 12 con variante.
+- Depuración: `?fxv=familia:n` fuerza la variante n en toda la ciudad, `?fxv=familia` la familia al azar, `?fxv=off` la
+  fachada de antes. `BCN.fx.calle(x, z, side, dir, giro)` → vista a pie en la acera de la calle más cercana mirando a lo
+  largo (para `applyView`); `BCN.fx.force('off')` para medir ANTES.
+
+### 11.5 Árboles (`trees.js`, `window.BCN_TREES`; lo usa streets.js)
+Mismas posiciones y alcorques; ocho mallas para siete especies: 0 plátano (idéntico al de antes: mismas secuencias
+`seedRaw`), 1 almez, 2 naranjo amargo, 3 Washingtonia, 4 jacaranda (flor lila en ~55 %), 5 tipuana, 6 pino piñonero,
+7 Phoenix (~45 % de los tramos de palmera). Especie por calle o tramo de ~320 m (`pick`) según familia, ancho de calzada y
+rambla.
+- Mallas por especie k: `tNB<k>`/`tNL<k>` (cerca: rama y hojas), `tFB<k>`/`tFL<k>` (media), `tI<k>` (impostor); layers
+  `tree` e `imp`. lighting.js las coge por `/^tN/` y `/^tF/` (hasta ~30 mallas con sombra en lugar de 4).
+- Campos de especie: `bm` (escala de corteza), `l.flat`, `l.mid`. FS_TREE: uniformes `uBark`, `uLeaf`, `uSp` (tinte por
+  especie, flor, luz en lo alto de la copa solo de día).
+- Pruebas: `BCN.streets.free(x, z)` (¿sitio libre para la cámara?) y `findTree` → `[x, y, z, ángulo, dirX, dirZ, distEje]`.
+
+### 11.6 Naturaleza y playa (`nature.js`, `window.BCN_NATURE`, `addMod('nat')`)
+Volumen en el verde que no es ciudad (Collserola, Montjuïc, el Carmel, parques grandes, delta, aeropuerto) usando
+`data/ground.webp` como máscara (clases bosque, parque, prado, campo, matorral, arena, mar), sin invadir calles
+(`roadDist`) ni edificios (`coverAt`). Celdas de 128 m, thin instances, layer `nature`.
+- Niveles: `close` (< 70 m, tarjetas de hojas con alfa, sombra con `alphaTex`), `near` (≤ ~320 m), `mid` (≤ ~900 m) y
+  carteles de 2 triángulos hasta 1,3 km; más allá, el relieve de copas que pinta FS_TER.
+- Exclusiones: huella de los hitos (`BCN.lm`), `MIRADORS` (lista a mano en nature.js: Alcalde, MNAC, búnkers del Carmel,
+  Tibidabo, Castell) y un círculo de 22 m alrededor de cada vista a pie de `META.views`.
+- Costa: app.js construye la máscara de costa por el contorno real de la malla del relieve (`uShore`, la usan FS_TER y
+  FS_SEA; `window.BCN_SHORE = { ms, edges }`). FS_TER pinta la arena (grano, rizos, rastrillo, pisadas, franja mojada) y el
+  mosaico de campos del delta; FS_SEA, agua somera y espuma. Pasarelas de madera sobre la arena.
+- Coste: `BCN.detailStats().nat`.
+
+### 11.7 Cómo se prueba (INT)
+`node tools/shot.js <prefijo> @vistas.json` con las vistas de la etapa INT (calles con `BCN.fx.calle` de seis familias,
+`aereo_eixample`, `aereo_alto` con `maxDist` 40000, `coll_pie`, `playa_pie`, la secuencia de PALETA `d1500`/`d600`/`d200`/
+`d50` y `roof_eix`, de día a las 10:30 y de noche a las 23:00). Vistas de cada carril: `tools/views_nat.json` y las de los
+scratchpads citadas en su progreso.

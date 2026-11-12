@@ -1,29 +1,22 @@
-# INT · Hitos, integración — progreso
+# INT · Noche 2, integración — progreso
+
+(El INT anterior, de la integración de hitos, está en el historial de git de este fichero.)
 
 ## Hecho
-- Fusionadas en `wt-hitos` las ramas `wt-hitos-a` … `wt-hitos-e` (merge --no-ff, sin conflictos: cada lote solo toca
-  `landmarks_<l>.js` y su `progreso/L<l>.md`).
-- Comprobaciones sin navegador: `node --check` de todos los .js de `gta/` y `tools/hitos/` sin fallos; `tris.js`: 98 hitos
-  con constructor (+7 de nivel C sin `build`), 88 404 triángulos con terreno llano, ninguno lanza ni deja vértices no
-  finitos. No hay ids repetidos, ningún volumen de `BREC` lo reclaman dos hitos, y el único par de hitos a menos de 40 m es
-  Batlló–Amatller (16,5 m, contiguos a propósito).
-- Arnés, vistas generales (`aereo_alto`, `aereo_eixample`, `port_vell`, `eix_acera`, `rambla_pie` a las 16 h;
-  `aereo_alto` y `port_vell` a las 22 h; `maxDist 40000` en las aéreas): sin errores ni avisos de consola.
-  `BCN.lm.stats()` = `{ hitos: 98, fichas: 105, tris: 105 945, errores: [], ocultos: 732, retocados: 25 }`
-  (en el juego hay más triángulos que en tris.js porque varios hitos extruyen las plantas reales de `h.edif`).
-  Muy por debajo del objetivo de 400 000.
+- Worktree `/home/user/wt/n2-int`, rama `wt-n2-int` desde `gta-barcelona-fachadas-detalle` (36e00b1).
+- Fusionadas por orden `wt-n2-az` (AZ3, 4863fce), `wt-n2-fx` (FX3, 14f22b3), `wt-n2-arb` (ARB2, 771c83f) y `wt-n2-nat`
+  (NAT2, ed364c0). Único conflicto: `app.js`, la carga de módulos tras las calles (AZ añadía `addMod('roof')`, NAT
+  `addMod('nat')`): se quedan los dos, azoteas y luego naturaleza, y la luz sigue la última. El resto de app.js
+  (FS_BLD/carga de edificios de PALETA, FS_TER/FS_SEA/uShore de NATURALEZA) se fusionó solo.
+- `index.html`: `rooftops.js` y `nature.js` movidos justo antes de `lighting.js` (venían después) como pide el encargo.
+- Ids de material sin choques: 16–19 núcleo, 100 FXPIEDRA, 101 FXVIDRIO, 120 TEJA (`regKind` lanzaría si se repitieran).
+- Las dos líneas que rooftops.js sustituye en el shader de facades.js siguen idénticas tras FACHADAS.
+- DESARROLLO.md: nueva sección **11. Noche 2** (paleta, azoteas, fachadas por barrio, árboles, naturaleza, rango de sombra
+  variable, ids, depuración) que resuelve las peticiones de documentación de todas las etapas.
 
-- Hojas de contacto (rumbo 210, k 2,4, elev 30; arnés sin errores de consola en las seis ejecuciones, ~17 min por lote),
-  en el scratchpad de la sesión: `hitos/hoja_a.jpg` … `hoja_e.jpg` (16 h, los 105 hitos/fichas) y
-  `hitos/hoja_noche_A.jpg` (22 h, los 27 de nivel A); vistas generales en `hitos/int_generales.jpg`.
-- `tools/hitos/hoja.py`: con una sola vista por hito la hoja salía en UNA columna (ilegible); ahora usa 4 columnas.
+## Pendiente
+- Capturas ANTES/DESPUÉS (10:30 y 23:00) y medida de coste.
 
-## Para REV (lo que salta a la vista en las hojas, sin revisar a fondo)
-- Encuadre: las fichas de nivel C sin `alto` o pequeñas salen con la cámara pegada (palau_blaugrana, picornell,
-  piscina_montjuic, estel_ferit) o tapada por árboles (cap_barcelona). Es la vista, no el modelo.
-- Arc de Triomf visto desde 210° parece una torre roja (se ve de canto); comprobar desde otro rumbo.
-- Noche: torre de Collserola y Park Güell casi no se ven; Sant Pau, poco. Torres «la Caixa», Disseny Hub y Peix ya
-  señalados por el lote c. Bellesguard: caja oscura.
-
-## Pendiente (otras etapas)
-- REV y FIX de `final.md`.
+## Cómo se prueba
+Scratchpad `n2/int/`: `dia.json` y `noche.json` (DESPUÉS, con `BCN.fx.calle`), `a_*.json` (ANTES, rama principal
+exportada en `n2/int/antes/gta`). `run_d.sh` / `run_a.sh`.
