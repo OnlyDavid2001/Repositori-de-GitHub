@@ -14,9 +14,13 @@ algún cambio).
    como rayas azuladas.
 4. **Cables de la Torre de Collserola** (landmarks_e.js): los vientos pasan de 0,44 m de grosor a 0,12–0,14 m (cables
    finos y tensos, como los de verdad); eran los «cables cruzando el cielo» de coll_camino.
-5. **Glòries** (landmarks_c.js): la cubierta de los Encants pierde el tono alterno por triángulo que se leía como un damero
-   marrón; la Torre Glòries con menos ruido por panel (variación 0,7 → 0,32, huecos 0,2 → 0,08); el Disseny Hub en zinc
+5. **Glòries** (landmarks_c.js): la cubierta de los Encants deja de leerse como un damero marrón (ola más suave, sin tono
+   alterno por triángulo y paneles de 2,1 m con poca variación: bronce uniforme con retícula fina); la Torre Glòries con menos ruido por panel (variación 0,7 → 0,32, huecos 0,2 → 0,08); el Disseny Hub en zinc
    oscuro con más variación de panel en vez de caja gris clara.
+
+Hoja ANTES/DESPUÉS: `scratchpad/g1/fx_edificios/hoja_fx_edificios.jpg` (glories_dron, coll_camino, port_vell, azoteas,
+eix_dron, gotic_calle). Sin errores de consola en ninguna captura. En port_vell el cambio de cubierta casi no se aprecia
+desde el dron; en azoteas no había árboles de esferas a la vista.
 
 ## No resuelto (se queda como estaba)
 - **Losa de gotic_calle (b15_16)**: el único volumen cuya caja contiene los dos puntos del picking es el edificio 81777

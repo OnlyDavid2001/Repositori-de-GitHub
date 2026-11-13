@@ -267,7 +267,7 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
       R.push(o2.map(p => { const x = c[0] + (p[0] - c[0]) * s, z = c[1] + (p[1] - c[1]) * s; return [x, alt(x, z, s), z]; })); }
     const ny = t => { let n = 0; for (let i = 0; i < t.length; i++) { const a = t[i], b = t[(i + 1) % t.length]; n += (a[2] - b[2]) * (a[0] + b[0]); } return n; };
     const cara = (t, arriba, col, k, aux) => { if ((ny(t) > 0) !== arriba) t = t.slice().reverse(); L.poly(B, t, col, k, aux); };
-    const baja = p => [p[0], p[1] - 0.45, p[2]], auxS = L.aux.panel(4.2, 0.1), auxI = L.aux.panel(1.6, 0.08);
+    const baja = p => [p[0], p[1] - 0.45, p[2]], auxS = L.aux.panel(2.1, 0.03), auxI = L.aux.panel(1.6, 0.08);
     for (let r = 0; r < NR; r++) for (let i = 0; i < o2.length; i++) { const j = (i + 1) % o2.length, A = R[r][i], Bp = R[r][j], C = R[r + 1][j], D = R[r + 1][i];
       const f = 1;   // FX: sin el tono alterno por triángulo (se leía como un damero)
       cara([A, Bp, C], true, L.shade(BRZ, f), K.METAL, auxS); cara([A, C, D], true, L.shade(BRZ, f), K.METAL, auxS);
