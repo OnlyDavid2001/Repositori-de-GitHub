@@ -816,13 +816,14 @@ void main(){
     for (const m of PITM) band(m, -2, -1, 60, 75);
     matW.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1));
   }
-  // INT1: los niveles cercano y medio de los árboles de calle (los más caros: hasta ~700 k triángulos a pie en el Eixample, y
-  // proyectan sombra) se acortan con la calidad de BCN.light (alta 1; media 0,8; baja 0,6). Si la calidad cambia (modo auto),
-  // se recalculan las bandas y las instancias
-  const TQK = { alta: 1, media: 0.8, baja: 0.6 };
+  // INT1: los niveles cercano y medio de los árboles de calle (los más caros: ~700 k triángulos a pie en el Eixample tras
+  // G1V3, de ellos ~366 k del nivel medio, y los dos proyectan sombra) se acortan con la calidad de BCN.light:
+  // [cercano, medio] alta [1, 0,9] (medio 288–360 m); media [0,8, 0,7]; baja [0,6, 0,5]. El número de árboles de cada nivel
+  // va con el cuadrado de la distancia. Si la calidad cambia (modo auto), se recalculan las bandas y las instancias
+  const TQK = { alta: [1, 0.9], media: [0.8, 0.7], baja: [0.6, 0.5] };
   let tq = 'alta';
   const lightQ = () => (window.BCN && window.BCN.light && window.BCN.light.quality) || 'alta';
-  function treeQ() { const k = TQK[tq] || 1; S.tN = S.tN0.map(v => v * k); S.tF = S.tF0.map(v => v * k); setBands(); }
+  function treeQ() { const k = TQK[tq] || TQK.alta; S.tN = S.tN0.map(v => v * k[0]); S.tF = S.tF0.map(v => v * k[1]); setBands(); }
   function update(P, groundY, dt) {
     { const lq = lightQ(); if (lq !== tq) { tq = lq; treeQ(); lastIP = null; } }
     const alt = Math.max(0, P.y - groundY);

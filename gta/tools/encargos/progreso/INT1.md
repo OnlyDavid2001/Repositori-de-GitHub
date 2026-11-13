@@ -29,4 +29,4 @@ medida de rendimiento con `BCN_SUELOS.pre` (true = se usa el precalculado).
 ## Arreglos de integración
 - `lighting.js`: `BCN.light.quality` no existía (el getter faltaba); `nature.js` (G1V3) lo leía y siempre obtenía
   `undefined`, así que el monte nunca se aclaraba en media ni en baja. Getter añadido.
-- `streets.js`: niveles cercano y medio de los árboles de calle bajo la calidad (alta 1; media 0,8; baja 0,6).
+- `streets.js`: niveles cercano y medio de los árboles de calle bajo la calidad ([cercano, medio]: alta [1; 0,9], media [0,8; 0,7], baja [0,6; 0,5]).

@@ -1921,3 +1921,7 @@ monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando aca
 ### 14.6 Integración (INT1)
 - `BCN.light.quality` (getter nuevo en `lighting.js`): `'alta' | 'media' | 'baja'`, la calidad en curso (también en modo
   auto). Antes no existía y `nature.js` leía `undefined` (siempre calidad alta).
+- Árboles de calle por calidad (`streets.js`, `TQK`): los niveles cercano (`S.tN`) y medio (`S.tF`) son los de `setRange`
+  (`S.tN0`, `S.tF0`) por [cercano, medio] = alta [1; 0,9] (medio 288–360 m), media [0,8; 0,7], baja [0,6; 0,5]; si la
+  calidad cambia en modo auto, `update` rehace bandas e instancias. El número de árboles de un nivel va con el cuadrado
+  de su distancia.
