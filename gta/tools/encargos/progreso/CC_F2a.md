@@ -1,6 +1,6 @@
 # CC_F2a · Fase 2a (arquitectura del kit y bloque 1) — progreso
 
-Estado: **en curso**. Capturas en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/cc/f2a/`
+Estado: **terminada** (arquitectura + bloque 1). Capturas en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/cc/f2a/`
 (`mk.js` genera las vistas del escaparate; `lote.sh <hora> <tamaño> <prefijo> estilo:x:z:hMin:hMax …` las captura).
 
 ## Hecho
@@ -14,7 +14,7 @@ Estado: **en curso**. Capturas en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a
 - [x] Bloque 1: `gta/estilos_b1.js` + `gta/piezas_b1.js` (desarrollismo, pueblo, contemporáneo, burgués 60–70, autarquía,
       noucentista; 4 variantes cada uno). Tipos 168 TRAVERTINO y 169 PANEL.
 - [x] `gta/tools/cc/vistas_estilos.json` (una vista por estilo) y DESARROLLO.md §16.
-- [ ] Hojas de captura (día y noche) y medidas de triángulos.
+- [x] Hojas de captura (día y noche), vistas naturales (sin forzar) y medidas de triángulos y llamadas.
 
 ## Cómo se añade un ESTILO (bloques 2–4: solo en `estilos_bN.js`)
 1. En `gta/estilos_bN.js` (cargado tras `piezas_bN.js`; su línea `<script>` va después de las del bloque anterior en index.html):
@@ -54,3 +54,21 @@ KIT.pieza('vano_olimpico', function (env, run, q) {   // ranura «vano»: un van
 - Piezas ya hechas reutilizables: `arco`, `fronton`, `aire`, `parabolica`, `cajon`, `jardinera`, `placas`, `pergola`, `lamas`,
   `urna` (kit.js) y `puerta`, `ventanaPVC`, `loggia`, `frente_verja`, `frente_arcos`, `antenas`, `pilastras`, `urnas` (piezas_b1.js).
 - Nada por fotograma ni texturas por edificio; contar triángulos (lo que va en W0 se ve hasta 245 m).
+
+## Verificación (capturas en la carpeta de arriba)
+- `hoja_b1_dia.jpg`: 6 estilos × 4 variantes a las 10:30 (filas: desarrollismo, pueblo, contemporáneo, burgués, autarquía,
+  noucentista; columnas: variantes 0–3); `hoja_d_<estilo>.jpg` las mismas a 1280 de ancho. `hoja_b1_noche.jpg` (23:00,
+  variantes 0 y 2 de cada estilo). `hoja_natural.jpg`: las 6 vistas de `tools/cc/vistas_estilos.json` sin forzar (el estilo que
+  sale del selector en su barrio). Cada hoja con la página cargada con `?estilo=<id>` y la variante forzada en marcha con
+  `BCN.fx.force('estilo:<id>:<v>')` sobre el MISMO edificio (para comparar variantes): por eso el color del muro es el de la
+  variante que el selector le dio al cargar (p. ej. la torre de gresite del desarrollismo sale sobre ladrillo rojo y la de ladrillo
+  de autarquía sobre beis); cargada con `&v=<n>`, el color es el de la variante.
+- ¿Se reconoce? desarrollismo: ladrillo, cantos de forjado, terrazas hundidas (abiertas o cerradas con aluminio), PVC con cajón,
+  aires, galerías, torre con antepechos de gresite de color, soportales. Pueblo: alero de teja, balcones de forja, puerta de madera
+  con recercado (en arco a veces), patio con verja, portalón de taller. Contemporáneo: muro cortina, celosías de lamas sobre el
+  balcón de vidrio, marcos de hormigón con panel de madera, rasgaduras de hotel con paneles de color; planta baja de vidrio.
+  Burgués: travertino en la planta baja con ventana alta y jardineras, portal con marco de piedra y visera, rampa de garaje,
+  terrazas corridas con plantas colgantes y toldos, ático con pérgola, persianas de madera oscura. Autarquía: estuco sobrio,
+  placa de protegida, ladrillo con recercados de piedra, soportales de arcos. Noucentista: frontones, pilastras gigantes, portal
+  con pilastras y frontón, almohadillado, urnas sobre la balaustrada, oficinas con planta baja alta.
+- Errores y avisos de consola: **cero** en todas las ejecuciones (día, noche, naturales).
