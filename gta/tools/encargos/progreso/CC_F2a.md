@@ -72,3 +72,24 @@ KIT.pieza('vano_olimpico', function (env, run, q) {   // ranura «vano»: un van
   placa de protegida, ladrillo con recercados de piedra, soportales de arcos. Noucentista: frontones, pilastras gigantes, portal
   con pilastras y frontón, almohadillado, urnas sobre la balaustrada, oficinas con planta baja alta.
 - Errores y avisos de consola: **cero** en todas las ejecuciones (día, noche, naturales).
+
+## Medidas (fps_eval.js, calidad media, 960×540; vistas de la Fase 0, selector natural)
+- Eixample a pie: **5.194.012** triángulos / **866** llamadas (antes 5,2 M / 866); 29,0 s/fotograma con SwiftShader.
+- Gòtic a pie: **6.332.852** / **644** (antes 6,40 M / 649); 39,5 s/fotograma (ruido de SwiftShader: en F1 fue 37,3 s).
+- Aérea: **1.315.294** / **304** (igual que antes); 4,0 s/fotograma.
+- Carga 17–20 s, como antes (el selector hace una consulta `BCN_CONDAL.at` y 22 pesos por vivienda al hornear el color).
+- Nada por fotograma: todo se hornea al cargar o se construye en las celdas de siempre. Las piezas nuevas van en W0 solo cuando
+  dan la silueta (loggias, soportales, marcos, jardineras, antenas); el detalle fino, en W1.
+- La primera ejecución de fps_eval se cortó en la segunda vista por el `timeout` de mi script (no del juego); repetida aparte.
+
+## Lo flojo / para los siguientes
+- El escaparate en marcha (`BCN.fx.force`) no cambia el color del volumen (está horneado al cargar): para ver el color de una
+  variante, cargar con `?estilo=<id>&v=<n>`.
+- Comercio provisional por tramo con la densidad real (regla 8 simplificada): la Fase 4 lo sustituye (por vano, calles
+  principales y esquinas).
+- Sin rachas por acera ni «variante + color» contra el vecino (solo variante contra los vecinos pegados de índice menor): Fase 3.
+- `?pb=` y `com` solo afectan a edificios con estilo del kit; los estilos aún sin kit siguen con todos los bajos comerciales.
+- Chaflán: detección geométrica en el generador (tramo a ~45°); la Fase 3 puede precalcularlo. No hay «+1 planta» (alturas reales).
+- En F8 la «variante» de un estilo aún sin kit sale como «variante 1» (VAR = 0): es el estilo que tocará cuando su bloque exista.
+- Para los bloques 2–4: si necesitan algo del núcleo (una ranura nueva, otro campo en `q`), pedirlo; no tocar kit.js ni el
+  generador desde los bloques.
