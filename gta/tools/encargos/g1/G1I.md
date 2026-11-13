@@ -40,3 +40,8 @@ Fusión de `wt-g1-fach`, comprobación, capturas DESPUÉS finales de las 24 vist
   de detalle (G1F3).
 - **fusión final**: `palette.js` solo tiene la sección de G1F al final (la de sarria_pedralbes); al fusionar wt-g1-fach,
   conservarla.
+- **fusión final (lo vio el orquestador en la hoja del banco)**: en `sagrada_pie` el dosel de plátanos nuevo **tapa por
+  completo la Sagrada Família** al fondo de la calle (antes se veía). Es una regresión grave para el usuario: en las calles
+  con vista a un hito (Sagrada Família, Avinguda de Gaudí, Passeig de Gràcia hacia Gràcia…) la copa no puede cerrar la
+  vista: copa más alta y menos densa, o menos árboles en el último tramo, o un árbol más pequeño; comprueba `sagrada_pie`
+  antes y después.
