@@ -4,6 +4,16 @@ Worktree `/home/user/wt/g1-fach`, rama `wt-g1-fach`. Ficheros: `facades.js`, `fa
 `interiors.js`. Lee `comun.md`, DESARROLLO §2, §3, §6, §9, §11 (70 fachadas por barrio) y §12, y los progresos de n2/n3
 que tocaron fachadas.
 
+## Lo que dijo el jurado de la línea base (antes de la fase: media 4,4 sobre 10; meta 8)
+Dos jurados independientes puntuaron las 24 vistas del banco (`git show origin/wt-g1-banco:gta/tools/views_g1.json`;
+capturas ANTES en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/antes/a_<vista>.jpg`, hoja `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/hoja_antes.jpg`, todas las notas y defectos
+por vista en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/linea_base.json`, rúbrica en `g1/rubrica.md` de la rama wt-g1-banco). Defectos que caen en tu
+carril, de más a menos graves: **atácalos primero** (en la etapa en la que estés, y el crítico y el repaso los comprueban
+con esas mismas vistas):
+1. Escaparates blancos quemados y vacíos, con rótulos planos, sin reflejo ni interior creíble (eix_calle, eix_noche, gotic_calle).
+2. Toldos que atraviesan la calle del Gòtic (gotic_calle).
+3. Edificios blancos sin estuco ni zócalo, bloques con ventanas pintadas y la misma rejilla de ventanas en todas partes (sarria_major, poblenou_rambla, eix_noche, coll_desde_ciudad).
+
 ## Etapa 1 (G1F1) · Materiales y ventanas
 Hoja ANTES a pie de calle (Eixample: Passeig de Gràcia, Enric Granados, un xamfrà; Ciutat Vella: una calle estrecha del
 Gòtic; Gràcia; Poblenou; Sarrià), de día y de noche. Después:
