@@ -536,6 +536,8 @@ pieza('pb_temprano', function (env, run, q) {
   return P.almohadillado(env, run, q, { forja: 0, hl: 0.48, sc, h: 2.1 });
 });
 pieza('vano_temprano', function (env, run, q) {
+  if (q.V.vi === 0 && !q.low && !q.atico && q.nb >= 3 && q.nb % 2 === 1 && q.W === q.nb >> 1) {   // simétrica: eje central marcado
+    KIT.T.vano(env, run, conV(q, { recerc: 3, win: q.V.win * 1.12, vuelo: q.V.vuelo + 0.12 })); return; }
   if (q.V.vi !== 2 || q.D < 3 || q.low || q.atico) return false;
   KIT.T.vano(env, run, conV(q, { hueco: 'ventana' }));   // chaflán sobrio: de la 3.ª planta arriba, ventanas con antepecho
 });
