@@ -117,8 +117,8 @@ pieza('tribuna_piedra', function (env, F, a, bw, k, P, o) {
   if (W1) { const n = 3; for (let j = 1; j < n; j++) { const x = u0 + (u1 - u0) * j / n; box(W1, F, x - 0.04, x + 0.04, k + 0.8, P - 0.4, jt - 0.1, jt - 0.04, md, K.WOOD, 4); }
     box(W1, F, u0, u1, P - 0.75, P - 0.7, jt - 0.1, jt - 0.04, md, K.WOOD, 1); }
   if (o.base) {                                       // ménsula de la primera planta de la tribuna
-    quad(W0, F, u0, k, jt, u1, k, jt, u1, k - 0.9, 0, u0, k - 0.9, 0, shade(s, 0.92), KS());
-    quad(W0, F, u0, k, 0, u0, k, jt, u0, k - 0.9, 0, u0, k - 0.9, 0, shade(s, 0.85), KS()); quad(W0, F, u1, k, 0, u1, k, jt, u1, k - 0.9, 0, u1, k - 0.9, 0, shade(s, 0.85), KS()); }
+    quad(W0, F, u0, k, jt, u1, k, jt, u1, k - 0.7, 0, u0, k - 0.7, 0, shade(s, 0.7), KS());
+    quad(W0, F, u0, k, 0, u0, k, jt, u0, k - 0.7, 0, u0, k - 0.7, 0, shade(s, 0.78), KS()); quad(W0, F, u1, k, 0, u1, k, jt, u1, k - 0.7, 0, u1, k - 0.7, 0, shade(s, 0.78), KS()); }
   if (o.remate) { lattice(W0, F, u0, u1, P, P + 0.85, jt, s, K.BAL, 0); box(W0, F, u0, u1, P + 0.85, P + 0.95, jt - 0.15, jt + 0.03, s, KS(), 7); }
 });
 // torreta: cuerpo de planta cuadrada sobre el terrado con ventanas, cornisa y chapitel piramidal de cerámica con aguja
