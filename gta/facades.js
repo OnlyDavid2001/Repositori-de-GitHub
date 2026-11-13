@@ -501,7 +501,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const ES = window.BCN_CONDAL, cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2, at = ES && ES.at(cx, cz);
       const ce = ES && ES.estilos ? ES.estilos[KIT.indice(V.estilo)] : null;
       rnd(7, 1); const r0 = R(), r1 = R();
-      env.dg = Math.max(0.02, Math.min(1, (V.dg !== null ? V.dg : ce ? ce.dg : 0.35) + (at && at.detalles ? at.detalles.desgaste_extra || 0 : 0) + (r0 - 0.5) * 0.16));
+      const PR = window.BCN_EDIF;                      // F3a: desgaste precalculado (estilo + barrio), salvo en el escaparate
+      env.dg = PR && PR.ok && !KIT.forced ? Math.max(0.02, PR.dg(b)) : Math.max(0.02, Math.min(1, (V.dg !== null ? V.dg : ce ? ce.dg : 0.35) + (at && at.detalles ? at.detalles.desgaste_extra || 0 : 0) + (r0 - 0.5) * 0.16));
       const dn = at ? at.densidad : 0;                 // regla 8 (provisional hasta la Fase 4): ≥ 15 locales/ha casi todo; 5–15 mezcla; < 5 casi nada
       env.pCom = (dn >= 15 ? 0.95 : dn >= 5 ? 0.3 + (dn - 5) * 0.06 : dn * 0.05) * V.com;
       env.rCom = r1;
@@ -603,14 +604,16 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (ES) V0 = ES.V[Fz.v >= 0 ? Fz.v : KIT.EST && KIT.EST[b] === KIT.indice(Fz.id) ? KIT.VAR[b] : (j[5] * 4) | 0];
       else V0 = KIT.variante(b);
       if (V0) {
-        if (!(ES && Fz.v >= 0) && (dep | 0) < 400) {  // regla 3: no repetir la variante de un vecino pegado del mismo estilo (índice menor)
+        const PR = window.BCN_EDIF, pre = !!(PR && PR.ok && !ES);   // F3a: variante y ático precalculados (tools/cc/generador.js)
+        if (!pre && !(ES && Fz.v >= 0) && (dep | 0) < 400) {  // regla 3: no repetir la variante de un vecino pegado del mismo estilo (índice menor)
           const L4 = KIT.E[V0.estilo].V, usados = vecinos(b).map(n => { const v = varOf(n, (dep | 0) + 1); return v && v.id; });
           for (let t = 0; t < 4; t++) { const v = L4[(V0.vi + t) % 4]; if (usados.indexOf(v.id) < 0) { V0 = v; break; } }
           if (!ES && KIT.VAR) KIT.VAR[b] = V0.vi;
         }
         V = Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
           remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
-        if (V0.aticoP && j[4] < V0.aticoP) V.coron = 'atico';   // regla 5: ático retranqueado
+        if (pre ? PR.atico(b) : V0.aticoP && j[4] < V0.aticoP) V.coron = 'atico';   // regla 5: ático retranqueado
+        if (pre) { const rm = PR.remonte(b); if (rm[0]) V.remonte = rm; }            // regla 5: remonte (plantas, acabado)
         if (V0.noble) V.nobleV = Object.assign({}, V, V0.noble, { noble: null, nobleV: null, chaflanV: null });
         if (V0.chaflan) { V.chaflanV = Object.assign({}, V, V0.chaflan, { chaflan: null, chaflanV: null });
           if (V.nobleV) V.chaflanV.nobleV = Object.assign({}, V.nobleV, V0.chaflan); }
@@ -1082,7 +1085,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   const S = { on: true, R0: 170, R1: 215, RB: 245, RD: 310, H0: 70, H1: 95, HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
   let job = null, queue = [], tris = [0, 0];
   const dirty = new Set();
-  function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = f; dirty.add(ch); }
+  function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = (inf[v * 4 + 3] & ~1) | f; dirty.add(ch); }   // bits altos de .w: código lejano del estilo (F3a)
   function mkMeshFrom(W, mat, name) {
     if (!W.nv) return null;
     const m = new BABYLON.Mesh(name, scene);
@@ -1183,7 +1186,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (KIT) KIT.force(mk ? mk[1] : null, mk && mk[2] !== undefined ? +mk[2] : -1);
     if (mk) v = null;
     FXV = v; VAR.fill(undefined); dropAll(); planT = 0; }
-  return { update, setRange, nElig, spot, spotFull, spotAt, calle, famOf, varOf, force, busy: () => !!job || queue.length > 0,
+  return { update, setRange, nElig, spot, spotFull, spotAt, calle, famOf, varOf, force, layoutB, esChaflan, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();

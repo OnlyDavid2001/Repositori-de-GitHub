@@ -206,7 +206,15 @@ function initDebug(ctx) {
       h.push('<div><span class="k">Edificio</span>#' + f.b + ' · ' + Math.round(f.d.y1 - f.d.yb) + ' m · clase ' + f.d.cls + ' · ' + tipo + '</div>');
       const elig = !BR || !BR.elig || !!BR.elig[f.b];
       h.push('<div><span class="k">Estilo hoy</span>' + (!elig ? '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (no tiene fachada de detalle)</span>' : V ? '<b>' + esc(fam || V.fam || '?') + '</b> · variante ' + esc(V.id || '?') + (V.acab ? ' <span class="d">(' + esc(V.acab) + ')</span>' : '') : '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (fachada genérica)</span>') + '</div>');
-      h.push('<div><span class="k">Estilo nuevo</span>' + (nuevo ? '<b>' + esc(nuevo.n) + '</b>' + (BR.varEst ? ' · variante ' + (BR.varEst[f.b] + 1) : '') : '<span class="d">— (llega en la Fase 3)</span>') + '</div>');
+      // Fase 3a: estilo y variante asignados (precalculados en data/condal_edif.json, o del selector provisional si no casa)
+      const KT = window.BCN_KIT, PR = window.BCN_EDIF, ok = PR && PR.ok && !(KT && KT.forced), vk = KT && KT.variante ? KT.variante(f.b) : null;
+      h.push('<div><span class="k">Estilo nuevo</span>' + (nuevo ? '<b>' + esc(nuevo.n) + '</b>' + (BR.varEst ? ' · variante ' + (BR.varEst[f.b] + 1) + (vk && vk.nombre ? ' <span class="d">(' + esc(vk.nombre) + ')</span>' : '') : '') +
+        ' <span class="d">' + (ok ? '· precalculado' : KT && KT.forced ? '· escaparate' : '· selector provisional') + '</span>' : '<span class="d">— (sin estilo: no es vivienda o no hay datos)</span>') + '</div>');
+      if (nuevo && ok) { const rm = PR.remonte(f.b), fr = PR.frente(f.b);
+        h.push('<div><span class="k">Generador</span>color ' + (PR.col(f.b) + 1) + ' · ' + PR.parcelas(f.b) + (PR.parcelas(f.b) > 1 ? ' parcelas' : ' parcela') +
+          (PR.atico(f.b) ? ' · ático' : '') + (rm[0] ? ' · remonte de ' + rm[0] + (rm[0] > 1 ? ' plantas' : ' planta') + ' (' + ['ladrillo', 'estuco', 'cemento', 'panel'][rm[1]] + ')' : '') +
+          (PR.chaflan(f.b) ? ' · chaflán' : '') + ' · desgaste ' + Math.round(PR.dg(f.b) * 100) + ' %' +
+          ' <span class="d">· ' + (fr & 1 ? (fr & 2 ? 'repite el estilo del vecino de la acera' : 'acera') + (fr & 4 ? ', avenida' : '') : 'sin frente de calle') + '</span></div>'); }
     }
     el.innerHTML = h.join('');
   }

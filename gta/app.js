@@ -365,7 +365,7 @@ void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   if (dot(n, V) < 0.0) n = -n;
   // edificio con fachada de detalle ya construida: la pared simple cede el sitio con un fundido tramado
-  if (vInfo.w > 0.5 && abs(n.y) < 0.5 && dith() >= smoothstep(uFx.x, uFx.y, dist)) discard;
+  if (mod(vInfo.w, 2.0) > 0.5 && abs(n.y) < 0.5 && dith() >= smoothstep(uFx.x, uFx.y, dist)) discard;
   float a255 = floor(vCol.a*255.0 + 0.5); float style = floor(a255/16.0); float seed = (a255 - style*16.0)/15.0;
   vec3 base = vCol.rgb; vec3 glow = vec3(0.0);
   float h = vInfo.x*0.1, Ht = vInfo.y*0.1;
@@ -405,14 +405,29 @@ void main(){
       gl = mix(gl, mix(base, uSkyCol*1.3, 0.5)*1.1, 0.4*(1.0 - uDusk));   // REV3: de día, vidrio menos negro (como el de cerca)
       base = mix(mix(base*0.85, gl, 0.7), mix(gl, base*0.55, mull*0.8), fade);
     } else if (!plain) {
-      float fh = 3.2, fl = floor(h/fh), fy = fract(h/fh);
-      float fx = fract(u/2.7 + seed*3.7);
-      float wy = smoothstep(0.26,0.32,fy)*(1.0 - smoothstep(0.80,0.86,fy));
-      float wx = smoothstep(0.22,0.28,fx)*(1.0 - smoothstep(0.72,0.78,fx));
+      // Condal City (F3a): con estilo del kit (código en los bits altos de vInfo.w, edif.js lejosCode), las plantas, el ancho de
+      // vano y la fracción de hueco son los de su variante (variante.lejos) y la planta baja y los pisos van a las mismas cotas
+      // que la fachada de detalle (planta baja de 4,3 m o 3,25 m y pisos iguales hasta la cornisa): no salta al acercarse
+      float lc = floor(vInfo.w*0.5 + 0.01), muro = 0.0;
+      float fh = 3.2, bayW = 2.7, wxa = 0.22, wxb = 0.78, wya = 0.26, wyb = 0.86, gH = 0.0, vd = 0.3;
+      float fl, fy;
+      if (lc > 0.5) {
+        muro = mod(lc, 8.0); vd = (floor(lc/2048.0) + 1.0)/8.0;
+        bayW = 1.5 + 0.25*mod(floor(lc/128.0), 16.0);
+        gH = Ht >= 10.0 ? 4.3 : 3.25;
+        float hp = 2.6 + 0.1*mod(floor(lc/8.0), 16.0), Rm = max(Ht - 0.85 - gH, 1.0);
+        fh = Rm/max(1.0, floor(Rm/hp + 0.5));
+        float hy = clamp(0.42 + 0.5*vd, 0.45, 0.82), hx = clamp(vd/hy, 0.16, 0.9);
+        wya = 0.86 - hy - 0.03; wxa = 0.47 - 0.5*hx; wxb = 0.53 + 0.5*hx;
+        if (h >= gH) { float t = (h - gH)/fh; fl = 1.0 + floor(t); fy = fract(t); } else { fl = 0.0; fy = h/gH; }
+      } else { fl = floor(h/fh); fy = fract(h/fh); }
+      float fx = fract(u/bayW + seed*3.7);
+      float wy = smoothstep(wya,wya + 0.06,fy)*(1.0 - smoothstep(wyb - 0.06,wyb,fy));
+      float wx = smoothstep(wxa,wxa + 0.06,fx)*(1.0 - smoothstep(wxb - 0.06,wxb,fx));
       float w = wx*wy;
       if (fl < 0.5) w = smoothstep(0.10,0.16,fx)*(1.0 - smoothstep(0.84,0.90,fx))*smoothstep(0.12,0.18,fy)*(1.0 - smoothstep(0.84,0.9,fy));
       w *= step(0.0, h)*step(h, Ht - 0.7);
-      float cell = hash21(vec2(floor(u/2.7 + seed*3.7), fl + seed*13.0));
+      float cell = hash21(vec2(floor(u/bayW + seed*3.7), fl + seed*13.0));
       if (uDusk > 0.01) {                                // de noche: ventanas de pisos encendidas (de lejos, su media) y bajos comerciales
         float hw = fract(cell*9.7 + 0.37);
         float fr = 0.65*homeFrac();                      // de lejos, algo menos que en las fachadas de detalle
@@ -421,8 +436,14 @@ void main(){
       }
       vec3 glass = mix(vec3(0.11,0.13,0.17), uSkyCol*0.85, 0.25 + 0.35*cell);
       float amt = abs(style-2.0) < 0.5 ? 0.55 : 0.9;
-      base = mix(base, glass, mix(0.20, w*amt, fade));
-      base *= 1.0 - 0.07*(1.0 - smoothstep(0.02,0.06,fy))*fade*step(0.5, fl);
+      // de lejos, el muro con la media de sus huecos (la fracción de hueco del estilo); muro del estilo: el hormigón y el ladrillo
+      // marcan los cantos de forjado (oscuro / claro), la piedra y el travertino la planta baja
+      float far0 = lc > 0.5 ? 0.12 + 0.3*vd : 0.20;
+      if (abs(muro - 5.0) < 0.5) amt = 0.95;
+      base = mix(base, glass, mix(far0, w*amt, fade));
+      float slab = abs(muro - 4.0) < 0.5 ? 0.16 : abs(muro - 2.0) < 0.5 ? -0.10 : 0.07;
+      base *= 1.0 - slab*(1.0 - smoothstep(0.02,0.06,fy))*fade*step(0.5, fl);
+      if (fl < 0.5 && lc > 0.5) base *= abs(muro - 3.0) < 0.5 ? 0.9 : abs(muro - 6.0) < 0.5 ? 1.06 : 1.0;
     } else {
       // grano de revoco: se apaga cuando la celda de ruido baja de unos pocos píxeles (de lejos, ni moiré ni parpadeo)
       float pxw = max(length(vec2(dFdx(u), dFdy(u))), length(vec2(dFdx(h), dFdy(h))));
@@ -1610,6 +1631,8 @@ const BREC = { dv: [], n: 0 };
   BREC.v0 = new Int32Array(nTot); BREC.v1 = new Int32Array(nTot); BREC.bb = new Float32Array(nTot * 4); BREC.elig = new Uint8Array(nTot); BREC.tipo = new Uint8Array(nTot); BREC.vid = new Uint8Array(nTot);
   BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; window.BCN_MZINFO = MZ; let mzK = 0;   // INT3: BCN_MZINFO para el arnés (cache, ms, blocks)
     // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
+  // Condal City (F3a): estilo, variante, color y demás decisiones precalculadas por edificio (edif.js, tools/cc/generador.js)
+  const EDIF = window.BCN_EDIF, EDOK = EDIF ? await EDIF.listo(conts.map(c => c.view('data')), nTot) : false; BREC.edif = EDOK;
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
   // Condal City (F2a): estilo y variante por edificio (kit.js; los decide palette.js pick al hornear el color)
   if (window.BCN_KIT) { window.BCN_KIT.init(nTot); BREC.estilo = window.BCN_KIT.EST; BREC.varEst = window.BCN_KIT.VAR; }
@@ -1650,6 +1673,8 @@ const BREC = { dv: [], n: 0 };
             pA += x * flat[j * 2 + 1] - flat[j * 2] * z; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < w0) w0 = w; if (w > w1) w1 = w; } }
         pA = Math.abs(pA) / 2;
         const c3 = (PALJ && PALJ.pick(bi, cls, seed, (bx0 + bx1) / 2 + ox, (bz0 + bz1) / 2 + oz, Ht / 10, pA, pA / Math.max(1, (u1 - u0) * (w1 - w0)))) || pal[seed % pal.length];
+        // volumen lejano que conoce su estilo (F3a): muro, plantas y vanos del kit en los bits altos de uv.w (bit 0: bandera de facades.js)
+        const LJ = EDIF && window.BCN_KIT && window.BCN_KIT.EST && window.BCN_KIT.EST[bi] !== 255 ? EDIF.lejosCode(bi) * 2 : 0;
         let rs = 0; holes.length = 0;
         for (let r = 0; r < rsz.length; r++) {
           const m = rsz[r]; if (r > 0) holes.push(rs);
@@ -1660,7 +1685,7 @@ const BREC = { dv: [], n: 0 };
             const uq = Math.min(32767, Math.round(ua * 10));
             let o = vp * 3; pos[o] = x; pos[o + 1] = y0; pos[o + 2] = z; pos[o + 3] = x; pos[o + 4] = y1; pos[o + 5] = z;
             o = vp * 4; col[o] = c3[0]; col[o + 1] = c3[1]; col[o + 2] = c3[2]; col[o + 3] = a; col[o + 4] = c3[0]; col[o + 5] = c3[1]; col[o + 6] = c3[2]; col[o + 7] = a;
-            inf[o] = hb; inf[o + 1] = Ht; inf[o + 2] = uq; inf[o + 4] = Ht; inf[o + 5] = Ht; inf[o + 6] = uq;
+            inf[o] = hb; inf[o + 1] = Ht; inf[o + 2] = uq; inf[o + 3] = LJ; inf[o + 4] = Ht; inf[o + 5] = Ht; inf[o + 6] = uq; inf[o + 7] = LJ;
             o = vp * 2; axv[o] = axC; axv[o + 1] = axS; axv[o + 2] = axC; axv[o + 3] = axS;
             if (k < m) topIdx[kk] = vp + 1;
             if (k > 0) { const a0 = vp - 2; idx[ip++] = a0; idx[ip++] = vp; idx[ip++] = vp + 1; idx[ip++] = a0; idx[ip++] = vp + 1; idx[ip++] = a0 + 1; }

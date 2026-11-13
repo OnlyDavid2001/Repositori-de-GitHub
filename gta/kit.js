@@ -9,8 +9,9 @@
      E, P, BASE, ACAB     estilos registrados, piezas, valores por defecto del esquema, acabados propios
      T                    caja de herramientas de facades.js (wr, rail, ropa, planter, galeriaV, tribunaV, vano, vidAux, KW…);
                           la rellena facades.js al iniciarse: las piezas la usan en tiempo de construcción, nunca al cargar
-     init(n), elige(b, cls, seed, x, z, Hm)   selector provisional al cargar (palette.js): estilo y variante por edificio y color
-                          de la paleta del estilo; EST[b] (índice del catálogo, 255 = ninguno) y VAR[b] (0–3) → BREC.estilo / varEst
+     init(n), elige(b, cls, seed, x, z, Hm)   estilo y variante por edificio y color de la paleta del estilo, al cargar (palette.js):
+                          los precalculados de data/condal_edif.json (edif.js, Fase 3a) o, si no casan, el selector provisional;
+                          EST[b] (índice del catálogo, 255 = ninguno) y VAR[b] (0–3) → BREC.estilo / varEst
      variante(b)          variante del kit del edificio b (objeto congelado) o null (estilo aún sin kit: la familia de antes)
      medidas(q[, V])      hueco de siempre de un vano de piso: { vent, Vw, tt, ct, st, yt, Bh, jt (vuelo del balcón) }
      lejos(b)             parámetros para el volumen lejano (Fase 3 → FS_BLD): { muro, hp, bay, vidrio }
@@ -113,6 +114,15 @@ API.elige = function (b, cls, seed, x, z, Hm) {
   if (!API.EST || (cls !== 0 && cls !== 6)) return null;
   if (!IX && !mapa()) return null;
   const nP = API.plantas(Hm), F = API.forced;
+  // Fase 3a: estilo, variante y color precalculados por tools/cc/generador.js (edif.js); el escaparate (forced) sigue mandando
+  const PR = window.BCN_EDIF;
+  if (PR && PR.ok && !F) {
+    const si = PR.est(b); if (si === 255) return null;
+    API.EST[b] = si; const vi = PR.vari(b); API.VAR[b] = vi;
+    const ES = E[IX[si].id]; if (!ES) return null;
+    const V = ES.V[vi], pal = V.paleta || ES.paleta || IX[si].pal, c = hx(pal[PR.col(b) % pal.length]), kl = PR.lum(b), kt = PR.tono(b);
+    return [c[0] * kl * (1 + kt), c[1] * kl, c[2] * kl * (1 - kt)];
+  }
   let si = -1;
   if (F && E[F.id] && CI[F.id] !== undefined) si = CI[F.id];
   else {

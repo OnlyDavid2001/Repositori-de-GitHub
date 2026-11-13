@@ -2024,3 +2024,36 @@ Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas
   `tools/cc/vistas_estilos.json`: una vista por estilo en una calle que le pega (cada bloque añade las suyas).
 - **Ids de material del kit**: 160–167 núcleo · 168–175 bloque 1 · 176–183 bloque 2 · 184–191 bloque 3 · 192–199 bloque 4; los de
   muro (160–199) reciben el desgaste de los paños.
+
+## 17. Condal City: generador por edificio precalculado (`tools/cc/generador.js` → `data/condal_edif.json`, `edif.js`)
+Fase 3a. Las decisiones por edificio de las reglas 0, 1, 2, 3, 4, 5 y 7 (`reglas_generador`) se precalculan con una
+herramienta y el juego solo las lee, para que estilo, variante y color sean los mismos de lejos y de cerca y no cuesten al cargar.
+- **Herramienta**: `node tools/cc/generador.js` (Chromium sin cabeza, como `tools/mz_partidas.js`): carga el juego con
+  `?edif=0`, recorre `BREC` (las fincas de las manzanas partidas incluidas) con `ctx.city`, `fx.layoutB` y `fx.esChaflan`
+  (expuestos por facades.js), el viario (`ctx.SEG`), el kit y `BCN_CONDAL`, y escribe `data/condal_edif.json` (base64 de zlib,
+  8 planos de bytes por edificio; bits en la cabecera de edif.js). Imprime la estadística por barrio (reparto asignado frente a
+  `fachadas_pct`, rachas, contiguos con misma variante y color). Determinista. **Relanzarlo** si cambian los edificios,
+  `mz_partidas.json`, `condal.json` o el kit (estilos, variantes, `pl`, `pal`, `aticoP`): el juego compara una firma (FNV de
+  una muestra de los contenedores y de los datos de condal.json que usa) y, si no casa, avisa en consola y usa el selector
+  provisional de `kit.js`.
+- **Reglas**: semilla = hash del centro de la huella; estilo por la mezcla (0,7 sección + 0,3 barrio; perfiles de periferia)
+  × compatibilidad de plantas (×0,2 por planta fuera del rango; en avenidas, hasta 2 plantas de más) × un multiplicador por
+  barrio y estilo (0,2–5, ajuste iterativo) que devuelve el reparto hacia la mezcla; frentes de calle (tramo de calle más largo
+  y tramo de calzada a ≤ 16 m; calzadas encadenadas en calles por continuación recta) y aceras ordenadas: repite el estilo del
+  anterior con p = 0,5 (0,65 Eixample; 0,8 tras polígono o casas baratas) si casa con la altura; variante por plantas
+  preferidas, evitando la de los vecinos del mismo estilo y nunca variante + color de un vecino (acera o pegado); parcelas
+  virtuales si el frente supera ×1,5 (×1,25 en fachadas estrechas) el ancho máximo del estilo; ático con `aticoP` de la
+  variante (4+ plantas); remonte (1–2 plantas, 4 acabados) con `remontes_plantas_anadidas` en estilos anteriores a 1975;
+  color de la paleta de la variante con tono ±5 % y luminosidad ±8 %; desgaste del estilo + `desgaste_extra` del barrio.
+- **Juego**: `edif.js` (`window.BCN_EDIF`, antes de los edificios) descarga el fichero en paralelo; app.js llama a
+  `BCN_EDIF.listo(dvs, nB)` justo antes de leer los volúmenes; `BCN_KIT.elige` (lo llama `BCN_PAL.pick` al hornear el color)
+  toma estilo, variante y color del fichero (el escaparate `?estilo=` sigue mandando); `varOf` de facades.js usa la variante
+  y el ático asignados sin reajustarlos (y `V.remonte` = [plantas, acabado]); `genB` toma el desgaste. `BCN_EDIF.parcela(b, k)`
+  da variante y color de la parcela virtual k (para la Fase 3b).
+- **Volumen lejano**: `BCN_EDIF.lejosCode(b)` empaqueta `variante.lejos` (muro, altura de planta, ancho de vano, fracción de
+  hueco) en 14 bits que app.js guarda ×2 en `uv.w` del volumen (el bit 0 sigue siendo la bandera de «fachada de detalle
+  construida» de facades.js, que ahora conserva los bits altos). FS_BLD pone la planta baja (4,3 m o 3,25 m) y los pisos a
+  las cotas de la fachada de detalle, el ancho de vano y el tamaño del hueco del estilo, y marca el muro (cantos de forjado
+  oscuros en hormigón y claros en ladrillo, planta baja más oscura en piedra y más clara en travertino, vidrio casi entero).
+- **F8**: estilo y variante asignados (con el nombre de la variante y si vienen del fichero, del escaparate o del selector
+  provisional) y una línea «Generador»: color, parcelas, ático, remonte, chaflán, desgaste y si repite el estilo de la acera.
