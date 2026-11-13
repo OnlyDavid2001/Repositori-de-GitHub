@@ -170,9 +170,10 @@ vec3 toScr(vec3 c){ return pow(max(c, vec3(0.0)), vec3(0.4545)); }
 // una muestra: 1 si lo guardado en el mapa (lo más cercano al sol) no tapa la profundidad t
 float shTap(sampler2D s, vec2 p, float t){ return step(t, dot(texture2D(s, p).rgb, vec3(1.0, 0.00392156863, 0.0000153787005))); }
 // PCF con pesos bilineales (el borde de la sombra se mueve de forma continua, sin escalones de téxel)
-float shMap(sampler2D s, vec3 d, vec3 X, vec3 Y, float inv, float t){
-  vec2 q = (vec2(dot(d, X), dot(d, Y))*inv*0.5 + 0.5)*uShP.x;
-  float px = 1.0/uShP.x;
+// k: separación de las muestras en téxeles (1 = la de siempre; más = penumbra más ancha, la usa la sombra suave)
+float shMap(sampler2D s, vec3 d, vec3 X, vec3 Y, float inv, float t, float k){
+  vec2 q = (vec2(dot(d, X), dot(d, Y))*inv*0.5 + 0.5)*uShP.x/k;
+  float px = k/uShP.x;
   if (uShP.z < 1.5) {
     vec2 f2 = fract(q - 0.5), b2 = (floor(q - 0.5) + 0.5)*px;
     return mix(mix(shTap(s, b2, t), shTap(s, b2 + vec2(px, 0.0), t), f2.x),
@@ -186,10 +187,24 @@ float shMap(sampler2D s, vec3 d, vec3 X, vec3 Y, float inv, float t){
   return dot(r, vec3(1.0 - f.y, 1.0, f.y))*0.25; }
 // una cascada: el punto se separa de la superficie a lo largo de la normal (más cuanto más rasante es la luz: evita el
 // acné sin despegar la sombra) y se compara con un pequeño margen. tx = tamaño de un téxel en metros
-float shCasc(sampler2D s, vec3 d, vec3 n, float sl, float inv, vec3 X, vec3 Y){
+// G1L1 · SOMBRA SUAVE (penumbra según la distancia al que tapa, tipo PCSS; solo en la cascada cercana y con uShP.w > 0, es
+// decir, en calidad alta): cuatro muestras buscan lo que tapa alrededor; cuanto más lejos está del suelo (un alero a 20 m), más
+// ancha la penumbra (el sol mide 0,53°: unos 9 mm por metro; uShP.w la exagera un poco). Al pie de un bordillo o de una
+// farola la sombra sigue nítida: sombra de contacto
+float shSoft(sampler2D s, vec3 d, vec3 X, vec3 Y, float inv, float t, float tx){
+  vec2 uv = vec2(dot(d, X), dot(d, Y))*inv*0.5 + 0.5; float r = 3.0/uShP.x, sum = 0.0, nb = 0.0, z;
+  const vec3 U = vec3(1.0, 0.00392156863, 0.0000153787005);
+  z = dot(texture2D(s, uv + vec2(-1.5, -0.5)*r).rgb, U); if (z < t) { sum += t - z; nb += 1.0; }
+  z = dot(texture2D(s, uv + vec2(1.5, 0.5)*r).rgb, U); if (z < t) { sum += t - z; nb += 1.0; }
+  z = dot(texture2D(s, uv + vec2(-0.5, 1.5)*r).rgb, U); if (z < t) { sum += t - z; nb += 1.0; }
+  z = dot(texture2D(s, uv + vec2(0.5, -1.5)*r).rgb, U); if (z < t) { sum += t - z; nb += 1.0; }
+  if (nb < 0.5) return 1.0;
+  return clamp(sum/nb/uShP.y*uShP.w/tx, 1.0, 3.5); }
+float shCasc(sampler2D s, vec3 d, vec3 n, float sl, float inv, vec3 X, vec3 Y, bool near){
   float tx = 2.0/(inv*uShP.x);
   d += n*(tx*(0.4 + 1.2*sl));
-  return shMap(s, d, X, Y, inv, 0.5 - (dot(d, cross(X, Y)) + 0.25*tx + 0.01)*uShP.y); }
+  float t = 0.5 - (dot(d, cross(X, Y)) + 0.25*tx + 0.01)*uShP.y;
+  return shMap(s, d, X, Y, inv, t, near && uShP.w > 0.0 ? shSoft(s, d, X, Y, inv, t, tx) : 1.0); }
 float gSunVis = -1.0;
 // visibilidad del sol en este fragmento (n = normal de la superficie): multiplica SOLO la luz directa y los brillos del sol
 float sunVisN(vec3 n){
@@ -204,8 +219,8 @@ float sunVisN(vec3 n){
   // peso de cada cascada: 1 dentro, 0 al llegar a su borde. Fuera de la lejana no hay sombra
   float w0 = 1.0 - smoothstep(0.80, 0.95, max(a0.x, a0.y)), w1 = 1.0 - smoothstep(0.80, 0.97, max(a1.x, a1.y));
   float v = 1.0;
-  if (w0 < 1.0 && w1 > 0.0) v = mix(1.0, shCasc(uShadow1, d1, n, sl, uShC1.w, uShX1, uShY1), w1);
-  if (w0 > 0.0) v = mix(v, shCasc(uShadow0, d0, n, sl, uShC0.w, uShX0, uShY0), w0);
+  if (w0 < 1.0 && w1 > 0.0) v = mix(1.0, shCasc(uShadow1, d1, n, sl, uShC1.w, uShX1, uShY1, false), w1);
+  if (w0 > 0.0) v = mix(v, shCasc(uShadow0, d0, n, sl, uShC0.w, uShX0, uShY0, true), w0);
   gSunVis = v;
   return v; }
 // sin normal a mano (reflejos del sol en vidrios, asfalto, mar): el punto se separa unos 3 téxeles hacia el sol
@@ -219,12 +234,21 @@ float sunTan(){ return uSunDir.y/max(length(uSunDir.xz), 1e-3); }
 // color del horizonte en la dirección d (el de la niebla): uFogCol, más cálido del lado del sol cuando está bajo y algo más
 // frío en el lado contrario. Así amanecer y anochecer no tiñen el horizonte por igual en todas direcciones
 float horzW(vec3 d){ float az = dot(normalize(d.xz + vec2(1e-5)), uSunH.xy)*0.5 + 0.5; return az*az*az; }
-vec3 horzCol(vec3 d){ if (uSunH.z < 0.001) return uFogCol;
-  float w = horzW(d); return uFogCol*(1.0 - 0.18*uSunH.z*(1.0 - w)) + uHorzC*(w*uSunH.z); }
+// G1L1: dw = skyDay() vale 1 de día y 0 de noche (y con la luna). kHorz: el blanqueo cálido del horizonte de día (el mismo
+// en el cielo, skyGrad, y en la bruma de lo lejano: sin costura entre el monte lejano y el cielo)
+float skyDay(){ return (1.0 - uNight)*(1.0 - uSunH.w); }
+const vec3 kHorz = vec3(0.055, 0.050, 0.034);
+vec3 horzCol(vec3 d){ vec3 b = kHorz*skyDay(); if (uSunH.z < 0.001) return uFogCol + b;
+  float w = horzW(d); return uFogCol*(1.0 - 0.18*uSunH.z*(1.0 - w)) + uHorzC*(w*uSunH.z) + b; }
 // cielo: degradado horizonte-cenit (el resplandor del sol bajo se queda pegado al horizonte), halo y disco del sol (el disco
 // vale mucho más que 1: es lo que hace bloom). De noche, el «sol» es la luna (uSunH.w): disco blanco con mares y halo corto
-vec3 skyGrad(vec3 d){ float y = clamp(d.y, 0.0, 1.0);
-  vec3 c = mix(uFogCol, uZenCol, pow(y, 0.42));
+// G1L1 · CIELO CON DISPERSIÓN (solo de día: dw = 0 de noche y con la luna, así la noche calibrada no cambia). Rayleigh: el
+// azul del cenit solo manda arriba; abajo, el espesor de aire lo blanquea en una banda ancha y cálida sobre el horizonte.
+// Mie: halo ancho y suave alrededor del sol (más fuerte cerca del horizonte, donde el aire es más espeso)
+vec3 skyGrad(vec3 d){ float y = clamp(d.y, 0.0, 1.0), dw = skyDay();
+  vec3 c = mix(uFogCol, uZenCol, pow(y, mix(0.42, 0.70, dw)));
+  if (dw > 0.001) { float s = max(dot(d, uSunDir), 0.0), hb = exp(-y*7.0);
+    c += dw*(kHorz*hb + uSunCol*((pow(s, 5.0)*0.07 + pow(s, 40.0)*0.10)*(0.55 + 0.45*hb))); }
   if (uSunH.z > 0.001) { float w = horzW(d);
     c = c*(1.0 - 0.18*uSunH.z*(1.0 - w)*(1.0 - y)) + uHorzC*(w*uSunH.z*exp(-y*5.0)) + max(uHorzC, vec3(0.0))*(w*w*uSunH.z*0.25*exp(-y*1.5)); }
   return c; }
@@ -259,7 +283,8 @@ vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao){
   float a = max(rough*rough, 0.03), sh = 2.0/(a*a) - 2.0;
   c += uSunL*f0*((sh + 2.0)*0.125*pow(max(dot(N, normalize(uSunDir + V)), 1e-4), sh)*ndl*vis);
   // reflejo del entorno, con Fresnel (más en rasante): los metales siempre, teñido por su color, y lo demás solo si es pulido
-  c += toLin(envRefl(reflect(-V, N), rough))*(f0 + (1.0 - f0)*pow(1.0 - ndv, 5.0))*(mix(pol*pol*pol, 1.0, metal)*ao);
+  // G1L1: Fresnel de Schlick con rugosidad (lo rugoso no llega a espejo en rasante: sin bordes blanquecinos en aceras y muros)
+  c += toLin(envRefl(reflect(-V, N), rough))*(f0 + (max(vec3(1.0 - rough), f0) - f0)*pow(1.0 - ndv, 5.0))*(mix(pol*pol*pol, 1.0, metal)*ao);
   return toScr(c); }
 vec3 emit(vec3 col, float gain){ return col*gain; }
 // niebla: fogAmt = cuánta (x) y cuánto se mira hacia el sol (y). fog() mezcla en espacio de pantalla (compatibilidad) y
@@ -268,7 +293,12 @@ vec2 fogAmt(vec3 wp){ vec3 d = wp-uCam; float dist = length(d); float rd = d.y/m
   float f = abs(k*dist) > 1e-3 ? (1.0-exp(-dist*k))/k : dist;
   return vec2(clamp(1.0-exp(-uFogD*exp(-max(uCam.y,0.0)*b)*f), 0.0, 1.0), max(dot(d/max(dist,1e-3), uSunDir),0.0)); }
 vec3 fog(vec3 c, vec3 wp){ vec2 fa = fogAmt(wp); return mix(c, horzCol(wp - uCam) + uSunCol*pow(fa.y,8.0)*0.10, fa.x); }
-vec3 fogL(vec3 cl, vec3 wp){ vec2 fa = fogAmt(wp); cl = mix(cl, toLin(horzCol(wp - uCam) + uSunCol*pow(fa.y,8.0)*0.10), fa.x);
+// G1L1 · PERSPECTIVA AÉREA (de día; de noche, igual que antes): la extinción va por canales (Rayleigh: el azul se pierde y se
+// rellena antes que el rojo), así lo lejano se azulea y se aclara en vez de agrisarse; y la luz dispersada hacia el ojo tiene un
+// lóbulo de Mie hacia el sol (contraluz dorado y lechoso). La cantidad (fogAmt) ya depende de la distancia y de la altura
+vec3 fogL(vec3 cl, vec3 wp){ vec2 fa = fogAmt(wp); float dw = skyDay();
+  vec3 fx = 1.0 - pow(vec3(1.0 - fa.x), mix(vec3(1.0), vec3(0.74, 0.95, 1.32), dw));
+  cl = mix(cl, toLin(horzCol(wp - uCam) + uSunCol*(pow(fa.y,8.0)*0.10 + dw*(pow(fa.y, 3.0)*0.06 + pow(fa.y, 24.0)*0.16))), fx);
   // de noche: la bruma baja iluminada por la ciudad (se suma: es luz dispersada hacia el ojo)
   if (uGlow.z > 0.001) cl += toLin(kHaze)*(uGlow.z*(1.0 - exp(-1.0e-4*hazeI(uCam, wp)*max(cityW(wp.xz), cityW(mix(uCam.xz, wp.xz, 0.5))))));
   return cl; }
@@ -1021,7 +1051,7 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // DIA (de día pleno, se desvanece al ponerse el sol): desD desaturación del cielo como ambiente · skyD / gndD ganancia del
             // ambiente del cielo y del rebote del suelo · fogDay color de la bruma y del horizonte (azulado, como en las fotos)
             K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
-                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.12, sunD: 1.08, fogDD: 0.7, fogDay: [0.58, 0.71, 0.86],
+                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.12, sunD: 1.08, fogDD: 1.5, fogDay: [0.58, 0.71, 0.86],
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
                  city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
@@ -1064,7 +1094,7 @@ function setHour(hh) {
   const sg = (1 - sstep(3, 18, elS)) * sstep(-9, -1.5, elS), sw = mix3([1.04, 0.62, 0.34], [0.50, 0.24, 0.15], sstep(-1, -8, elS));
   const azS = (isDay ? 95 + (hh - 6.5) / 14 * 170 : 271 + nn * 178) * D;                       // acimut del sol de verdad
   L.sunH.set(Math.sin(azS), Math.cos(azS), sg, moon ? mf : 0); L.horzC.set(sw[0] - fg[0], sw[1] - fg[1], sw[2] - fg[2]);
-  L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 - (1 - L.K.fogDD) * e * (1 - nt));   // DIA: algo menos de bruma de día
+  L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 - (1 - L.K.fogDD) * e * (1 - nt));   // G1L1: de día, más bruma que de noche (×fogDD, perspectiva aérea: Collserola y la ciudad lejana se azulean)
   const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.050, 0.099, 0.165], nt);   // cenit de noche → sRGB ≈ (0, 12, 26). Por debajo de ~0,0035 lineal expuesto, el ACES da negro puro
   if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
   L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);

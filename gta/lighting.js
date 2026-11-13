@@ -37,7 +37,8 @@ window.BCN_LIGHTING = { init(ctx) {
   // ao: intensidad de la oclusión ambiental (0 = nada, pero el pase sigue: sirve para comparar) · aoR: radio en mundo (m) ·
   // aoFar: distancia (m) a la que ya no hay oclusión (empieza a desvanecerse en aoFar × 0,73) · aoDbg: 1 = ver solo la oclusión
   const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0,
-              ao: 1, aoR: 0.7, aoFar: 110, aoDbg: 0 };
+              ao: 1, aoR: 0.7, aoFar: 110, aoDbg: 0,
+              soft: 0.006 };   // G1L1 · soft: anchura de la penumbra por metro de distancia al que tapa (0 = sombra de siempre)
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
   let pipe = null, cur = 'alta', auto = true;
 
@@ -51,6 +52,7 @@ window.BCN_LIGHTING = { init(ctx) {
     ip.vignetteBlendMode = IPC.VIGNETTEMODE_MULTIPLY;
     if ('ditheringEnabled' in ip) { ip.ditheringEnabled = true; ip.ditheringIntensity = 1 / 255; }   // sin bandas en el cielo
     pipe.imageProcessingEnabled = true;
+    if (B.ColorCurves) ip.colorCurves = new B.ColorCurves();
     pipe.onBuildObservable.add(() => aoSync());                  // la cadena pone el MSAA en su primer pase al reconstruirse
   }
   // fija una propiedad de la cadena solo si cambia (cada cambio la reconstruye)
@@ -58,12 +60,14 @@ window.BCN_LIGHTING = { init(ctx) {
   function apply() {
     const q = QUAL[cur];
     const hsl = baseScale / q.scale; if (engine.getHardwareScalingLevel() !== hsl) engine.setHardwareScalingLevel(hsl);
-    try { shSetup(P.shadows ? q.shadow : 0, q.sfilt); } catch (e) { console.warn('Sin sombras: ' + (e && e.message || e)); shOff(); SH.dead = true; }
+    // G1L1: penumbra según la distancia (uShP.w = P.soft) solo con el filtro 3x3 (alta)
+    try { shSetup(P.shadows ? q.shadow : 0, q.sfilt); SH.uP.w = q.sfilt >= 2 ? P.soft : 0; } catch (e) { console.warn('Sin sombras: ' + (e && e.message || e)); shOff(); SH.dead = true; }
     if (!pipe) return;
     let rebuild = false;
     try { rebuild = aoSetup(q.ao); } catch (e) { console.warn('Sin oclusión ambiental: ' + (e && e.message || e)); aoKill(); rebuild = true; }
     const ip = scene.imageProcessingConfiguration;
     put(ip, 'exposure', L.tone.x); put(ip, 'contrast', L.tone.y); put(ip, 'vignetteWeight', P.vignette);
+    gradeW = -1; grade();
     put(pipe, 'samples', q.msaa); put(pipe, 'fxaaEnabled', q.msaa <= 1);
     put(pipe, 'bloomEnabled', q.bloom > 0);
     if (q.bloom > 0) { put(pipe, 'bloomScale', q.bloom); put(pipe, 'bloomKernel', P.bloomK); put(pipe, 'bloomWeight', P.bloomW);
@@ -74,6 +78,22 @@ window.BCN_LIGHTING = { init(ctx) {
     // la cadena se reconstruye para que sus pases se creen de nuevo en su sitio
     if (rebuild) pipe.prepare();
     aoSync();
+  }
+  // G1L1 · GRADACIÓN MEDITERRÁNEA (curvas de color de la cadena, solo de día: de noche se apaga y la calibración con las fotos
+  // del usuario queda intacta). Luces algo cálidas (tono 38°, dorado), sombras algo frías (215°, azul del cielo) y un poco
+  // menos de saturación global (el ACES satura los azules del cielo y los verdes: «de juguete»). Los pesos se cambian con set():
+  // gWarm (densidad de las luces), gCool (de las sombras), gSat (saturación global, negativo = menos), gMid (exposición de medios)
+  Object.assign(P, { gWarm: 14, gCool: 10, gSat: -12, gMid: 0 });
+  let gradeW = -1;
+  function grade() {
+    const ip = scene.imageProcessingConfiguration, cc = ip.colorCurves; if (!cc) return;
+    // gf: hora dorada (sol por debajo de ~33° de altura): luces más doradas y sin quitar saturación
+    const gf = Math.round(20 * (1 - Math.min(1, Math.max(0, (L.sunDir.y - 0.2) / 0.35)))) / 20, w = Math.round((1 - L.night) * 50) / 50, key = w + gf * 1000;
+    if (key === gradeW) return; gradeW = key;
+    put(ip, 'colorCurvesEnabled', w > 0.01);
+    cc.highlightsHue = 38; cc.highlightsDensity = P.gWarm * w * (1 + 1.4 * gf); cc.highlightsSaturation = 0;
+    cc.shadowsHue = 215; cc.shadowsDensity = P.gCool * w; cc.shadowsSaturation = 0;
+    cc.globalSaturation = P.gSat * w * (1 - 0.8 * gf); cc.midtonesExposure = P.gMid * w;
   }
   // umbral del bloom (Babylon compara con umbral^(1/2.2)). De noche baja (×0,7): lo más brillante de la ciudad —avenidas,
   // escaparates, farolas— ha de florecer aunque la exposición no lo lleve tan arriba como al sol
@@ -408,7 +428,7 @@ void main(){
   const win = { t: 0, n: 0, bad: 0, last: 0, ms: 0 };
   function update(P_, groundY, dt, frame) {
     if (pipe) { put(scene.imageProcessingConfiguration, 'exposure', L.tone.x);   // la exposición y el umbral del bloom cambian con la hora (setHour)
-      if (pipe.bloomEnabled) put(pipe, 'bloomThreshold', bloomT()); }
+      if (pipe.bloomEnabled) put(pipe, 'bloomThreshold', bloomT()); grade(); }
     try { shUpdate(P_, groundY); } catch (e) { console.warn('Sin sombras: ' + (e && e.stack || e)); shOff(); SH.dead = true; }
     const now = performance.now(), d = now - win.last; win.last = now;
     if (SHOT || d > 400 || document.hidden) return;             // capturas, pestaña oculta o parón: no cuenta
