@@ -633,7 +633,8 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     // trozos por ventana (~1 de cada 2 con luz al anochecer). Mismo reparto, con dos sorteos
     if (mode > 1.5) on = max(on, homeOn(fract(sd*0.3819660 + 0.63)));
     day = 0.44 + 0.2*h3;
-    tint = h3 < 0.12 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.25 ? vec3(0.92, 0.98, 1.08) : vec3(1.10, 0.92, 0.70));
+    // G1F1: casi todas cálidas (bombilla), como en las fotos del usuario; alguna LED fría y algún televisor
+    tint = h3 < 0.05 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.14 ? vec3(0.92, 0.98, 1.08) : vec3(1.14, 0.90, 0.62));
   }
   float lv = day*(1.0 - 0.92*uDusk)*mix(1.0, 0.55, dep) + on*1.5*mix(1.0, 0.75, dep);
   vec3 lamp = glow*mix(zg ? step(0.2, h2)*0.35 : 0.0, 1.0, on);
@@ -647,7 +648,7 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     float cm = max(shR(cp, vec2(0.25, 0.0), vec2(0.5 + cw, sz.y), px), shR(cp, vec2(sz.x - 0.5 - cw, 0.0), vec2(sz.x - 0.25, sz.y), px));
     vec3 cc = h1 > 0.5 ? vec3(0.92, 0.88, 0.80) : 0.55 + 0.25*cos(6.2832*(h3 + vec3(0.1, 0.4, 0.7)));
     float sheer = mode > 1.5 ? step(0.42, h3)*mix(0.42, 0.62, h1) : step(0.7, h3)*0.35;   // G1F1: ventanas cerradas, más visillos
-    c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk)), max(cm*0.92, sheer));
+    c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk))*mix(vec3(1.0), tint, on), max(cm*0.92, sheer));   // G1F1: la tela toma el color de la lámpara
   } else {
     // zaguán: una planta grande en su maceta
     float tp = 2.2/d.z;
