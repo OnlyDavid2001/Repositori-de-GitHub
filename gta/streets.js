@@ -321,7 +321,7 @@ void main(){
   // ARB4: tutores de pino claro con atados de cinta (atlas propio, TR.stakeCanvas) y copa joven verde claro
   const SAPG = TR.sapling(), sapSp = (bark, leaf) => ({ bark, leaf: leaf || TR.SP[0].leaf, fl: 0, bm: 0 });
   const tStake = canvasTex(TR.stakeCanvas()), tFlat = canvasTex(TR.flatCanvas());
-  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.22, 1.4, 0.86, 0.92])),
+  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.0, 1.1, 0.84, 0.92])),
     stakesA: mkTreeMat('sapA', 0, tStake, tFlat, sapSp([1, 1, 1, 1])), stakesB: mkTreeMat('sapB', 0, tStake, tFlat, sapSp([1, 1, 1, 1])),
     guard: mkTreeMat('sapG', 0, tBkD, tBkN, sapSp([0.30, 0.31, 0.32, 0])) };
   const SAP = {}; for (const k of ['trunk', 'leaf', 'stakesA', 'stakesB', 'guard']) { SAP[k] = mkGeoMesh('tNS' + k, SAPG[k], SAPM[k]); reg(SAP[k], k === 'leaf' ? { cast: true, alphaTex: tLeafN[0], layer: 'tree' } : { cast: true, layer: 'tree' }); }
@@ -405,13 +405,13 @@ void main(){
       const s = ROADS.list[k], o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4];
       const rambla = cls === 7 && hw >= 4.5; if (!(TREE.has(cls) && hw >= 2.4) && !rambla) continue;
       const ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L = Math.hypot(dx, dz); if (L < 2) continue;
-      const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 10.5, a0 = ax * tx + az * tz;
+      const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 9.5, a0 = ax * tx + az * tz;
       const spc = TR.pick(s, ax, az, SEG[o + 2], SEG[o + 3], hw, rambla);   // especie: la misma en toda la calle o tramo
       const K = streetKind(s); if (K.cv && !K.wide) continue;              // Ciutat Vella: fuera árboles y alcorques
       if (ruralSeg(s)) continue;                                           // REV4: carretera de montaña: nada de calle
       // reparto de alcorques vacíos y plantones, estable por calle (la misma clave de recta y tramo de 320 m que la especie)
       const th = Math.round(((Math.atan2(tz, tx) + 6.2832) % 3.1416) / 0.05), ln = Math.round((-ax * tz + az * tx) / 18) * (tz < 0 || tz === 0 && tx < 0 ? -1 : 1);
-      const kS = hash2(th * 131 + 7, ln * 17 + 3), fSap = 0.18 + 0.27 * kS, grate = hash2(th * 71 + 1, ln * 29 + 5) < 0.6;
+      const grate = hash2(th * 71 + 1, ln * 29 + 5) < 0.6;
       for (let u = Math.ceil(a0 / sp) * sp - a0; u < L; u += sp) for (const side of [-1, 1]) {
         const off = rambla ? hw - 1.2 : hw + 1.3, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (x < x0 || x >= x0 + CS || z < z0 || z >= z0 + CS) continue;
@@ -424,10 +424,14 @@ void main(){
         const [ns, nd] = nearestCar(x, z); if (nd < 1.0) continue;
         if (coverAt(x, z, -1) > -1e8 || !rambla && coverAt(x + px * side * 1.4, z + pz * side * 1.4, -1) > -1e8) continue;
         const y = walkY(ns, x, z), h = hash2(Math.round(x * 7), Math.round(z * 7)), n = Math.round((a0 + u) / sp);
-        // adulto: solo en calle ancha y una posición de cada dos (al tresbolillo entre aceras). Si no: plantón (NSP: tres
-        // tutores, NSP + 1: dos tutores y protector) o alcorque vacío (−1 con reja, −2 tierra sola)
-        if (K.wide && ((n + (side > 0 ? 1 : 0)) & 1) === 0) out.push(x, y - 0.17, z, h * 6.2832, 0.9 + 0.38 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), spc);
-        else if (hash2(n * 3 + (side > 0 ? 1 : 0), ln * 7 + th) < fSap) out.push(x, y - 0.04, z, h * 6.2832, 0.85 + 0.3 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), NSP + (hash2(th, ln * 3 + 11) < 0.55 ? 0 : 1));
+        // plantón: NSP tres tutores, NSP + 1 dos tutores y protector; alcorque vacío: −1 con reja, −2 tierra sola
+        // G1V3: plátano (o la especie de la calle) adulto como norma en todos los alcorques: el 3 % plantón y el 2 % alcorque
+        // vacío, nunca dos vacíos seguidos en la misma acera (antes, en las calles que no eran anchas, solo plantones con
+        // tutores gigantes y alcorques vacíos: el «elimínalos todos» del usuario). En calle estrecha, el adulto algo menor
+        const hS = hash2(n * 3 + (side > 0 ? 1 : 0), ln * 7 + th), hP = hash2((n - 1) * 3 + (side > 0 ? 1 : 0), ln * 7 + th);
+        const pitS = hS >= 0.03 && hS < 0.05 && !(hP >= 0.03 && hP < 0.05);
+        if (hS >= 0.03 && !pitS) out.push(x, y - 0.17, z, h * 6.2832, (K.wide ? 0.9 : 0.78) + (K.wide ? 0.38 : 0.26) * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), spc);
+        else if (!pitS) out.push(x, y - 0.04, z, h * 6.2832, 0.85 + 0.3 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), NSP + (hash2(th, ln * 3 + 11) < 0.55 ? 0 : 1));
         else out.push(x, y, z, 0, 0, Math.atan2(tz, tx), grate ? -1 : -2);
       }
     }

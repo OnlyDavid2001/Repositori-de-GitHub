@@ -239,6 +239,9 @@ void main(){
   float d = dith();
   if (d < smoothstep(uBand.z, uBand.w, dist) || d >= smoothstep(uBand.x, uBand.y, dist)) discard;
   float part = floor(vC.a + 0.5), ao = vC.r, hl = vC.g, rn = vI.a;
+  // G1V3: nada de copas, matas ni tarjetas pegadas a la cámara (salían como una elipse enorme cortada por el plano cercano):
+  // se funden con tramado entre 2,6 m y 1,2 m. La hierba (3) sí se queda junto a la cámara
+  if (part != 3.0 && dist < 2.6 && d > smoothstep(1.2, 2.6, dist)) discard;
   vec3 n = normalize(vN);
   float px = length(fwidth(vPos));
   float nf = 1.0 - smoothstep(0.08, 0.35, px);            // detalle fino solo si el píxel es pequeño (sin centelleo)
@@ -644,6 +647,8 @@ window.BCN_NATURE = { async init(ctx) {
   function select(P) {
     lastSel = { x: P.x, y: P.y, z: P.z }; dirty = false;
     const L = TYPES.map(T => T.mesh.map(() => []));
+    // G1V3: el último nivel (el más poblado: impostores y matas lejanas) se aclara con la calidad (media 0,78; baja 0,55)
+    const LQ = window.BCN && window.BCN.light && window.BCN.light.quality, kq = LQ === 'baja' ? 0.55 : LQ === 'media' ? 0.78 : 1;
     for (const [ci, C] of cells) {
       if (cellD(ci, P) > RMAX + 2) continue;
       for (let t = 0; t < TYPES.length; t++) { const A = C[t]; if (!A) continue; const T = TYPES[t], E = T.ends, nl = E.length, Lt = L[t];
@@ -651,7 +656,7 @@ window.BCN_NATURE = { async init(ctx) {
           const d = Math.hypot(A[k] - P.x, A[k + 1] + 3 - P.y, A[k + 2] - P.z); if (d > T.R + 2) continue;
           const r = A[k + 9];
           for (let l = 0; l < nl; l++) {
-            if (d > E[l][1] + 2 || (l && d < E[l - 1][0] - 2) || r >= T.keep[l]) continue;
+            if (d > E[l][1] + 2 || (l && d < E[l - 1][0] - 2) || r >= T.keep[l] * (l && l === nl - 1 ? kq : 1)) continue;
             Lt[l === 0 && d < T.close ? 0 : l + 1].push(A, k, T.grow[l]);
           }
         } }

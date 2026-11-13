@@ -99,7 +99,10 @@ function pick(s, ax, az, bx, bz, hw, rambla) {
   const th = Math.atan2(dz, dx), c = -ax * dz + az * dx, mx = (ax + bx) / 2, mz = (az + bz) / 2, al = mx * dx + mz * dz;
   const B = window.BCN_BARRI ? window.BCN_BARRI.at(mx, mz) : null, f = familyOf(B);
   const w = (B && SEA.has(B.n) ? [0.12, 0.12, 0.08, 0.42, 0.08, 0.13, 0.05] : W[f]).slice();
-  if (rambla) { w.fill(0); w[0] = 0.85; w[3] = 0.1; w[1] = 0.05; }
+  // G1V3: frente marítimo (Barceloneta, Vila Olímpica, Diagonal Mar): paseos y calles anchas con palmeras (Washingtonia en fila
+  // y Phoenix), como el Passeig Marítim de las fotos del usuario; antes el paseo peatonal salía de plátanos
+  if (B && SEA.has(B.n) && (rambla || hw >= 6)) { w.fill(0); w[3] = 1; }
+  else if (rambla) { w.fill(0); w[0] = 0.85; w[3] = 0.1; w[1] = 0.05; }
   else if (hw >= 8) { w[0] *= 1.5; w[5] *= 2.2; w[3] *= 1.3; w[2] *= 0.15; w[1] *= 0.6; }
   // REV: en el Eixample las calles de 20 m tienen calzada estrecha en los datos (hw ≈ 3) pero aceras anchas con plátanos: sin el
   // ajuste de calle estrecha (que llenaba calles enteras de naranjos y, desde el aire, las dejaba peladas y, de noche, en franjas de luz)
@@ -254,9 +257,10 @@ function sapling() {
   // ARB4: copa joven pequeña pero visible: ~1 m de diámetro (elipsoide de 0,5 × 0,42 m alrededor de la punta), 44 tarjetas
   // del atlas del plátano algo separadas (se ve a través) y normales hacia fuera; verde claro en el material (sapL)
   const cc = [top[0], H + 0.06, top[2]];
-  for (let q = 0; q < 44; q++) {
-    const f = R(6.2832), ct = R(-0.75, 0.95), rr = Math.cbrt(R(0.25, 1)), x = cc[0] + Math.cos(f) * Math.sqrt(1 - ct * ct) * 0.5 * rr,
-      y = cc[1] + ct * 0.42 * rr, z = cc[2] + Math.sin(f) * Math.sqrt(1 - ct * ct) * 0.5 * rr, sz = R(0.15, 0.24), th = R(6.28), c = R(-1, 1);
+  // G1V3: copa más llena (96 tarjetas en 0,7 × 0,55 m)
+  for (let q = 0; q < 96; q++) {
+    const f = R(6.2832), ct = R(-0.75, 0.95), rr = Math.cbrt(R(0.25, 1)), x = cc[0] + Math.cos(f) * Math.sqrt(1 - ct * ct) * 0.7 * rr,
+      y = cc[1] + 0.12 + ct * 0.55 * rr, z = cc[2] + Math.sin(f) * Math.sqrt(1 - ct * ct) * 0.7 * rr, sz = R(0.16, 0.26), th = R(6.28), c = R(-1, 1);
     const a = [Math.cos(th), 0, Math.sin(th)], bb = [-Math.sin(th) * Math.sin(c), Math.cos(c), Math.cos(th) * Math.sin(c)], base = leaf.P.length / 3;
     for (const [w, e] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       const px = x + (a[0] * w + bb[0] * e) * sz, py = y + (a[1] * w + bb[1] * e) * sz, pz = z + (a[2] * w + bb[2] * e) * sz;
@@ -267,11 +271,11 @@ function sapling() {
   // atado de cinta: anillo ancho alrededor del tronco a la altura y (columna de cinta del atlas de madera)
   const tieRing = (G, y, r) => tube(G, [[top[0] * y / H, y - 0.025, top[2] * y / H], [top[0] * y / H, y + 0.025, top[2] * y / H]], () => r, 7, 0.5);
   // A: tres tutores (Ø 6 cm, 1,8 m) en triángulo de 30 cm de radio, dos travesaños y tres atados al tronco a 1,35 m
-  const SA = [0, 2.094, 4.189].map(a => [Math.cos(a + 0.3) * 0.3, Math.sin(a + 0.3) * 0.3]);
-  for (const [x, z] of SA) { rod(stakesA, [x, -0.1, z], [x, 1.8, z], 0.03, 5); rod(stakesA, [x, 1.36, z], [x * 0.12, 1.36, z * 0.12], 0.012, 4, 0.5);
-    rod(stakesA, [x, 1.33, z], [x, 1.39, z], 0.036, 5, 0.5); }
-  tieRing(stakesA, 1.36, 0.042);
-  for (let i = 0; i < 3; i++) { const a = SA[i], b = SA[(i + 1) % 3]; for (const y of [0.5, 1.62]) rod(stakesA, [a[0], y, a[1]], [b[0], y, b[1]], 0.018, 4); }
+  // G1V3: A es un solo tutor fino (Ø 4 cm, 1,55 m) junto al tronco con su atado (antes tres palos de 1,8 m con travesaños:
+  // se leían como andamios en la acera)
+  rod(stakesA, [0.09, -0.1, 0.0], [0.09, 1.55, 0.0], 0.02, 5); rod(stakesA, [0.09, 1.2, 0.0], [0.02, 1.2, 0.0], 0.01, 4, 0.5);
+  rod(stakesA, [0.09, 1.17, 0.0], [0.09, 1.23, 0.0], 0.026, 5, 0.5);
+  tieRing(stakesA, 1.2, 0.04);
   // B: dos tutores con travesaño arriba y atados; protector de 8 varillas y dos aros (Ø 40 cm, 1,2 m)
   for (const x of [-0.32, 0.32]) { rod(stakesB, [x, -0.1, 0.02], [x, 1.85, 0.02], 0.03, 5); rod(stakesB, [x, 1.4, 0.02], [x * 0.1, 1.4, 0.01], 0.012, 4, 0.5);
     rod(stakesB, [x, 1.37, 0.02], [x, 1.43, 0.02], 0.036, 5, 0.5); }

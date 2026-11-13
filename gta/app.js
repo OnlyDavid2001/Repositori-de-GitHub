@@ -519,6 +519,15 @@ void main(){
     float l = dot(alb, vec3(0.30, 0.60, 0.10));
     vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, mix(0.55 + 0.9*cw, 0.58 + 0.84*cw, smoothstep(14.0, 45.0, px)), mix(0.5, 1.0, mt));
     alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
+    // G1V3: de lejos (donde ya no llega el suelo del monte, píxel > 1,5 m) el verde del monte (Collserola, Montjuïc, el Carmel)
+    // era el lima liso de la ortofoto: masa de pinar gris verdosa y oscura, con rodales (pn, ~25 m) y la trama de copas cw de
+    // claros y sombras. Solo de día (vg ya lleva 1 − uNight) y por encima de ~25–80 m (los parques del llano, como estaban)
+    float fw = vg*smoothstep(25.0, 80.0, vPos.y)*smoothstep(1.5, 6.0, px);
+    if (fw > 0.001) {
+      float rd = pn(mod(vPos.xz, 512.0), vec2(0.0390625));
+      vec3 pin = mix(vec3(0.16, 0.20, 0.12), vec3(0.25, 0.28, 0.17), rd)*(0.62 + 0.76*cw);
+      alb = mix(alb, pin, fw*0.82);
+    }
     // G1V2: suelo del monte (Collserola, Montjuïc, el Carmel): la ortofoto de 5 m daba un césped liso. Hierba seca de base,
     // calveros de tierra ocre, roca gris en lo empinado (y más arriba), pinaza rojiza bajo las copas (la trama cw) y, de
     // cerca, matojos, briznas, piedrecitas y grietas. El brillo medio es el de la ortofoto (calibrado de DÍA): los tonos base
@@ -553,6 +562,20 @@ void main(){
       m = mix(m, vec3(0.20, 0.25, 0.11)*(la/0.42)*(0.8 + 0.4*e2), smoothstep(0.68, 0.80, pn(q + 3.0, vec2(1.875)))*f2*wG*0.65);
       alb = mix(alb, m, mk*0.9);
       n = normalize(n + vec3(e2 - 0.5, 0.0, pn(q + 2.7, vec2(1.125)) - 0.5)*0.35*f2*mk*(0.4 + wR));
+    }
+    // G1V3: caminos y calveros de tierra del monte (la ortofoto pardo-ocre, no verde): de cerca era una mancha marrón borrosa y
+    // estirada. Grano de pista en coordenadas de mundo: sauló a manchas (~1–3 m), gravilla y piedras sueltas (~10–20 cm) y
+    // terrones; se apaga con el tamaño del píxel (sin moiré) y no actúa de noche ni por debajo de ~70 m (la ciudad)
+    float mkT = (1.0 - uNight)*(1.0 - vg)*smoothstep(0.03, 0.08, alb.r - alb.b)*smoothstep(70.0, 110.0, vPos.y)*(1.0 - smoothstep(0.6, 2.5, px));
+    if (mkT > 0.001) {
+      vec2 q = mod(vPos.xz, 512.0);
+      float t1 = pn(q, vec2(0.40625))*0.6 + pn(q + 19.0, vec2(1.0625))*0.4, f1 = 1.0 - smoothstep(0.03, 0.15, px);
+      float st = pnh(floor(q*6.0)), st2 = pnh(floor(q*2.5) + 7.0);
+      float dt = (0.84 + 0.32*t1)*mix(1.0, 0.86 + 0.28*pn(q, vec2(4.0625)), 1.0 - smoothstep(0.1, 0.5, px));
+      dt *= mix(1.0, mix(1.0, 0.72, step(0.93, st)) + 0.18*step(0.985, st), f1);
+      dt *= mix(1.0, 0.9 + 0.2*step(0.8, st2), 1.0 - smoothstep(0.2, 0.8, px));
+      alb = mix(alb, alb*dt*vec3(1.02, 1.0, 0.97), mkT);
+      n = normalize(n + vec3(t1 - 0.5, 0.0, pn(q + 4.0, vec2(1.0625)) - 0.5)*0.25*mkT);
     }
     // NAT: relieve de copas. La misma trama de claros y oscuros (cw) se usa como altura de las copas (~6 m) y tuerce la
     // normal: las copas se leen como bultos con su lado al sol y su lado en sombra. Se apaga donde la trama ya no se
