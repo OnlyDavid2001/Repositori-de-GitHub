@@ -431,7 +431,7 @@ void main(){
 #ifdef LDR
   FRAGA(emit(vec3(1.0, 0.8, 0.5), 0.85), a*0.6);
 #else
-  gl_FragColor = vec4(1.0 + vec3(1.0, 0.56, 0.12)*(a*7.0*(1.0 + 0.8*smoothstep(0.3, 1.0, uDusk))), 1.0);
+  gl_FragColor = vec4(1.0 + vec3(1.0, 0.52, 0.10)*(a*10.0*(1.0 + 0.8*smoothstep(0.3, 1.0, uDusk))), 1.0);   // FX luzveg: charco de sodio más marcado (7 → 10)
 #endif
 }`;
 
@@ -495,7 +495,7 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
         lamp(W, A, fr(x, z, out(-side)), y, H, reach); log('farola', x, z, out(-side));
         if (hi || !cell.pools) return;
         // charco: tres bandas a lo ancho (calzada, acera propia y, si llega, la de enfrente), cada una a su cota. uv = metros desde la luminaria / radio
-        const lo = off - reach, Rp = Math.min(7.5, H * 0.8), bands = [[Math.max(lo - Rp, -hw), hw - 0.02, 0], [hw + 0.02, lo + Rp, 1], [lo - Rp, -hw - 0.02, 2]];
+        const lo = off - reach, Rp = Math.min(8.5, H * 0.95), bands = [[Math.max(lo - Rp, -hw), hw - 0.02, 0], [hw + 0.02, lo + Rp, 1], [lo - Rp, -hw - 0.02, 2]];
         for (const [q0, q1, sf] of bands) { if (q1 - q0 < 0.1) continue;
           for (const [du, q] of [[-Rp, q0], [Rp, q0], [Rp, q1], [-Rp, q1]]) { const bx = ax + tx * (u + du) + px * side * q, bz = az + tz * (u + du) + pz * side * q;
             cell.pools.push(bx - ox, sf === 0 ? roadY(s, bx, bz) + 0.05 : walkY(sf === 1 ? ns : s, bx, bz) + 0.03, bz - oz, du / Rp, (q - lo) / Rp); } }

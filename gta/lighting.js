@@ -387,6 +387,10 @@ void main(){
     p1.onApplyObservable.add(e => e.setFloat2('uTx', 1 / p1.width, 1 / p1.height));
     p2.onApplyObservable.add(e => { e.setFloat2('uHx', 1 / p2.width, 1 / p2.height); e.setFloat4('uK', 2.6 * P.ao * (1 + (P.aoDay - 1) * (1 - L.night)), L.tone.x, P.aoDbg, 0);
       e.setTextureFromPostProcess('tScene', p0); });
+    // FX luzveg: tras la mezcla, suelta las texturas atadas (tScene es la salida de bcnAo: si se queda atada en su unidad, en el
+    // fotograma siguiente un sombreador con un muestreador sin asignar la lee mientras la escena se pinta en ella → aviso de
+    // WebGL «Feedback loop formed between Framebuffer and active Texture»)
+    p2.onAfterRenderObservable.add(() => { if (engine.unbindAllTextures) engine.unbindAllTextures(); });
     AO.pp = [p0, p1, p2];
   }
   // pone o quita los pases (n = muestras, 0 = sin oclusión). Devuelve true si ha cambiado cuál es el primer pase de la cámara

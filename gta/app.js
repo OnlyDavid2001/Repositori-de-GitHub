@@ -661,12 +661,13 @@ void main(){
     // franja mojada: una banda estrecha y continua junto a la línea de agua (3–7 m, con el ancho que cambia despacio) y,
     // pegada al agua, la línea más oscura y brillante de la última ola. La espuma va en el mar (FS_SEA), en la misma línea
     float wn = vnoise(q*0.045)*0.7 + vnoise(q*0.19)*0.3;
-    float ww = 3.5 + 5.0*wn;
+    float ww = 5.0 + 7.0*wn;   // FX luzveg: franja mojada más ancha (5–12 m)
     wet = max(0.8*(1.0 - smoothstep(ww*0.5, ww, sd)), 1.0 - smoothstep(0.4, 1.6, sd + 0.6*(vnoise(q*0.5) - 0.5)));
   }
   if (sandM > 0.001) {
     vec2 q = vPos.xz; float px = length(fwidth(q));
-    vec3 sa = mix(vec3(0.80, 0.71, 0.55), vec3(0.86, 0.78, 0.62), vnoise(q*0.03));
+    // FX luzveg: albedo de arena seca de verdad (~0,45; antes 0,8: a mediodía salía casi blanca)
+    vec3 sa = mix(vec3(0.52, 0.45, 0.34), vec3(0.59, 0.52, 0.40), vnoise(q*0.03));
     sa *= 0.93 + 0.1*vnoise(q*0.21) + 0.05*vnoise(q*1.3);
     float g1 = 1.0 - smoothstep(0.004, 0.016, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
     sa *= mix(1.0, 0.86 + 0.28*hash21(floor(q*60.0)), g1*0.6);
@@ -685,8 +686,8 @@ void main(){
     float foot = step(0.86, fh)*(1.0 - smoothstep(0.12, 0.2, length(ff*vec2(1.0, 0.55) + (vec2(hash21(fc + 3.1), hash21(fc + 7.7)) - 0.5)*0.3)))*g2*(1.0 - wet);
     sa *= 1.0 - 0.10*foot;
     // franja mojada: más oscura y con brillo de agua
-    sa = mix(sa, sa*vec3(0.60, 0.59, 0.60), wet);
-    rough = mix(0.95, 0.45, wet);
+    sa = mix(sa, sa*vec3(0.50, 0.49, 0.50), wet);
+    rough = mix(0.95, 0.30, wet);
     alb = mix(alb, sa, sandM);
     n = normalize(n + vec3(gdir.x, 0.0, gdir.y)*sandM);
   }
@@ -983,6 +984,9 @@ void main(){
     g += ga*(a*wf*f*6.0); lost += a*a*(1.0 - f)*0.6;
     q = R*q + 17.3; wf *= 2.3; am *= 0.62; }
   float rough = clamp(sqrt(lost)*2.2 + smoothstep(0.5, 30.0, px)*0.25, 0.0, 1.0);
+  // FX luzveg: en rasante, la inclinación de las olas medianas se queda en la mitad (se estiraban en vetas borrosas; la
+  // superficie lejana se lee como un espejo rizado del cielo, como en las fotos)
+  g *= mix(0.5, 1.0, smoothstep(0.06, 0.45, V.y));
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
   // color del agua: turquesa somera junto a la costa, azul profundo mar adentro; el puerto más oscuro y verdoso (agua quieta y
   // turbia). La luz que entra en el agua es la del cielo y la del sol (dispersión bajo la superficie, más en las crestas)
@@ -994,9 +998,12 @@ void main(){
   water *= 1.0 + calm*(1.0 - uNight)*(vnoise(p*0.011 + vec2(t*0.006, 0.0))*0.5 + vnoise(p*0.037 - vec2(0.0, t*0.01))*0.3 - 0.4)*0.55;
   vec3 r = reflect(-V, n); r.y = abs(r.y);
   // Fresnel de Schlick (agua: f0 = 0,02); con rugosidad el máximo en rasante baja un poco (como en shade)
-  float ndv = max(dot(n,V),0.0), fres = 0.02 + 0.035*calm*(1.0 - uNight) + (max(1.0 - rough*0.25, 0.02) - 0.02)*pow(1.0 - ndv, 5.0);
+  // FX luzveg: el Fresnel con la normal media (las olas de alta frecuencia se ven de lejos como rugosidad, no inclinan toda la
+  // superficie hacia la cámara): en rasante el mar refleja el cielo, como en las fotos del usuario (antes, azul oscuro mate)
+  vec3 nm = normalize(vec3(-g.x*0.45, 1.0, -g.y*0.45));
+  float ndv = max(dot(nm,V),0.0), fres = 0.02 + 0.035*calm*(1.0 - uNight) + (max(1.0 - rough*0.15, 0.02) - 0.02)*pow(1.0 - ndv, 4.0);
   vec3 sky = skyGrad(normalize(vec3(r.x, max(r.y, 0.03), r.z)));
-  vec3 c = mix(water, sky, fres*0.9);
+  vec3 c = mix(water, sky, clamp(fres, 0.0, 0.92));
   // brillo del sol: lóbulo cerrado cerca (las facetas lo resuelven) y ancho de lejos (la pista de luz hacia el sol, con la
   // misma energía); más destellos sueltos (glitter): facetas al azar en celdas de 0,7 m que reflejan el disco
   float sh = mix(900.0, 25.0, rough), spec = pow(max(dot(r, uSunDir), 0.0), sh)*(sh + 2.0)*0.012;
@@ -1004,6 +1011,9 @@ void main(){
   vec3 nf = normalize(n + vec3(hash21(mod(gc, 256.0) + 5.1) - 0.5, 0.0, hg - 0.5)*0.22);
   float glit = step(0.986, pow(max(dot(reflect(-V, nf), uSunDir), 0.0), 3.0))*step(0.5, hg)*(1.0 - smoothstep(0.25, 0.9, px))*(1.0 - calm*0.7);
   c += uSunCol*(spec*mix(1.0, 0.45, calm) + glit*5.0)*sunVis();
+  // FX luzveg: con el sol bajo, pista ancha de luz cálida sobre el agua hacia el sol (el resplandor del horizonte reflejado)
+  if (uSunH.z > 0.001) { vec3 hz = max(uFogCol + uHorzC, vec3(0.0));
+    c += hz*uSunH.z*(1.0 - calm*0.6)*(0.55*pow(max(dot(normalize(vec3(r.x, max(r.y, 0.0), r.z)), normalize(vec3(uSunH.x, 0.05, uSunH.y))), 0.0), 6.0)); }
   // NAT: orilla. Agua somera clara sobre la arena y espuma suave: una línea pegada a la arena y dos o tres frentes de ola
   // que llegan a la playa, rotos por ruido (nada de bandas rectas). Se apaga con el tamaño del píxel (sin moiré de lejos)
   float shl = (1.0 - smoothstep(0.0, 0.05, cd))*inside*(1.0 - calm);
@@ -1178,7 +1188,7 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // blue: cuánto ambiente se quita en la hora azul (sol de 0,5° a −5° bajo el horizonte, antes de la noche cerrada)
             // DIA (de día pleno, se desvanece al ponerse el sol): desD desaturación del cielo como ambiente · skyD / gndD ganancia del
             // ambiente del cielo y del rebote del suelo · fogDay color de la bruma y del horizonte (azulado, como en las fotos)
-            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
+            K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.62, nAmb: 0.0, nExp: 0.25, blue: 0.5,
                  desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.07, sunD: 1.16, fogDD: 2.6, fogDay: [0.64, 0.73, 0.83],
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
@@ -1207,7 +1217,8 @@ function setHour(hh) {
   const az = (moon ? 110 + nn * 140 : 95 + (hh - 6.5) / 14 * 170) * D;                         // de E a O por el sur, los dos
   const el = (moon ? 22 + 26 * Math.sin(nn * Math.PI) : Math.max(elS, 1.28)) * D;
   L.sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-  const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-1, -9, elS);                // e: sol bajo … alto · nt: noche cerrada
+  const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-1, -9, elS);
+  const lt = hh >= 12 ? sstep(22.75, 24.5, hh) : (hh < 5.5 ? 1 : 1 - sstep(5.5, 6.5, hh));   // FX luzveg: madrugada (cielo)                // e: sol bajo … alto · nt: noche cerrada
   const k = 0.55 + 0.45 * e, sc0 = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
   // DIA: sol de mañana y de tarde cálido aunque ya esté alto (fotos: 8:30 dorado, 10:30 aún algo cálido, mediodía neutro)
   const wm = (1 - sstep(8, 70, elS)) * e, sc = [sc0[0], sc0[1] * (1 - 0.12 * wm), sc0[2] * (1 - 0.30 * wm)];
@@ -1218,13 +1229,16 @@ function setHour(hh) {
   // horizonte: con el sol bajo, la base es un gris malva (también el lado contrario al sol) y el naranja va solo hacia el sol
   // (uSunH, uHorzC: horzCol() en el preludio). sg: fuerza de ese resplandor, de 18° de altura del sol hasta 9° bajo el horizonte
   // De noche cerrada, azul marino oscuro y algo gris (en las fotos el horizonte apenas es más claro que el cenit): nada de pardo
-  const fg = mix3(mix3([0.76, 0.69, 0.68], L.K.fogDay, e), [0.069, 0.122, 0.193], nt);   // de día, bruma azulada (DIA)   // → sRGB ≈ (2, 17, 34): calibrado a través del pie del ACES
+  const fg = mix3(mix3([0.76, 0.69, 0.68], L.K.fogDay, e), mix3([0.095, 0.160, 0.275], [0.069, 0.122, 0.193], lt), nt);   // de día, bruma azulada (DIA)   // → sRGB ≈ (2, 17, 34): calibrado a través del pie del ACES
   const sg = (1 - sstep(3, 32, elS)) * sstep(-9, -1.5, elS),   // G1L3: el resplandor empieza antes (a las 19:30 ya se lee la tarde)
         sw = mix3([1.04, 0.62, 0.34], [0.50, 0.24, 0.15], sstep(-1, -8, elS));
   const azS = (isDay ? 95 + (hh - 6.5) / 14 * 170 : 271 + nn * 178) * D;                       // acimut del sol de verdad
   L.sunH.set(Math.sin(azS), Math.cos(azS), sg, moon ? mf : 0); L.horzC.set(sw[0] - fg[0], sw[1] - fg[1], sw[2] - fg[2]);
   L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 - (1 - L.K.fogDD) * e * (1 - nt));   // G1L1: de día, más bruma que de noche (×fogDD, perspectiva aérea: Collserola y la ciudad lejana se azulean)
-  const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), [0.050, 0.099, 0.165], nt);   // cenit de noche → sRGB ≈ (0, 12, 26). Por debajo de ~0,0035 lineal expuesto, el ACES da negro puro
+  // FX luzveg: de noche (21–24 h) el cielo es azul profundo, como en la foto del dron sobre la Barceloneta; solo de madrugada
+  // (uLate, la foto del Carmel de 0 a 4 h) vuelve al azul marino casi negro de antes
+  const znN = mix3([0.085, 0.165, 0.330], [0.050, 0.099, 0.165], lt);
+  const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), znN, nt);   // cenit de noche → sRGB ≈ (0, 12, 26). Por debajo de ~0,0035 lineal expuesto, el ACES da negro puro
   if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
   L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);
   L.fogCol.set(fg[0], fg[1], fg[2]); L.zenCol.set(zn[0], zn[1], zn[2]);
@@ -1234,7 +1248,9 @@ function setHour(hh) {
   // el ojo se adapta (más ambiente y más exposición al anochecer), pero recién puesto el sol, en la hora azul, el suelo ya
   // está en penumbra: bd quita parte de esa adaptación del ambiente hasta que llega la noche cerrada
   const dq = Math.min(1, L.dusk / 0.6), dk = dq * dq * (3 - 2 * dq), bd = sstep(0.5, -5, elS) * (1 - nt);
-  const amb = (1 + L.K.dAmb * dk) * (1 + L.K.nAmb * nt) * (1 - L.K.blue * bd);
+  // FX luzveg: de noche cerrada, algo menos de ambiente (las fachadas y las copas se leían como de día en la Rambla y el
+  // Eixample; la luz ha de venir de las farolas y los escaparates)
+  const amb = (1 + L.K.dAmb * dk) * (1 + L.K.nAmb * nt) * (1 - L.K.blue * bd) * (1 - 0.22 * nt);
   linTo(L.sunL, L.sunCol, L.K.sun * (moon ? L.K.moon : 1) * (1 + (L.K.sunD - 1) * e * (1 - nt))); linTo(L.skyL, L.skyCol, L.K.sky * amb); linTo(L.gndL, L.gndCol, L.K.gnd * amb);
   // DIA: de día el cielo como luz ambiente se desatura menos (sombras frescas, azuladas) y el ambiente baja un poco (más
   // contraste sol/sombra); el rebote cálido del suelo, más (agrisaba las sombras). dd: 0 al ponerse el sol y de noche
