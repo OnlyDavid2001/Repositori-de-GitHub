@@ -71,8 +71,10 @@ Worktree `/home/user/wt/cc-f2b`, rama `wt-cc-f2b`. Capturas en `/tmp/claude-0/-h
 - Variantes que se distinguen poco a pie de calle: Eixample temprano v0 frente a v1 (solo cambia el ritmo, 3,8 m frente a 3,0 m;
   he añadido un eje central marcado en v0 después de la hoja, verificado solo de noche) y autoconstrucción v0 (el peto
   escalonado sube como mucho 1 m).
-- La torreta del Eixample ornamentado v2 va en el chaflán o al final del tramo del portal: en el edificio de la hoja no se ve
-  (no tiene chaflán y la esquina queda fuera de cuadro). La del modernista v3 sí se ve.
+- La torreta del Eixample ornamentado v2 va en el chaflán o al final del tramo del portal. En la hoja no se ve porque a ese
+  edificio le tocó ático retranqueado (regla 5) y la pieza de corona devolvía false sin dibujarla; ya se dibuja también sobre
+  el ático (comprobado en `y_orn_v2_alto.jpg`, mirando hacia arriba: torreta en la esquina). Desde la acera el chapitel casi no
+  se ve (queda retirado sobre el cuerpo). La del modernista v3 sí sale en la hoja.
 - Los anchos estrechos (casa obrera 5–9 m, autoconstrucción 4–8 m) salen como fachadas largas hasta que la Fase 3 parta en
   parcelas; los huecos irregulares de la autoconstrucción ayudan, pero un frente de 40 m sigue pareciendo una sola casa.
 - La escalera exterior de la autoconstrucción v3 tapa el último vano de la planta baja (la pieza pb lo deja ciego), pero si el

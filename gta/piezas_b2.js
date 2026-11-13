@@ -510,13 +510,15 @@ pieza('vano_ornamentado', function (env, run, q) {
 });
 pieza('corona_ornamentado', function (env, run, q) {
   const { W0, C, y1, V } = env, F = run.F, L = run.L; if (C <= run.cover) return;
-  if (V.coron === 'atico') return false;
+  const torre = V.vi === 2 && L >= 6 && (run.chaflan || run.r === env.lay.portal), wT = Math.min(3.0, L * 0.3), uT = run.chaflan ? L / 2 : L - wT / 2 - 0.3;
+  if (V.coron === 'atico') {                          // ático retranqueado (regla 5): la coronación de siempre, y la torreta encima si toca
+    if (torre) P.torreta(env, F, uT, wT, y1 + 0.45, 3.0, { col: run.wallC, kw: env.kw, rh: wT * 0.9, roof: [70, 74, 80], rk: K.METAL });
+    return false; }
   P.cornisa_b2(env, run, q, { vu: 0.85, mens: true, den: true, top: V.vi === 3 ? 'peto' : 'balaustrada' });
   if ((V.vi === 0 || V.vi === 1) && L >= 10 && run.r === env.lay.portal) {   // frontón central sobre la cornisa
     const w = Math.min(L * 0.36, 7); wr(W0, F, L / 2 - w / 2, L / 2 + w / 2, y1 + 0.9, y1 + 1.3, run.wallC, env.kw);
     P.fronton(W0, F, L / 2, w, y1 + 1.3, w * 0.16, 0.3, shade(env.uV, 1.04), K.STUCCO, V.vi === 1); }
-  if (V.vi === 2 && L >= 6 && (run.chaflan || run.r === env.lay.portal)) {   // torreta (en el chaflán, centrada; si no, en la esquina)
-    const w = Math.min(3.0, L * 0.3); P.torreta(env, F, run.chaflan ? L / 2 : L - w / 2 - 0.3, w, y1 + 0.9, 3.0, { col: run.wallC, kw: env.kw, rh: w * 0.9, roof: [70, 74, 80], rk: K.METAL }); }
+  if (torre) P.torreta(env, F, uT, wT, y1 + 0.9, 3.0, { col: run.wallC, kw: env.kw, rh: wT * 0.9, roof: [70, 74, 80], rk: K.METAL });   // en el chaflán, centrada; si no, en la esquina
 });
 
 // ================================================================ EIXAMPLE TEMPRANO
