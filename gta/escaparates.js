@@ -60,7 +60,7 @@ const FILAS = [
     back: [BK.CUADROS, [200, 200, 196]], far: [LY.MESAS, [170, 172, 176]], near: [LY.NADA, Z], shelf: [LY.CARTELES, Z], acc: [40, 90, 160], pal: PL.VARIADO, shape: SH.CAJA },
   { n: 'TINTORERIA', w: 0, sign: ['#1a6aa0', '#ffffff'], awn: [40, 110, 160], wall: [214, 230, 236], floor: [FL.BALDOSA, [210, 214, 218], [150, 160, 170]], warm: 0.2, lamp: LP.TUBOS,
     back: [BK.PERCHERO, [200, 204, 210]], far: [LY.MOSTRADOR, [200, 206, 212]], near: [LY.NADA, Z], shelf: [LY.NADA, Z], acc: [40, 120, 180], pal: PL.ROPA, shape: SH.CAJA },
-  { n: 'TALLER', w: 0, sign: ['#2b2b2f', '#ffffff'], awn: [60, 60, 66], wall: [104, 104, 100], floor: [FL.TERRAZO, [86, 84, 80], [70, 68, 64]], warm: 0.25, lamp: LP.TUBOS,
+  { n: 'TALLER', w: 0, sign: ['#2b2b2f', '#ffffff'], awn: [60, 60, 66], wall: [168, 166, 158], floor: [FL.TERRAZO, [120, 118, 112], [96, 94, 90]], warm: 0.35, lamp: LP.TUBOS,
     back: [BK.HERRAMIENTAS, [130, 110, 80]], far: [LY.ISLA, [70, 72, 76]], near: [LY.NADA, Z], shelf: [LY.NADA, Z], acc: [220, 60, 40], pal: PL.FERRETERIA, shape: SH.CAJA },
   { n: 'BUIT', w: 0, sign: ['#808080', '#ffffff'], awn: [120, 120, 120], wall: [196, 190, 178], floor: [FL.TERRAZO, [130, 126, 120], [110, 106, 100]], warm: 0.3, lamp: LP.TUBOS,
     back: [BK.LISO, [150, 146, 140]], far: [LY.NADA, Z], near: [LY.NADA, Z], shelf: [LY.NADA, Z], acc: [120, 120, 120], pal: PL.VARIADO, shape: SH.CAJA },
@@ -262,9 +262,10 @@ regKind('ESC', 200, `
       rough = 0.92;
     } else if (emd < 4.5) {
       float pat = evr < 0.5 ? 0.0 : (evr < 1.5 ? step(0.5, fract(P.y/0.12)) : step(length(fract(P/0.09) - 0.5), 0.28));
-      alb = mix(vec3(0.86, 0.88, 0.88), vCol.rgb, 0.25 + 0.6*pat*(1.0 - efar*0.6));
-      rough = 0.35;
-      emis = emit(vec3(0.95, 0.93, 0.86), shopOn()*0.22);
+      vec3 vb = vec3(0.56, 0.60, 0.62)*(0.85 + 0.2*smoothstep(-1.0, 1.0, sin(P.x*0.7 + P.y*0.4)));
+      alb = mix(vb, vCol.rgb*0.85, 0.2 + 0.6*pat*(1.0 - efar*0.6));
+      rough = 0.3;
+      emis = emit(vec3(0.95, 0.93, 0.86), shopOn()*0.18);
     } else if (emd < 5.5) {
       alb = vCol.rgb*0.6; rough = 0.3;
       emis = emit(vCol.rgb, 0.25 + 2.2*uDusk*(1.0 - 0.35*uLate));
@@ -304,7 +305,7 @@ regKind('ESC', 200, `
       vec2 cs = evr < 0.5 ? vec2(0.09, 0.07) : vec2(0.42, 0.48), ci = floor(P/cs), cf = fract(P/cs);
       float h = hash21(ci + esd);
       float it = shR(cf*cs, cs*0.08, cs*0.92, efw);
-      vec3 ic = escHue(h)*mix(1.0, 1.2, step(0.7, h));
+      vec3 ic = mix(vec3(0.6), escHue(h), 0.7);
       if (evr > 0.5) { ic = mix(ic, vec3(0.95), step(0.6, fract(h*9.1))); it *= shT((cf - vec2(0.5, 0.0))*cs, 0.02, 0.42, 0.13, 0.19, efw); }
       alb = mix(vCol.rgb, ic, it*(1.0 - efar*0.3));
       rough = 0.7;
@@ -314,9 +315,9 @@ regKind('ESC', 200, `
       emis = emit(vCol.rgb, 0.12 + uDusk*0.9);
     } else if (emd < 12.5) {
       float h = vnoise(P*9.0 + esd), h2 = vnoise(P*17.0 + esd*1.3);
-      vec3 fc = escHue(floor(h*5.0)/5.0 + esd*0.13);
-      fc = mix(fc, vec3(0.95, 0.95, 0.92), step(0.75, h2));
-      alb = mix(vec3(0.16, 0.34, 0.12), fc, smoothstep(0.35, 0.5, h)*(1.0 - efar*0.4)); rough = 0.8;
+      vec3 fc = mix(vec3(0.5), escHue(floor(h*4.0)/4.0 + esd*0.13), 0.75);
+      fc = mix(fc, vec3(0.92, 0.92, 0.88), step(0.8, h2));
+      alb = mix(vec3(0.14, 0.30, 0.11), fc, smoothstep(0.5, 0.62, h)*(1.0 - efar*0.4)); rough = 0.8;
     } else if (emd < 13.5) {
       vec2 g = P/0.075, gi = floor(g), gf = fract(g) - 0.5;
       float h = hash21(gi + esd), d = length(gf);
@@ -495,7 +496,7 @@ function bay(env, run, W, gl, yB, s) {
   if (cr === 'ofertas' && (W + (q[9] * 3 | 0)) % 2 === 0) over(() => g.top - Math.min(1.2, h * 0.5), () => g.top - 0.1, [255, 255, 255], EM.CARTELES, 1, false);
   if (cr === 'precios') over(y => y + 0.6, y => y + Math.min(1.6, h * 0.65), [255, 255, 255], EM.CARTELES, 0, false);
   if (cr === 'carteles2' && W === s.door + (s.door > s.w0 ? -1 : 1)) over(y => y + 0.35, y => y + Math.min(1.75, h * 0.75), [255, 255, 255], EM.CARTELES, 2, false);
-  if (cr === 'vinilo0') over(y => y + 0.3, y => y + Math.min(1.7, h * 0.7), mixc([230, 236, 236], s.rotBg || [255, 255, 255], 0.15), EM.VINILO, 0, true);
+  if (cr === 'vinilo0') over(y => y + 0.5, y => y + Math.min(1.5, h * 0.6), mixc([230, 236, 236], s.rotBg || [255, 255, 255], 0.15), EM.VINILO, 0, true);
   if (cr === 'vinilo1') over(y => y + 0.05, y => y + 0.65, s.rotBg && s.rotBg[0] + s.rotBg[1] + s.rotBg[2] > 0 ? s.rotBg : [220, 110, 150], EM.VINILO, 1, true);
   if (cr === 'vinilo2') over(y => y + 0.75, y => y + 1.45, [255, 120, 30], EM.VINILO, 2, true);
   if (cr === 'rejilla' && !g.door) rect(W1 || W0, F, g.B_ + 0.03, g.V_ - 0.03, g.sill + 0.05, g.top - 0.05, -0.25, [110, 112, 116], K.ESC, eAux(EM.REJILLA, sd, 0));
