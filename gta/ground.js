@@ -16,6 +16,7 @@ const ZEBRA = new Set([2, 3, 4, 5, 6]);                     // clases de calle c
 //   v, au  float  metros a lo largo de la calle y |x|/hw
 //   cls    float  clase de vía · dist: distancia a la cámara · fade: 1 cerca → 0 a 1,4 km
 //   near   float  1 cerca → 0 a 480 m (ya multiplicado por uAsph: vale 0 si no hay texturas de asfalto)
+//   Ta     float  albedo medio del estado del asfalto (FS_ROAD, de suelos.js): el tono de lejos, para que el de cerca case
 //   vCol.rgb      color base de la calzada · tAsD, tAsN: asfalto fotografiado (difuso y normal) · utilidades del preludio
 // Salidas:
 //   alb    vec3   albedo: mézclalo con «near» para que el detalle entre poco a poco
@@ -28,19 +29,27 @@ const roadGLSL = `
     vec3 t1 = texture2D(tAsD, P/6.0).rgb, t2 = texture2D(tAsD, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).rgb;
     vec3 tx = mix(t1, t2, gB);
     float lum = dot(tx, vec3(0.3, 0.6, 0.1));
-    vec3 asf = vCol.rgb*0.8*mix(0.7, 1.22, smoothstep(0.12, 0.5, lum))*mix(0.9, 1.06, vnoise(P*0.025));
-    // parches de reparación y zonas más nuevas
-    vec2 pc = floor(P/vec2(4.8, 9.6)); float ph = hash21(pc + 0.5);
-    vec2 pf = fract(P/vec2(4.8, 9.6));
-    float rpatch = step(0.88, ph)*step(0.15, pf.x)*step(pf.x, 0.85)*step(0.1, pf.y)*step(pf.y, 0.8);
-    asf *= mix(1.0, 0.72 + 0.1*ph, rpatch);
-    // rodadas: más oscuras en el centro de cada carril
-    float lane = abs(fract((x + hw)/3.3) - 0.5);
-    asf *= mix(1.0, 0.9, smoothstep(0.32, 0.05, lane)*(0.5 + 0.5*vnoise(P*0.3)));
+    // G1S3: tono de cerca ligado al de lejos (Ta) y nunca por debajo de 0,215 (gris medio de asfalto con árido): antes salía de vCol (0,29) y el estado «nuevo»
+    // lo tapaba con un negro liso. Árido: motas claras y oscuras de 2–3 cm que se apagan con el tamaño del píxel
+    float pq0 = length(fwidth(P)), gk = 1.0 - smoothstep(0.006, 0.03, pq0);
+    vec3 asf = vec3(1.0, 0.99, 0.965)*max(Ta*1.35, 0.215)*mix(0.72, 1.2, smoothstep(0.12, 0.5, lum))*mix(0.92, 1.06, vnoise(P*0.025));
+    float ar = hash21(floor(P*38.0));
+    asf *= 1.0 + gk*(step(0.86, ar)*0.35 - step(ar, 0.10)*0.22);
+    // G1S3 · parches de reparación orientados al carril (antes, cuadros fijos al mundo: rombos en las calles a 45°), con el
+    // borde roto por ruido y un tono que se aparta un ±8 % como mucho
+    float pli = floor((x + hw)/3.3), pvL = 7.0 + 5.0*hash21(vec2(pli, 2.3)), pvi = floor(v/pvL);
+    float ph = hash21(vec2(pli*1.7 + 0.5, pvi + 0.5));
+    vec2 pd = vec2(abs(fract((x + hw)/3.3) - 0.5)*3.3 - (0.9 + 0.5*fract(ph*7.0)), abs(fract(v/pvL) - 0.5)*pvL - (1.2 + 0.30*pvL*fract(ph*13.0)));
+    float psd = max(pd.x, pd.y) + (vnoise(P*0.9 + ph*40.0) - 0.5)*0.55 + (vnoise(P*3.7) - 0.5)*0.12;
+    float rpatch = step(0.84, ph)*(1.0 - smoothstep(-0.03, 0.03 + pq0, psd))*step(abs(x), hw - 0.3);
+    asf *= mix(1.0, (fract(ph*29.0) > 0.5 ? 1.08 : 0.92)*(0.97 + 0.06*vnoise(P*2.1)), rpatch);
+    // rodadas: las bandas por donde pisan las ruedas (a ±0,8 m del centro de cada carril), algo más claras y pulidas
+    float lane = abs(fract((x + hw)/3.3) - 0.5)*3.3;
+    asf *= 1.0 + 0.07*(1.0 - smoothstep(0.15, 0.45, abs(lane - 0.8)))*(0.5 + 0.5*vnoise(P*0.3));
     // G1S2 · tapas y rejillas, sin patrón fijo: cada 26 m de calle, una tapa redonda de fundición (60 cm, con su marco y
     // un anillo de mortero alrededor) en el centro de un carril elegido al azar, o ninguna. Alguna arqueta rectangular
     // junto al bordillo y los imbornales (rejilla de 90 x 35 cm con barras de través) a un lado u otro cada 18 a 30 m.
-    float pq = length(fwidth(P)), dk = 1.0 - smoothstep(0.02, 0.08, pq);
+    float pq = pq0, dk = 1.0 - smoothstep(0.02, 0.08, pq);
     float bi = floor(v/26.0), hb = hash21(vec2(bi, 3.1)), nl = max(1.0, floor(2.0*hw/3.3 + 0.5));
     float lx = -hw + (floor(hash21(vec2(bi, 7.7))*nl) + 0.5)*(2.0*hw/nl);
     vec2 md = vec2(v - (bi + 0.2 + 0.6*hb)*26.0, x - lx);
@@ -93,7 +102,7 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
   //   · rotondas (anillo con radio de 6 a 140 m que se cierra alrededor de la boca): en las entradas, dientes de ceda el
   //     paso y el paso de cebra retrasado 5 m; en el anillo, ni pasos ni detenciones.
   const { SEG } = ctx, C = ctx.city, { roadY, ROADS, CAR, coverAt, cellOf } = C;
-  const WHITE = [222, 222, 214], LIFT = typeof location !== 'undefined' && /zlift/.test(location.search) ? 0.6 : 0.025;   // ?zlift: depuración (pintura levantada)
+  const WHITE = [222, 222, 214], LIFT = typeof location !== 'undefined' && /zlift/.test(location.search) ? 0.6 : 0.04;   // G1S3: 2,5 → 4 cm (en los cruces la cinta vecina quedaba casi a la misma altura y la pintura parpadeaba) · ?zlift: depuración (pintura levantada)
   const ends = new Map();                                     // s*2+e → datos de la boca (o null si ese extremo no es cruce)
   const segD = (s2, x, z) => { const o = s2 * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, l2 = dx * dx + dz * dz;
     let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - ax - dx * t, z - az - dz * t); };
@@ -231,12 +240,24 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       const stop = !ringLeg && !entry && hw >= 2.5 && (cls <= 6 || cls === 8 || cls === 10 || cls === 11) && cls >= 2;
       const giveway = entry && hw >= 2.5;
       const aGive = info.aMin + 0.6;
-      let zFree = zOk && freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3);
+      let zFree = zOk && freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3), zr = null;
+      const a0x = a0;
       // si en el sitio del xamfrà pisa otra calzada (laterales, ramales), pegado al cruce como antes
       if (zOk && !zFree && !entry && a0 > info.aMin + 1.0) { a0 = info.aMin + 1.0; zFree = freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3); }
+      // G1S3: si el paso entero pisa otra calzada (el borde de la calle transversal en el xamfrà, un ramal), se recorta: las
+      // bandas libres seguidas, si son al menos el 60 % (antes se suprimía y la boca se quedaba sin paso)
+      if (zOk && !zFree && !entry) {
+        const n = Math.max(1, Math.floor((2 * hw - 0.8) / 1.0) + 1), b0 = -(n - 1) / 2;
+        for (const aa of a0x > info.aMin + 1.0 ? [a0x, info.aMin + 1.0] : [info.aMin + 1.0]) {
+          let best = [0, -1], st = -1;
+          for (let i = 0; i <= n; i++) { if (i < n && freeRect(s, info, aa, aa + 4, b0 + i - 0.25, b0 + i + 0.25)) { if (st < 0) st = i; }
+            else if (st >= 0) { if (i - 1 - st > best[1] - best[0]) best = [st, i - 1]; st = -1; } }
+          if (best[1] - best[0] + 1 >= Math.max(2, Math.ceil(n * 0.6))) { a0 = aa; zFree = true; zr = best; break; }
+        }
+      }
       const aStop = zFree ? a0 + 4 + 1.0 : info.aMin + 1.0;
       const sb0 = oneWay ? -hw + 0.25 : 0.12;
-      P = { info, a0, zOk: zFree, oneWay, sb0,  stop: stop && aStop + 0.4 <= L && freeRect(s, info, aStop, aStop + 0.4, sb0, hw - 0.25), aStop,
+      P = { info, a0, zOk: zFree, zr, oneWay, sb0,  stop: stop && aStop + 0.4 <= L && freeRect(s, info, aStop, aStop + 0.4, sb0, hw - 0.25), aStop,
             giveway: giveway && aGive + 1 <= L && freeRect(s, info, aGive, aGive + 0.9, 0.35, hw - 0.15), aGive,
             arrows: !oneWay && !ringLeg && !entry && hw >= 5.5 && cls <= 5 && aStop + 12 <= L && freeRect(s, info, aStop + 3, aStop + 8, 0.2, hw - 0.2),
             aEnd: ringLeg ? info.aMin : Math.max(zFree ? a0 + 4 + 1.6 : 0, stop ? aStop + 1.0 : 0, giveway ? aGive + 1.6 : 0, info.aMin) };
@@ -247,11 +268,11 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
   // de un tramo corto que sale de uno (para cortar ahí las líneas de carril)
   function spill(s, e) { let cur = s, ce = e, d = 0;
     for (let k = 0; k < 4 && d < 40; k++) { const oc = cur * 6, nx0 = SEG[oc + ce * 2], nz0 = SEG[oc + ce * 2 + 1], lg = legsAt(nx0, nz0);
-      if (lg.length !== 2) return 0; const nx = lg.find(l => l.s !== cur); if (!nx) return 0;
+      if (lg.length !== 2) return -1e9; const nx = lg.find(l => l.s !== cur); if (!nx) return -1e9;
       const fe = kJ(SEG[nx.s * 6], SEG[nx.s * 6 + 1]) === kJ(nx0, nz0) ? 1 : 0; d += nx.L;
-      const P = plan(nx.s, fe); if (P) return P.info.chain.indexOf(s) >= 0 ? Math.max(0, P.aEnd - d) : 0;
+      const P = plan(nx.s, fe); if (P) return P.aEnd - d;   // G1S3: aunque el tramo no sea de su cadena (antes, 0: la raya entraba en el cruce)
       cur = nx.s; ce = fe; }
-    return 0; }
+    return -1e9; }
   // altura de la pintura: sobre la más alta de las cintas que hay en ese punto (en los cruces se apilan varias)
   // cota de la CINTA de calzada de app.js en (x, z): la cinta solo tiene vértices en los nudos de la polilínea y en los
   // puntos que app.js añade al subdividir (sub: mientras el relieve se aparte más de 10 cm de la recta) y es recta entre
@@ -310,12 +331,12 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       if (!CAR.has(cls) || hw < 2) return;
       const ex = [0, 0];                                       // metros sin pintar de carril en cada extremo
       for (const e of [0, 1]) {
-        const P = plan(s, e); if (!P) { ex[e] = spill(s, e); continue; } const info = P.info; ex[e] = P.aEnd;
+        const P = plan(s, e); if (!P) { ex[e] = Math.max(0, spill(s, e) + 10); continue; } const info = P.info; ex[e] = P.aEnd + 10;   // G1S3: rayas de carril 10 m antes de lo pintado del cruce
         const mid = (a, b) => inCell(info.jx + info.ux * a + info.qx * b, info.jz + info.uz * a + info.qz * b);
         // paso de cebra: bandas de 50 cm cada metro, centradas en la calzada
         if (P.zOk && mid(P.a0 + 2, 0)) {
           const n = Math.max(1, Math.floor((2 * hw - 0.8) / 1.0) + 1), b0 = -((n - 1) * 1.0) / 2;
-          for (let i = 0; i < n; i++) { const b = b0 + i; paint(cell, s, info, rect(P.a0, P.a0 + 4, b - 0.25, b + 0.25)); }
+          for (let i = P.zr ? P.zr[0] : 0, i1 = P.zr ? P.zr[1] : n - 1; i <= i1; i++) { const b = b0 + i; paint(cell, s, info, rect(P.a0, P.a0 + 4, b - 0.25, b + 0.25)); }
         }
         if (P.stop && mid(P.aStop, 0)) paint(cell, s, info, rect(P.aStop, P.aStop + 0.4, P.sb0, hw - 0.25));
         if (P.giveway && mid(P.aGive, hw * 0.5)) {           // dientes de tiburón: triángulos de 60 cm con la punta hacia el que llega
@@ -340,12 +361,14 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       if ((cls === 5 || cls === 6) && hw >= 3.4) {
         const nL = Math.max(2, Math.min(4, Math.round(2 * hw / 3.2))), lw = 2 * hw / nL;
         const o = s * 6, ax = SEG[o], az = SEG[o + 1], tx = seg.tx, tz = seg.tz, px = seg.px, pz = seg.pz;
-        const i0 = ex[0] + 1.0, i1 = L - ex[1] - 1.0;
-        if (i1 - i0 > 4) seg.along(7.5, 0, u => {
+        // G1S3: cortadas 10 m antes de la detención o del paso (antes, a 1 m: con la detención formaban un «+») y nunca en los
+        // tramos cortos que quedan dentro de un nudo
+        const i0 = Math.max(ex[0], 1.0), i1 = L - Math.max(ex[1], 1.0);
+        if (i1 - i0 > 10) seg.along(7.5, 0, u => {
           if (u < i0 || u + 2.5 > i1) return;
           const cx = ax + tx * (u + 1.25), cz = az + tz * (u + 1.25); if (!inCell(cx, cz)) return;
           for (let k = 1; k < nL; k++) { const b = -hw + k * lw;
-            const pts = [[u, b - 0.06], [u + 2.5, b - 0.06], [u + 2.5, b + 0.06], [u, b + 0.06]].map(([a, bb]) => { const x = ax + tx * a + px * bb, z = az + tz * a + pz * bb; return [x - cell.ox, segY(s, x, z) + 0.025, z - cell.oz]; });
+            const pts = [[u, b - 0.06], [u + 2.5, b - 0.06], [u + 2.5, b + 0.06], [u, b + 0.06]].map(([a, bb]) => { const x = ax + tx * a + px * bb, z = az + tz * a + pz * bb; return [x - cell.ox, segY(s, x, z) + LIFT, z - cell.oz]; });
             quad(cell.W, F0, pts[0][0], pts[0][1], pts[0][2], pts[1][0], pts[1][1], pts[1][2], pts[2][0], pts[2][1], pts[2][2], pts[3][0], pts[3][1], pts[3][2], WHITE, K.PLAIN); }
         });
       }

@@ -83,9 +83,16 @@ function asfalto(cls, hw, x0, z0, x1, z1) {
   else if (!av && h2 > 0.95 && n >= 2) w += 0.9;                         // tramo dejado
   return Math.max(0, Math.min(4.99, w));
 }
+// G1S3: el asfalto «nuevo» y «seminuevo» (estados 0–1, albedo 0,10–0,12 en FS_ROAD) se veía negro puro y liso a pie de
+// calle. Lo que queda por debajo de 1,8 se comprime a 1,5–1,8: albedo de lejos 0,14–0,15 (gris oscuro de asfalto con
+// árido) y, de cerca, el asfalto fotografiado con su grano en vez del tono liso de «nuevo»; por debajo de 1,8 FS_ROAD aún
+// no pone parches de reparación, así que no aparecen rectángulos nuevos. De 1,8 para arriba no cambia nada. Las aceras
+// siguen usando el desgaste de antes (asfalto0).
+const asfalto0 = asfalto;
+function asfaltoG1(cls, hw, x0, z0, x1, z1) { const w = asfalto0(cls, hw, x0, z0, x1, z1); return w < 1.8 ? 1.5 + w * (0.3 / 1.8) : w; }
 // modelo de acera y desgaste (0–1) de un tramo con aceras
 function acera(cls, hw, x0, z0, x1, z1) {
-  const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, av = avenida(x0, z0, x1, z1), w = asfalto(cls, hw, x0, z0, x1, z1);
+  const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, av = avenida(x0, z0, x1, z1), w = asfalto0(cls, hw, x0, z0, x1, z1);
   const n = nivel(mx, mz), zn = zona(mx + 913, mz - 377, 220), wr = Math.min(1, Math.max(0, (w - 0.2) / 4.4));
   if (av === 'pgracia') return [1, Math.min(wr, 0.3)];
   if (av === 'diagonal') return [2, Math.min(wr, 0.35)];
@@ -261,6 +268,6 @@ function allanarPar(h0, h0src, env, polys, WX, WZ, GW, GH, CELL, nW) {
     return finish({ tiles, low, stats: st }, h0, WX, WZ);
   });
 }
-window.BCN_SUELOS = { asfalto, acera, avenida, nivel, barri, NIVEL, allanar, allanarPar, preClave, pack, unpack };
+window.BCN_SUELOS = { asfalto: asfaltoG1, asfalto0, acera, avenida, nivel, barri, NIVEL, allanar, allanarPar, preClave, pack, unpack };
 window.BCN_RENTA = { nivel, barri, NIVEL, PERIF };
 })();

@@ -76,6 +76,15 @@ varying vec3 vLoc; varying vec2 vUV;
 uniform vec2 uFade; uniform vec2 uSF; uniform sampler2D tField; uniform sampler2D tKind; uniform sampler2D tPanD; uniform sampler2D tPanN; uniform sampler2D tGrD; uniform sampler2D tGrN;
 // SUELOS (día 3): relieve de las baldosas propias (altura 0 en la junta, 1 en la cara de la pieza)
 // hexagonal del Passeig de Gràcia (25 cm entre caras): amonite, estrella de mar y alga, en relieve, como en el panot de Gaudí
+// G1S3: paseo central de La Rambla (Canaletes → Liceu → Colom, en coordenadas del mundo): s a lo largo, t de través
+vec3 ramblaST(vec2 w){
+  vec2 A = vec2(12194.9, 13909.7), B = vec2(12490.6, 13357.2), C = vec2(12828.6, 12837.7);
+  vec2 d1 = B - A, d2 = C - B; float L1 = length(d1), L2 = length(d2); d1 /= L1; d2 /= L2;
+  float s1 = clamp(dot(w - A, d1), -30.0, L1), s2 = clamp(dot(w - B, d2), 0.0, L2 + 30.0);
+  float t1 = dot(w - A, vec2(-d1.y, d1.x)), t2 = dot(w - B, vec2(-d2.y, d2.x));
+  float e1 = length(w - A - d1*s1), e2 = length(w - B - d2*s2);
+  return e1 < e2 ? vec3(s1, t1, e1) : vec3(L1 + s2, t2, e2);
+}
 float hexH(vec2 P){
   vec2 p = P/0.25, r = vec2(1.0, 1.7320508), hh = r*0.5;
   vec2 a = mod(p, r) - hh, b = mod(p - hh, r) - hh, g = dot(a, a) < dot(b, b) ? a : b;
@@ -141,6 +150,16 @@ void main(){
     alb = min(alb, vec3(0.50) + 0.4*(alb - vec3(0.50)));
     alb *= 1.0 - 0.22*wr*smoothstep(0.45, 0.8, n1g);
     vec3 tn = texture2D(tGrN, gP).xyz*2.0 - 1.0; N = normalize(mix(N, vec3(tn.x, tn.z, tn.y), nearN));
+    // G1S3: La Rambla, panot de ondas (las olas blancas y grises que cruzan el paseo de lado a lado), baldosa de 33 cm
+    vec3 rs = ramblaST(vPos.xz);
+    if (rs.z < 12.0) {
+      float wv = (rs.x + 0.55*sin(rs.y*0.85) + 0.18*sin(rs.y*2.3 + 1.0))/0.66, fwv = fwidth(wv) + 1e-4;
+      float band = smoothstep(0.5 - fwv, 0.5 + fwv, abs(fract(wv) - 0.5)*2.0), lw = 1.0 - smoothstep(0.15, 0.6, fwv);
+      vec2 tq = fract(vPos.xz/0.33); float tj = smoothstep(0.0, 0.03, min(min(tq.x, 1.0 - tq.x), min(tq.y, 1.0 - tq.y)));
+      vec3 wa = mix(vec3(0.62, 0.61, 0.58), vec3(0.40, 0.40, 0.39), mix(0.5, band, lw))*mix(0.85, 1.07, n1)*mix(0.93, 1.05, n2);
+      wa *= mix(1.0, mix(0.82, 1.0, tj), lw*nearN)*(1.0 - 0.18*wr*smoothstep(0.45, 0.8, n1g));
+      alb = mix(alb, wa, 1.0 - smoothstep(9.0, 12.0, rs.z));
+    }
   } else if (abs(mdl - 1.0) < 0.5 || abs(mdl - 2.0) < 0.5) {   // hexagonal del Passeig de Gràcia y losa de la Diagonal
     bool hx = mdl < 1.5;
     float lodT = 1.0 - smoothstep(0.03, 0.12, tfw0), e = 0.012;

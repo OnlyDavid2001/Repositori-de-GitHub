@@ -68,15 +68,15 @@ void main(){
     vec2 d = W - uRose; float r = length(d), th = atan(d.y, d.x), PI4 = 0.7853982;
     vec3 cW = vec3(0.84, 0.81, 0.75), cL = vec3(0.70, 0.68, 0.64), cG = vec3(0.52, 0.51, 0.52), cK = vec3(0.22, 0.22, 0.24), cR = vec3(0.60, 0.37, 0.29), cY = vec3(0.76, 0.63, 0.42);
     float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 15.5 : 10.0;
-    float lat = abs(sin(da))*r, hw = Rp*0.19*max(0.0, 1.0 - r/Rp), aw = max(fw*1.5, 0.02);
+    float lat = abs(sin(da))*r, hw = Rp*0.25*max(0.0, 1.0 - r/Rp), aw = max(fw*1.5, 0.02);
     float inS = (1.0 - smoothstep(hw - aw, hw + aw, lat))*step(cos(da), 1.1)*step(0.0, cos(da));
-    vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cK) : (da > 0.0 ? cR : cY);
+    vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cL) : (da > 0.0 ? cR : cY);   // G1S3: puntas claras sobre disco oscuro (antes, gris sobre gris: una mancha)
     // fondo por anillos: disco gris, anillos negro, blanco y rojo, campo de sectores claros con líneas rojas, cenefa exterior negra
     float s16 = mod(floor(th/(PI4*0.5) + 8.0), 2.0);
-    vec3 bg = r < 16.4 ? cG : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 43.6 ? (s16 > 0.5 ? cW : mix(cL, cG, 0.4)) : r < 44.2 ? cW : r < 45.0 ? cR : r < 45.8 ? cK : cR;
+    vec3 bg = r < 16.4 ? mix(cG, cK, 0.55) : r < 17.2 ? cK : r < 17.9 ? cW : r < 18.5 ? cR : r < 43.6 ? (s16 > 0.5 ? cW : mix(cL, cG, 0.4)) : r < 44.2 ? cW : r < 45.0 ? cR : r < 45.3 ? cK : cR;   // G1S3: cenefa negra de 0,8 → 0,3 m
     // P4: campo con incrustaciones: anillos rojos ribeteados de negro, líneas radiales negras entre sectores y greca roja y blanca
-    if (r > 18.5 && r < 43.6) { float rl = abs(fract((r - 18.5)/6.3 + 0.5) - 0.5)*6.3; if (rl < 0.24) bg = cR; else if (rl < 0.36) bg = cK;
-      float la = abs(fract(th/(PI4*0.5) + 0.5) - 0.5)*PI4*0.5*r; if (la < 0.06 + 0.0012*r) bg = cK;
+    if (r > 18.5 && r < 43.6) { float rl = abs(fract((r - 18.5)/6.3 + 0.5) - 0.5)*6.3; if (rl < 0.20) bg = cR; else if (rl < 0.26) bg = cK;
+      float la = abs(fract(th/(PI4*0.5) + 0.5) - 0.5)*PI4*0.5*r; if (la < 0.035 + 0.0005*r) bg = cK;   // G1S3: líneas radiales más finas (eran bandas de 20–30 cm)
       if (r > 27.2 && r < 28.8) { float ck = mod(floor((th/6.2832 + 0.5)*220.0) + floor((r - 27.2)/0.8), 2.0); bg = r < 27.4 || r > 28.6 ? cK : (ck > 0.5 ? cR : cW); }
       if (r > 36.0 && r < 37.0) bg = mix(cG, cK, 0.35); }
     vec3 c = mix(bg, star, inS*step(r, Rp));
