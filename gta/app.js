@@ -511,6 +511,35 @@ void main(){
     float l = dot(alb, vec3(0.30, 0.60, 0.10));
     vec3 ol = l*mix(vec3(0.90, 1.0, 0.68), vec3(0.86, 1.0, 0.68), mt)*mix(1.05, 1.06, mt)*mix(1.0, mix(0.55 + 0.9*cw, 0.58 + 0.84*cw, smoothstep(14.0, 45.0, px)), mix(0.5, 1.0, mt));
     alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
+    // G1V2: suelo del monte (Collserola, Montjuïc, el Carmel): la ortofoto de 5 m daba un césped liso. Hierba seca de base,
+    // calveros de tierra ocre, roca gris en lo empinado (y más arriba), pinaza rojiza bajo las copas (la trama cw) y, de
+    // cerca, matojos y grano. Mismo brillo que la ortofoto (calibrado de DÍA): solo cambian el tono y el dibujo. Cada escala se
+    // apaga con el tamaño del píxel (sin moiré); de noche no se aplica (vg ya lleva 1 − uNight)
+    float mk = vg*smoothstep(30.0, 75.0, vPos.y)*(1.0 - smoothstep(1.2, 4.0, px));
+    if (mk > 0.001) {
+      vec2 q = vPos.xz;
+      vec3 n0 = normalize(texture2D(normTex, (q/uCell + 0.5)/uGrid).xyz*2.0 - 1.0);
+      float sl = 1.0 - n0.y, f1 = 1.0 - smoothstep(0.05, 0.25, px), f2 = 1.0 - smoothstep(0.25, 1.0, px);
+      float e1 = vnoise(q*0.09 + 5.3)*0.6 + vnoise(q*0.31 + 1.1)*0.4;            // calveros (~5–12 m)
+      float e2 = vnoise(q*1.1)*0.6 + vnoise(q*3.7)*0.4;                          // grano (~0,3–1 m)
+      vec3 hb = mix(vec3(0.46, 0.44, 0.26), vec3(0.38, 0.42, 0.22), vnoise(q*0.045 + 2.0));   // hierba seca y verde de monte
+      hb *= mix(1.0, 0.80 + 0.40*e2, f2);
+      vec3 ti = mix(vec3(0.55, 0.43, 0.30), vec3(0.62, 0.52, 0.38), vnoise(q*0.21));         // tierra ocre (licorella y sauló)
+      ti *= mix(1.0, 0.86 + 0.28*hash21(floor(q*7.0)), f1*0.7);                            // piedrecitas
+      vec3 ro = mix(vec3(0.50, 0.49, 0.46), vec3(0.42, 0.38, 0.34), vnoise(q*0.17 + 9.0));   // roca (pizarra y granito)
+      float cr = abs(vnoise(q*0.8 + 4.0) - 0.5);                                           // grietas
+      ro *= mix(1.0, 0.70 + 0.6*smoothstep(0.0, 0.08, cr), f2);
+      vec3 pz = vec3(0.44, 0.31, 0.20)*(0.85 + 0.3*e2);                                     // pinaza
+      float wT = smoothstep(0.55, 0.78, e1 + sl*0.6)*(1.0 - smoothstep(0.75, 0.95, cw));
+      float wR = smoothstep(0.30, 0.55, sl + 0.25*(e1 - 0.5) + 0.12*smoothstep(250.0, 450.0, vPos.y));
+      float wP = smoothstep(0.62, 0.85, cw)*(1.0 - wR)*0.8;
+      vec3 m = mix(mix(mix(hb, ti, wT), pz, wP), ro, wR);
+      // matojos de cerca: manchas verdes oscuras de ~0,5 m sobre la hierba (no en la roca ni en la tierra)
+      m = mix(m, vec3(0.22, 0.27, 0.13), smoothstep(0.66, 0.8, vnoise(q*1.9 + 7.0))*f2*(1.0 - wR)*(1.0 - wT)*0.8);
+      float lm = dot(m, vec3(0.30, 0.60, 0.10)), la = dot(alb, vec3(0.30, 0.60, 0.10));
+      alb = mix(alb, m*(la/max(lm, 0.02))*mix(0.92, 1.12, e1)*mix(1.0, 1.10, wT + wR), mk*0.85);
+      n = normalize(n + vec3(e2 - 0.5, 0.0, vnoise(q*1.1 + 3.0) - 0.5)*0.35*f2*mk*(0.4 + wR));
+    }
     // NAT: relieve de copas. La misma trama de claros y oscuros (cw) se usa como altura de las copas (~6 m) y tuerce la
     // normal: las copas se leen como bultos con su lado al sol y su lado en sombra. Se apaga donde la trama ya no se
     // resuelve (píxel grande), así que de lejos no centellea

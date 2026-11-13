@@ -181,7 +181,8 @@ function bush(lv) {    // arbusto (lentisco, coscoja): mata baja y rugosa
   else { blob(g, 0.15, 0.45, 0.25, 1.0, 0.6, 0.95, 2, 5, 0, 0.1, H); shellCards(g, 0.15, 0.5, 0.25, 1.25, 0.8, 1.15, 4, 0.75, 0.95, 1, H, true); }
   return pack(g);
 }
-function grass() { _s = 61; const g = G(); blades(g, 11, 0.45, 0.95, 0.05, 0.35, 3); return pack(g); }
+// G1V2: mata de hierba más baja, fina y poblada (antes, 11 hojas de hasta 1 m que se leían como pinchos sueltos)
+function grass() { _s = 61; const g = G(); blades(g, 22, 0.22, 0.62, 0.032, 0.45, 3); return pack(g); }
 function reed(lv) { if (lv) return board(0.9, 1.25, 1.25, false); _s = 71; const g = G(); blades(g, 9, 1.8, 2.9, 0.035, 0.12, 4); return pack(g); }
 function stone() { _s = 81; const g = G(); rock(g, 0.9, 0.55, 0.75); return pack(g); }
 
@@ -269,7 +270,10 @@ void main(){
         vec2 q = vec2(clamp((rn > 0.5 ? -uv.x : uv.x)*0.5 + 0.5, 0.015, 0.985), clamp(uv.y*0.5 + 0.5, 0.015, 0.985));
         vec3 sd = texture2D(tImp, vec2((tl + q.x)*0.25, 0.5 + q.y*0.5)).rgb, tp = texture2D(tImp, vec2((tl + q.x)*0.25, q.y*0.5)).rgb;
         vec3 t = mix(sd, tp, top);
-        float cov = clamp((t.g - 0.5)/max(fwidth(t.g), 1e-4) + 0.5, 0.0, 1.0);
+        // G1V2: la cobertura no adelgaza al bajar de mip (el bosque lejano se quedaba ralo): se engorda con el nivel de mip
+        vec2 qx = dFdx(q*256.0), qy = dFdy(q*256.0); float lod = max(0.0, 0.5*log2(max(dot(qx, qx), dot(qy, qy))));
+        float tg = t.g*(1.0 + lod*0.22);
+        float cov = clamp((tg - 0.5)/max(fwidth(tg), 1e-4) + 0.5, 0.0, 1.0);
         if (cov < 0.5) discard;
         float z = sqrt(max(1.0 - dot(uv, uv)*0.8, 0.0));
         vec3 nn = normalize(R*uv.x*0.8 + U*(uv.y*0.6 + 0.35) + V*(z*0.7 + 0.3));
@@ -382,7 +386,7 @@ window.BCN_NATURE = { async init(ctx) {
   const S = { on: QS.get('nat') !== '0', q: 1 };
   // NAT2: el nivel 0 (tarjetas de hojas) llega a ~90 m, el 1 (bultos) a ~210 m y el 2 (carteles de 2 triángulos) a 1,3 km:
   // desde el aire y a media distancia se ve el bosque en relieve por muy poco (medido en stats().tris)
-  const TREE = { ends: [[70, 90], [170, 210], [1050, 1300]], keep: [1, 1, 0.45], grow: [1, 1, 1.25], close: 55 };
+  const TREE = { ends: [[70, 90], [170, 210], [1050, 1300]], keep: [1, 1, 0.62], grow: [1, 1, 1.3], close: 55 };   // G1V2: más denso de lejos
   const TYPES = [
     Object.assign({ id: 'pinea', geo: [0, 1, 2].map(pinea), sc: [0.8, 1.25] }, TREE),
     Object.assign({ id: 'halep', geo: [0, 1, 2].map(halep), sc: [0.75, 1.2] }, TREE),
@@ -496,11 +500,11 @@ window.BCN_NATURE = { async init(ctx) {
     return false; };
   // probabilidades por muestra y clase: [pinea, halep, ilex, bush, grass, reed, rock]
   const PROB = {
-    [C_FOREST]: [0.05, 0.11, 0.08, 0.12, 0.08, 0, 0.008],
+    [C_FOREST]: [0.05, 0.11, 0.08, 0.15, 0.16, 0, 0.008],   // G1V2: más matorral y hierba bajo el pinar
     [C_PARK]: [0.045, 0.015, 0.025, 0.05, 0.40, 0, 0.003],
     [C_GRASS]: [0.006, 0.004, 0.006, 0.05, 0.45, 0.004, 0.004],
     [C_FARM]: [0, 0, 0, 0.006, 0.05, 0.008, 0],
-    [C_SCRUB]: [0.012, 0.03, 0.012, 0.14, 0.16, 0, 0.03],
+    [C_SCRUB]: [0.012, 0.03, 0.012, 0.18, 0.24, 0, 0.03],
   };
   const CLEAR = [2.6, 2.6, 2.8, 1.3, 0.7, 0.9, 1.0];   // distancia mínima al borde de la calle
   // NAT2 · miradores y explanadas despejados: nada de plantas en la huella de los hitos (rectángulo ancho × largo girado
