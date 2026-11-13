@@ -765,7 +765,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       g.fillStyle = t.sign[1]; g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.n, x + 256, y + 34, 470); });
     sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
   }
-  const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), PARW, PARH, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
+  const par = BABYLON.RawTexture.CreateRGBATexture(API.paramData(), PARW, PARH, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
   par.wrapU = par.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
   for (const m of ctx.detail.mats) { m.setTexture('tSign', sign); m.setTexture('tShop', par); }
   const ACERO = pbrAux(0.3, 1, 0, 0), NEON = pbrAux(0.5, 0, 0, 1), FRAME = [24, 24, 27];
@@ -816,7 +816,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
     }
-    if (plan) for (const s of plan.list) { shopFront(env, rg, s); terrace(env, rg, s); }
+    if (plan) for (const s of plan.list) { if (s.esc && window.BCN_ESC.front(env, rg, s)) continue; shopFront(env, rg, s); terrace(env, rg, s); }
   }
 
   // ---------------------------------------------------------------- comercios
@@ -849,6 +849,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       // bajada a medias (el que abre tarde o el que guarda el escaparate). r2 de un sorteo propio para no mover los de arriba
       const r2 = [R(), R(), R(), R()];
       s.shut = r2[0] < 0.09 ? 2 : r2[0] < 0.31 ? 1 : 0; s.shutR = r2[1]; s.shutC = SHUTC[(r2[2] * SHUTC.length) | 0];
+      if (window.BCN_ESC) window.BCN_ESC.plan(env, run, s);   // Condal City · escaparates.js: modelo de escaparate del local (negocio o forzado)
       // G1F2 · toldo solo si cabe: se mide el paso libre delante (hasta la fachada de enfrente) en los dos extremos y el centro;
       // en callejones (< 4,2 m) no hay toldo y si no, sale como mucho a un cuarto del paso (antes cruzaba las calles del Gòtic)
       if (s.awn && run.r && ctx.city) { const r_ = run.r; let w = 9;
@@ -888,6 +889,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   }
   // un vano de comercio: machones y dintel de piedra y, dentro, el escaparate o la puerta de vidrio de la tienda
   function shopBay(env, run, W, gl, yB, s) {
+    if (s.esc && window.BCN_ESC.bay(env, run, W, gl, yB, s)) return;   // escaparates.js
     const { W0, W1, F1 } = env, { F, bw } = run;
     const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
     const SC = shopCols(env), KS = SC.kS;
@@ -1066,7 +1068,8 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     }
   }
 
-  if (window.BCN_KIT) window.BCN_KIT.TI = { portalBay, roomQuad };   // planta baja de siempre, para las piezas «pb» del kit
+  if (window.BCN_KIT) window.BCN_KIT.TI = { portalBay, roomQuad };
+  if (window.BCN_ESC) window.BCN_ESC.enlaza({ ctx, glassQuad, opening, topOf, shopCols, shopBay, shopFront, terrace, roomQuad });   // escaparates.js   // planta baja de siempre, para las piezas «pb» del kit
   return { groundFloor, signTex: sign };
 } };
 })();
