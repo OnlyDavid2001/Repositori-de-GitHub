@@ -14,10 +14,10 @@ const KIT = window.BCN_KIT, GEO = window.BCN_GEO;
 const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, mixc, pbrAux, rev } = GEO;
 
 regKind('CHAPA', 184, `
-    rough = 0.55; metal = 0.25;
+    rough = 0.62; metal = 0.0;
     vec2 q = P/0.06; vec2 f = fract(q) - 0.5; vec2 fw = fwidth(q); float far = smoothstep(0.25, 0.7, max(fw.x, fw.y));
     float hole = 1.0 - smoothstep(0.17, 0.25, length(f));
-    alb = mix(alb, alb*0.4, hole*(1.0 - far)*0.85 + far*0.18);`);
+    alb = mix(alb, alb*0.45, hole*(1.0 - far)*0.8 + far*0.12);`);
 regKind('LISTON', 185, `
     rough = 0.74;
     vec2 q = P/vec2(0.12, 3.0); q.y += hash21(vec2(floor(q.x), 1.3))*2.0;
