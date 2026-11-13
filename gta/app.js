@@ -844,9 +844,11 @@ vec3 seaLights(vec2 p, vec2 g, float px, float t){
   // 2) farolas de la primera franja de calle (una por celda de 22 m, con azar): estela fina de lado y entera a lo largo
   float w = 0.6 + 0.35*fwidth(dot(p, sd)), acc = 0.0, port = 0.0;
   for (int i = 0; i < 2; i++) {
-    vec2 q = p + dir*(s1 + 2.0 + float(i)*18.0) + sd*wob*(0.3 + s1*0.002);
+    // G1L2: la farola se elige sin el temblor (si no, el oleaje salta de celda y la estela sale a bloques) y el temblor
+    // solo desplaza la estela de lado
+    vec2 q = p + dir*(s1 + 2.0 + float(i)*18.0);
     vec2 cid = floor(q/22.0), lp = (cid + 0.5 + (vec2(hash21(cid), hash21(cid + 3.7)) - 0.5)*0.5)*22.0;
-    float mL = seaM(lp)*step(0.55, hash21(cid + 9.1)), perp = dot(q - lp, sd), along = dot(q - lp, dir);
+    float mL = seaM(lp)*step(0.55, hash21(cid + 9.1)), perp = dot(q - lp, sd) + wob*(0.3 + s1*0.002), along = dot(q - lp, dir);
     float k = exp(-perp*perp/(w*w))*(1.0 - smoothstep(9.0, 14.0, abs(along)))*mL*(1.0 - 0.4*float(i));
     acc += k;
     port = max(port, k*(1.0 - smoothstep(-400.0, 400.0, dot(lp - vec2(12950.0, 12350.0), vec2(0.61, 0.79)))));
@@ -859,37 +861,69 @@ vec3 seaLights(vec2 p, vec2 g, float px, float t){
   vec3 cw = mix(vec3(1.0, 0.62, 0.30), vec3(0.80, 0.84, 0.86), clamp(port/max(acc, 1e-3), 0.0, 1.0));
   return cw*min(acc, 1.0)*fall*(0.1 + 0.9*dash)*1.7 + vec3(1.0, 0.66, 0.36)*(soft*0.008 + 0.035*exp(-s1/150.0));
 }
+// G1L2 · OLAS: ruido de valor con derivada analítica (la retícula se pliega cada 256 celdas: sin pérdida de precisión del azar
+// con coordenadas de 20 km) y desplazado por el viento. Devuelve (valor, d/dx, d/dy)
+vec3 nD(vec2 p){ vec2 i = floor(p), f = fract(p), u = f*f*(3.0 - 2.0*f), du = 6.0*f*(1.0 - f); i = mod(i, 256.0);
+  float a = hash21(i), b = hash21(mod(i + vec2(1.0, 0.0), 256.0)), c = hash21(mod(i + vec2(0.0, 1.0), 256.0)), d = hash21(mod(i + 1.0, 256.0));
+  return vec3(a + (b - a)*u.x + (c - a)*u.y + (a - b - c + d)*u.x*u.y, du*(vec2(b - a, c - a) + (a - b - c + d)*u.yx)); }
+// G1L2: lo resguardado del puerto (dársenas): media de la máscara de costa en un anillo de 700 m; en una dársena casi todo
+// es tierra, frente a una playa la mitad es mar abierto. 0 = mar abierto, 1 = agua de puerto
+float calmAt(vec2 uv, float cd){ if (cd > 0.45) return 0.0;
+  float acc = 0.0; vec2 r = vec2(700.0)/uSize;
+  for (int k = 0; k < 8; k++) { float an = float(k)*0.7854 + 0.3; acc += texture2D(coastTex, uv + r*vec2(cos(an), sin(an))).r; }
+  return 1.0 - smoothstep(0.12, 0.30, acc/8.0); }
 void main(){
   vec2 p = vPos.xz; vec3 V = uCam - vPos; float dist = length(V); V /= dist;
-  vec2 g = vec2(0.0); float t = uTime;
-  float m = 0.65 + 0.7*vnoise(p*0.003 + t*0.01);
-  vec2 d1 = vec2(-0.62,0.78), d2 = vec2(-0.90,0.44), d3 = vec2(-0.30,0.95), d4 = vec2(-0.98,-0.17), d5 = vec2(0.20,0.98);
-  float px = max(length(dFdx(p)), length(dFdy(p)));
-  g += d1*(0.037*m*(1.0 - smoothstep(0.10,0.40,px/60.0))*cos(dot(p,d1)*0.105 + t*1.00));
-  g += d2*(0.037*m*(1.0 - smoothstep(0.10,0.40,px/37.0))*cos(dot(p,d2)*0.170 + t*1.30));
-  g += d3*(0.036*(1.0 - smoothstep(0.10,0.40,px/21.0))*cos(dot(p,d3)*0.300 + t*1.70));
-  g += d4*(0.034*(1.0 - smoothstep(0.10,0.40,px/11.0))*cos(dot(p,d4)*0.570 + t*2.30));
-  g += d5*(0.036*(1.0 - smoothstep(0.10,0.40,px/5.0))*cos(dot(p,d5)*1.260 + t*3.10));
-  float rough = smoothstep(0.5, 30.0, px);
-  vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+  float t = uTime;
   vec2 uv = p/uSize;
   float inside = step(0.0,uv.x)*step(uv.x,1.0)*step(0.0,uv.y)*step(uv.y,1.0);
   float cd = mix(1.0, texture2D(coastTex, uv).r, inside);
-  // DIA: de día el Mediterráneo es azul intenso y saturado (fotos: (58, 142, 185) cerca); de noche, el de siempre
-  vec3 deep = mix(vec3(0.030,0.200,0.420), vec3(0.020,0.115,0.230), uNight), shallow = mix(vec3(0.080,0.400,0.500), vec3(0.070,0.330,0.400), uNight);
-  vec3 water = mix(shallow, deep, smoothstep(0.0, 0.5, cd));
-  water *= (uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y,0.0));
-  float fres = 0.02 + 0.98*pow(1.0 - max(dot(n,V),0.0), 5.0);
+  float calm = inside > 0.5 ? calmAt(uv, cd) : 0.0;
+  float px = max(length(dFdx(p)), length(dFdy(p)));
+  // mar de fondo (swell): tres trenes largos que llegan de mar adentro (hacia el noroeste), con la fase torcida por un ruido
+  // lento para que no salgan rayas paralelas. Mar de viento (chop): cinco octavas de ruido, cada una girada y arrastrada a su
+  // velocidad, en dos capas que se cruzan (así no parece una textura que resbala). Cada escala se apaga cuando el píxel ya no
+  // la resuelve y lo que se apaga pasa a rugosidad (de lejos, el brillo se ensancha en vez de centellear)
+  float m = 0.65 + 0.7*vnoise(p*0.003 + t*0.01), sea = mix(1.0, 0.22, calm);
+  vec2 g = vec2(0.0); float lost = 0.0;
+  float ph = 6.0*vnoise(p*0.004 + vec2(t*0.004, 0.0)) + 3.0*vnoise(p*0.013);
+  vec2 d1 = vec2(-0.62,0.78), d2 = vec2(-0.86,0.51), d3 = vec2(-0.34,0.94);
+  vec3 kw = vec3(0.105, 0.155, 0.23), aw = vec3(0.030, 0.024, 0.020)*m*sea;
+  for (int k = 0; k < 3; k++) { vec2 d = k == 0 ? d1 : (k == 1 ? d2 : d3);
+    float f = 1.0 - smoothstep(0.08, 0.35, px*kw[k]/6.2832);
+    g += d*(aw[k]*f*cos(dot(p, d)*kw[k] + t*sqrt(9.8*kw[k]) + ph*(1.0 + float(k)*0.5))); lost += aw[k]*aw[k]*(1.0 - f); }
+  mat2 R = mat2(0.80, 0.60, -0.60, 0.80); vec2 q = p; float wf = 0.045, am = 0.13;
+  for (int k = 0; k < 5; k++) {
+    float f = 1.0 - smoothstep(0.2, 0.6, px*wf), sp = 1.1*sqrt(9.8/(6.2832*wf))*0.18;
+    vec2 qa = q*wf + d1*(t*sp*wf), qb = (R*q)*wf*1.37 - vec2(0.3, 0.9)*(t*sp*wf*0.8);
+    vec2 ga = nD(qa).yz + R*nD(qb).yz*0.7;
+    float a = am*sea*mix(1.0, 0.75, float(k == 0));
+    g += ga*(a*wf*f*6.0); lost += a*a*(1.0 - f)*0.6;
+    q = R*q + 17.3; wf *= 2.3; am *= 0.62; }
+  float rough = clamp(sqrt(lost)*2.2 + smoothstep(0.5, 30.0, px)*0.25, 0.0, 1.0);
+  vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
+  // color del agua: turquesa somera junto a la costa, azul profundo mar adentro; el puerto más oscuro y verdoso (agua quieta y
+  // turbia). La luz que entra en el agua es la del cielo y la del sol (dispersión bajo la superficie, más en las crestas)
+  vec3 deep = mix(vec3(0.026,0.165,0.360), vec3(0.020,0.115,0.230), uNight), shallow = mix(vec3(0.070,0.390,0.470), vec3(0.070,0.330,0.400), uNight);
+  vec3 water = mix(shallow, deep, smoothstep(0.0, 0.45, cd));
+  water = mix(water, mix(vec3(0.060,0.250,0.290), vec3(0.020,0.080,0.110), uNight), calm*0.6);
+  water *= (uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y,0.0))*(1.0 + 0.6*clamp(dot(g, -uSunDir.xz)*6.0, 0.0, 1.0)*(1.0 - uNight)*(1.0 - calm));
   vec3 r = reflect(-V, n); r.y = abs(r.y);
-  vec3 sky = skyGrad(r);
-  vec3 c = mix(water, sky, fres*mix(0.62, 0.9, uNight));
-  float sp = pow(max(dot(r,uSunDir),0.0), mix(260.0, 40.0, rough));
-  // el brillo del sol en el agua, muy por encima de 1 (HDR): es lo que florece
-  c += uSunCol*sp*mix(7.0, 0.35, rough)*sunVis();
+  // Fresnel de Schlick (agua: f0 = 0,02); con rugosidad el máximo en rasante baja un poco (como en shade)
+  float ndv = max(dot(n,V),0.0), fres = 0.02 + (max(1.0 - rough*0.25, 0.02) - 0.02)*pow(1.0 - ndv, 5.0);
+  vec3 sky = skyGrad(normalize(vec3(r.x, max(r.y, 0.03), r.z)));
+  vec3 c = mix(water, sky, fres*0.9);
+  // brillo del sol: lóbulo cerrado cerca (las facetas lo resuelven) y ancho de lejos (la pista de luz hacia el sol, con la
+  // misma energía); más destellos sueltos (glitter): facetas al azar en celdas de 0,7 m que reflejan el disco
+  float sh = mix(900.0, 25.0, rough), spec = pow(max(dot(r, uSunDir), 0.0), sh)*(sh + 2.0)*0.012;
+  vec2 gc = floor(p/0.7); float hg = hash21(mod(gc, 256.0) + 0.37);
+  vec3 nf = normalize(n + vec3(hash21(mod(gc, 256.0) + 5.1) - 0.5, 0.0, hg - 0.5)*0.22);
+  float glit = step(0.986, pow(max(dot(reflect(-V, nf), uSunDir), 0.0), 3.0))*step(0.5, hg)*(1.0 - smoothstep(0.25, 0.9, px))*(1.0 - calm*0.7);
+  c += uSunCol*(spec*mix(1.0, 0.45, calm) + glit*5.0)*sunVis();
   // NAT: orilla. Agua somera clara sobre la arena y espuma suave: una línea pegada a la arena y dos o tres frentes de ola
   // que llegan a la playa, rotos por ruido (nada de bandas rectas). Se apaga con el tamaño del píxel (sin moiré de lejos)
-  float sh = (1.0 - smoothstep(0.0, 0.05, cd))*inside;
-  c = mix(c, mix(vec3(0.20, 0.42, 0.40), vec3(0.06, 0.12, 0.13), uNight)*(uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y, 0.0)), sh*0.45*(1.0 - fres));
+  float shl = (1.0 - smoothstep(0.0, 0.05, cd))*inside*(1.0 - calm);
+  c = mix(c, mix(vec3(0.20, 0.42, 0.40), vec3(0.06, 0.12, 0.13), uNight)*(uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y, 0.0)), shl*0.45*(1.0 - fres));
   float br = vnoise(p*0.09 + vec2(t*0.2, -t*0.08))*0.6 + vnoise(p*0.35 - vec2(t*0.3, t*0.1))*0.4;
   // NAT2: la espuma va por la máscara de costa (distancia a la línea de agua del relieve, la misma que la arena mojada):
   // una línea pegada a la arena y dos o tres frentes de ola que llegan, solo frente a las playas (en los muelles, poca)
@@ -905,7 +939,11 @@ void main(){
   float fr = fract(ds/11.0 + t*0.16 + 0.35*vnoise(p*0.03));
   float waves = exp(-pow((fr - 0.5)*5.0, 2.0))*(1.0 - smoothstep(12.0, 30.0, ds))*smoothstep(2.0, 5.0, ds)*(1.0 - smoothstep(4.0, 18.0, px));
   float edge = 1.0 - smoothstep(0.8, 3.5 + 3.0*br, ds);
-  float foam = clamp(edge*(0.6 + 0.4*br) + waves*smoothstep(0.35, 0.75, br)*0.75, 0.0, 1.0)*mix(0.2, 1.0, beach)*inside;
+  // G1L2: en las escolleras y espigones que dan a mar abierto, espuma a golpes (rompe la ola contra las piedras); en las
+  // dársenas del puerto, casi nada
+  float splash = smoothstep(0.35, 0.85, vnoise(p*0.06 + vec2(t*0.35, -t*0.2)))*(1.0 - smoothstep(1.5, 6.0 + 4.0*br, ds));
+  float foam = clamp(edge*(0.6 + 0.4*br) + waves*smoothstep(0.35, 0.75, br)*0.75, 0.0, 1.0)*mix(mix(0.25, 0.06, calm), 1.0, beach)*inside;
+  foam = max(foam, splash*(1.0 - calm)*(1.0 - beach)*inside*0.85*(1.0 - smoothstep(6.0, 25.0, px)));
   c = mix(c, vec3(0.93,0.95,0.96)*(uSunCol*0.6 + uSkyCol), foam*0.8);
   if (uGlow.x > 0.001) c += emit(seaLights(p, g, px, t)*(1.0 - 0.6*foam), uGlow.x*(1.0 - smoothstep(250.0, 900.0, uCam.y)));
   FRAG(c);
@@ -1051,7 +1089,7 @@ const L = { sunDir: new BABYLON.Vector3(), sunCol: new BABYLON.Color3(), skyCol:
             // DIA (de día pleno, se desvanece al ponerse el sol): desD desaturación del cielo como ambiente · skyD / gndD ganancia del
             // ambiente del cielo y del rebote del suelo · fogDay color de la bruma y del horizonte (azulado, como en las fotos)
             K: { sun: 1.7, sky: 4.4, gnd: 4.8, exp: 1.2, dAmb: 0.78, dExp: 0.42, des: 0.55, moon: 0.8, nAmb: 0.0, nExp: 0.25, blue: 0.5,
-                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.12, sunD: 1.08, fogDD: 1.5, fogDay: [0.58, 0.71, 0.86],
+                 desD: 0.14, skyD: 0.92, gndD: 0.72, expD: 1.12, sunD: 1.08, fogDD: 1.9, fogDay: [0.58, 0.71, 0.86],
                  // aura nocturna (uGlow): city = ganancia general (0 la quita) · calle = calzadas bajo las farolas · bajos = luz de
                  // farola en la parte baja de los muros lejanos · halo = bruma cálida y resplandor del horizonte · suelo = suelo urbano
                  city: 1, calle: 0.9, bajos: 1.2, halo: 1.0, suelo: 0.16 },
