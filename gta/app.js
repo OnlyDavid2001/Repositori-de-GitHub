@@ -1611,6 +1611,8 @@ const BREC = { dv: [], n: 0 };
   BREC.mzk = new Uint8Array(nTot); BREC.mz = MZ; window.BCN_MZINFO = MZ; let mzK = 0;   // INT3: BCN_MZINFO para el arnés (cache, ms, blocks)
     // n3 E2: 1 finca · 2 taller · 3 terraza del patio (manzanas.js)
   const PALJ = window.BCN_PAL; if (PALJ) PALJ.init(nTot);
+  // Condal City (F2a): estilo y variante por edificio (kit.js; los decide palette.js pick al hornear el color)
+  if (window.BCN_KIT) { window.BCN_KIT.init(nTot); BREC.estilo = window.BCN_KIT.EST; BREC.varEst = window.BCN_KIT.VAR; }
   for (let ci = 0; ci < conts.length; ci++) {
     const c = conts[ci];
     const dv = c.view('data'); BREC.dv.push(dv);

@@ -775,17 +775,38 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // sacan de golpe sus números: las capas BASE y ORNAMENTO ven los mismos, y nada depende de los demás vanos ni módulos.
   function groundFloor(env, run) {
     const { W0, W1, F1, y0, u, stone, iron, shops, shopsHere, windowHole } = env, KSB = K.FXPIEDRA !== undefined ? K.FXPIEDRA : K.STONE;   // n3 E4: sillería sin teñir (el tono, el de la fachada)
-    const { F, cover, street, nb, bw, N, wallC, gnd } = run;
+    const { cover, street, nb, bw, N, wallC, gnd } = run;
     if (F1 <= cover + 0.3) return;                            // tapado por el vecino
     const yB = Math.max(y0, cover - 0.3), gls = [];
     for (let W = 0; W < nb; W++) gls.push(Math.min(gnd((W + 0.5) * bw), F1 - 2.7));   // cota de la acera delante de cada vano (city.walkAt), con tope
-    const plan = street && shopsHere ? shopPlan(env, run, gls) : null;
+    // Condal City · kit (kit.js): ¿comercio en este tramo? (provisional hasta la Fase 4: densidad comercial real del sitio por el
+    // factor del estilo; ?pb=0/1 lo fuerza), planta baja del estilo (V.pb) y retranqueo (V.pbRec: soportales, pilotis, patio)
+    const V = env.V, KIT = window.BCN_KIT, kit = V && V.kit && KIT ? KIT : null;
+    let com = street && shopsHere;
+    if (kit && com) { env.rnd(7, 2, run.i); const rc = R(); com = kit.pbForce !== null ? kit.pbForce === 1 : rc < env.pCom; }
+    const dep = kit && street ? V.pbRec || 0 : 0;
+    let F = run.F, rg = run;
+    if (dep > 0) {
+      const F0 = run.F, L = run.L, gm = Math.min(...gls);
+      F = { x: F0.x - F0.nx * dep, z: F0.z - F0.nz * dep, tx: F0.tx, tz: F0.tz, nx: F0.nx, nz: F0.nz };
+      rg = Object.assign({}, run, { F });
+      jamb(W0, F0, 0.01, yB, F1, -dep, 0, shade(wallC, 0.9), env.kw); jamb(W0, F0, L - 0.01, yB, F1, -dep, 0, shade(wallC, 0.9), env.kw);
+      hpl(W0, F0, 0, L, F1 - 0.02, -dep, 0, shade(env.uV || u, 0.86), K.STUCCO);                      // techo de los soportales
+      hpl(W0, F0, 0, L, gm + 0.03, -dep, 0, [150, 146, 138], KSB);                                  // suelo de losas
+      const fr = V.pbFr && kit.P[V.pbFr];
+      for (let W = 0; W <= nb; W++) { const a = W * bw;
+        if (fr) { if (W < nb) fr(env, run, { W, nb, a, bw, gl: gls[W], yB, dep }); }
+        else box(W0, F0, Math.max(0, a - 0.22), Math.min(L, a + 0.22), yB, F1, -0.5, 0, wallC, env.kw || K.STUCCO); }
+    }
+    const plan = com ? shopPlan(env, rg, gls) : null;
+    const pbf = kit && street && V.pb ? kit.P[V.pb] : null;
     for (let W = 0; W < nb; W++) {
       const a = W * bw, c = a + bw / 2, gl = gls[W];
       env.rnd(2, run.i, W);
       const rr = [R(), R(), R(), R(), R(), R()];
-      if (street && W === N) { portalBay(env, run, a, c, gl, yB, rr); continue; }
-      if (plan) { shopBay(env, run, W, gl, yB, plan.of[W]); continue; }
+      if (pbf && (W === N || !plan) && pbf(env, rg, { W, a, c, bw, gl, yB, rr, portal: W === N, F, dep, com: !!plan }) !== false) continue;
+      if (street && W === N) { portalBay(env, rg, a, c, gl, yB, rr); continue; }
+      if (plan) { shopBay(env, rg, W, gl, yB, plan.of[W]); continue; }
       // ventana de planta baja (con reja si da a la calle)
       const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
       const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
@@ -795,7 +816,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
     }
-    if (plan) for (const s of plan.list) { shopFront(env, run, s); terrace(env, run, s); }
+    if (plan) for (const s of plan.list) { shopFront(env, rg, s); terrace(env, rg, s); }
   }
 
   // ---------------------------------------------------------------- comercios
@@ -1045,6 +1066,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     }
   }
 
+  if (window.BCN_KIT) window.BCN_KIT.TI = { portalBay, roomQuad };   // planta baja de siempre, para las piezas «pb» del kit
   return { groundFloor, signTex: sign };
 } };
 })();

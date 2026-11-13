@@ -416,7 +416,7 @@ rev(W, F0, x, z, [[0.16, y], [0.09, y + 0.55], [0.055, y + 7.8]], 7, [38, 46, 42
 ```
 
 **Rangos de id reservados:** 0–19 núcleo (`facades.js`) · 20–39 `interiors.js` · 40–59 `details.js` · 60–79
-`furniture.js` · 80–99 `ground.js`.
+`furniture.js` · 80–99 `ground.js` · 160–199 kit de fachadas (`kit.js` y bloques, §16).
 
 **Añadir un tipo:** `GEO.regKind(nombre, id, glsl, decl?)`, **al cargar el script** (nivel superior del fichero, no
 dentro de `init`): el shader se monta una sola vez, al iniciarse `facades.js`, y después `regKind` lanza un error.
@@ -1976,3 +1976,44 @@ monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando aca
   (empaquetar.py imprime el total publicado = reales + sintéticos).
 - Si falla la carga, `BCN_CONDAL.ready` se rechaza y app.js lo recibe con su `await` (hay un `.catch` vacío para que no salga
   «Uncaught (in promise)»).
+
+## 16. Condal City: kit modular de fachadas (`kit.js`, `window.BCN_KIT`; bloques `estilos_bN.js` + `piezas_bN.js`)
+
+Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas_estilos.js`, **`kit.js`**, `piezas_b1.js`,
+`estilos_b1.js` (y después las parejas de los bloques 2–4), `facades.js`. Esquema de campos y ranuras: cabecera de `kit.js`.
+
+- **Estilos**: `BCN_KIT.estilo(id, { nombre, comun, variantes: [4] })`; `id` = el del catálogo (`BCN_CONDAL.estilos`). Cada
+  variante = BASE (la de `fachadas_estilos.js` + campos nuevos) + comun + la variante, congelada; `nobleV` y `chaflanV` son
+  las copias con los campos de `noble` y `chaflan` ya aplicados.
+- **Piezas**: `BCN_KIT.pieza(nombre, fn)` (nombres únicos en todo el kit; un repetido lanza un error al cargar). Las de ranura
+  reciben `(env, run, q)` y devuelven `false` para que el generador haga lo de siempre: `pb` (cada vano de calle no comercial y el
+  portal; interiors.js `groundFloor`), `pbFr` (frente de la planta baja retranqueada `pbRec`), `vano` (cada vano de piso de calle;
+  facades.js `pisosV`; `T.vano` es el de siempre), `corona` (coronación de calle; `coronaV`) y `fachada` (lista, por tramo de calle
+  tras pisos y coronación). Las demás piezas son geometría con su propia firma (`arco`, `fronton`, `aire`, `parabolica`, `cajon`,
+  `jardinera`, `placas`, `pergola`, `lamas`, `urna` en kit.js; `puerta`, `ventanaPVC`, `loggia`, `frente_verja`, `frente_arcos`,
+  `antenas`, `pilastras`, `urnas` en piezas_b1.js). `BCN_KIT.T` (lo rellena facades.js al iniciarse) da `wr`, `rail`, `ropa`,
+  `planter`, `galeriaV`, `tribunaV`, `patioV`, `vano`, `vidAux`, `wallAux`, `KW`, `walkAt`, `coverAt`; `BCN_KIT.TI` (interiors.js)
+  da `portalBay` y `roomQuad`; `BCN_KIT.medidas(q)` da el hueco de siempre de un vano de piso (para añadir frontones, recercados…).
+- **Selector provisional** (la Fase 3 lo precalcula): `palette.js` `pick` llama a `BCN_KIT.elige(b, cls, seed, x, z, Hm)` en las
+  clases 0 y 6: estilo al azar por la mezcla de `BCN_CONDAL.at` × compatibilidad de la altura real con las plantas del estilo
+  (×0,2 por planta fuera de rango); variante por sus plantas preferidas (`pl`); color de la paleta del estilo (o `pal`/`paleta`
+  de la variante) ±8 % de luminosidad y ±5 % de tono, horneado en el volumen (igual de lejos y de cerca). `BREC.estilo` (índice del
+  catálogo, 255 = ninguno) y `BREC.varEst`; F8 los muestra. Estilos del catálogo aún sin kit → la familia y la paleta de antes.
+  En facades.js `varOf`: viviendas (tipo 0) con estilo del kit → su variante (con el desplazamiento de vano, vuelo, remate y altura
+  de planta de siempre, y sin repetir la variante de un vecino pegado de índice menor); naves, equipamientos y vidrio → TIPO.
+- **Material por edificio**: color horneado (arriba); **desgaste** = desgaste_base del estilo (o `dg`) + `desgaste_extra` del
+  barrio ±0,08 → `aux.w = 1 + 99·desgaste` en los paños de muro (`wallAux`); el sombreador escala con él los churretes y el zócalo
+  sucio (`aux.w = 0`: lo de antes). Acabados nuevos con `BCN_KIT.acabado(nombre, K)` (168 `travertino`, 169 `panel`).
+- **Planta baja**: comercio por tramo con la densidad comercial real (≥ 15 locales/ha → 0,95; 5–15 → 0,3–0,9; < 5 → ×0,05) × `com`
+  del estilo (provisional hasta la Fase 4). Lo no comercial y el portal, la pieza `pb` del estilo. `pbRec`/`pbFr`: soportales,
+  pilotis, patio delantero (la planta baja se dibuja en un marco retranqueado; techo, suelo y laterales del hueco los pone el núcleo).
+- **Plantas**: `env.lv[0..nF]` (cotas de forjado); la noble (`noble.f`) más alta y las demás se reparten el resto. **Chaflán**:
+  tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → `env.V = V.chaflanV` en ese tramo (`run.chaflan`).
+  **Ático** retranqueado con probabilidad `aticoP` (regla 5).
+- **Lejos**: `V.lejos = { muro, hp, bay, vidrio }` y `BCN_KIT.lejos(b)`, para que la Fase 3 lo lleve a FS_BLD.
+- **Escaparate**: `?estilo=<id>&v=<0..3>` (al cargar: estilo, variante y color en todo lo que es vivienda) o
+  `BCN.fx.force('estilo:<id>:<v>')` (en marcha: solo la geometría de detalle); `?pb=0|1` fuerza plantas bajas sin o con comercio.
+  `BCN.fx.spotAt(x, z, k, id, R, hMin, hMax)`: vista de fachada entera de un edificio del estilo cerca de (x, z).
+  `tools/cc/vistas_estilos.json`: una vista por estilo en una calle que le pega (cada bloque añade las suyas).
+- **Ids de material del kit**: 160–167 núcleo · 168–175 bloque 1 · 176–183 bloque 2 · 184–191 bloque 3 · 192–199 bloque 4; los de
+  muro (160–199) reciben el desgaste de los paños.
