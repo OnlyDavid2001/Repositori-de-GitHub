@@ -242,9 +242,9 @@ regKind('ESC', 200, `
       alb *= mix(0.86 + 0.28*vnoise(P*vec2(0.7, 3.0) + esd), 1.0, sfar*0.5);
       alb *= mix(0.84 + 0.16*sin(sq*6.2832), 0.95, sfar);
       N = normalize(N + vec3(0.0, 1.0, 0.0)*cos(sq*6.2832)*0.35*(1.0 - sfar));
-      vec2 gq = P*vec2(1.6, 2.2) + esd*1.7;
-      float gn = vnoise(gq)*0.6 + vnoise(gq*2.3)*0.4, gb = smoothstep(0.0, 0.35, vnoise(vec2(P.x*0.35, esd)));
-      float gline = 1.0 - smoothstep(0.012, 0.035, abs(gn - 0.5)), gfill = smoothstep(0.58, 0.63, gn);
+      vec2 gq = P*vec2(2.6, 3.4) + esd*1.7;
+      float gn = vnoise(gq)*0.6 + vnoise(gq*2.3)*0.4, gb = step(0.5, vnoise(vec2(P.x*0.45, esd)))*step(hash21(vec2(esd, 8.9)), 0.7);
+      float gline = 1.0 - smoothstep(0.012, 0.035, abs(gn - 0.5)), gfill = smoothstep(0.64, 0.68, gn);
       vec3 gc = mix(vec3(0.42), escHue(hash21(vec2(esd, 2.2))), 0.8), gc2 = escHue(hash21(vec2(esd, 7.7)));
       alb = mix(alb, mix(gc2, gc, step(0.5, gn + 0.1*vnoise(gq*5.0))), gfill*gb*0.9*(1.0 - efar*0.5));
       alb = mix(alb, vec3(0.06), gline*gb*(1.0 - efar*0.7));
