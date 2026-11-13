@@ -14,10 +14,10 @@ const KIT = window.BCN_KIT, GEO = window.BCN_GEO;
 const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, mixc, pbrAux, rev } = GEO;
 
 regKind('CHAPA', 184, `
-    rough = 0.5; metal = 0.55;
+    rough = 0.55; metal = 0.25;
     vec2 q = P/0.06; vec2 f = fract(q) - 0.5; vec2 fw = fwidth(q); float far = smoothstep(0.25, 0.7, max(fw.x, fw.y));
     float hole = 1.0 - smoothstep(0.17, 0.25, length(f));
-    alb = mix(alb, alb*0.22, hole*(1.0 - far)*0.9 + far*0.32);`);
+    alb = mix(alb, alb*0.4, hole*(1.0 - far)*0.85 + far*0.18);`);
 regKind('LISTON', 185, `
     rough = 0.74;
     vec2 q = P/vec2(0.12, 3.0); q.y += hash21(vec2(floor(q.x), 1.3))*2.0;
@@ -244,7 +244,15 @@ pieza('corona_torre', function (env, run, q) {
 pieza('pb_racionalista', function (env, run, q) {
   const { W0, W1 } = env, F = q.F, top = env.F1, rr = q.rr, vi = env.V.vi;
   if (!q.portal) {
-    if (vi !== 3) return false;                       // Casa Bloc: planta baja de pilares de hormigón y vidrio corrido
+    if (vi !== 3) {                                   // estuco liso con ventana apaisada alta y zócalo oscuro (sin sillería)
+      const a = q.a, bb = a + q.bw, st = q.gl + 1.35, yt = Math.min(top - 0.45, st + 1.15);
+      if (yt - st < 0.5) return false;
+      env.windowHole(W0, F, a, bb, a + 0.35, bb - 0.35, q.yB, top, st, yt, 0.2, run.wallC, env.kw, rr[0] < 0.5 ? 0.2 + rr[1] * 0.5 : 0);
+      box(W0, F, a, bb, q.yB, q.gl + 0.45, 0, 0.03, shade(run.wallC, 0.62), K.STUCCO, 1);
+      if (W1) { box(W1, F, a + 0.35, bb - 0.35, st - 0.05, st, 0, 0.06, shade(env.uV, 1.04), K.STUCCO, 7);
+        for (let i = 1; i < 3; i++) { const x = a + 0.35 + (q.bw - 0.7) * i / 3; box(W1, F, x - 0.02, x + 0.02, st, yt, -0.2, -0.16, env.marcoV, K.METAL, 4); } }
+      return;
+    }                                                 // Casa Bloc: planta baja de pilares de hormigón y vidrio corrido
     const a = q.a, b = a + q.bw, y0 = q.gl + 0.5, y1 = top - 0.35;
     env.windowHole(W0, F, a, b, a + 0.25, b - 0.25, q.yB, top, y0, y1, 0.3, run.wallC, env.kw, rr[0] < 0.4 ? 0.4 : 0);
     box(W0, F, a, a + 0.25, q.yB, top, 0, 0.12, HORM, KH, 4);
@@ -373,7 +381,7 @@ pieza('vano_vsa', function (env, run, q) {
     const dc = q.W % 2 ? a + q.bw * 0.3 : a + q.bw * 0.7, ww = 0.95;
     rect(W0, F, dc - ww / 2, dc + ww / 2, q.k + 0.16, q.k + 2.25, 0.01, ac, K.PBR, pbrAux(0.45, 0.2, 0, 0));
     P.ventanaPVC(env, run, q, { c: q.W % 2 ? a + q.bw * 0.75 : a + q.bw * 0.25, w: 0.8, st: q.k + 1.05, yt: q.k + 2.15, se: rr[2] < 0.5 ? 0.6 : 0, pc: [200, 200, 196], dep: 0.12 });
-    lattice(W0, F, a, b, y + 0.18, y + 1.25, jt - 0.03, [70, 74, 76], K.IRON, 0);
+    rect(W0, F, a, b, y + 0.18, y + 1.22, jt - 0.03, [184, 186, 182], K.CHAPA);   // antepecho de chapa perforada
     box(W0, F, a, b, y + 1.22, y + 1.27, jt - 0.06, jt, [70, 74, 76], K.METAL, 3);
     if (q.W === 0 || q.W % 3 === 0) box(W0, F, a, a + 0.1, y + 0.18, q.P, jt - 0.1, jt, [70, 74, 76], K.METAL, 4);
     if (W1 && rr[5] < 0.3) P.bici(W1, F, a + 0.3 + rr[6] * Math.max(0, q.bw - 1.8), y + 0.18, jt - 0.3, [[30, 30, 30], [200, 60, 40], [60, 120, 70]][(rr[7] * 3) | 0]);
@@ -390,7 +398,7 @@ pieza('vano_vsa', function (env, run, q) {
     if (W1) { box(W1, F, tt - sw - 0.05, ct + sw + 0.05, yt, yt + 0.06, 0, o + 0.06, [120, 122, 124], K.METAL, 3); KIT.T.rail(env, F, tt - 0.05, ct + 0.05, st, 0.12, false, false, 0); }
   } else if (vi === 1) {                              // celosía metálica: balcón corrido con paneles de chapa perforada plegables delante
     const jt = 1.1; box(W0, F, a, b, q.k - 0.02, q.k + 0.12, 0, jt, [196, 196, 192], KH, 7);
-    const op = rr[3] < 0.45, pw = q.bw / 2 - 0.04, mc = [150, 152, 150];
+    const op = rr[3] < 0.45, pw = q.bw / 2 - 0.04, mc = [[188, 190, 186], [176, 160, 120], [150, 156, 160]][(h01(env.b, 43) * 3) | 0];
     const pr = (u0, u1) => { rect(W0, F, u0, u1, q.k + 0.12, q.P - 0.06, jt, mc, K.CHAPA, undefined); };
     if (op) { pr(a + 0.02, a + 0.02 + pw * 0.45); pr(b - 0.02 - pw * 0.45, b - 0.02); KIT.T.rail(env, F, a + 0.02 + pw * 0.45, b - 0.02 - pw * 0.45, q.k + 0.12, jt, false, false, w); }
     else { pr(a + 0.02, a + pw); pr(a + pw + 0.08, b - 0.02); }
