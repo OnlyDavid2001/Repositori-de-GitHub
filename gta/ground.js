@@ -93,7 +93,7 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
   //   · rotondas (anillo con radio de 6 a 140 m que se cierra alrededor de la boca): en las entradas, dientes de ceda el
   //     paso y el paso de cebra retrasado 5 m; en el anillo, ni pasos ni detenciones.
   const { SEG } = ctx, C = ctx.city, { roadY, ROADS, CAR, coverAt, cellOf } = C;
-  const WHITE = [222, 222, 214];
+  const WHITE = [222, 222, 214], LIFT = typeof location !== 'undefined' && /zlift/.test(location.search) ? 0.6 : 0.025;   // ?zlift: depuración (pintura levantada)
   const ends = new Map();                                     // s*2+e → datos de la boca (o null si ese extremo no es cruce)
   const segD = (s2, x, z) => { const o = s2 * 6, ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, l2 = dx * dx + dz * dz;
     let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(x - ax - dx * t, z - az - dz * t); };
@@ -251,10 +251,33 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       cur = nx.s; ce = fe; }
     return 0; }
   // altura de la pintura: sobre la más alta de las cintas que hay en ese punto (en los cruces se apilan varias)
-  function yAt(s, x, z, info) { let y = roadY(s, x, z);
-    if (info && info.chain.length) { let best = segD(s, x, z); for (const c of info.chain) { const d = segD(c, x, z); if (d < best - 0.01) { best = d; y = roadY(c, x, z); } } }
-    if (info) for (const l of info.oth) if (segD(l.s, x, z) < l.hw) y = Math.max(y, roadY(l.s, x, z));
-    return y + 0.025; }
+  // cota de la CINTA de calzada de app.js en (x, z): la cinta solo tiene vértices en los nudos de la polilínea y en los
+  // puntos que app.js añade al subdividir (sub: mientras el relieve se aparte más de 10 cm de la recta) y es recta entre
+  // ellos, así que en un tramo largo del Eixample puede quedar decenas de cm por encima de heightAt. Se repite la misma
+  // subdivisión y se interpola (la pintura queda siempre encima: antes, a 15 m del cruce, se escondía bajo la cinta).
+  const HAT = ctx.heightAt, ROFF = ctx.ROFF || [], ribs = new Map();
+  function ribbon(s) { let r = ribs.get(s); if (r) return r;
+    const o = s * 6, x0 = SEG[o], z0 = SEG[o + 1], x1 = SEG[o + 2], z1 = SEG[o + 3], T = [0];
+    const rec = (ta, ha, tb, hb, d) => { const xa = x0 + (x1 - x0) * ta, za = z0 + (z1 - z0) * ta, xb = x0 + (x1 - x0) * tb, zb = z0 + (z1 - z0) * tb;
+      const dx = xb - xa, dz = zb - za, Ls = Math.hypot(dx, dz); if (Ls < 7 || d > 7) return;
+      const tm = (ta + tb) / 2, hm = HAT((xa + xb) / 2, (za + zb) / 2);
+      const e = Math.max(Math.abs(hm - (ha + hb) / 2), Math.abs(HAT(xa + dx * 0.25, za + dz * 0.25) - (ha * 0.75 + hb * 0.25)), Math.abs(HAT(xa + dx * 0.75, za + dz * 0.75) - (ha * 0.25 + hb * 0.75)));
+      if (e < 0.10 && Ls < 150) return; rec(ta, ha, tm, hm, d + 1); T.push(tm); rec(tm, hm, tb, hb, d + 1); };
+    rec(0, HAT(x0, z0), 1, HAT(x1, z1), 0); T.push(1);
+    const L = Math.hypot(x1 - x0, z1 - z0) || 1, tx = (x1 - x0) / L, tz = (z1 - z0) / L, hw = SEG[o + 4], off = ROFF[SEG[o + 5]] || 0.15;
+    const Y = T.map(t => { const cx = x0 + (x1 - x0) * t, cz = z0 + (z1 - z0) * t; let yl = HAT(cx - tz * hw, cz + tx * hw), yr = HAT(cx + tz * hw, cz - tx * hw);
+      if (hw > 2.5) { const yc = HAT(cx, cz); yl = Math.max(yl, yc - hw * 0.08); yr = Math.max(yr, yc - hw * 0.08); if (hw > 9) { yl = Math.max(yl, yc); yr = Math.max(yr, yc); } }
+      return Math.max(yl, yr) + off; });
+    r = { T, Y }; ribs.set(s, r); return r; }
+  function ribbonY(s, x, z) { if (!HAT) return -1e9; const o = s * 6, dx = SEG[o + 2] - SEG[o], dz = SEG[o + 3] - SEG[o + 1], l2 = dx * dx + dz * dz;
+    let t = l2 > 0 ? ((x - SEG[o]) * dx + (z - SEG[o + 1]) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const { T, Y } = ribbon(s); let k = 1; while (k < T.length - 1 && T[k] < t) k++;
+    const f = (t - T[k - 1]) / ((T[k] - T[k - 1]) || 1); return Y[k - 1] + (Y[k] - Y[k - 1]) * f; }
+  const segY = (s, x, z) => Math.max(roadY(s, x, z), ribbonY(s, x, z));
+  function yAt(s, x, z, info) { let y = segY(s, x, z);
+    if (info && info.chain.length) { let best = segD(s, x, z); for (const c of info.chain) { const d = segD(c, x, z); if (d < best - 0.01) { best = d; y = segY(c, x, z); } } }
+    if (info) for (const l of info.oth) if (segD(l.s, x, z) < l.hw) y = Math.max(y, segY(l.s, x, z));
+    return y + LIFT; }
   // un polígono de pintura en coordenadas de boca (a: metros desde el cruce hacia fuera, b: de través, + = carril de entrada)
   function paint(cell, s, info, pts) {
     const { W, ox, oz } = cell, { jx, jz, ux, uz, qx, qz } = info;
@@ -320,7 +343,7 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
           if (u < i0 || u + 2.5 > i1) return;
           const cx = ax + tx * (u + 1.25), cz = az + tz * (u + 1.25); if (!inCell(cx, cz)) return;
           for (let k = 1; k < nL; k++) { const b = -hw + k * lw;
-            const pts = [[u, b - 0.06], [u + 2.5, b - 0.06], [u + 2.5, b + 0.06], [u, b + 0.06]].map(([a, bb]) => { const x = ax + tx * a + px * bb, z = az + tz * a + pz * bb; return [x - cell.ox, roadY(s, x, z) + 0.025, z - cell.oz]; });
+            const pts = [[u, b - 0.06], [u + 2.5, b - 0.06], [u + 2.5, b + 0.06], [u, b + 0.06]].map(([a, bb]) => { const x = ax + tx * a + px * bb, z = az + tz * a + pz * bb; return [x - cell.ox, segY(s, x, z) + 0.025, z - cell.oz]; });
             quad(cell.W, F0, pts[0][0], pts[0][1], pts[0][2], pts[1][0], pts[1][1], pts[1][2], pts[2][0], pts[2][1], pts[2][2], pts[3][0], pts[3][1], pts[3][2], WHITE, K.PLAIN); }
         });
       }
@@ -338,6 +361,17 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
         const k = kJ(P.info.jx, P.info.jz); if (!seenJ.has(k)) { seenJ.add(k); R.muestras.push([Math.round(P.info.jx), Math.round(P.info.jz), P.info.legs.length + (P.info.ring ? 'R' : '') + (P.info.dB < 1e8 && P.info.dB - P.info.aMin > 8 ? 'X' : '')]); } } }
     return R;
   };
+  // depuración: las bocas de cruce a menos de r metros de (x, z), con su plan
+  window.BCN_GROUND.mouths = function (x, z, r) { const out = [];
+    for (let q = 0; q < SEG.length / 6; q++) { const o = q * 6; if (!CAR.has(SEG[o + 5])) continue;
+      for (const e of [0, 1]) { const jx = SEG[o + e * 2], jz = SEG[o + e * 2 + 1]; if (Math.hypot(jx - x, jz - z) > (r || 40)) continue;
+        const I = endInfo(q, e), P = plan(q, e), L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]);
+        out.push({ s: q, e, cls: SEG[o + 5], hw: +SEG[o + 4].toFixed(1), L: +L.toFixed(1), legs: legsAt(jx, jz).length,
+          i: I && { aMin: I.aMin, dB: I.dB < 1e8 ? +I.dB.toFixed(1) : null, ext: +I.ext.toFixed(1), ring: !!I.ring },
+          p: P && { a0: +P.a0.toFixed(1), z: P.zOk, st: P.stop, rl: isRing(q, I), ts: throughSkip(q, I) },
+          c: P && (() => { const mx = I.jx + I.ux * (P.a0 + 2), mz = I.jz + I.uz * (P.a0 + 2), c = cellOf(mx, mz); let inL = false;
+            for (let k = ROADS.start[c]; k < ROADS.start[c + 1]; k++) if (ROADS.list[k] === q) inL = true; return [Math.round(mx), Math.round(mz), c, inL, +yAt(q, mx, mz, I).toFixed(2), +roadY(q, I.jx + I.ux * 2, I.jz + I.uz * 2).toFixed(2)]; })() }); } }
+    return out; };
   return { decals };
 } };
 })();
