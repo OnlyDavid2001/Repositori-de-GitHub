@@ -516,6 +516,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
 
     curDg = env.dg ? 1 + Math.round(env.dg * 99) : 0;
+    // kit: tramo de chaflán del edificio (env.chaflan: índice del tramo, -1 si no hay) y esquinas reales de cada tramo de calle
+    // (run.esq0 / run.esq1: el tramo vecino de ese extremo es de calle y gira más de ~30°) → q.esquina en los huecos de los extremos
+    env.chaflan = -1;
+    if (V) for (let i = 0; i < runs.length; i++) { const r = runs[i];
+      if (r.kind === 'street' && r.L >= 5 && r.L <= 24 && esChaflan(runs, i)) { env.chaflan = i; break; } }
+    const nR = runs.length, giro = (r, o) => o && o !== r && o.kind === 'street' && Math.abs(r.tx * o.tx + r.tz * o.tz) < 0.87;
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
@@ -537,6 +543,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const chf = V && V.chaflanV && street && L >= 5 && L <= 24 && esChaflan(runs, i);
       if (chf) env.V = V.chaflanV;
       run.chaflan = !!chf;
+      run.esq0 = street && giro(r, runs[(i + nR - 1) % nR]); run.esq1 = street && giro(r, runs[(i + 1) % nR]);
       I.groundFloor(env, run);
       if (V) { pisosV(env, run); coronaV(env, run);
         if (env.V.fachada && street) for (const n of env.V.fachada) { const fn = KIT.P[n]; if (fn) fn(env, run, { nb: Math.max(1, Math.round(L / env.V.bay)), bw: L / Math.max(1, Math.round(L / env.V.bay)) }); } }
@@ -668,8 +675,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function vidAux(dep, hw) { const q = Math.max(0, Math.min(15, Math.round((dep - 0.25) / 0.1))), h = Math.max(0, Math.min(15, Math.round(hw * 30))), z = q * 16 + h || 1;
     return [0, 0, z, 0, 255, 0, z, 0, 255, 255, z, 0, 0, 255, z, 0]; }
   // barandilla de balcón de e0 a e1, de y hacia arriba, con el frente a jt; sl/sr: lados; vw: ancho del hueco de detrás (vidrio)
-  function rail(env, F, e0, e1, y, jt, sl, sr, vw) {
-    const { W0, W1, V, iron, uV, kw } = env, t = y + 1.02, wc = env.runWall;
+  // Vr: la variante de la planta (q.V: la noble, la de chaflán…); sin ella, env.V
+  function rail(env, F, e0, e1, y, jt, sl, sr, vw, Vr) {
+    const { W0, W1, iron, uV, kw } = env, V = Vr || env.V, t = y + 1.02, wc = env.runWall;
     if (V.bar === 'forja') {
       lattice(W0, F, e0, e1, y, t - 0.05, jt - 0.03, iron, K.IRON, V.forja);
       if (sl) latticeSide(W0, F, e0 + 0.02, y, t - 0.05, 0, jt - 0.03, iron, K.IRON, 0);
@@ -769,6 +777,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const Mt = street && env.tribV && nb >= 3 && nF >= 3 && run.rM < 0.6 ? nb >> 1 : -9;
     const vp = V.vano && KIT ? KIT.P[V.vano] : null;
     if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, env.uV, K.STUCCO);
+    const gls = vp && run.gnd ? Array.from({ length: nb }, (_, W) => run.gnd((W + 0.5) * bw)) : null;   // cota de la acera por vano
     for (let D = 1; D <= nF; D++) {
       const k = lv[D - 1], P = lv[D], m = P - k, top = D === nF, Vd = D === 1 && V.nobleV ? V.nobleV : V, uV = env.uV;
       if (P <= cover + 0.2) continue;
@@ -795,7 +804,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (k < cover) { wr(W0, F, a, a + bw, Math.max(y0, cover - 0.3), P, wallC, kw); continue; }
         if (!street) { patioV(env, F, a, bw, c, k, P, wallC, rr); continue; }
         if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
-        const q = { V: Vd, D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr, nF };
+        const q = { V: Vd, D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr, nF, gl: gls ? gls[W] : y0,
+          esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 };
         if (vp && vp(env, run, q) !== false) continue;
         vanoDef(env, run, q);
       }
@@ -870,7 +880,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const lb = k - (ter ? 0.04 : 0.02), sub = env.losaV;
     box(W0, F, e0, e1, lb, k + 0.12, 0, jt, ter ? env.forjV : slab, ter ? K.STUCCO : KS, (sl ? 4 : 0) | 1);
     hpl(W0, F, e0, e1, lb, 0, jt, sub, K.STUCCO);
-    rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr, Vw);
+    rail(env, F, e0 + (sl ? 0 : -0.002), e1, k + 0.12, jt, sl, sr, Vw, V);
     if (W1 && !ter && (V.bar === 'forja' || V.bar === 'balaustre')) for (const pe of [e0 + 0.2, e1 - 0.28]) box(W1, F, pe, pe + 0.07, k - 0.2, lb, 0, jt * 0.5, shade(sub, 1.15), KS, 5);
     if (rr[9] < V.ropa) ropa(W0, F, e0, e1, k + 1.08, jt + 0.03, rr[10]);
     if (W1 && rr[3] < V.mac && e1 - e0 > 0.9) planter(W1, F, e0 + 0.39 + rr[4] * Math.max(0, e1 - e0 - 0.8), jt - 0.27, k + 0.12, rr[5], rr[2], rr[6]);
@@ -917,8 +927,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     env.rnd(4, run.i); const cr = R(); env.cr = cr;
     if (C <= cover) return;
     if (!street) { wr(W0, F, 0, L, C, y1 + 0.3, wallC, kw); box(W0, F, 0, L, y1 + 0.3, y1 + 0.4, -0.03, 0.12, uV, K.STUCCO); return; }
-    const nb = Math.max(1, Math.round(L / V.bay)), bw = L / nb, co = V.coron;
-    if (V.corona && KIT && KIT.P[V.corona] && KIT.P[V.corona](env, run, { cr, nb, bw }) !== false) return;   // coronación del kit
+    const nb = Math.max(1, Math.round(L / V.bay)), bw = L / nb, q = { cr, nb, bw };
+    if (V.corona && KIT && KIT.P[V.corona] && KIT.P[V.corona](env, run, q) !== false) return;   // coronación del kit
+    coronaDef(env, run, q);
+  }
+  // coronación de siempre (calle) según V.coron; las piezas «corona» del kit la llaman como T.corona(env, run, q) cuando
+  // solo añaden algo (q = { cr, nb, bw })
+  function coronaDef(env, run, q) {
+    const { W0, W1, d, V, kw, uV, C, wood } = env, { F, L, wallC } = run, y1 = d.y1, { cr, nb, bw } = q, co = V.coron;
     if (co === 'cornisa' || co === 'balaustrada') {
       box(W0, F, 0, L, C, C + 0.16, 0, 0.22, uV, K.STUCCO); box(W0, F, 0, L, C + 0.16, C + 0.32, 0, 0.42, uV, K.STUCCO); box(W0, F, 0, L, C + 0.32, C + 0.48, 0, 0.66, shade(uV, 1.05), K.STUCCO);
       if (W1) { const nd = Math.round(L / 0.36); for (let q = 0; q < nd; q += 2) { const uu = q * L / nd; box(W1, F, uu, uu + L / nd * 0.8, C + 0.04, C + 0.15, 0.2, 0.34, shade(uV, 0.94), K.STUCCO); }
@@ -962,7 +978,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
   }
   // caja de herramientas para las piezas del kit (kit.js): lo que no está en BCN_GEO
-  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: vanoDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
+  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: vanoDef, corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
     walkAt: (x, z) => walkAt(x, z), coverAt: (x, z, b) => coverAt(x, z, b) };
   // depuración: punto de calle frente a un edificio de la familia (k-ésimo), mirando su fachada
   function spot(fam, k, up) {

@@ -190,7 +190,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
     const petoC = shade(mixc(wall, [214, 206, 192], 0.3), 0.96);
     // 0 · peto en todo el borde (anillo exterior y patios de luces), con albardilla clara
     const pH = 0.85 + g[6] * 0.35;
-    for (const r of d.rings) { const n = r.length / 2;
+    // kit (Condal City): sin peto si la coronación del estilo ya pone un tejado inclinado a la calle (V.sinPeto: casas baratas)
+    const KV = window.BCN_KIT && window.BCN_KIT.variante ? window.BCN_KIT.variante(b) : null;
+    if (!(KV && KV.sinPeto)) for (const r of d.rings) { const n = r.length / 2;
       for (let i = 0; i < n; i++) { const j = (i + 1) % n, ax = r[i * 2], az = r[i * 2 + 1], bx = r[j * 2], bz = r[j * 2 + 1], L = Math.hypot(bx - ax, bz - az); if (L < 0.4) continue;
         const tx = (bx - ax) / L, tz = (bz - az) / L; let nx = -tz, nz = tx;
         if (!inside(d, (ax + bx) / 2 + nx * 0.5, (az + bz) / 2 + nz * 0.5)) { nx = -nx; nz = -nz; }

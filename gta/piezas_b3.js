@@ -6,7 +6,7 @@
    el K.TEJA de rooftops.js (teja árabe que sigue la pendiente).
    Piezas de uso general (las pueden usar los demás bloques): tejado (faldón de teja a cuatro aguas de un tramo), torreon
    (torre cuadrada con cubierta de pabellón), chimenea (de ladrillo, una por edificio), aro (anillo plano: ojos de buey,
-   ruedas), ojo_buey, grafiti, bici, deposito (depósito de agua del terrado), banda_curva (balcón o franja de esquina
+   ruedas), ojo_buey, grafiti, bici, deposito_terrado (depósito de agua del terrado), banda_curva (balcón o franja de esquina
    redondeada) y frente_pilotis. */
 (function () {
 'use strict';
@@ -108,7 +108,7 @@ pieza('bici', function (B, F, u, y, d, col) {
   box(B, F, u + 0.3, u + 0.5, y + r + 0.5, y + r + 0.55, d - 0.05, d + 0.05, [40, 40, 40], K.PBR, 7);
 });
 // depósito de agua del terrado (fibrocemento o chapa), cilíndrico sobre dos durmientes
-pieza('deposito', function (B, F, u, d, y, r, h, col) {
+pieza('deposito_terrado', function (B, F, u, d, y, r, h, col) {
   if (!B) return; box(B, F, u - r, u + r, y, y + 0.25, d - 0.15, d + 0.15, [120, 118, 112], K.STUCCO, 7);
   rev(B, F, u, d, [[r, y + 0.25], [r, y + 0.25 + h], [r * 0.85, y + 0.35 + h], [0.02, y + 0.4 + h]], 8, col, K.PBR, { cap: 0, aux: pbrAux(0.7, 0.1, 0, 0) });
 });
@@ -580,7 +580,7 @@ pieza('corona_poligono', function (env, run, q) {
   // casetón de escalera y depósitos de agua (uno por tramo largo)
   if (L > 8 && !env._dep) { env._dep = 1; const u = L * (0.3 + h01(env.b, 81) * 0.4), n = 2 + ((h01(env.b, 82) * 3) | 0);
     box(W0, F, u - 1.8, u + 1.8, y1, y1 + 2.8, -6.5, -3.0, shade(wc, 0.95), env.kw, 7);
-    for (let i = 0; i < n; i++) P.deposito(W0, F, u - 1.2 + i * 1.1, -4.8, y1 + 2.8, 0.45, 1.0, [[176, 176, 170], [150, 152, 148], [196, 196, 190]][i % 3]); }
+    for (let i = 0; i < n; i++) P.deposito_terrado(W0, F, u - 1.2 + i * 1.1, -4.8, y1 + 2.8, 0.45, 1.0, [[176, 176, 170], [150, 152, 148], [196, 196, 190]][i % 3]); }
   if (W1 && V.vi === 1) for (let u = 1; u < L - 1; u += 3.5) P.parabolica(W1, F, u, y1 + 1.12, -0.5, 0.4);
 });
 })();

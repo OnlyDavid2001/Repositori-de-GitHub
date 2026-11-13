@@ -34,14 +34,20 @@
                pilotis, patio delantero) y la pieza pbFr (si hay) dibuja el frente (pilares, arcos, verja)
      com       factor de comercio del estilo (0–1) sobre la densidad comercial real del sitio (provisional hasta la Fase 4)
      vano      pieza de vano de piso (calle) · corona: pieza de coronación (calle) · fachada: [piezas] por tramo de calle
+     sinPeto   true: rooftops.js no pone el peto de la azotea (la coronación del estilo ya pone un tejado a la calle)
      lejos     { muro: 'estuco'|'ladrillo'|'piedra'|'hormigon'|'vidrio'|'travertino', hp, bay, vidrio (fracción de hueco) }
 
    RANURAS (todas reciben (env, run, q); si devuelven false, el generador hace lo de siempre):
-     pb      q = { W, a, c, bw, gl (acera), yB, rr[6], portal (bool), F (marco: el del tramo o el retranqueado) }
+     pb      q = { W, a, c, bw, gl (acera), yB, rr[6], portal (bool), F (marco: el del tramo o el retranqueado), esquina }
      pbFr    q = { a, bw, gl, yB, dep (retranqueo), W, nb } — un vano del frente de los soportales
-     vano    q = { V (variante de esa planta: noble incluida), D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr[12], nF }
-             T.vano(env, run, q) dibuja el vano de siempre (para piezas que solo añaden algo)
-     corona  q = { cr, nb, bw } · fachada: q = { nb, bw }
+     vano    q = { V (variante de esa planta: noble incluida), D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr[12], nF,
+                   gl (acera delante del vano), esquina }
+             T.vano(env, run, q) dibuja el vano de siempre (para piezas que solo añaden algo); la barandilla sale de q.V
+             (T.rail(env, F, e0, e1, y, jt, sl, sr, vw, V): V opcional, si no env.V)
+     corona  q = { cr, nb, bw } · T.corona(env, run, q) dibuja la coronación de siempre (V.coron) · fachada: q = { nb, bw }
+     esquina -1 / 1: el vano es el primero / último del tramo y ahí el tramo vecino es de calle y gira más de ~30° (esquina
+             real, run.esq0 / run.esq1); 0 en los demás
+     env.chaflan  índice del tramo de chaflán del edificio (-1 si no tiene) · run.chaflan: este tramo es el chaflán
    Rangos de tipos de material K del kit: 160–167 núcleo · 168–175 bloque 1 · 176–183 bloque 2 · 184–191 bloque 3 · 192–199
    bloque 4. Los que sean MURO reciben el desgaste de los paños (facades.js) si el paño sale de T.wr.
    Cómo se añade un estilo o una pieza: DESARROLLO.md §16 y gta/tools/encargos/progreso/CC_F2a.md. */
@@ -52,7 +58,7 @@ const LEG = window.BCN_FX_ESTILOS;
 
 const BASE = Object.freeze(Object.assign({}, LEG ? LEG.BASE : {}, {
   nombre: '', pl: null, pal: null, dg: null, noble: null, chaflan: null, aticoP: 0, pb: null, pbH: null, pbRec: 0, pbFr: null,
-  com: 1, vano: null, corona: null, fachada: null, lejos: Object.freeze({ muro: 'estuco', hp: 3.1, bay: 3.6, vidrio: 0.3 }) }));
+  com: 1, vano: null, corona: null, fachada: null, sinPeto: false, lejos: Object.freeze({ muro: 'estuco', hp: 3.1, bay: 3.6, vidrio: 0.3 }) }));
 
 const E = {}, P = {}, ACAB = {};
 const hx = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];

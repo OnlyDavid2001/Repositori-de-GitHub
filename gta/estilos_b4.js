@@ -81,11 +81,11 @@ KIT.estilo('casas_baratas', {
   nombre: 'Cases barates',
   comun: { hp: 2.8, bay: 2.5, win: 1.0, alto: 0.7, hueco: 'ventana', bal: 'ninguno', balP: 0, vuelo: 0.3, bar: 'tubo', carp: 'librillo',
     carpCol: VERDE.concat(AZUL, [[120, 90, 60]]), marco: MADERA, acab: 'encalat', remate: 0.2, imposta: 0, recerc: 0, ultimo: 'normal', coron: 'peto', mac: 0.4,
-    ropa: 0.2, com: 0, pbH: 3.0, pb: 'pb_casas_baratas', vano: 'vano_casas_baratas', corona: 'corona_casas_baratas',
+    ropa: 0.2, com: 0, pbH: 3.0, pb: 'pb_casas_baratas', vano: 'vano_casas_baratas', corona: 'corona_casas_baratas', sinPeto: true,
     lejos: { muro: 'estuco', hp: 2.8, bay: 2.5, vidrio: 0.18 } },
   variantes: [
     { nombre: 'casita original encalada', pl: [1, 1], paleta: ['#f2ece0', '#f6f2ea', '#ece4d4', '#f0eadc'] },
-    { nombre: 'casita reformada con piso añadido', pl: [2, 2], acab: 'estuco' },
+    { nombre: 'casita reformada con piso añadido', pl: [2, 2], acab: 'estuco', sinPeto: false },
     { nombre: 'casita con patio', pl: [1, 1], pbRec: 2.2, pbFr: 'cb_patio', paleta: ['#f2ece0', '#f6f2ea', '#ece4d4', '#f0eadc'] },
     { nombre: 'esquina con bar', pl: [1, 2], acab: 'estuco', com: 0.3 }]
 });

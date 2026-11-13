@@ -804,7 +804,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       const a = W * bw, c = a + bw / 2, gl = gls[W];
       env.rnd(2, run.i, W);
       const rr = [R(), R(), R(), R(), R(), R()];
-      if (pbf && (W === N || !plan) && pbf(env, rg, { W, a, c, bw, gl, yB, rr, portal: W === N, F, dep, com: !!plan }) !== false) continue;
+      if (pbf && (W === N || !plan) && pbf(env, rg, { W, a, c, bw, gl, yB, rr, portal: W === N, F, dep, com: !!plan, esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 }) !== false) continue;
       if (street && W === N) { portalBay(env, rg, a, c, gl, yB, rr); continue; }
       if (plan) { shopBay(env, rg, W, gl, yB, plan.of[W]); continue; }
       // ventana de planta baja (con reja si da a la calle)
