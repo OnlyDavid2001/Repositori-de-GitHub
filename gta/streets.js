@@ -156,7 +156,7 @@ void main(){
       float wv = (rs.x + 0.55*sin(rs.y*0.85) + 0.18*sin(rs.y*2.3 + 1.0))/0.66, fwv = fwidth(wv) + 1e-4;
       float band = smoothstep(0.5 - fwv, 0.5 + fwv, abs(fract(wv) - 0.5)*2.0), lw = 1.0 - smoothstep(0.15, 0.6, fwv);
       vec2 tq = fract(vPos.xz/0.33); float tj = smoothstep(0.0, 0.03, min(min(tq.x, 1.0 - tq.x), min(tq.y, 1.0 - tq.y)));
-      vec3 wa = mix(vec3(0.62, 0.61, 0.58), vec3(0.40, 0.40, 0.39), mix(0.5, band, lw))*mix(0.85, 1.07, n1)*mix(0.93, 1.05, n2);
+      vec3 wa = mix(vec3(0.60, 0.59, 0.56), vec3(0.47, 0.47, 0.46), mix(0.5, band, lw))*mix(0.85, 1.07, n1)*mix(0.93, 1.05, n2);
       wa *= mix(1.0, mix(0.82, 1.0, tj), lw*nearN)*(1.0 - 0.18*wr*smoothstep(0.45, 0.8, n1g));
       alb = mix(alb, wa, 1.0 - smoothstep(9.0, 12.0, rs.z));
     }

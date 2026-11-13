@@ -29,10 +29,10 @@ const roadGLSL = `
     vec3 t1 = texture2D(tAsD, P/6.0).rgb, t2 = texture2D(tAsD, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).rgb;
     vec3 tx = mix(t1, t2, gB);
     float lum = dot(tx, vec3(0.3, 0.6, 0.1));
-    // G1S3: tono de cerca ligado al de lejos (Ta) y nunca por debajo de 0,215 (gris medio de asfalto con árido): antes salía de vCol (0,29) y el estado «nuevo»
+    // G1S3: tono de cerca ligado al de lejos (Ta) y nunca por debajo de 0,27 (gris medio de asfalto con árido): antes salía de vCol (0,29) y el estado «nuevo»
     // lo tapaba con un negro liso. Árido: motas claras y oscuras de 2–3 cm que se apagan con el tamaño del píxel
     float pq0 = length(fwidth(P)), gk = 1.0 - smoothstep(0.006, 0.03, pq0);
-    vec3 asf = vec3(1.0, 0.99, 0.965)*max(Ta*1.35, 0.215)*mix(0.72, 1.2, smoothstep(0.12, 0.5, lum))*mix(0.92, 1.06, vnoise(P*0.025));
+    vec3 asf = vec3(1.0, 0.99, 0.965)*max(Ta*1.5, 0.27)*mix(0.72, 1.2, smoothstep(0.12, 0.5, lum))*mix(0.92, 1.06, vnoise(P*0.025));
     float ar = hash21(floor(P*38.0));
     asf *= 1.0 + gk*(step(0.86, ar)*0.35 - step(ar, 0.10)*0.22);
     // G1S3 · parches de reparación orientados al carril (antes, cuadros fijos al mundo: rombos en las calles a 45°), con el
