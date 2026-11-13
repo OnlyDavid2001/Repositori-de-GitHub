@@ -14,7 +14,15 @@ Ninguna dio conflicto de texto: `streets.js` (G1S y G1V), `plazas.js` (G1S y G1V
 `node --check` de todos los .js tras cada fusión: limpio.
 
 ## 2 · Capturas de carga (una vista por fusión, 640×360, desde una instantánea del commit)
-(ver abajo)
+`scratchpad/g1/int/carga/` (`<carril>_<vista>.jpg`, `<carril>.log`, hoja `hoja_carga.jpg`). Las cuatro: carga ok y
+**sin errores ni avisos de consola**.
+| fusión | vista | carga | vista |
+|---|---|---|---|
+| suelo (f96db9c) | eix_xamfra | 28,9 s | 180 s |
+| tej (42d9aae) | azoteas | 42,8 s | 259 s |
+| veg (8105daa) | eix_calle | 42,3 s | ~ |
+| luz (19496ac) | mar_atardecer | 38,2 s | ~ |
+(La banca solo trae herramientas: sin captura propia; la primera, la de suelo, ya la incluye.)
 
 ## 3 · allanado.bin.gz
 G1S lo regeneró (preClave v8) en su rama; ninguna otra fusión toca las calles, el relieve ni el cálculo. Comprobado en la
