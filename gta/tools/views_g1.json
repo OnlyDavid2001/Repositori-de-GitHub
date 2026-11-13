@@ -1,0 +1,251 @@
+[
+ {
+  "name": "pg_pie",
+  "n": "Passeig de Gràcia a pie",
+  "x": 11836.8,
+  "z": 14607.4,
+  "walk": true,
+  "yaw": -0.7403,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "eix_calle",
+  "n": "Calle interior del Eixample a pie",
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "hour": 17
+ },
+ {
+  "name": "eix_xamfra",
+  "n": "Cruce de xamfrà del Eixample (Gran Via)",
+  "x": 12031.2,
+  "z": 14307.4,
+  "agl": 6,
+  "yaw": 0.7924,
+  "pitch": 0.28,
+  "hour": 12
+ },
+ {
+  "name": "gotic_calle",
+  "n": "Calle estrecha del Gòtic",
+  "x": 12712.0,
+  "z": 13385.3,
+  "walk": true,
+  "yaw": 0.704,
+  "pitch": -0.02,
+  "hour": 13
+ },
+ {
+  "name": "gracia_calle",
+  "n": "Calle de Gràcia",
+  "x": 11126.6,
+  "z": 15848.3,
+  "walk": true,
+  "yaw": 2.4542,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "poblenou_rambla",
+  "n": "Rambla del Poblenou",
+  "x": 15088.2,
+  "z": 15328.7,
+  "walk": true,
+  "yaw": -0.787,
+  "pitch": -0.02,
+  "hour": 11
+ },
+ {
+  "name": "sarria_major",
+  "n": "Carrer Major de Sarrià",
+  "x": 8113.4,
+  "z": 15591.2,
+  "walk": true,
+  "yaw": -0.698,
+  "pitch": -0.02,
+  "hour": 11
+ },
+ {
+  "name": "rambla_noche",
+  "n": "La Rambla de noche",
+  "x": 12405.9,
+  "z": 13505.8,
+  "walk": true,
+  "yaw": 2.584,
+  "pitch": 0.0,
+  "hour": 23
+ },
+ {
+  "name": "eix_noche",
+  "n": "Eixample a pie de noche",
+  "x": 12069.6,
+  "z": 14544.5,
+  "walk": true,
+  "yaw": -2.35,
+  "pitch": 0.03,
+  "hour": 22
+ },
+ {
+  "name": "pcat_pie",
+  "n": "Plaça de Catalunya a pie",
+  "x": 12217.8,
+  "z": 14027.8,
+  "walk": true,
+  "yaw": -0.3491,
+  "pitch": -0.02,
+  "hour": 10.5
+ },
+ {
+  "name": "glories_dron",
+  "n": "Rotonda de Glòries desde el dron",
+  "x": 13581.3,
+  "z": 15573.9,
+  "agl": 140,
+  "yaw": 0.3491,
+  "pitch": 0.5468,
+  "hour": 10.5
+ },
+ {
+  "name": "espanya_dron",
+  "n": "Rotonda de Plaça d'Espanya desde el dron",
+  "x": 10401.7,
+  "z": 12619.4,
+  "agl": 80,
+  "yaw": 0.3491,
+  "pitch": 0.5517,
+  "hour": 10.5
+ },
+ {
+  "name": "diagonal_pie",
+  "n": "Avinguda Diagonal a pie",
+  "x": 13240.3,
+  "z": 15715.8,
+  "walk": true,
+  "yaw": 1.2542,
+  "pitch": -0.02,
+  "hour": 12
+ },
+ {
+  "name": "barceloneta_playa",
+  "n": "Barceloneta: playa y mar",
+  "x": 13850,
+  "z": 12640,
+  "walk": true,
+  "yaw": -2.5,
+  "pitch": 0.04,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "port_vell",
+  "n": "Port Vell",
+  "x": 13700,
+  "y": 200,
+  "z": 12300,
+  "yaw": -0.723,
+  "pitch": 0.4,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "montjuic_puerto",
+  "n": "Montjuïc desde el puerto",
+  "x": 13280,
+  "y": 45,
+  "z": 12776,
+  "yaw": -2.3302,
+  "pitch": 0.02,
+  "hour": 17,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "coll_camino",
+  "n": "Camino de tierra de Collserola a pie",
+  "x": 7349.9,
+  "z": 17647.8,
+  "walk": true,
+  "yaw": 1.608,
+  "pitch": 0.02,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "coll_desde_ciudad",
+  "n": "Collserola de lejos desde la ciudad",
+  "x": 10500,
+  "z": 15500,
+  "agl": 45,
+  "yaw": -0.7964,
+  "pitch": -0.02,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "tibidabo_ctra",
+  "n": "Carretera del Tibidabo",
+  "x": 8002.1,
+  "z": 18186.1,
+  "walk": true,
+  "yaw": 0.095,
+  "pitch": 0.0,
+  "hour": 12,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "eix_dron",
+  "n": "Eixample desde el dron",
+  "x": 11900,
+  "y": 160,
+  "z": 14500,
+  "yaw": 0.5,
+  "pitch": 0.42,
+  "hour": 11,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "mar_atardecer",
+  "n": "La ciudad desde el mar al atardecer",
+  "x": 14500,
+  "y": 40,
+  "z": 11800,
+  "yaw": -0.7378,
+  "pitch": -0.02,
+  "hour": 20.25,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "noche_dron",
+  "n": "La ciudad de noche desde el dron",
+  "x": 11600,
+  "y": 350,
+  "z": 13600,
+  "yaw": 0.75,
+  "pitch": 0.3,
+  "hour": 23,
+  "eval": "BCN.st.maxDist=40000;"
+ },
+ {
+  "name": "sagrada_pie",
+  "n": "Sagrada Família a pie",
+  "x": 12600.4,
+  "z": 16333.0,
+  "walk": true,
+  "yaw": 3.1354,
+  "pitch": -0.1,
+  "hour": 10.5
+ },
+ {
+  "name": "azoteas",
+  "n": "Azoteas a la altura de los tejados",
+  "x": 12073.5,
+  "z": 14540.5,
+  "agl": 28,
+  "yaw": -2.0,
+  "pitch": 0.12,
+  "hour": 17
+ }
+]
