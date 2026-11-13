@@ -425,7 +425,7 @@ void main(){
         if (coverAt(x, z, -1) > -1e8 || !rambla && coverAt(x + px * side * 1.4, z + pz * side * 1.4, -1) > -1e8) continue;
         const y = walkY(ns, x, z), h = hash2(Math.round(x * 7), Math.round(z * 7)), n = Math.round((a0 + u) / sp);
         // plantón: NSP tres tutores, NSP + 1 dos tutores y protector; alcorque vacío: −1 con reja, −2 tierra sola
-        // G1V3: plátano (o la especie de la calle) adulto como norma en todos los alcorques: el 3 % plantón y el 2 % alcorque
+        // G1V3 (el nivel medio, tF, se acorta de 430–520 a 320–400 m: con adultos en todos los alcorques salían ~1 800 en él): plátano (o la especie de la calle) adulto como norma en todos los alcorques: el 3 % plantón y el 2 % alcorque
         // vacío, nunca dos vacíos seguidos en la misma acera (antes, en las calles que no eran anchas, solo plantones con
         // tutores gigantes y alcorques vacíos: el «elimínalos todos» del usuario). En calle estrecha, el adulto algo menor
         const hS = hash2(n * 3 + (side > 0 ? 1 : 0), ln * 7 + th), hP = hash2((n - 1) * 3 + (side > 0 ? 1 : 0), ln * 7 + th);
@@ -713,7 +713,7 @@ void main(){
 
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();
-  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [430, 520], tI: 2100 };
+  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tI: 2100 };
   // mobiliario de detalle: se construye en las celdas a menos de HB (algo más que el relevo por píxel, FU.hiRange) y se quita a partir de HD
   const HB = FU.buildHi && FU.hiRange ? FU.hiRange[1] + 8 : -1, HD = HB + 25, furnTris = [0, 0];
   let job = null, queue = [], tris = 0, planT = 0, instT = 0, lastIP = null, added = 0;
@@ -814,7 +814,7 @@ void main(){
   function setRange(q) {
     S.on = q > 0;
     const k = q >= 2 ? 1.4 : 1;
-    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [430 * k, 520 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
+    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
     setBands();
     if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = nPit = 0; }
     lastIP = null; planT = 0;

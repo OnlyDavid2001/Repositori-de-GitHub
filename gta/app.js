@@ -521,12 +521,14 @@ void main(){
     alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
     // G1V3: de lejos (donde ya no llega el suelo del monte, píxel > 1,5 m) el verde del monte (Collserola, Montjuïc, el Carmel)
     // era el lima liso de la ortofoto: masa de pinar gris verdosa y oscura, con rodales (pn, ~25 m) y la trama de copas cw de
-    // claros y sombras. Solo de día (vg ya lleva 1 − uNight) y por encima de ~25–80 m (los parques del llano, como estaban)
-    float fw = vg*smoothstep(25.0, 80.0, vPos.y)*smoothstep(1.5, 6.0, px);
+    // claros y sombras. Solo de día y por encima de ~20–60 m (los parques del llano, como estaban)
+    // máscara propia sobre la ortofoto cruda (vg, tras el claroscuro, se quedaba en ~0,4 en el lima: apenas oscurecía)
+    vec3 o0 = texture2D(groundTex, uv).rgb;
+    float fw = smoothstep(0.008, 0.035, o0.g - max(o0.r, o0.b))*(1.0 - uNight)*smoothstep(20.0, 60.0, vPos.y)*smoothstep(1.5, 6.0, px);
     if (fw > 0.001) {
       float rd = pn(mod(vPos.xz, 512.0), vec2(0.0390625));
       vec3 pin = mix(vec3(0.16, 0.20, 0.12), vec3(0.25, 0.28, 0.17), rd)*(0.62 + 0.76*cw);
-      alb = mix(alb, pin, fw*0.82);
+      alb = mix(alb, pin, fw*0.9);
     }
     // G1V2: suelo del monte (Collserola, Montjuïc, el Carmel): la ortofoto de 5 m daba un césped liso. Hierba seca de base,
     // calveros de tierra ocre, roca gris en lo empinado (y más arriba), pinaza rojiza bajo las copas (la trama cw) y, de

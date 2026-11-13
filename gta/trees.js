@@ -65,7 +65,7 @@ fam('poblenou', ['el Poblenou', 'el Parc i la Llacuna del Poblenou', 'Provençal
 const SEA = new Set(['la Vila Olímpica del Poblenou', 'Diagonal Mar i el Front Marítim del Poblenou', 'la Barceloneta']);
 //                    plàtan lledon tarong palm  jacar  tipua  pi
 const W = {
-  eixample:         [0.66, 0.07, 0.04, 0.02, 0.10, 0.09, 0.02],
+  eixample:         [0.80, 0.06, 0.03, 0.01, 0.06, 0.04, 0.00],   // G1V3: el Eixample es de plátanos (sin pinos de calle)
   gracia:           [0.18, 0.40, 0.20, 0.03, 0.12, 0.03, 0.04],
   ciutat_vella:     [0.22, 0.38, 0.26, 0.08, 0.04, 0.00, 0.02],
   raval:            [0.25, 0.36, 0.24, 0.08, 0.05, 0.00, 0.02],
@@ -112,6 +112,16 @@ function pick(s, ax, az, bx, bz, hw, rambla) {
   for (; v < 6; v++) { r -= w[v]; if (r < 0) break; }
   if (v === 3 && R() < 0.45) v = 7;                                   // palmera: Washingtonia o Phoenix (por tramo)
   segCache.set(s, v); return v;
+}
+
+// G1V3: especie de un árbol de plaza o paseo (plazas.js) en el frente marítimo: en los barrios de mar (Barceloneta, Vila
+// Olímpica, Diagonal Mar) tres de cada cuatro frondosos pasan a palmera (Washingtonia o Phoenix, por ejemplar). k: especie
+// pedida; devuelve la que se planta
+function seaSp(x, z, k) {
+  if (k === 3 || k === 7 || k === 6 || !window.BCN_BARRI) return k;
+  const B = window.BCN_BARRI.at(x, z); if (!B || !SEA.has(B.n)) return k;
+  const h = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+  return h < 0.45 ? 3 : h < 0.75 ? 7 : k;
 }
 
 // ---------------------------------------------------------------- geometría
@@ -480,5 +490,5 @@ vec3 treeWind(vec3 p, mat4 W, float kind){
     sin(uTime*5.7 + dot(p, vec3(2.2, 1.1, 3.3))))*0.03*gust*min(h*0.35, 1.0);
   return d;
 }`;
-window.BCN_TREES = { WIND_GLSL, SP, pick, build, sapling, leafCanvas, impCanvas, familyOf, stakeCanvas, flatCanvas, pitCanvas, pitGeo };
+window.BCN_TREES = { WIND_GLSL, SP, pick, seaSp, build, sapling, leafCanvas, impCanvas, familyOf, stakeCanvas, flatCanvas, pitCanvas, pitGeo };
 })();
