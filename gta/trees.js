@@ -22,8 +22,10 @@ const { seed, seedRaw, R, hash2 } = window.BCN_GEO;
 //     3 cicatrices de hoja de la Phoenix) · l.flat: tarjetas casi horizontales (copa en parasol) · l.mid: hojas también a
 //     media rama (copa que tapa las ramas)
 const SP = [
-  { id: 'platan', n: 'plàtan', g: { h: 5.4, r: 0.3, n: 5, y0: 4.9, len: [3.1, 3.9], up: 0.75, out: 0.66, rad: 0.19, kl: 0.68, dh: 3 },
-    l: { nN: 620, sN: [0.42, 0.78], DN: 1, ys: [-0.7, 0.8], nF: 90, sF: [1.15, 1.9], DF: 1.2 }, imp: [5.2, 12.5],
+  // FX luzveg: copa más alta, estrecha y aireada (el dosel de las calles del Eixample era un túnel oscuro que tapaba la
+  // Sagrada Família) y tronco algo más fino (antes h 5,4 · r 0,3 · out 0,66 · rad 0,19 · 620 hojas)
+  { id: 'platan', n: 'plàtan', g: { h: 6.2, r: 0.25, n: 5, y0: 5.7, len: [2.8, 3.5], up: 0.92, out: 0.5, rad: 0.16, kl: 0.66, dh: 3 },
+    l: { nN: 470, sN: [0.42, 0.74], DN: 0.95, ys: [-0.6, 0.8], nF: 80, sF: [1.1, 1.8], DF: 1.1 }, imp: [4.4, 13],
     bark: [1, 1, 1, 1], leaf: [1, 1, 1, 0.82], fl: 0 },
   { id: 'lledoner', n: 'lledoner', g: { h: 3.4, r: 0.22, n: 6, y0: 3.0, len: [2.5, 3.1], up: 0.86, out: 0.55, rad: 0.14, kl: 0.66, dh: 3 },
     l: { nN: 620, sN: [0.44, 0.76], DN: 0.95, ys: [-0.7, 0.8], nF: 95, sF: [1.1, 1.75], DF: 1.1 }, imp: [3.8, 11],
@@ -107,6 +109,10 @@ function pick(s, ax, az, bx, bz, hw, rambla) {
   // REV: en el Eixample las calles de 20 m tienen calzada estrecha en los datos (hw ≈ 3) pero aceras anchas con plátanos: sin el
   // ajuste de calle estrecha (que llenaba calles enteras de naranjos y, desde el aire, las dejaba peladas y, de noche, en franjas de luz)
   else if (hw < 3.6 && f !== 'eixample') { w[2] *= 1.8; w[1] *= 1.3; w[5] *= 0.3; w[6] *= 0.4; w[0] *= 0.7; }
+  // FX luzveg: las calles que apuntan a la Sagrada Família (su eje pasa a menos de 50 m del templo, hasta 900 m de él) llevan
+  // naranjos: copa baja que deja ver el templo desde la acera y pasar el sol (con plátanos, un túnel que lo tapaba)
+  { const qx = 12597.9 - ax, qz = 15875.2 - az, dl = Math.abs(qx * dz - qz * dx), dm = Math.hypot(12597.9 - mx, 15875.2 - mz);
+    if (dl < 50 && dm < 900 && dm > 60 && !rambla) { segCache.set(s, 2); return 2; } }
   seed(Math.round(th / 0.05) & 0xffff, Math.round(c / 18) | 0, Math.floor(al / 320) | 0, 71);
   let r = R() * w.reduce((a, b) => a + b, 0); v = 0;
   for (; v < 6; v++) { r -= w[v]; if (r < 0) break; }
@@ -395,7 +401,7 @@ function impCanvas(k) {
     return cv;
   }
   const c = { platan: [0.7, 1, 0.34, 120], lledoner: [0.62, 0.96, 0.5, 100], taronger: [0.46, 0.98, 0.3, 82], jacaranda: [0.68, 1, 0.46, 128], tipuana: [0.82, 1, 0.32, 132], pi: [0.5, 0.92, 0.5, 86] }[sp.id];
-  const g0 = sp.g, top = { platan: 12.2, lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.0, pi: 11.0 }[sp.id];
+  const g0 = sp.g, top = { platan: 12.8, lledoner: 10.3, taronger: 4.7, jacaranda: 9.0, tipuana: 11.0, pi: 11.0 }[sp.id];
   if (sp.id === 'pi') { trunk(g0.h + 0.4, 0.33, '#7a4630'); branches(g0.h - 0.6, top - 1.2, 5, '#5e3a28'); clumps(0.9, top - 1.0, hw * 0.92, 1.05, 34, [0.9, 1.5], c, true); }
   else { trunk(g0.y0 + 0.5, g0.r, k === 0 ? '#8a7a62' : '#6d5a44'); const cy = (top + g0.y0) / 2 + 0.6, ry = (top - g0.y0) / 2 + 0.3;
     branches(g0.y0, cy + ry * 0.2, 5, k === 0 ? '#7a6a54' : '#5e4c3a');
