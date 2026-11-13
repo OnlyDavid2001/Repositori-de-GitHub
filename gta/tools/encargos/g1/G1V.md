@@ -5,6 +5,18 @@ material del terreno (`matTer` y su shader); para quitar gente parada, el mínim
 `comun.md`, DESARROLLO §9 (mobiliario) y §11 (8 especies de árbol, naturaleza con volumen y playa) y los progresos de n2/n3
 de árboles.
 
+## Lo que dijo el jurado de la línea base (antes de la fase: media 4,4 sobre 10; meta 8)
+Dos jurados independientes puntuaron las 24 vistas del banco (`git show origin/wt-g1-banco:gta/tools/views_g1.json`;
+capturas ANTES en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/antes/a_<vista>.jpg`, hoja `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/hoja_antes.jpg`, todas las notas y defectos
+por vista en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/linea_base.json`, rúbrica en `g1/rubrica.md` de la rama wt-g1-banco). Defectos que caen en tu
+carril, de más a menos graves: **atácalos primero** (en la etapa en la que estés, y el crítico y el repaso los comprueban
+con esas mismas vistas):
+1. Arbolado poco currado que resta: tutores de madera gigantes con cuatro hojas lima, árboles de bola y copas de tarjeta por todo el juego; calles del Eixample casi sin plátanos (eix_calle, eix_noche, sagrada_pie, eix_dron, glories_dron, coll_camino). El usuario: «elimínalos todos».
+2. Monte liso: Montjuïc y Collserola como césped verde liso, sin pinar ni relieve (montjuic_puerto, coll_desde_ciudad, coll_camino).
+3. Camino de Collserola con textura borrosa y estirada; hierba verde lisa; cables cruzando el cielo (coll_camino).
+4. Banco-jardinera blanco macizo, sin textura y quemado por la luz (pg_pie).
+5. Playa sin palmeras: árboles genéricos (barceloneta_playa).
+
 ## Etapa 1 (G1V1) · Árboles de verdad
 1. **Inventario** de todos los árboles y sus niveles de detalle (calle, plazas, parques, monte, palmeras, arbolitos).
    **Elimina todos los que no estén currados** (bolas, cubos, tarjetas toscas, niveles lejanos pixelados): «todos, todos,
