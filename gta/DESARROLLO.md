@@ -1925,3 +1925,25 @@ monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando aca
   (`S.tN0`, `S.tF0`) por [cercano, medio] = alta [1; 0,9] (medio 288–360 m), media [0,8; 0,7], baja [0,6; 0,5]; si la
   calidad cambia en modo auto, `update` rehace bandas e instancias. El número de árboles de un nivel va con el cuadrado
   de su distancia.
+
+### 14.7 Fachadas a pie de calle (G1F; `facades.js`, `interiors.js`, `details.js`, `fachadas_estilos.js`)
+- §6.9 `env.windowHole`: sin `gq`, el vidrio es un `K.HOMEWIN` con habitación (si interiors.js está cargado y el hueco
+  pasa de 45 × 35 cm). `roomQuad(rm)` admite `rm.veil` (bit 4 de color.g: piso tras visillo).
+- §6.9 `env.wa(F, u0, u1, y0, y1, yTop)`: auxiliar de desgaste para un paño de muro (x = bajo `yTop` /8 m, y = 255,
+  z = sobre la acera +4 /16 m, w = 0). Solo tiene zócalo dentro de un tramo con `run.gnd` (genB fija `curGnd`).
+  El shader lo aplica a los tipos 0, 1, 16–19 y 100 cuando aux.y = 255 y aux.w = 0.
+- SHOPWIN: `shClosed(tipo, semilla)` decide si el comercio está cerrado (persiana pintada en el vidrio) según uNight/uLate.
+- Caras hacia abajo del shader de detalle: rebote templado `uSkyL·0,12 + uSunL·0,07·sol` (bajos de balcones, vuelos).
+- `palette.js`: la fila `sarria_pedralbes` original sigue en su sitio; la sustitución de G1F va en su sección al final.
+
+### 14.8 Arreglos de integración (FX, fusionados en INT2)
+- La cinta de calzada (`app.js`) lleva faldón de tierra donde su borde queda > 25 cm sobre `heightAt0` (ladera de
+  Collserola). `RCOL[9]` (sendas) en color tierra. FS_ROAD: parches recientes `alb·0,88` con borde roto por ruido; Ta base 0,125.
+- `streets.js`: `urbanSeg(s)` decide «tejido urbano» (nunca rural; clase 9 con acera).
+- `plazas.js`: sin bandada en Catalunya; sin cipreses de esferas ni `tree()` sin malla; palmeras de plaza = BCN_TREES (k = 3).
+- FS_BLD: las cubiertas de las clases 3 y 12 usan `rt` 2/3 por edificio (antes, losa lisa).
+- `rooftops.js`: `treeE` ya no dibuja copas (solo la maceta). Si algún día vuelven árboles a patios, que sean de BCN_TREES.
+- `trees.js` `pick()`: las calles que apuntan a la Sagrada Família (eje a < 50 m del templo) llevan naranjos; plátano
+  más alto, estrecho y aireado (r 0,25, 470 hojas).
+- `setHour`: `lt` (madrugada) mezcla el cielo/bruma de noche entre azul profundo (21–24 h) y casi negro (0–6 h).
+  FS_SEA: Fresnel con la normal media y pista cálida del sol bajo. FS_TER: arena con albedo ~0,45.
