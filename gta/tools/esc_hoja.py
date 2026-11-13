@@ -10,7 +10,7 @@ import json, sys, os
 MODELOS = ['bar', 'restaurante', 'comida_rapida', 'ocio_nocturno', 'hotel', 'super_autoservicio', 'alimentacion_tradicional', 'moda',
            'joyeria_optica', 'farmacia', 'belleza', 'salud', 'gimnasio', 'hogar', 'floristeria', 'cultura', 'bazar_moviles', 'souvenirs',
            'estanco', 'oficina', 'servicio_barrio', 'taller_garaje', 'almacen_industrial', 'local_vacio']
-VISTA = {"x": 12066.7, "z": 14538.9, "walk": True, "yaw": -0.7792, "pitch": -0.06}
+VISTA = {"x": 12088.1, "z": 14545.6, "walk": True, "yaw": -3.9208, "pitch": 0.0}
 if len(sys.argv) >= 3 and sys.argv[1] == 'vistas':
     hora = float(sys.argv[3]) if len(sys.argv) > 3 else 10.5
     q = sys.argv[4] if len(sys.argv) > 4 else 'baja'
