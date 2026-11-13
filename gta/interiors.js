@@ -27,7 +27,7 @@ const SH = { CAJA: 0, REDONDO: 1, BOTELLA: 2, LOMO: 3, HERRAMIENTA: 4, GAFAS: 5,
 const TYPES = [
   { n: 'FORN DE PA', w: 10, sign: ['#6b3d14', '#f6e8c9'], awn: [150, 90, 40], wall: [226, 205, 170], floor: [FL.DAMERO, [176, 104, 72], [206, 160, 120]], warm: 0.85, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [150, 105, 60]], far: [LY.MOSTRADOR, [140, 96, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 160, 90], pal: PAL.PAN, shape: SH.REDONDO },
-  { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [236, 240, 238], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
+  { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [206, 214, 210], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [230, 232, 230]], far: [LY.MOSTRADOR, [232, 236, 234]], near: [LY.ISLA, [225, 228, 226]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
   { n: 'FERRETERIA', w: 4, sign: ['#2b2b2f', '#f2c230'], awn: [60, 60, 66], wall: [168, 164, 156], floor: [FL.TERRAZO, [120, 116, 110], [156, 150, 140]], warm: 0.4, lamp: LAMP.TUBOS,
     back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.ISLA, [92, 92, 98]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
@@ -41,9 +41,9 @@ const TYPES = [
     back: [BACK.ESTANTES, [120, 130, 110]], far: [LY.CUBOS, [70, 80, 76]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CUBOS, [60, 70, 66]], acc: [200, 80, 120], pal: PAL.FLORES, shape: SH.REDONDO },
   { n: 'RESTAURANT', w: 9, sign: ['#3a1512', '#e9cf8a'], awn: [110, 30, 34], wall: [186, 150, 118], floor: [FL.TARIMA, [96, 64, 40], [96, 64, 40]], warm: 0.95, lamp: LAMP.CALIDA,
     back: [BACK.CUADROS, [90, 56, 36]], far: [LY.MANTELES, [70, 44, 30]], near: [LY.MANTELES, [70, 44, 30]], shelf: [LY.NADA, [0, 0, 0]], acc: [236, 232, 220], pal: PAL.BOTELLAS, shape: SH.BOTELLA },
-  { n: 'PERRUQUERIA', w: 7, sign: ['#2b2b2f', '#f3d7e0'], awn: [60, 60, 66], wall: [232, 224, 226], floor: [FL.BALDOSA, [200, 196, 196], [150, 146, 148]], warm: 0.45, lamp: LAMP.FOCOS,
+  { n: 'PERRUQUERIA', w: 7, sign: ['#2b2b2f', '#f3d7e0'], awn: [60, 60, 66], wall: [210, 198, 200], floor: [FL.BALDOSA, [200, 196, 196], [150, 146, 148]], warm: 0.45, lamp: LAMP.FOCOS,
     back: [BACK.ESPEJOS, [40, 40, 44]], far: [LY.SILLONES, [30, 30, 34]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.NADA, [0, 0, 0]], acc: [210, 120, 150], pal: PAL.VARIADO, shape: SH.BOTELLA },
-  { n: 'MODA', w: 7, sign: ['#151517', '#f2f0ea'], awn: [219, 204, 168], wall: [236, 230, 220], floor: [FL.TARIMA, [190, 160, 120], [190, 160, 120]], warm: 0.6, lamp: LAMP.FOCOS,
+  { n: 'MODA', w: 7, sign: ['#151517', '#f2f0ea'], awn: [219, 204, 168], wall: [212, 204, 190], floor: [FL.TARIMA, [190, 160, 120], [190, 160, 120]], warm: 0.6, lamp: LAMP.FOCOS,
     back: [BACK.PERCHERO, [200, 190, 170]], far: [LY.BURRAS, [160, 160, 165]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.MANIQUIES, [226, 220, 210]], acc: [20, 20, 24], pal: PAL.ROPA, shape: SH.CAJA },
   { n: 'GELATERIA', w: 3, sign: ['#d9668a', '#ffffff'], awn: [230, 150, 170], wall: [190, 228, 214], floor: [FL.DAMERO, [240, 240, 236], [240, 170, 190]], warm: 0.5, lamp: LAMP.FOCOS,
     back: [BACK.PIZARRAS, [240, 236, 228]], far: [LY.MOSTRADOR, [244, 240, 232]], near: [LY.MESAS, [226, 150, 170]], shelf: [LY.NADA, [0, 0, 0]], acc: [240, 120, 150], pal: PAL.HELADO, shape: SH.REDONDO },
@@ -51,14 +51,14 @@ const TYPES = [
     back: [BACK.PIZARRAS, [84, 56, 36]], far: [LY.MOSTRADOR, [96, 64, 40]], near: [LY.MESAS, [70, 48, 32]], shelf: [LY.NADA, [0, 0, 0]], acc: [230, 200, 140], pal: PAL.PAN, shape: SH.REDONDO },
   { n: 'QUEVIURES', w: 10, sign: ['#5c3b16', '#f6e8c9'], awn: [166, 36, 33], wall: [226, 214, 180], floor: [FL.DAMERO, [206, 196, 174], [150, 70, 56]], warm: 0.7, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [140, 100, 60]], far: [LY.MOSTRADOR, [130, 92, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 86, 54]], acc: [190, 60, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
-  { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [240, 240, 238], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
+  { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [212, 212, 208], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
     back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.ISLA, [228, 230, 232]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
   { n: 'PAPERERIA', w: 4, sign: ['#b8401c', '#fff4c9'], awn: [219, 204, 168], wall: [200, 216, 232], floor: [FL.BALDOSA, [196, 190, 176], [150, 146, 136]], warm: 0.5, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [220, 220, 214]], far: [LY.MOSTRADOR, [70, 110, 160]], near: [LY.ISLA, [210, 206, 196]], shelf: [LY.TARIMA, [60, 100, 150]], acc: [230, 180, 40], pal: PAL.VARIADO, shape: SH.CAJA },
   { n: 'FORMATGERIA', w: 3, sign: ['#6b5a1e', '#fff4c9'], awn: [150, 120, 40], wall: [232, 220, 188], floor: [FL.DAMERO, [220, 210, 190], [80, 68, 56]], warm: 0.8, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [130, 92, 54]], far: [LY.MOSTRADOR, [228, 224, 212]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 150, 40], pal: PAL.QUESO, shape: SH.REDONDO },
   // solo en comercios anchos (lo decide shopPlan): w = 0 lo deja fuera del sorteo general
-  { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [238, 240, 240], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
+  { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [204, 208, 206], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [225, 228, 230]], far: [LY.LINEALES, [228, 230, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
 ];
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
@@ -487,7 +487,10 @@ vec3 shGlass(vec3 room, vec3 V, vec3 N){
   float k = clamp(0.07 + 0.93*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0), lum = dot(room, vec3(0.30, 0.59, 0.11));
   // al anochecer la tienda brilla más, pero lo claro sube poco (con la cadena HDR un color claro florece por encima de ~1,6),
   // lo oscuro sube más y las luminarias (que ya pasan de 1) se quedan como de día
-  float g = mix(1.05, mix(mix(2.2, 1.5, smoothstep(0.18, 0.62, lum)), 1.05, smoothstep(1.2, 2.4, lum)), uDusk);
+  // G1F2: de día el interior se ve MÁS OSCURO que la fachada al sol (como en las fotos: el escaparate es un hueco con género, no
+  // una pantalla), y lo muy claro (paredes blancas de farmacia, óptica, súper) se comprime para que no se queme ni de día ni de noche
+  room /= 1.0 + 0.55*max(lum - 0.42, 0.0)*(1.0 - smoothstep(1.4, 2.6, lum));
+  float g = mix(0.58, mix(mix(2.0, 1.35, smoothstep(0.18, 0.62, lum)), 1.0, smoothstep(1.2, 2.4, lum)), uDusk);
   // de noche cerrada la exposición sube algo más (el ojo se adapta). De madrugada el comercio está cerrado y queda una luz de vigilancia
   g *= (1.0 - 0.12*uNight)*(1.0 - 0.93*uLate*uDusk);
   return emit(room, g)*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
@@ -756,6 +759,8 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // todos sus vidrios: origen x0 (u del extremo), ancho W, suelo yF, alto H y fondo D.
   const opening = (run, W) => { const Uw = run.bw * 0.84, B_ = W * run.bw + (run.bw - Uw) / 2; return [B_, B_ + Uw]; };
   const topOf = (env, gl) => Math.min(env.F1 - 1.0, gl + 3.4);
+  // persianas metálicas: galvanizado, gris oscuro, verde y granate de carpintería vieja (pintura gastada: patrón 3 no; lamas: 1)
+  const SHUTC = [[150, 152, 150], [150, 152, 150], [128, 130, 132], [88, 92, 96], [56, 84, 66], [104, 52, 46]], SHUTA = pbrAux(0.55, 0.6, 1, 0);
   function shopPlan(env, run, gls) {
     const { nb, bw, N, F } = run, list = [], of = [];
     const maxB = Math.max(1, Math.min(4, Math.floor(14 / bw)));
@@ -771,6 +776,16 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       s.door = s.w0 + Math.min(n - 1, (r[2] * n) | 0);
       s.sign = r[3] < 0.93; s.awn = r[4] < 0.35; s.seed = 1 + ((r[5] * 254) | 0);
       s.uA = opening(run, s.w0)[0]; s.uB = opening(run, s.w1 - 1)[1];
+      // G1F2 · persiana metálica: ~9 % de los locales cerrados (todas bajadas, la de la puerta también) y ~22 % con alguna
+      // bajada a medias (el que abre tarde o el que guarda el escaparate). r2 de un sorteo propio para no mover los de arriba
+      const r2 = [R(), R(), R(), R()];
+      s.shut = r2[0] < 0.09 ? 2 : r2[0] < 0.31 ? 1 : 0; s.shutR = r2[1]; s.shutC = SHUTC[(r2[2] * SHUTC.length) | 0];
+      // G1F2 · toldo solo si cabe: se mide el paso libre delante (hasta la fachada de enfrente) en los dos extremos y el centro;
+      // en callejones (< 4,2 m) no hay toldo y si no, sale como mucho a un cuarto del paso (antes cruzaba las calles del Gòtic)
+      if (s.awn && run.r && ctx.city) { const r_ = run.r; let w = 9;
+        for (const u of [s.uA + 0.2, (s.uA + s.uB) / 2, s.uB - 0.2]) for (let t = 0.6; t < w; t += 0.3) {
+          if (ctx.city.coverAt(r_.ax + r_.tx * u + r_.nx * t, r_.az + r_.tz * u + r_.nz * t, -1) > -1e8) { w = t; break; } }
+        s.awnD = Math.min(1.35, w * 0.25); if (w < 4.2) s.awn = false; }
       s.yF = gls[s.door] + 0.03; s.top = -1e9;
       for (let W = s.w0; W < s.w1; W++) { s.top = Math.max(s.top, topOf(env, gls[W])); of[W] = s; }
       const Wd = Math.min(16, s.uB - s.uA + 0.6), H = Math.min(7.9, Math.max(3.3, s.top - s.yF + 0.2)), D = Math.max(4, Math.min(5.5, Wd * 0.9));
@@ -839,9 +854,19 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
         box(W1, F, B_, V_, top - 0.06, top, -0.4, -0.3, met, K.METAL, 2);
       }
     }
-    if (s.awn) { const ac = s.T.awn;
-      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, top - 0.7, 1.35, B_, top - 0.7, 1.35, ac, K.AWN);
-      quad(W1, F, B_, top - 0.7, 1.35, V_, top - 0.7, 1.35, V_, top - 0.9, 1.35, B_, top - 0.9, 1.35, ac, K.AWN); }
+    if (s.awn) { const ac = s.T.awn, aD = s.awnD || 1.35, aY = top - 0.7 * aD / 1.35;
+      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, aY, aD, B_, aY, aD, ac, K.AWN);
+      quad(W1, F, B_, aY, aD, V_, aY, aD, V_, aY - 0.2, aD, B_, aY - 0.2, aD, ac, K.AWN); }
+    // persiana metálica enrollable delante del vidrio (por delante de marcos y montantes, -0,27 m), con guías y barra de abajo
+    if (s.shut) { const isD = W === s.door, h0 = isD ? gl + 0.03 : sill;
+      const bot = s.shut === 2 ? h0 : W === s.door ? top + 1 : top - (top - h0) * (0.18 + 0.5 * ((s.shutR * 7.3 + W * 0.37) % 1));
+      if (bot < top - 0.05 && (s.shut === 2 || ((s.shutR * 13.1 + W * 0.61) % 1) < 0.6)) {
+        const bc = shade(s.shutC, 0.8);
+        rect(W0, F, B_ + 0.04, V_ - 0.04, bot, top, -0.27, s.shutC, K.PBR, SHUTA);
+        box(W0, F, B_ + 0.04, V_ - 0.04, bot - 0.05, bot, -0.29, -0.25, bc, K.METAL, 2);
+        if (W1) { box(W1, F, B_ + 0.01, B_ + 0.05, h0, top, -0.3, -0.26, bc, K.METAL, 4); box(W1, F, V_ - 0.05, V_ - 0.01, h0, top, -0.3, -0.26, bc, K.METAL, 4); }
+      }
+    }
   }
   // lo que es del comercio entero: rótulo centrado sobre sus vanos y, en la farmacia, la cruz luminosa en banderola
   function shopFront(env, run, s) {
@@ -849,7 +874,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const sv0 = s.top + 0.12, hmax = Math.min(0.56, F1 - 0.2 - sv0);
     if (s.sign && hmax > 0.22) {
       const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
-      quad(W0, F, uc - w / 2, y, 0.07, uc + w / 2, y, 0.07, uc + w / 2, y + h, 0.07, uc - w / 2, y + h, 0.07, [255, 255, 255], K.SIGN, signAux(s.type));
+      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
       box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, shopCols(env).met, K.METAL);   // faja del rótulo, a juego
     }
     if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
