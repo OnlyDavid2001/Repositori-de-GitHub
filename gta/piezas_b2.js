@@ -494,7 +494,8 @@ pieza('vano_ornamentado', function (env, run, q) {
   if (q.atico) return false;
   if (vi === 0 && q.nb >= 3 && q.W === q.nb >> 1 && !q.top && q.D <= Math.min(3, q.nF - 1)) {
     env.runWall = run.wallC; P.tribuna_piedra(env, F, q.a, q.bw, q.k, q.P, { base: q.D === 1, remate: q.D === Math.min(3, q.nF - 1) }); return; }
-  KIT.T.vano(env, run, q);
+  const V0 = env.V; if (q.D === 1) env.V = q.V;       // la barandilla (T.rail) lee env.V: la de la planta noble (balaustres en v1)
+  KIT.T.vano(env, run, q); env.V = V0;
   if (q.low) return;
   const g = KIT.medidas(q), uc = shade(env.uV, 1.05);
   if (q.D === 1 && W1) {                              // planta noble: frontón curvo (o triangular) y relieve floral en el dintel
