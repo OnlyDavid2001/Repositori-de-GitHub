@@ -413,6 +413,12 @@ void main(){
       if (HAT) cross = Math.max(cross, Math.abs(HAT(cx - tz * (hw + 20), cz + tx * (hw + 20)) - HAT(cx + tz * (hw + 20), cz - tx * (hw + 20))) / (2 * hw + 40)); }
     const slope = HAT && L > 8 ? Math.abs(HAT(bx, bz) - HAT(ax, az)) / L : 0;
     v = open2 >= 2 || open1 >= 2 && (cross > 0.15 || slope > 0.07);
+    // FX-suelo: en el tejido urbano nunca es rural (los tramos cortos dentro de los cruces anchos del Eixample miraban de
+    // través por las calles, no veían edificios y el xamfrà salía de tierra): edificios a menos de 110 m en 5 de 8 rumbos
+    if (v) { const mx = (ax + bx) / 2, mz = (az + bz) / 2; let nb = 0;
+      for (let k = 0; k < 8 && nb < 5; k++) { const ca = Math.cos(k * Math.PI / 4), sa = Math.sin(k * Math.PI / 4);
+        for (let d = hw + 2; d < 110; d += 4) if (coverAt(mx + ca * d, mz + sa * d, -1) > -1e8) { nb++; break; } }
+      if (nb >= 5) v = false; }
     ruralCache.set(s, v); return v;
   }
   const treeCache = new Map(), PLZ = window.BCN_PLAZAS;

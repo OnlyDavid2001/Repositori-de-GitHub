@@ -788,7 +788,7 @@ void main(){
   // SUELOS (día 3): estado del asfalto por polilínea, de suelos.js (vInfo.w: 0 nuevo · 1 seminuevo · 2 gastado · 3 bastante
   // gastado · 4 muy gastado, continuo). De lejos, solo el tono: nuevo casi negro y uniforme, gastado más claro, gris y a rodales
   float wr = uSF.x > 0.5 ? uSF.x - 0.5 : clamp(vInfo.w, 0.0, 4.99), crk = 0.0, mk0 = mk;   // uSF: muestras forzadas (depuración, S3)
-  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.100 + 0.018*wr + 0.006*wr*wr;   // FIX3: nuevo 0,10 · seminuevo 0,124 · gastado 0,16 · bastante 0,21 · muy gastado 0,27–0,34
+  float Lb = max(dot(vCol.rgb, vec3(0.333)), 0.02), Ta = 0.125 + 0.018*wr + 0.006*wr*wr;   // FX-suelo: base 0,10 → 0,125 (la calzada en sombra no pasaba de 40/255) · FIX3: nuevo 0,10 · seminuevo 0,124 · gastado 0,16 · bastante 0,21 · muy gastado 0,27–0,34
   if (car) {
     // S3: albedo medio por estado, absoluto (no relativo al color de la clase), para que cada estado se reconozca a pie:
     // nuevo ≈ 0,08 (negro profundo) · seminuevo ≈ 0,12 · gastado ≈ 0,17 · bastante ≈ 0,22 · muy gastado ≈ 0,29 (gris claro)
@@ -809,11 +809,13 @@ void main(){
       vec2 id = floor(g), f = fract(g); float h = hash21(id + 11.3), h2 = hash21(id + 4.1);
       vec2 lo = vec2(0.08 + 0.25*h2, 0.05 + 0.3*fract(h*7.0)), hi = vec2(0.92 - 0.25*fract(h2*5.0), 0.95 - 0.3*fract(h*13.0));
       vec2 sz = vec2(3.3, 7.0);
-      float ins = smoothstep(-aa, aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y));
+      // FX-suelo: borde roto (ruido de mundo) en vez de rectángulo perfecto
+      float pd = min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y) + (vnoise(P*1.9 + 4.0) - 0.5)*0.42 + (vnoise(P*6.5) - 0.5)*0.12;
+      float ins = smoothstep(-aa, aa, pd);
       float on = step(h, 0.10 + 0.40*pw)*ins*step(abs(x), hw - 0.25);
-      float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, min(min(f.x - lo.x, hi.x - f.x)*sz.x, min(f.y - lo.y, hi.y - f.y)*sz.y)));
-      // S3: parches de otro tono (recientes casi negros, viejos más claros y tostados)
-      alb = mix(alb, (h2 > 0.45 ? mix(alb, vec3(0.092, 0.093, 0.097), 0.7) : alb*vec3(1.30, 1.27, 1.20))*(0.95 + 0.1*vnoise(P*1.7)), on*near);
+      float edge = on*(1.0 - smoothstep(0.03, 0.03 + 2.0*aa, pd));
+      // S3: parches de otro tono (recientes algo más oscuros —FX-suelo: alb·0,88, antes casi negros—, viejos más claros y tostados)
+      alb = mix(alb, (h2 > 0.45 ? alb*vec3(0.87, 0.88, 0.90) : alb*vec3(1.30, 1.27, 1.20))*(0.95 + 0.1*vnoise(P*1.7)), on*near);
       crk = max(crk, edge*0.35*lod);
     }
     // grietas selladas con betún (gastado normal y bastante gastado): longitudinales en las juntas de carril y alguna transversal
@@ -1369,7 +1371,7 @@ await tick();
 setMsg('Trazando calles…', 0.25);
 await tick();
 const RCOL = [[66, 66, 72], [70, 70, 76], [78, 78, 84], [82, 82, 88], [86, 86, 91], [92, 92, 96], [118, 116, 112], [196, 186, 168], [100, 100, 103],
-              [192, 176, 140], [72, 72, 78], [96, 88, 82], [104, 112, 98], [52, 52, 58], [92, 92, 97], [150, 140, 124], [212, 203, 186], [100, 146, 82]];
+              [148, 128, 100], [72, 72, 78], [96, 88, 82], [104, 112, 98], [52, 52, 58], [92, 92, 97], [150, 140, 124], [212, 203, 186], [100, 146, 82]];
 const ROFF = [0.30, 0.28, 0.24, 0.22, 0.20, 0.18, 0.16, 0.14, 0.12, 0.10, 0.26, 0.13, 0.25, 0.22, 0.17, 0.30, 0.12, 0.20];
 let roadTris = 0;
 const SUELOS = window.BCN_SUELOS || null; if (SUELOS) SUELOS._barris = META.barris;   // suelos.js: aún no hay BCN_BARRI
@@ -1403,7 +1405,7 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
       }
       const m = xs.length, hw = w / 2, c = RCOL[cls] || RCOL[5], off = ROFF[cls] || 0.15, v0 = pos.length / 3;
       const wr = SUELOS ? SUELOS.asfalto(cls, hw, xs[0], zs[0], xs[m - 1], zs[m - 1]) : 2;   // estado del asfalto (suelos.js): uv.w
-      let along = 0;
+      let along = 0; const SK = [];   // FX-suelo: faldón (talud) de cada borde hasta el relieve, donde la cinta queda en el aire
       for (let k = 0; k < m; k++) {
         const ka = k > 0 ? k - 1 : k, kb = k < m - 1 ? k + 1 : k;
         let tx = xs[kb] - xs[ka], tz = zs[kb] - zs[ka]; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
@@ -1415,6 +1417,19 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
         col.push(c[0], c[1], c[2], cls, c[0], c[1], c[2], cls);
         uvs.push(-1, along, hw, wr, 1, along, hw, wr);
         if (k > 0) { const a = v0 + 2 * k - 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
+        // caída de cada borde sobre el relieve en bruto (el allanado nivela de lado a lado y en ladera levanta el borde de abajo;
+        // la malla del terreno solo se hunde, nunca sube): pie del talud a 1,3 × la caída (0,4–7 m) del borde, 15 cm bajo el relieve
+        for (const [ex, ez, ey, sd] of [[lx, lz, yl, -1], [rx, rz, yr, 1]]) {
+          const dr = ey + off - heightAt0(ex, ez), dw = Math.min(7, Math.max(0.4, dr * 1.3)), fx = ex + tz * sd * dw, fz = ez - tx * sd * dw;
+          SK.push(ex, ey + off, ez, fx, heightAt0(fx, fz) - 0.15, fz, dr); }
+      }
+      // solo donde de verdad cuelga (> 25 cm): tierra y grava, sin marcas (clase 9 en el sombreador: albedo del color del vértice)
+      for (let sd = 0; sd < 2; sd++) for (let k = 1; k < m; k++) {
+        const A = (k - 1) * 14 + sd * 7, B = k * 14 + sd * 7; if (Math.max(SK[A + 6], SK[B + 6]) < 0.25) continue;
+        const b0 = pos.length / 3;
+        pos.push(SK[A], SK[A + 1] - 0.02, SK[A + 2], SK[A + 3], SK[A + 4], SK[A + 5], SK[B], SK[B + 1] - 0.02, SK[B + 2], SK[B + 3], SK[B + 4], SK[B + 5]);
+        for (let q = 0; q < 4; q++) { col.push(124, 106, 82, 9); uvs.push(sd ? 1 : -1, 0, hw, 0); }
+        if (sd) idx.push(b0, b0 + 1, b0 + 3, b0, b0 + 3, b0 + 2); else idx.push(b0, b0 + 2, b0 + 3, b0, b0 + 3, b0 + 1);
       }
     }
     if (idx.length) {

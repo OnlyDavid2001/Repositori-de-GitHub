@@ -498,10 +498,10 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4, lampGrid: true,
     W('cring', c[0], c[1], 0, { skip: gaps, rings: [[16.2, 16.6, 0.05, [56, 56, 60], 64], [17.2, 17.9, 0.03, [214, 208, 196], 64], [17.9, 18.6, 0.05, [150, 80, 62], 64],
       [43.6, 44.2, 0.03, [214, 208, 196], 128], [44.2, 45.0, 0.05, [150, 80, 62], 128], [45.0, 45.7, 0.06, [56, 56, 60], 128],
       [46.2, 46.9, 0.46, [168, 162, 150], 128, 0.15], [46.15, 46.95, 0.52, [190, 184, 172], 128, 0.15]] });
-    // palomas: grupos pequeños por toda la explanada y en el paseo anular; una bandada que levanta el vuelo
+    // palomas: grupos pequeños por toda la explanada y en el paseo anular
     for (let k = 0; k < 30; k++) { const a = hash2(k, 61) * 6.28, r = k < 24 ? 4 + Math.sqrt(hash2(k, 63)) * 40 : 47.8 + hash2(k, 65) * 2;
       W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a, { n: 6 + Math.floor(hash2(k, 67) * 12), r: 1.2 + hash2(k, 69) * 2.4 }); }
-    W('flock', c[0] - 12, c[1] - 18, 0.6, { n: 28 });
+    // FX-suelo: sin bandada en vuelo (se leía como cajas negras flotando en el cielo)
     for (const [a, r] of [[0.5, 48.3], [2.3, 48.3], [3.9, 48.3]]) W('cart', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a + Math.PI / 2);
     // farolas a lo largo de los paseos de las esquinas (alumbran las copas por debajo)
     for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), L = Math.hypot(k[0] - c[0], k[1] - c[1]);
@@ -638,8 +638,9 @@ function terrace(B, F, y, h) {
 }
 // banco-farola del Passeig de Gràcia (Pere Falqués, 1906): asiento curvo de trencadís blanco que abraza una farola de forja
 function bancFanal(B, F, y) {
-  const tr = [214, 212, 202], ir = [52, 56, 54];
+  const ir = [52, 56, 54];   // FX-suelo: trencadís de albedo ≤ 0,6 (antes 0,84: un bloque blanco quemado), cada pieza con su tono
   for (let k = 0; k < 10; k++) { const a0 = -2.2 + k * 0.44, a1 = a0 + 0.44, R0 = 1.25, R1 = 1.85, P = (r, a) => [Math.cos(a) * r, Math.sin(a) * r];
+    const tv = hash2(k, Math.round(y * 37)), tr = tv < 0.18 ? [128, 140, 136] : tv < 0.3 ? [150, 138, 118] : shade([152, 150, 142], 0.9 + 0.12 * hash2(k, 5));
     const [x0, z0] = P(R0, a0), [x1, z1] = P(R0, a1), [x2, z2] = P(R1, a1), [x3, z3] = P(R1, a0);
     quad(B, F, x3, y + 0.45, z3, x2, y + 0.45, z2, x1, y + 0.45, z1, x0, y + 0.45, z0, tr, K.FURN, A0.GLOSS);
     quad(B, F, x2, y, z2, x2, y + 0.45, z2, x3, y + 0.45, z3, x3, y, z3, shade(tr, 0.92), K.FURN, A0.GLOSS);
