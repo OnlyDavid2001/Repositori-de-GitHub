@@ -42,6 +42,11 @@ window.BCN_GEO.regKind('FXPIEDRA', 100, `
     vec3 tx = texture2D(tAsD, P*vec2(0.30, 0.38)).rgb; float l = dot(tx, vec3(0.3, 0.6, 0.1));
     alb *= clamp(mix(1.0, l*1.95, nearF*0.8 + 0.2), 0.7, 1.25)*mix(0.9, 1.06, vnoise(P*0.6));
     alb *= mix(1.0, 0.84, smoothstep(0.45, 0.85, vnoise(vec2(P.x*0.9, P.y*0.04))));
+    // G1F1: arenisca de Montjuïc, cada sillar con su veta (ocre, gris o rosado) y alguna mancha de óxido
+    vec2 sb = floor(P*vec2(1.0/0.9, 1.0/0.5) + vec2(0.5*mod(floor(P.y/0.5), 2.0), 0.0));
+    float hs = hash21(sb + 0.71);
+    alb *= mix(vec3(1.0), hs < 0.33 ? vec3(1.06, 0.98, 0.86) : (hs < 0.66 ? vec3(0.95, 0.96, 0.97) : vec3(1.04, 0.95, 0.92)), 0.5*nearF + 0.15);
+    alb = mix(alb, alb*vec3(0.92, 0.74, 0.55), smoothstep(0.72, 0.9, vnoise(P*vec2(2.1, 0.7) + hs*9.0))*0.45);
     vec3 tn = texture2D(tAsN, P*vec2(0.30, 0.38)).xyz*2.0 - 1.0; N = normalize(n + (T*tn.x + Bv*tn.y)*1.0*nearF);`);
 // barandilla de vidrio (FX3): el material de detalle no tiene transparencia, así que el panel pinta una versión atenuada de lo
 // que hay DETRÁS (el muro del balcón, la balconera y el suelo de la terraza), con el reflejo del cielo encima, algo oscuro y

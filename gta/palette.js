@@ -149,4 +149,9 @@ window.BCN_PAL = {
   flat(b) { return RF && RF[b] >= 0 && roofType(RF[b]) !== 1; },
   fam(b) { return FM ? FM[b] : F.periferia; },
 };
+// ------------------------------------------------------------------ G1F (fachadas)
+// G1F2/G1F3: Sarrià-Pedralbes menos blanco (el jurado: «fachadas blancas quemadas, sin ocre»): crema, ocre, siena clara y algún
+// rosado de vila. Sustituye la fila de la tabla de arriba sin tocarla (WF se lee en cada pick)
+WF[FAMS.indexOf('sarria_pedralbes')] = [[234, 226, 210, 1.1], [230, 212, 178, 1.8], [218, 200, 168, 1.5], [216, 186, 140, 1.3], [206, 196, 180, 0.8],
+  [196, 150, 112, 0.6], [224, 204, 166, 1.1], [214, 178, 150, 0.6]];
 })();

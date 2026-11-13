@@ -73,7 +73,7 @@ window.BCN_DETAILS = { init(ctx) {
         if (style === 'modernista' && !U) { box(W1, F, c - 0.55, c + 0.55, yt + 0.18, yt + 0.34, 0, 0.13, u, K.STUCCO); box(W1, F, c - 0.22, c + 0.22, yt + 0.34, yt + 0.5, 0, 0.1, u, K.STUCCO); }
         else if (style === 'clasico' && !U) box(W1, F, tt - 0.2, ct + 0.2, yt + 0.18, yt + 0.26, 0, 0.24, shade(u, 1.05), K.STUCCO);
         if (!U && style !== 'sobrio') { box(W1, F, a - 0.12, a + 0.12, k + 0.12, P - 0.22, 0, 0.1, shade(u, 0.94), K.STUCCO); box(W1, F, a - 0.19, a + 0.19, P - 0.22, P - 0.1, 0, 0.17, shade(u, 1.02), K.STUCCO); }
-        if (style === 'modernista' || (style === 'clasico' && D % 2 === 0)) rect(W1, F, a + 0.13, a + bw - 0.13, P - 0.52, P - 0.14, 0.012, p, K.SGRAF);
+        if (style === 'modernista' || (style === 'clasico' && D % 2 === 0)) rect(W1, F, a + 0.13, a + bw - 0.13, P - 0.52, P - 0.14, 0.02, p, K.SGRAF);
         // balcón
         if (!U) {
           const full = D === 1 && rr[2] < 0.6, te = full ? bw / 2 - 0.04 : Math.min(1.05, bw / 2 - 0.05), jt = D === 1 ? 1.35 : 1.05, e0 = c - te, e1 = c + te;

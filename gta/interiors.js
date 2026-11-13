@@ -27,8 +27,8 @@ const SH = { CAJA: 0, REDONDO: 1, BOTELLA: 2, LOMO: 3, HERRAMIENTA: 4, GAFAS: 5,
 const TYPES = [
   { n: 'FORN DE PA', w: 10, sign: ['#6b3d14', '#f6e8c9'], awn: [150, 90, 40], wall: [226, 205, 170], floor: [FL.DAMERO, [176, 104, 72], [206, 160, 120]], warm: 0.85, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [150, 105, 60]], far: [LY.MOSTRADOR, [140, 96, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 160, 90], pal: PAL.PAN, shape: SH.REDONDO },
-  { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [236, 240, 238], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
-    back: [BACK.ESTANTES, [230, 232, 230]], far: [LY.MOSTRADOR, [232, 236, 234]], near: [LY.ISLA, [225, 228, 226]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
+  { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [206, 214, 210], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
+    back: [BACK.ESTANTES, [200, 204, 200]], far: [LY.MOSTRADOR, [204, 208, 206]], near: [LY.ISLA, [198, 200, 198]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
   { n: 'FERRETERIA', w: 4, sign: ['#2b2b2f', '#f2c230'], awn: [60, 60, 66], wall: [168, 164, 156], floor: [FL.TERRAZO, [120, 116, 110], [156, 150, 140]], warm: 0.4, lamp: LAMP.TUBOS,
     back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.ISLA, [92, 92, 98]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
   { n: 'BAR', w: 13, sign: ['#7c1d22', '#f6e8c9'], awn: [166, 36, 33], wall: [98, 62, 44], floor: [FL.DAMERO, [44, 40, 38], [190, 180, 160]], warm: 1.0, lamp: LAMP.CALIDA,
@@ -41,9 +41,9 @@ const TYPES = [
     back: [BACK.ESTANTES, [120, 130, 110]], far: [LY.CUBOS, [70, 80, 76]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CUBOS, [60, 70, 66]], acc: [200, 80, 120], pal: PAL.FLORES, shape: SH.REDONDO },
   { n: 'RESTAURANT', w: 9, sign: ['#3a1512', '#e9cf8a'], awn: [110, 30, 34], wall: [186, 150, 118], floor: [FL.TARIMA, [96, 64, 40], [96, 64, 40]], warm: 0.95, lamp: LAMP.CALIDA,
     back: [BACK.CUADROS, [90, 56, 36]], far: [LY.MANTELES, [70, 44, 30]], near: [LY.MANTELES, [70, 44, 30]], shelf: [LY.NADA, [0, 0, 0]], acc: [236, 232, 220], pal: PAL.BOTELLAS, shape: SH.BOTELLA },
-  { n: 'PERRUQUERIA', w: 7, sign: ['#2b2b2f', '#f3d7e0'], awn: [60, 60, 66], wall: [232, 224, 226], floor: [FL.BALDOSA, [200, 196, 196], [150, 146, 148]], warm: 0.45, lamp: LAMP.FOCOS,
+  { n: 'PERRUQUERIA', w: 7, sign: ['#2b2b2f', '#f3d7e0'], awn: [60, 60, 66], wall: [210, 198, 200], floor: [FL.BALDOSA, [200, 196, 196], [150, 146, 148]], warm: 0.45, lamp: LAMP.FOCOS,
     back: [BACK.ESPEJOS, [40, 40, 44]], far: [LY.SILLONES, [30, 30, 34]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.NADA, [0, 0, 0]], acc: [210, 120, 150], pal: PAL.VARIADO, shape: SH.BOTELLA },
-  { n: 'MODA', w: 7, sign: ['#151517', '#f2f0ea'], awn: [219, 204, 168], wall: [236, 230, 220], floor: [FL.TARIMA, [190, 160, 120], [190, 160, 120]], warm: 0.6, lamp: LAMP.FOCOS,
+  { n: 'MODA', w: 7, sign: ['#151517', '#f2f0ea'], awn: [219, 204, 168], wall: [212, 204, 190], floor: [FL.TARIMA, [190, 160, 120], [190, 160, 120]], warm: 0.6, lamp: LAMP.FOCOS,
     back: [BACK.PERCHERO, [200, 190, 170]], far: [LY.BURRAS, [160, 160, 165]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.MANIQUIES, [226, 220, 210]], acc: [20, 20, 24], pal: PAL.ROPA, shape: SH.CAJA },
   { n: 'GELATERIA', w: 3, sign: ['#d9668a', '#ffffff'], awn: [230, 150, 170], wall: [190, 228, 214], floor: [FL.DAMERO, [240, 240, 236], [240, 170, 190]], warm: 0.5, lamp: LAMP.FOCOS,
     back: [BACK.PIZARRAS, [240, 236, 228]], far: [LY.MOSTRADOR, [244, 240, 232]], near: [LY.MESAS, [226, 150, 170]], shelf: [LY.NADA, [0, 0, 0]], acc: [240, 120, 150], pal: PAL.HELADO, shape: SH.REDONDO },
@@ -51,15 +51,15 @@ const TYPES = [
     back: [BACK.PIZARRAS, [84, 56, 36]], far: [LY.MOSTRADOR, [96, 64, 40]], near: [LY.MESAS, [70, 48, 32]], shelf: [LY.NADA, [0, 0, 0]], acc: [230, 200, 140], pal: PAL.PAN, shape: SH.REDONDO },
   { n: 'QUEVIURES', w: 10, sign: ['#5c3b16', '#f6e8c9'], awn: [166, 36, 33], wall: [226, 214, 180], floor: [FL.DAMERO, [206, 196, 174], [150, 70, 56]], warm: 0.7, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [140, 100, 60]], far: [LY.MOSTRADOR, [130, 92, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 86, 54]], acc: [190, 60, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
-  { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [240, 240, 238], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
-    back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.ISLA, [228, 230, 232]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
+  { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [212, 212, 208], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
+    back: [BACK.GAFAS, [214, 214, 210]], far: [LY.MOSTRADOR, [204, 204, 200]], near: [LY.ISLA, [198, 200, 202]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
   { n: 'PAPERERIA', w: 4, sign: ['#b8401c', '#fff4c9'], awn: [219, 204, 168], wall: [200, 216, 232], floor: [FL.BALDOSA, [196, 190, 176], [150, 146, 136]], warm: 0.5, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [220, 220, 214]], far: [LY.MOSTRADOR, [70, 110, 160]], near: [LY.ISLA, [210, 206, 196]], shelf: [LY.TARIMA, [60, 100, 150]], acc: [230, 180, 40], pal: PAL.VARIADO, shape: SH.CAJA },
   { n: 'FORMATGERIA', w: 3, sign: ['#6b5a1e', '#fff4c9'], awn: [150, 120, 40], wall: [232, 220, 188], floor: [FL.DAMERO, [220, 210, 190], [80, 68, 56]], warm: 0.8, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [130, 92, 54]], far: [LY.MOSTRADOR, [228, 224, 212]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 150, 40], pal: PAL.QUESO, shape: SH.REDONDO },
   // solo en comercios anchos (lo decide shopPlan): w = 0 lo deja fuera del sorteo general
-  { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [238, 240, 240], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
-    back: [BACK.ESTANTES, [225, 228, 230]], far: [LY.LINEALES, [228, 230, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
+  { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [204, 208, 206], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
+    back: [BACK.ESTANTES, [184, 188, 190]], far: [LY.LINEALES, [190, 192, 194]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
 ];
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
 const WSUM = TYPES.reduce((s, t) => s + t.w, 0);
@@ -487,19 +487,59 @@ vec3 shGlass(vec3 room, vec3 V, vec3 N){
   float k = clamp(0.07 + 0.93*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0), lum = dot(room, vec3(0.30, 0.59, 0.11));
   // al anochecer la tienda brilla más, pero lo claro sube poco (con la cadena HDR un color claro florece por encima de ~1,6),
   // lo oscuro sube más y las luminarias (que ya pasan de 1) se quedan como de día
-  float g = mix(1.05, mix(mix(2.2, 1.5, smoothstep(0.18, 0.62, lum)), 1.05, smoothstep(1.2, 2.4, lum)), uDusk);
+  // G1F2: de día el interior se ve MÁS OSCURO que la fachada al sol (como en las fotos: el escaparate es un hueco con género, no
+  // una pantalla), y lo muy claro (paredes blancas de farmacia, óptica, súper) se comprime para que no se queme ni de día ni de noche
+  // G1F3: compresión más fuerte desde gris medio (el fondo claro ya no se lee como una caja blanca vacía) y de día algo más oscuro
+  room /= 1.0 + 1.1*max(lum - 0.30, 0.0)*(1.0 - smoothstep(1.4, 2.6, lum));
+  float g = mix(0.50, mix(mix(2.0, 1.35, smoothstep(0.18, 0.62, lum)), 1.0, smoothstep(1.2, 2.4, lum)), uDusk);
   // de noche cerrada la exposición sube algo más (el ojo se adapta). De madrugada el comercio está cerrado y queda una luz de vigilancia
   g *= (1.0 - 0.12*uNight)*(1.0 - 0.93*uLate*uDusk);
-  return emit(room, g)*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
+  // G1F3: el reflejo pesa más (Fresnel algo más abierto) y lo que se refleja por debajo de ~20 grados es la fachada de enfrente,
+  // en sombra (oscura y templada), no la bruma clara del horizonte: el vidrio se lee como vidrio y no como un panel gris
+  k = clamp(max(k, 0.11 + 0.89*pow(1.0 - max(dot(N, V), 0.0), 2.4)), 0.0, 1.0);
+  vec3 r = reflect(-V, N), env = envRefl(r, 0.0);
+  float opp = 1.0 - smoothstep(0.05, 0.45, r.y);
+  env = mix(env, env*vec3(0.42, 0.38, 0.34)*(0.85 + 0.3*vnoise(vec2(atan(r.z, r.x)*40.0, r.y*12.0))), opp*(1.0 - 0.6*uDusk));
+  return emit(room, g)*(1.0 - k) + env*k*(1.0 - 0.4*uDusk);
+}
+// G1F3 · ¿cierra este comercio a esta hora? De noche cerrada la mayoría baja la persiana metálica (hacia las 21–22 h); bares,
+// restaurantes y cafés siguen casi todos abiertos, y alguna farmacia de guardia. tp = tipo (fila de TYPES), sd = semilla del local
+float shClosed(float tp, float sd){
+  float open = (tp > 2.5 && tp < 3.5) || (tp > 6.5 && tp < 7.5) || (tp > 10.5 && tp < 11.5) ? 0.22 : (tp > 0.5 && tp < 1.5 ? 0.7 : 1.0);
+  float frac = (0.86*smoothstep(0.45, 0.95, uNight) + 0.1*uLate)*open;
+  return step(hash21(vec2(sd, 17.3)), frac);
 }`;
 regKind('SHOPWIN', 20, `
     float sw = vCol.r*16.0, stb = floor(vCol.g*255.0 + 0.5), stp = mod(stb, 32.0), sfl = floor(stb/32.0);
     vec2 so = vec2(vInfo.x*sw, vInfo.y*6.0 - 1.0);
     float spx = max(max(fwidth(so.x), fwidth(so.y)), 1e-4);
     vec3 stu = T*(mod(sfl, 2.0) > 0.5 ? -1.0 : 1.0);
-    vec3 srm = shRoom(so, vec3(-dot(V, stu), -V.y, dot(V, n)), vec3(sw, vInfo.z*8.0, vInfo.w*16.32), stp, floor(vCol.b*255.0 + 0.5), spx, dist, step(1.5, mod(sfl, 4.0)));
-    vec3 c = shGlass(srm, V, N);
-    FRAG(c); return;`, SHOP_DECL);
+    float ssd = floor(vCol.b*255.0 + 0.5);
+    if (shClosed(stp, ssd) < 0.5) {
+      vec3 srm = shRoom(so, vec3(-dot(V, stu), -V.y, dot(V, n)), vec3(sw, vInfo.z*8.0, vInfo.w*16.32), stp, ssd, spx, dist, step(1.5, mod(sfl, 4.0)));
+      vec3 c = shGlass(srm, V, N);
+      FRAG(c); return;
+    }
+    // G1F3 · cerrado: persiana metálica bajada sobre el vidrio (lamas onduladas cada 8 cm, guía y barra de abajo), galvanizada o
+    // pintada, con mugre abajo y, en la mitad de los locales, pintadas. Sigue al sombreado común (sol, ambiente y farolas)
+    float hc = hash21(vec2(ssd, 4.1)), sq = so.y/0.08, sfw = fwidth(sq), sfar = smoothstep(0.3, 0.9, sfw);
+    alb = hc < 0.5 ? vec3(0.50, 0.51, 0.50) : (hc < 0.72 ? vec3(0.36, 0.37, 0.38) : (hc < 0.86 ? vec3(0.22, 0.32, 0.25) : vec3(0.36, 0.18, 0.15)));
+    alb *= mix(0.86 + 0.28*vnoise(so*vec2(0.7, 3.0) + ssd), 1.0, sfar*0.5);
+    float sl = sin(sq*6.2832);
+    alb *= mix(0.84 + 0.16*sl, 0.95, sfar);
+    N = normalize(N + vec3(0.0, 1.0, 0.0)*cos(sq*6.2832)*0.35*(1.0 - sfar));
+    alb *= mix(0.62, 1.0, smoothstep(0.0, 0.9, so.y))*(1.0 - 0.18*smoothstep(0.55, 0.85, vnoise(so*vec2(1.3, 0.5) + ssd*3.1)));
+    if (hash21(vec2(ssd, 8.9)) < 0.55) {
+      // grafiti: manchas de pintura de dos colores con contorno oscuro, en la mitad baja
+      // trazos de firma (tags): bandas finas y onduladas de un color apagado con algún relleno, solo en una franja a media altura
+      vec2 gq = so*vec2(2.2, 3.2) + ssd*1.7;
+      float band = (1.0 - smoothstep(0.35, 0.95, abs(so.y - 1.0 - 0.25*sin(so.x*1.3 + ssd))))*step(0.35, vnoise(vec2(so.x*0.8, ssd)));
+      float gn = vnoise(gq)*0.6 + vnoise(gq*2.3)*0.4, line = 1.0 - smoothstep(0.012, 0.035, abs(gn - 0.5));
+      float fill = smoothstep(0.62, 0.66, gn);
+      vec3 gc = mix(vec3(0.42), 0.42 + 0.3*cos(6.2832*(hash21(vec2(ssd, 2.2)) + vec3(0.0, 0.33, 0.67))), 0.7);
+      alb = mix(alb, mix(gc, vec3(0.08), 0.5*step(0.5, hash21(vec2(ssd, 5.5)))), max(line, fill*0.6)*band*(1.0 - sfar*0.6));
+    }
+    rough = 0.55; metal = 0.35;`, SHOP_DECL);
 
 // ------------------------------------------------------------------ zaguanes y pisos (tipo K.HOMEWIN): la misma técnica, otra habitación
 // Empaquetado por vértice (lo escribe roomQuad): color.r = ancho/16 m · color.g = modo (0 zaguán, 1 piso) + 2·sentido del marco ·
@@ -555,6 +595,13 @@ vec4 hmFurn(vec2 p, float W, float sd, float px){
 vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist){
   float h1 = hash21(vec2(sd, 3.7)), h2 = hash21(vec2(sd, 9.1)), h3 = hash21(vec2(sd*1.3, 5.3));
   bool zg = mode < 0.5;
+  // G1F3 · de lejos (> ~130 m) no se traza la habitación: su tono medio, con la misma regla de encendido (coste de fragmento)
+  if (!zg && dist > 130.0) {
+    float fon = homeOn(fract(sd*0.6180339 + 0.21));
+    if (mode > 1.5) fon = max(fon, homeOn(fract(sd*0.3819660 + 0.63)));
+    vec3 ft = h3 < 0.05 ? vec3(0.55, 0.72, 1.25) : (h3 < 0.14 ? vec3(0.92, 0.98, 1.08) : vec3(1.14, 0.90, 0.62));
+    return hmWall(h1)*0.6*((0.44 + 0.2*h3)*(1.0 - 0.92*uDusk)*0.7 + fon*1.2)*mix(vec3(1.0), ft, fon) + ft*fon*0.35;
+  }
   o = clamp(o, vec2(0.02), sz.xy - 0.02);
   d.z = max(d.z, 0.03);
   d += step(abs(d), vec3(1e-4))*2e-4;
@@ -629,8 +676,12 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     tint = vec3(1.08, 0.94, 0.74);
   } else {
     on = homeOn(fract(sd*0.6180339 + 0.21));
+    // G1F1: ventana tras visillo (todas las de la fachada): la regla de antes, por celda de vidrio, encendía a menudo dos
+    // trozos por ventana (~1 de cada 2 con luz al anochecer). Mismo reparto, con dos sorteos
+    if (mode > 1.5) on = max(on, homeOn(fract(sd*0.3819660 + 0.63)));
     day = 0.44 + 0.2*h3;
-    tint = h3 < 0.12 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.25 ? vec3(0.92, 0.98, 1.08) : vec3(1.10, 0.92, 0.70));
+    // G1F1: casi todas cálidas (bombilla), como en las fotos del usuario; alguna LED fría y algún televisor
+    tint = h3 < 0.05 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.14 ? vec3(0.92, 0.98, 1.08) : vec3(1.14, 0.90, 0.62));
   }
   float lv = day*(1.0 - 0.92*uDusk)*mix(1.0, 0.55, dep) + on*1.5*mix(1.0, 0.75, dep);
   vec3 lamp = glow*mix(zg ? step(0.2, h2)*0.35 : 0.0, 1.0, on);
@@ -643,8 +694,8 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     float cw = 0.12 + 0.2*h2, fold = 0.82 + 0.18*cos(cp.x*38.0)*(1.0 - smoothstep(0.01, 0.04, px));
     float cm = max(shR(cp, vec2(0.25, 0.0), vec2(0.5 + cw, sz.y), px), shR(cp, vec2(sz.x - 0.5 - cw, 0.0), vec2(sz.x - 0.25, sz.y), px));
     vec3 cc = h1 > 0.5 ? vec3(0.92, 0.88, 0.80) : 0.55 + 0.25*cos(6.2832*(h3 + vec3(0.1, 0.4, 0.7)));
-    float sheer = step(0.7, h3)*0.35;
-    c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk)), max(cm*0.92, sheer));
+    float sheer = mode > 1.5 ? step(0.42, h3)*mix(0.42, 0.62, h1) : step(0.7, h3)*0.35;   // G1F1: ventanas cerradas, más visillos
+    c = mix(c, cc*fold*(0.45*lv + 0.2*on + 0.42*(1.0 - uDusk))*mix(vec3(1.0), tint, on), max(cm*0.92, sheer));   // G1F1: la tela toma el color de la lámpara
   } else {
     // zaguán: una planta grande en su maceta
     float tp = 2.2/d.z;
@@ -661,7 +712,8 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
 // vidrio de portal o de ventana: el interior y el reflejo con el Fresnel de shGlass. En el portal, reja de forja sobre el vidrio
 vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px, float sd){
   vec3 r = reflect(-V, N);
-  float k = clamp((mode < 0.5 ? 0.07 : 0.10) + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0);
+  // G1F3: Fresnel más abierto en los pisos (vistos desde la calle, en rasante, brillan del cielo como en las fotos)
+  float k = clamp(mode < 0.5 ? 0.07 + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2) : 0.13 + 0.87*pow(1.0 - max(dot(N, V), 0.0), 2.2), 0.0, 1.0);
   vec3 c = emit(room, 1.0)*(1.0 - k) + envRefl(r, 0.0)*k*(1.0 - 0.4*uDusk) + uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.0;
   if (mode < 0.5) {
     // reja: barrotes cada 12 cm, dos travesaños y una banda de anillos; de lejos se funde a su tono medio
@@ -679,7 +731,7 @@ vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px, f
   return c;
 }`;
 regKind('HOMEWIN', 21, `
-    float hw = vCol.r*16.0, hb = floor(vCol.g*255.0 + 0.5), hmode = mod(hb, 2.0);
+    float hw = vCol.r*16.0, hb = floor(vCol.g*255.0 + 0.5), hmode = mod(hb, 2.0) + step(3.5, hb);   // G1F1: 2 = piso tras visillo
     vec2 ho = vec2(vInfo.x*hw, vInfo.y*6.0 - 1.0);
     float hpx = max(max(fwidth(ho.x), fwidth(ho.y)), 1e-4);
     vec3 htu = T*(mod(floor(hb/2.0), 2.0) > 0.5 ? -1.0 : 1.0);
@@ -694,9 +746,13 @@ function roomQuad(B, F, u0, u1, y0, y1, d, rm) {
   const X = v => Math.max(0, Math.min(255, Math.round((v - rm.x0) / W * 255))), Y = v => Math.max(0, Math.min(255, Math.round((v - rm.yF + 1) / 6 * 255)));
   const h = Math.min(255, Math.round(rm.H / 8 * 255)), dd = Math.min(250, Math.round(rm.D / 16.32 * 255));
   const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;
-  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [Wb, rm.mode + 2 * dir, rm.seed], K.HOMEWIN,
+  quad(B, F, u0, y0, d, u1, y0, d, u1, y1, d, u0, y1, d, [Wb, rm.mode + 2 * dir + (rm.veil ? 4 : 0), rm.seed], K.HOMEWIN,
     [X(u0), Y(y0), h, dd, X(u1), Y(y0), h, dd, X(u1), Y(y1), h, dd, X(u0), Y(y1), h, dd]);
 }
+
+// G1F1: desgaste de los paños de muro de la planta baja (churretes bajo la faja y zócalo sucio): canal auxiliar de facades.js
+// (env.wa). Todos con el mismo borde de referencia, F1, para que los solapes de los paños den lo mismo
+const wa = (env, F, u0, u1, y0, y1) => env.wa ? env.wa(F, u0, u1, y0, y1, env.F1) : undefined;
 
 const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramData, paramSize: [PARW, PARH], roomQuad, log: null, init(ctx) {
   const { scene } = ctx;
@@ -734,7 +790,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       const ww = Math.min(street ? 1.25 : 1.05, bw - 0.9), tt = c - ww / 2, ct = c + ww / 2;
       const st = gl + 1.0, yt = Math.min(F1 - 0.45, st + (street ? 1.9 : 1.45));
       const gc = street && shops ? stone : wallC, gk = street && shops ? KSB : K.STUCCO;
-      if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk); continue; }
+      if (yt - st < 0.6) { rect(W0, F, a, a + bw, yB, F1, 0, gc, gk, wa(env, F, a, a + bw, yB, F1)); continue; }
       windowHole(W0, F, a, a + bw, tt, ct, yB, F1, st, yt, street ? 0.3 : 0.2, gc, gk, rr[0] < 0.6 ? 0.2 + rr[1] * 0.5 : 0);
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
@@ -748,6 +804,8 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // todos sus vidrios: origen x0 (u del extremo), ancho W, suelo yF, alto H y fondo D.
   const opening = (run, W) => { const Uw = run.bw * 0.84, B_ = W * run.bw + (run.bw - Uw) / 2; return [B_, B_ + Uw]; };
   const topOf = (env, gl) => Math.min(env.F1 - 1.0, gl + 3.4);
+  // persianas metálicas: galvanizado, gris oscuro, verde y granate de carpintería vieja (pintura gastada: patrón 3 no; lamas: 1)
+  const SHUTC = [[150, 152, 150], [150, 152, 150], [128, 130, 132], [88, 92, 96], [56, 84, 66], [104, 52, 46]], SHUTA = pbrAux(0.55, 0.6, 1, 0);
   function shopPlan(env, run, gls) {
     const { nb, bw, N, F } = run, list = [], of = [];
     const maxB = Math.max(1, Math.min(4, Math.floor(14 / bw)));
@@ -755,14 +813,27 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       for (let j = 0; j < k; j++) { const w0 = a + Math.round(n * j / k), w1 = a + Math.round(n * (j + 1) / k); if (w1 > w0) list.push({ w0, w1 }); } };
     if (N >= 0) { seg(0, N); seg(N + 1, nb); } else seg(0, nb);
     const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;     // ¿la tangente T del shader va en el sentido de u?
+    const prev = [];   // G1F3: en un mismo frente no se repite el tipo de los dos comercios anteriores (antes salían dos «FORN DE PA» seguidos)
     for (const s of list) {
       env.rnd(10, run.i, s.w0);
       const r = [R(), R(), R(), R(), R(), R()], n = s.w1 - s.w0;
       s.type = API.force >= 0 ? API.force : n >= 3 && n * bw >= 9.5 && r[0] < 0.3 ? SUPER : pickType(r[1]);
+      for (let j = 1; j < 4 && API.force < 0 && prev.indexOf(s.type) >= 0; j++) s.type = pickType((r[1] * 7.13 + j * 0.377) % 1);
+      prev.unshift(s.type); prev.length = Math.min(prev.length, 2);
       s.T = TYPES[s.type];
       s.door = s.w0 + Math.min(n - 1, (r[2] * n) | 0);
       s.sign = r[3] < 0.93; s.awn = r[4] < 0.35; s.seed = 1 + ((r[5] * 254) | 0);
       s.uA = opening(run, s.w0)[0]; s.uB = opening(run, s.w1 - 1)[1];
+      // G1F2 · persiana metálica: ~9 % de los locales cerrados (todas bajadas, la de la puerta también) y ~22 % con alguna
+      // bajada a medias (el que abre tarde o el que guarda el escaparate). r2 de un sorteo propio para no mover los de arriba
+      const r2 = [R(), R(), R(), R()];
+      s.shut = r2[0] < 0.09 ? 2 : r2[0] < 0.31 ? 1 : 0; s.shutR = r2[1]; s.shutC = SHUTC[(r2[2] * SHUTC.length) | 0];
+      // G1F2 · toldo solo si cabe: se mide el paso libre delante (hasta la fachada de enfrente) en los dos extremos y el centro;
+      // en callejones (< 4,2 m) no hay toldo y si no, sale como mucho a un cuarto del paso (antes cruzaba las calles del Gòtic)
+      if (s.awn && run.r && ctx.city) { const r_ = run.r; let w = 9;
+        for (const u of [s.uA + 0.2, (s.uA + s.uB) / 2, s.uB - 0.2]) for (let t = 0.6; t < w; t += 0.3) {
+          if (ctx.city.coverAt(r_.ax + r_.tx * u + r_.nx * t, r_.az + r_.tz * u + r_.nz * t, -1) > -1e8) { w = t; break; } }
+        s.awnD = Math.min(1.35, w * 0.25); if (w < 4.2) s.awn = false; }
       s.yF = gls[s.door] + 0.03; s.top = -1e9;
       for (let W = s.w0; W < s.w1; W++) { s.top = Math.max(s.top, topOf(env, gls[W])); of[W] = s; }
       const Wd = Math.min(16, s.uB - s.uA + 0.6), H = Math.min(7.9, Math.max(3.3, s.top - s.yF + 0.2)), D = Math.max(4, Math.min(5.5, Wd * 0.9));
@@ -800,11 +871,11 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const a = W * bw, [B_, V_] = opening(run, W), Uw = V_ - B_;
     const SC = shopCols(env), KS = SC.kS;
     const top = topOf(env, gl), sill = gl + 0.5, sc = SC.sc, dk = shade(sc, 0.78), base = shade(sc, 0.86), met = SC.met;
-    rect(W0, F, a, B_, yB, F1, 0, sc, KS); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS); rect(W0, F, B_, V_, top, F1, 0, sc, KS);
+    rect(W0, F, a, B_, yB, F1, 0, sc, KS, wa(env, F, a, B_, yB, F1)); rect(W0, F, V_, a + bw, yB, F1, 0, sc, KS, wa(env, F, V_, a + bw, yB, F1)); rect(W0, F, B_, V_, top, F1, 0, sc, KS, wa(env, F, B_, V_, top, F1));
     jamb(W0, F, B_, sill, top, -0.4, 0, dk, KS); jamb(W0, F, V_, sill, top, -0.4, 0, dk, KS);
     hpl(W0, F, B_, V_, top, -0.4, 0, shade(sc, 0.68), KS);
     if (W !== s.door) {
-      rect(W0, F, B_, V_, yB, sill, 0, base, KS); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
+      rect(W0, F, B_, V_, yB, sill, 0, base, KS, wa(env, F, B_, V_, yB, sill)); hpl(W0, F, B_, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       glassQuad(W0, F, B_, V_, sill, top, -0.36, s, false);
       box(W0, F, B_ + Uw * 0.5 - 0.03, B_ + Uw * 0.5 + 0.03, sill, top, -0.38, -0.3, met, K.METAL);
       box(W0, F, B_, V_, sill, sill + 0.08, -0.4, -0.3, met, K.METAL);
@@ -813,7 +884,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     } else {
       // puerta de vidrio centrada, con vidrios fijos a los lados y montante encima. El umbral baja hasta la acera
       const dc = (B_ + V_) / 2, x0 = dc - 0.55, x1 = dc + 0.55, th = gl + 0.03, dt = Math.min(top - 0.3, th + 2.25);
-      rect(W0, F, B_, x0, yB, sill, 0, base, KS); rect(W0, F, x1, V_, yB, sill, 0, base, KS); rect(W0, F, x0, x1, yB, th, 0, base, KS);
+      rect(W0, F, B_, x0, yB, sill, 0, base, KS, wa(env, F, B_, x0, yB, sill)); rect(W0, F, x1, V_, yB, sill, 0, base, KS, wa(env, F, x1, V_, yB, sill)); rect(W0, F, x0, x1, yB, th, 0, base, KS, wa(env, F, x0, x1, yB, th));
       hpl(W0, F, B_, x0, sill, -0.4, 0, shade(sc, 0.72), KS); hpl(W0, F, x1, V_, sill, -0.4, 0, shade(sc, 0.72), KS);
       jamb(W0, F, x0, th, sill, -0.4, 0, dk, KS); jamb(W0, F, x1, th, sill, -0.4, 0, dk, KS);
       hpl(W0, F, x0, x1, th, -0.4, 0, shade(sc, 0.9), KS);
@@ -831,9 +902,19 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
         box(W1, F, B_, V_, top - 0.06, top, -0.4, -0.3, met, K.METAL, 2);
       }
     }
-    if (s.awn) { const ac = s.T.awn;
-      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, top - 0.7, 1.35, B_, top - 0.7, 1.35, ac, K.AWN);
-      quad(W1, F, B_, top - 0.7, 1.35, V_, top - 0.7, 1.35, V_, top - 0.9, 1.35, B_, top - 0.9, 1.35, ac, K.AWN); }
+    if (s.awn) { const ac = s.T.awn, aD = s.awnD || 1.35, aY = top - 0.7 * aD / 1.35;
+      quad(W0, F, B_, top - 0.02, 0.05, V_, top - 0.02, 0.05, V_, aY, aD, B_, aY, aD, ac, K.AWN);
+      quad(W1, F, B_, aY, aD, V_, aY, aD, V_, aY - 0.2, aD, B_, aY - 0.2, aD, ac, K.AWN); }
+    // persiana metálica enrollable delante del vidrio (por delante de marcos y montantes, -0,27 m), con guías y barra de abajo
+    if (s.shut) { const isD = W === s.door, h0 = isD ? gl + 0.03 : sill;
+      const bot = s.shut === 2 ? h0 : W === s.door ? top + 1 : top - (top - h0) * (0.18 + 0.5 * ((s.shutR * 7.3 + W * 0.37) % 1));
+      if (bot < top - 0.05 && (s.shut === 2 || ((s.shutR * 13.1 + W * 0.61) % 1) < 0.6)) {
+        const bc = shade(s.shutC, 0.8);
+        rect(W0, F, B_ + 0.04, V_ - 0.04, bot, top, -0.27, s.shutC, K.PBR, SHUTA);
+        box(W0, F, B_ + 0.04, V_ - 0.04, bot - 0.05, bot, -0.29, -0.25, bc, K.METAL, 2);
+        if (W1) { box(W1, F, B_ + 0.01, B_ + 0.05, h0, top, -0.3, -0.26, bc, K.METAL, 4); box(W1, F, V_ - 0.05, V_ - 0.01, h0, top, -0.3, -0.26, bc, K.METAL, 4); }
+      }
+    }
   }
   // lo que es del comercio entero: rótulo centrado sobre sus vanos y, en la farmacia, la cruz luminosa en banderola
   function shopFront(env, run, s) {
@@ -841,7 +922,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const sv0 = s.top + 0.12, hmax = Math.min(0.56, F1 - 0.2 - sv0);
     if (s.sign && hmax > 0.22) {
       const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
-      quad(W0, F, uc - w / 2, y, 0.07, uc + w / 2, y, 0.07, uc + w / 2, y + h, 0.07, uc - w / 2, y + h, 0.07, [255, 255, 255], K.SIGN, signAux(s.type));
+      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
       box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, shopCols(env).met, K.METAL);   // faja del rótulo, a juego
     }
     if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
@@ -925,9 +1006,9 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   function portalBay(env, run, a, c, gl, yB, rr) {
     const { W0, W1, F1, stone, wood, glass, iron } = env, { F, bw } = run, KSB = K.FXPIEDRA !== undefined ? K.FXPIEDRA : K.STONE;   // n3 E4: sillería sin teñir
     const dw = Math.min(1.2, bw / 2 - 0.35), dtop = Math.min(F1 - 0.55, gl + 3.5), x0 = c - dw, x1 = c + dw, sc = stone;
-    rect(W0, F, a, x0, yB, F1, 0, sc, KSB); rect(W0, F, x1, a + bw, yB, F1, 0, sc, KSB); rect(W0, F, x0, x1, dtop, F1, 0, sc, KSB);
+    rect(W0, F, a, x0, yB, F1, 0, sc, KSB, wa(env, F, a, x0, yB, F1)); rect(W0, F, x1, a + bw, yB, F1, 0, sc, KSB, wa(env, F, x1, a + bw, yB, F1)); rect(W0, F, x0, x1, dtop, F1, 0, sc, KSB, wa(env, F, x0, x1, dtop, F1));
     // umbral a ras del peldaño y zócalo debajo: sin huecos aunque la acera baje por un lado (calle en cuesta)
-    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, KSB); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), KSB);
+    hpl(W0, F, x0, x1, gl + 0.12, -0.45, 0, sc, KSB); rect(W0, F, x0, x1, yB, gl + 0.12, 0, shade(sc, 0.85), KSB, wa(env, F, x0, x1, yB, gl + 0.12));
     jamb(W0, F, x0, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB); jamb(W0, F, x1, gl, dtop, -0.45, 0, shade(sc, 0.6), KSB);
     hpl(W0, F, x0, x1, dtop, -0.45, 0, shade(sc, 0.5), KSB);
     // puerta de dos hojas de vidrio con reja de forja (la dibuja el shader K.HOMEWIN) y, detrás, el zaguán: estrecho, ~3,3 m
