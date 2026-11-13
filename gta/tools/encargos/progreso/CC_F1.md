@@ -42,8 +42,12 @@ Estado: **terminada** (ver «Hecho»). Capturas y scripts de medida en
 - Carga: condal.json se descarga y descomprime en paralelo con el relieve (descarga 40–50 ms, descompresión 30–100 ms); la
   espera en app.js antes de los edificios es **0 ms** (BCN_LOADT: «Datos de barrios y secciones…» y «Descargando edificios…» en
   el mismo milisegundo). Carga total en el arnés: ~17 s, como antes.
-- Por fotograma: nada. Sin geometría nueva: triángulos y llamadas iguales (la ventana F8 es HTML y se refresca 4 veces por
-  segundo solo si está abierta).
+- Por fotograma: nada. Sin geometría nueva (la ventana F8 es HTML y se refresca 4 veces por segundo solo si está abierta).
+  Medido con fps_eval.js (calidad media, 960x540): Eixample a pie 5.229.928 triángulos / 866 llamadas (28,3 s/fotograma),
+  Gòtic a pie 6.401.634 / 649 (37,3 s), aérea 1.315.294 / 304 (4,1 s): las mismas cifras que en la Fase 0 (5,2 M / 866,
+  6,4 M / 649, 1,3 M / 304); los segundos de SwiftShader varían de una ejecución a otra.
+- Capturas con F8 abierta (PAGE=1, 960x540): f8_f8_eixample.jpg y f8_f8_gotic.jpg (10:30), f8b_f8_hospitalet.jpg (23:00,
+  periferia): cero errores y avisos de consola.
 - Edificios del juego: 163.815 de 164.048 con barrio caen en el mismo barrio que el punto en polígono del juego (99,86 %; las
   diferencias son de bordes y del desfase de ~2 m entre los contornos del JSON y META); 136.197 en periferia, 3.530 en
   periferia industrial, 20 sin datos (fuera del mundo).
