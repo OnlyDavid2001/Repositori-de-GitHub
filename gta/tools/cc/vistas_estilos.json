@@ -4,5 +4,11 @@
  {"name":"contemporaneo","nota":"22@, Llacuna / Pere IV","x":14521,"z":15864,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(14521,15864,0,'contemporaneo',400); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"burgues_60_70","nota":"Sant Gervasi - Galvany, Muntaner alto","x":9751,"z":15355,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(9751,15355,0,'burgues_60_70',400); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"autarquia","nota":"el Congrés i els Indians","x":13373,"z":18206,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(13373,18206,0,'autarquia',400); if(s){s.hour=10.5; B.applyView(s);}"},
- {"name":"noucentista","nota":"Dreta de l'Eixample, Mallorca","x":11585,"z":14782,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11585,14782,0,'noucentista',400); if(s){s.hour=10.5; B.applyView(s);}"}
+ {"name":"noucentista","nota":"Dreta de l'Eixample, Mallorca","x":11585,"z":14782,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11585,14782,0,'noucentista',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"olimpico_80_90","nota":"Vila Olímpica, Salvador Espriu","x":14506,"z":14310,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(14506,14310,0,'olimpico_80_90',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"casa_obrera_xix","nota":"Raval, Riereta","x":12029,"z":13167,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(12029,13167,0,'casa_obrera_xix',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"autoconstruccion","nota":"el Carmel","x":11032,"z":18118,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11032,18118,0,'autoconstruccion',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"modernista","nota":"Quadrat d'Or, Passeig de Gràcia","x":11710,"z":14780,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11710,14780,0,'modernista',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"eixample_ornamentado","nota":"Rambla de Catalunya","x":11333,"z":14673,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11333,14673,0,'eixample_ornamentado',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"eixample_temprano","nota":"Sant Antoni, Comte Borrell","x":11445,"z":13284,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11445,13284,0,'eixample_temprano',400); if(s){s.hour=10.5; B.applyView(s);}"}
 ]

@@ -214,7 +214,13 @@ pieza('pb_olimpico', function (env, run, q) {
     if (W1) box(W1, F, q.c - 0.9, q.c + 0.9, Math.min(top - 0.4, q.gl + 2.75), Math.min(top - 0.25, q.gl + 2.9), 0, 0.05, [40, 70, 140], K.PLAIN, 7);   // franja azul del aparcamiento
     return;
   }
-  return false;
+  // ventanal de la planta baja en el muro del estilo (ladrillo u hormigón), con hojas correderas de lamas y vierteaguas de hormigón
+  const a = q.a, b = a + q.bw, w = Math.min(2.2, q.bw - 1.0), st = q.gl + 1.0, yt = Math.min(top - 0.6, st + 1.9);
+  if (yt - st < 0.6 || w < 0.8) return false;
+  env.windowHole(W0, F, a, b, q.c - w / 2, q.c + w / 2, q.yB, top, st, yt, 0.25, run.wallC, env.kw, 0);
+  const f = 0.3 + rr[1] * 0.5; rect(W0, F, q.c + w / 2 - w * f, q.c + w / 2, st, yt, -0.08, env.shutV, K.SHUT);
+  box(W0, F, q.c - w / 2 - 0.1, q.c + w / 2 + 0.1, st - 0.12, st, 0, 0.12, CONC, 19, 7);
+  if (W1) lattice(W1, F, q.c - w / 2, q.c + w / 2, st, st + 1.0, 0.04, env.marcoV, K.IRON, 0);
 });
 pieza('pilares_olimpico', function (env, run, q) {         // pbFr: pilares cuadrados de hormigón y jácena de canto
   const { W0 } = env, F = run.F, a = q.a, b = a + q.bw, pw = 0.28, c = [200, 196, 186];
@@ -348,7 +354,7 @@ pieza('pb_auto', function (env, run, q) {
 pieza('vano_auto', function (env, run, q) {
   const V = q.V, vi = V.vi, rr = q.rr, { W0, W1 } = env, F = run.F, a = q.a, b = a + q.bw, k = q.k, Pk = q.P;
   if (q.atico) return false;
-  const nueva = vi === 1 && q.top && q.nF >= 2, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
+  const nueva = vi === 1 && q.top, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
   const h = (i) => h01(env.b * 7 + q.D, q.W * 13 + i);   // irregular por casa: cada vano a su manera
   if (nueva && q.W === 0) box(W0, F, 0, q.nb * q.bw, k - 0.18, k + 0.08, 0, 0.04, CONC, 19, 3);   // canto del forjado de la ampliación
   if (h(0) < 0.14 && q.nb > 1) { wr(W0, F, a, b, k, Pk, wc, kw); return; }   // paño ciego
@@ -373,14 +379,19 @@ pieza('vano_auto', function (env, run, q) {
 });
 pieza('corona_auto', function (env, run, q) {
   const { W0, W1, C, y1, V } = env, F = run.F, L = run.L; if (C <= run.cover) return;
-  const nueva = V.vi === 1 && env.nF >= 2, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
-  wr(W0, F, 0, L, C, y1 + 0.95, wc, kw);
+  const nueva = V.vi === 1 && env.nF >= 1, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
+  if (V.vi === 0 && L > 5) {                          // casita escalonada: el peto sube y baja por tramos (cada casa a su altura)
+    const ns = Math.max(2, Math.round(L / 4.5));
+    for (let i = 0; i < ns; i++) { const u0 = L * i / ns, u1 = L * (i + 1) / ns, hh = y1 + 0.95 + ((h01(env.b, run.i * 8 + i) * 4) | 0) * 0.35;
+      wr(W0, F, u0, u1, C, hh, wc, kw); box(W0, F, u0, u1, hh, hh + 0.07, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 5); }
+  } else wr(W0, F, 0, L, C, y1 + 0.95, wc, kw);
   if (V.vi === 3) { box(W0, F, 0, L, y1 + 0.45, y1 + 0.5, -0.05, 0.08, CONC, K.STUCCO, 1);   // terraza: peto bajo y barandilla de tubo
     for (const [h0, h1] of [[y1 + 1.0, y1 + 1.05], [y1 + 0.75, y1 + 0.78]]) box(W1 || W0, F, 0, L, h0, h1, 0.02, 0.06, env.marcoV, K.METAL, 3); }
-  else box(W0, F, 0, L, y1 + 0.95, y1 + 1.02, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 1);
+  else if (V.vi !== 0 || L <= 5) box(W0, F, 0, L, y1 + 0.95, y1 + 1.02, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 1);
   const r = h01(env.b, run.i);
   if (L > 3 && r < 0.75) P.deposito(W0, F, 0.4 + r * Math.max(0, L - 2.2), y1, -0.7, h01(env.b, 9));
-  if (V.vi === 3 && W1 && L > 4) P.pergola(W1, F, 0.3, Math.min(L - 0.3, 3.4), y1 + 2.3, -0.2, [96, 90, 76]);   // sombrajo
+  if (V.vi === 3 && W1 && L > 4) { P.pergola(W1, F, 0.3, Math.min(L - 0.3, 3.4), y1 + 2.3, -2.2, [96, 90, 76]);   // sombrajo con dos pies
+    for (const u of [0.3, Math.min(L - 0.3, 3.4) - 0.08]) box(W1, F, u, u + 0.08, y1, y1 + 2.3, -2.3, -2.22, [96, 90, 76], K.WOOD, 4); }
   if ((V.vi === 1 || V.vi === 2 || r > 0.8) && L > 3) { P.esperas(W0, F, 0.3, y1 + 0.95, -0.05); P.esperas(W0, F, L - 0.3, y1 + 0.95, -0.05); }
 });
 pieza('escalera_auto', function (env, run, q) {           // escalera exterior de obra hasta la terraza del primer piso
@@ -390,7 +401,7 @@ pieza('escalera_auto', function (env, run, q) {           // escalera exterior d
   const u0 = u1 - 1.2 - n * tr, dw = 0.95, col = shade(run.wallC, 0.95);
   if (u0 < 0.3) return;
   box(W0, F, u1 - 1.2, u1, top - 0.2, top + 0.02, 0, dw + 0.1, CONC, K.STUCCO);   // rellano
-  for (let i = 0; i < n; i++) { const ua = u1 - 1.2 - (i + 1) * tr, y = top - (i + 1) * rh; box(W0, F, ua, ua + tr, y, y + rh, 0, dw, i % 2 ? CONC : shade(CONC, 0.96), K.STUCCO, 1); }
+  for (let i = 0; i < n; i++) { const ua = u1 - 1.2 - (i + 1) * tr, y = top - (i + 1) * rh; box(W0, F, ua, ua + tr, y, y + rh, 0, dw, i % 2 ? [168, 92, 64] : [156, 86, 60], K.STUCCO, 1); }
   quad(W0, F, u0, g, dw, u1 - 1.2, top - 0.2, dw, u1 - 1.2, top - 0.2 + 0.001, 0, u0, g, 0, col, env.kw);   // zanca
   quad(W0, F, u0, g, dw, u1 - 1.2, top - 0.2, dw, u1 - 1.2, top - 0.02, dw, u0, g + rh, dw, col, env.kw);
   quad(W0, F, u0, g, dw, u1 - 1.2, top - 0.2, dw, u1 - 1.2, g, dw, u0, g, dw, col, env.kw);
