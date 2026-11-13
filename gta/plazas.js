@@ -1274,11 +1274,14 @@ window.BCN_PLAZAS = { async init(ctx) {
     for (const [t, x, z, a, ex, u, v] of items) {
       if (++ni % 60 === 0) yield;
       const y = ex.y !== undefined ? ex.y : yAt(x, z), F = fr(x, z, a), h = hash2(Math.round(x * 5), Math.round(z * 5));
+      if (t === 'palm' && TRS && treeMeshes(3)) {   // FX-suelo: palmera de trees.js (3) en vez de la pieza propia
+        const sc = 0.88 + 0.26 * h; BABYLON.Quaternion.RotationYawPitchRollToRef(h * 40, 0, 0, tq); tv.set(x, y - 0.12, z); ts.set(sc, sc * (0.95 + 0.12 * ((h * 13) % 1)), sc);
+        BABYLON.Matrix.ComposeToRef(ts, tq, tv, tm); for (let q = 0; q < 16; q++) trees.m.push(tm.m[q]); trees.k.push(3); continue; }
       if (P2PIECE[t]) { const L = P2PIECE[t](Wo, F, y, h, ex, Wh); if (L) lamps.push([x, z, L]); continue; }
       if (t === 'tree') { const k = TRS && TRS.seaSp && TSP[ex.sp] !== undefined ? TRS.seaSp(x, z, TSP[ex.sp]) : TSP[ex.sp];   // G1V3: palmeras en el frente marítimo
         if (k !== undefined && treeMeshes(k)) { const sc = (ex.alc ? 0.8 : 0.88) + 0.26 * h; BABYLON.Quaternion.RotationYawPitchRollToRef(h * 40, 0, 0, tq); tv.set(x, y - 0.12, z); ts.set(sc, sc * (0.95 + 0.12 * ((h * 13) % 1)), sc);
           BABYLON.Matrix.ComposeToRef(ts, tq, tv, tm); for (let q = 0; q < 16; q++) trees.m.push(tm.m[q]); trees.k.push(k); }
-        else tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc);
+        // FX-suelo: sin pieza propia de esferas (ciprés, o sin malla de trees.js): «fuera los árboles poco currados»
         if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
       else if (P3PIECE[t]) { const L = P3PIECE[t](Wo, F, y, h, ex, { o, gAt, hAt, x, z, a, Wh }); if (L) lamps.push([x, z, L]); }
       else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); lampPts.push([x, y, z]); }
