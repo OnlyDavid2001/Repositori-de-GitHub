@@ -600,6 +600,14 @@ function valla(B, p, q, y0, y1) {
   L.q4(B, [p[0], y0 - 0.2, p[1]], [q[0], y1 - 0.2, q[1]], [q[0], y1 + 0.4, q[1]], [p[0], y0 + 0.4, p[1]], [176, 174, 168], K.LISO, AUX.liso(3));
   L.q4(B, [p[0], y0 + 0.4, p[1]], [q[0], y1 + 0.4, q[1]], [q[0], y1 + 2.4, q[1]], [p[0], y0 + 2.4, p[1]], [64, 82, 72], K.METAL, AUX.panel(2.5, 0.02, 0));
 }
+// G1T2: polígono desplazado d m hacia fuera (d < 0, hacia dentro), con inglete limitado (como offs() de aeropuerto.js)
+function offsP(P, d) { let a = 0; for (let i = 0, j = P.length - 1; i < P.length; j = i++) a += (P[j][0] - P[i][0]) * (P[j][1] + P[i][1]);
+  const sg = a > 0 ? 1 : -1, n = P.length, o = [];
+  const nr = (p, q) => { const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz) || 1; return [dz / l * sg, -dx / l * sg]; };
+  for (let i = 0; i < n; i++) { const p = P[i], n1 = nr(P[(i - 1 + n) % n], p), n2 = nr(p, P[(i + 1) % n]);
+    let mx = n1[0] + n2[0], mz = n1[1] + n2[1]; const k = 1 + n1[0] * n2[0] + n1[1] * n2[1]; mx /= Math.max(k, 0.2); mz /= Math.max(k, 0.2);
+    const l = Math.hypot(mx, mz); if (l > 3) { mx *= 3 / l; mz *= 3 / l; } o.push([p[0] + mx * d, p[1] + mz * d]); }
+  return o; }
 // nave logística o industrial sobre la planta real del registro
 function naveLog(B, h, e, R, z, libre) {
   const pl = e.plantas[0]; if (!pl || pl.length < 3) return;
@@ -623,7 +631,8 @@ function naveLog(B, h, e, R, z, libre) {
   for (const p of pl) { const u = (p[0] - cx) * ux + (p[1] - cz) * uz, v = (p[0] - cx) * nx + (p[1] - cz) * nz; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
   const rect = area / ((u1 - u0) * (v1 - v0)), ang = hd(ux, uz), at = (u, v) => [cx + ux * u + nx * v, cz + uz * u + nz * v];
   const col = merca ? [[222, 216, 200], [206, 204, 196], [232, 228, 216]][Math.floor(R() * 3)] : MUROS[Math.floor(R() * MUROS.length)];
-  const big = Math.max(u1 - u0, v1 - v0), ex = L.mover(pl.map(p => [p[0] - cx, p[1] - cz]), cx, cz, 0, 1 + 0.5 / big);
+  const ex = offsP(pl, 0.25);   // G1T2: desplazamiento real de 0,25 m (antes, escala desde el centroide: en plantas en L la franja de color quedaba
+                                 // coplanaria con la chapa en las paredes que pasan cerca del centro y parpadeaba)
   // cuerpo: zócalo de hormigón, chapa grecada, franja de color arriba y cubierta de chapa
   L.prisma(B, ex, yb, yb + 1.8, [172, 170, 164], K.LISO, { aux: AUX.liso(6), sinTecho: true });
   L.prisma(B, pl, yb + 1.8, yb + H, col, K.METAL, { aux: AUX.panel(0.9, 0.03, 0), techo: TECHOS[Math.floor(R() * TECHOS.length)], kTecho: K.METAL, auxTecho: AUX.panel(1.6, 0.05, 0) });

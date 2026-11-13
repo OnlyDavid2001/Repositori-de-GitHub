@@ -433,7 +433,7 @@ add({ id: 'sant_pau', nombre: 'Recinte Modernista de Sant Pau', nivel: 'A', x: 1
       const y1 = e.alto, tc = TEJ[n++ % TEJ.length];
       L.prisma(B, pl, e.y0 - 0.6, y1, LAD, K.LADRILLO, { aux: aL, techo: L.shade(tc, 0.8) });
       const o = obb(pl); if (!o || o.w < 4) continue;
-      L.caja(B, o.cx, o.cz, y1 - 0.9, o.w + 0.5, o.l + 0.5, 0.9, o.ang, PIE, K.PIEDRA);                 // cornisa de piedra
+      L.caja(B, o.cx, o.cz, y1 - 0.93, o.w + 0.5, o.l + 0.5, 0.9, o.ang, PIE, K.PIEDRA);                // cornisa de piedra (G1T2: 3 cm bajo el techo, antes coplanaria)
       L.cubierta(B, o.cx, o.cz, y1, o.w + 0.6, o.l + 0.6, Math.min(o.w, o.l) * 0.32, { tipo: 'cuatro', ang: o.ang, col: tc, k: K.TEJA });
       if (o.w * o.l > 150) {                                          // cúpula vidriada en el extremo que mira al eje del recinto
         const a = o.ang * Math.PI / 180, dx = Math.sin(a), dz = Math.cos(a);
@@ -730,7 +730,7 @@ add({ id: 'fundacio_tapies', nombre: 'Fundació Antoni Tàpies', nivel: 'C', x: 
     const e = (h.edif || [])[0], y = e && isFinite(e.alto) ? e.alto : 25.3, R = h.R, LAD = [170, 78, 54];
     const pl = e && e.plantas[0] && e.plantas[0].length > 2 ? e.plantas[0] : L.rect(18, 22);
     L.prisma(B, pl, (e ? e.y0 : 0) - 0.6, y, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [120, 84, 70] });
-    L.caja(B, cajaMin(pl).cx, cajaMin(pl).cz, y - 1, cajaMin(pl).w + 0.4, cajaMin(pl).l + 0.4, 1, cajaMin(pl).ang, [130, 60, 44], K.LADRILLO);
+    L.caja(B, cajaMin(pl).cx, cajaMin(pl).cz, y - 1, cajaMin(pl).w + 0.4, cajaMin(pl).l + 0.4, 1.15, cajaMin(pl).ang, [130, 60, 44], K.LADRILLO);   // G1T2: remate 0,15 m por encima del techo (antes coplanario: parpadeaba)
     for (let i = 0; i < 26; i++) { const pts = []; let x = R(-4, 4), yy = y + R(1, 8), z = R(-6, 6);
       for (let k = 0; k < 4; k++) { pts.push([x, yy, z]); x += R(-3, 3); yy = Math.max(y + 0.5, Math.min(y + 9.5, yy + R(-2.5, 2.5))); z += R(-3, 3); }
       L.tube(B, L.F0, pts, 0.12, 4, [150, 152, 156], K.METAL); }

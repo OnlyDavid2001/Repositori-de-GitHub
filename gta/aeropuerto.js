@@ -408,7 +408,7 @@ else {
         for (let u = -560; u <= 560; u += 36) for (let w = -200; w <= 200; w += 10) { const x = u * 0.9135 - w * 0.4067, z = u * 0.4067 + w * 0.9135;   // lucernarios en diente de sierra
           if (inPoly(PTi, x, z) && inPoly(PTi, x + 9 * 0.9135, z + 9 * 0.4067) && inPoly(PTi, x - 30 * 0.4067, z + 30 * 0.9135) && (Math.round(w / 10) % 4 === 0)) {
             const v0 = B.nv; L.extruir(B, [[0, 0], [9, 0], [9, 0.3], [0, 2.6]], 0, 30, [150, 186, 208], K.CORTINA, { aux: L.aux.cortina(1.3, 1.5, 0.05) });
-            L.xf(B, v0, x, z, 66 - 90, 1, 1, 21.6); w += 30; } }
+            L.xf(B, v0, x, z, 66 - 90, 1, 1, 21.63); w += 30; } }   /* G1T2: 3 cm sobre la cubierta (antes coplanario) */
       }
       for (const s of stands()) if (s.pas && !inT1(s.pas.base)) pasarela(B, L, { base: [s.pas.base[0] - h.x, s.pas.base[1] - h.z], tip: [s.pas.tip[0] - h.x, s.pas.tip[1] - h.z], dir: s.pas.dir }, 0, 5.0);
     } });
