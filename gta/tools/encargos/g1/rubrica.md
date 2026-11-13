@@ -118,3 +118,27 @@ Cómo acaba el mundo: horizonte, mar, Collserola, Montjuïc, la ciudad que se pi
 | monte (camino de Collserola, Collserola desde la ciudad, carretera del Tibidabo) | vegetación, lejanía, coherencia (camino nivelado) |
 
 Esto no cambia la fórmula de la nota; sirve para decidir qué defectos apuntar primero.
+
+## Fotos de referencia por vista (`scratchpad/g1/banco/ref/`)
+Las del usuario (sin sufijo) mandan sobre las demás en luz, color, mar y lejanía. Las `_1` son de Wikimedia Commons u
+otras fuentes públicas, solo para comparar (no se confirman en el repositorio).
+| vista | compara con |
+|---|---|
+| `pg_pie` | `pie_passeig_gracia_1` |
+| `eix_calle`, `eix_xamfra` | `pie_xamfra_1` (cruce visto desde arriba), `pie_passeig_gracia_1`, `dron_eixample_1` |
+| `gotic_calle` | `pie_gotic_1` |
+| `gracia_calle` | `pie_gracia_verdi_1` |
+| `poblenou_rambla` | `pie_poblenou_1` |
+| `sarria_major` | `pie_sarria_1` |
+| `rambla_noche` | `noche_rambla_1`, `noche_dron_barceloneta` (color de la noche) |
+| `eix_noche` | `noche_eixample_1`, `noche_tardia_carmel_0a4h` |
+| `pcat_pie` | `pie_placa_catalunya_1` |
+| `glories_dron`, `espanya_dron`, `eix_dron`, `azoteas` | `dron_eixample_1`, `azoteas_1`, `dia_carmel_eixample_mar` |
+| `diagonal_pie` | `pie_diagonal_1` (la Diagonal hacia Glòries, Torre Glòries) |
+| `barceloneta_playa` | `playa_barceloneta_1`, `dia_desde_mar` |
+| `port_vell`, `montjuic_puerto` | `port_vell_1`, `montjuic_puerto_1` |
+| `coll_camino` | `monte_collserola_1` |
+| `coll_desde_ciudad`, `tibidabo_ctra` | `tibidabo_ctra_1`, `dia_desde_mar` (Collserola en la bruma) |
+| `mar_atardecer` | `atardecer_mar_vila_olimpica`, `mar_skyline_1` |
+| `noche_dron` | `noche_dron_barceloneta`, `noche_tardia_carmel_0a4h` |
+| `sagrada_pie` | `pie_sagrada_1` |
