@@ -1212,7 +1212,8 @@ function setHour(hh) {
   const az = (moon ? 110 + nn * 140 : 95 + (hh - 6.5) / 14 * 170) * D;                         // de E a O por el sur, los dos
   const el = (moon ? 22 + 26 * Math.sin(nn * Math.PI) : Math.max(elS, 1.28)) * D;
   L.sunDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
-  const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-1, -9, elS);                // e: sol bajo … alto · nt: noche cerrada
+  const e = Math.min(1, Math.max(0, (elS - 2) / 26)), nt = sstep(-1, -9, elS);
+  const lt = hh >= 12 ? sstep(22.75, 24.5, hh) : (hh < 5.5 ? 1 : 1 - sstep(5.5, 6.5, hh));   // FX luzveg: madrugada (cielo)                // e: sol bajo … alto · nt: noche cerrada
   const k = 0.55 + 0.45 * e, sc0 = mix3([1.05, 0.50, 0.24], [1.04, 0.99, 0.90], e);
   // DIA: sol de mañana y de tarde cálido aunque ya esté alto (fotos: 8:30 dorado, 10:30 aún algo cálido, mediodía neutro)
   const wm = (1 - sstep(8, 70, elS)) * e, sc = [sc0[0], sc0[1] * (1 - 0.12 * wm), sc0[2] * (1 - 0.30 * wm)];
@@ -1231,7 +1232,7 @@ function setHour(hh) {
   L.glow.set(on * L.K.calle, on * L.K.bajos, on * L.K.halo, on * L.K.suelo); L.fogD = 0.000032 * (1 - (1 - L.K.fogDD) * e * (1 - nt));   // G1L1: de día, más bruma que de noche (×fogDD, perspectiva aérea: Collserola y la ciudad lejana se azulean)
   // FX luzveg: de noche (21–24 h) el cielo es azul profundo, como en la foto del dron sobre la Barceloneta; solo de madrugada
   // (uLate, la foto del Carmel de 0 a 4 h) vuelve al azul marino casi negro de antes
-  const lt = hh >= 12 ? sstep(22.75, 24.5, hh) : (hh < 5.5 ? 1 : 1 - sstep(5.5, 6.5, hh)), znN = mix3([0.085, 0.165, 0.330], [0.050, 0.099, 0.165], lt);
+  const znN = mix3([0.085, 0.165, 0.330], [0.050, 0.099, 0.165], lt);
   const zn = mix3(mix3([0.20, 0.24, 0.46], [0.16, 0.38, 0.78], e), znN, nt);   // cenit de noche → sRGB ≈ (0, 12, 26). Por debajo de ~0,0035 lineal expuesto, el ACES da negro puro
   if (moon) L.sunCol.set(0.20 * mf, 0.235 * mf, 0.32 * mf); else L.sunCol.set(sc[0] * k * 0.82 * sf, sc[1] * k * 0.82 * sf, sc[2] * k * 0.82 * sf);
   L.skyCol.set(sk[0], sk[1], sk[2]); L.gndCol.set(gn[0], gn[1], gn[2]);
