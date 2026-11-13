@@ -606,6 +606,10 @@ window.BCN_ROOFTOPS = { init(ctx) {
     for (let k = 0; k < tr.length; k += 3) tri(P[tr[k]], P[tr[k + 1]], P[tr[k + 2]], 0);
   }
   function treeE(W, it, ox, oz, lvl) {
+    // FX edificios: fuera los árboles de esferas de azoteas y patios (frondoso, ciprés, frutal, palmera de barras): el usuario
+    // pidió quitar todos los árboles poco currados. Queda solo la maceta de obra de los que iban en maceta.
+    if (it.pot && lvl === 1) cyl(W, it.x - ox, it.z - oz, it.y - 0.45, it.y, 0.35, 0.42, 6, [176, 110, 84], K.PBR, A_MATTE);
+    return;
     const x = it.x - ox, z = it.z - oz, y = it.y, h = it.h, lc = LEAVES[Math.floor((it.c || 0.3) * 4) % 4];
     if (it.sp === 1) {                                 // palmera: tronco alto y fino, penacho de palmas
       if (lvl === 1) { cyl(W, x, z, y, y + h, 0.2, 0.16, 5, [120, 104, 84], K.PBR, A_MATTE);
@@ -813,8 +817,8 @@ window.BCN_ROOFTOPS = { init(ctx) {
         bx(W, x, z, y, it.s, it.w, 0.4, it.a, [200, 198, 192], A_MATTE);
         if (it.pit) { const hl = it.s / 2 - 0.05, hw = it.w / 2 - 0.05, yb = y + 0.4, yr = yb + Math.min(hw, 0.6) * 0.7;
           const Pp = (u, v, yy) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, yy, pz]; };
-          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
-          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
+          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [64, 76, 84], K.PBR, A_SKYL);
+          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [64, 76, 84], K.PBR, A_SKYL);
         } else { const hl = it.s / 2 - 0.06, hw = it.w / 2 - 0.06, Pp = (u, v) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, y + 0.46, pz]; };
           quad(W, F0, ...Pp(-hl, -hw), ...Pp(hl, -hw), ...Pp(hl, hw), ...Pp(-hl, hw), [110, 130, 140], K.PBR, A_SKYL); }
         break; }

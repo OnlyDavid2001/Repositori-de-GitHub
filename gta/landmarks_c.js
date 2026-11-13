@@ -12,7 +12,7 @@ add({ id: 'torre_glories', nombre: 'Torre Glòries', nivel: 'A', x: 13855, z: 15
   noche: 'led', edificios: [141753, 141754, 141755, 141756, 141757, 141758, 141759],
   build(B, h, L) {
     L.aguja(B, 0, 0, -1.5, 146.5, 20, { lados: 56, pasos: 10, recto: 0.72, pot: 2, exp: 0.42, sz: 37 / 40, k: K.METAL,
-      aux: L.aux.panel(2.2, 0.7, 0.2), cortes: 9,
+      aux: L.aux.panel(2.2, 0.32, 0.08), cortes: 9,   // FX: menos ruido por panel (de lejos se leía pixelado)
       cols: [[0, '#93372f'], [0.12, '#a84a36'], [0.26, '#b4643e'], [0.4, '#b07a52'], [0.5, '#86687a'], [0.6, '#5d6f98'], [0.7, '#4b6694'],
              [0.78, '#7088ac'], [0.9, '#a6b4c8'], [1, '#c9d2de']] });
     // planta baja acristalada, algo retranqueada
@@ -262,15 +262,15 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
       for (let j = 0; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); }
     const o2 = inflar(out, 4), c = centro(out), NR = 9;
     // lámina ondulada de poca pendiente: anillos del borde al centro; la altura es una ola suave que sube hacia el borde
-    const alt = (x, z, s) => 19.5 + 2.2 * Math.sin((x * 0.6 + z * 0.8) / 26) + 1.4 * Math.cos((x * 0.8 - z * 0.6) / 17) + 3.2 * s * s;
+    const alt = (x, z, s) => 19.5 + 0.9 * Math.sin((x * 0.6 + z * 0.8) / 26) + 0.5 * Math.cos((x * 0.8 - z * 0.6) / 17) + 3.2 * s * s;   // FX: ola más suave (las caras planas alternaban luz en damero)
     const R = []; for (let r = 0; r <= NR; r++) { const s = 1 - r / NR * 0.96;
       R.push(o2.map(p => { const x = c[0] + (p[0] - c[0]) * s, z = c[1] + (p[1] - c[1]) * s; return [x, alt(x, z, s), z]; })); }
     const ny = t => { let n = 0; for (let i = 0; i < t.length; i++) { const a = t[i], b = t[(i + 1) % t.length]; n += (a[2] - b[2]) * (a[0] + b[0]); } return n; };
     const cara = (t, arriba, col, k, aux) => { if ((ny(t) > 0) !== arriba) t = t.slice().reverse(); L.poly(B, t, col, k, aux); };
     const baja = p => [p[0], p[1] - 0.45, p[2]], auxS = L.aux.panel(4.2, 0.1), auxI = L.aux.panel(1.6, 0.08);
     for (let r = 0; r < NR; r++) for (let i = 0; i < o2.length; i++) { const j = (i + 1) % o2.length, A = R[r][i], Bp = R[r][j], C = R[r + 1][j], D = R[r + 1][i];
-      const f = 0.97 + 0.04 * (((i * 7 + r * 3) % 5) / 4);
-      cara([A, Bp, C], true, L.shade(BRZ, f), K.METAL, auxS); cara([A, C, D], true, L.shade(BRZ, f * 0.97), K.METAL, auxS);
+      const f = 1;   // FX: sin el tono alterno por triángulo (se leía como un damero)
+      cara([A, Bp, C], true, L.shade(BRZ, f), K.METAL, auxS); cara([A, C, D], true, L.shade(BRZ, f), K.METAL, auxS);
       cara([A, Bp, C].map(baja), false, ESP, K.METAL, auxI); cara([A, C, D].map(baja), false, L.shade(ESP, 0.97), K.METAL, auxI); }
     cara(R[NR], true, BRZ, K.METAL, auxS); cara(R[NR].map(baja), false, ESP, K.METAL, auxI);          // cierre del centro
     // canto de la lámina (franja de 0,45 m) y pilares finos
@@ -294,7 +294,7 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
 add({ id: 'disseny_hub', nombre: 'Disseny Hub', nivel: 'B', x: 13725.2, z: 15753.1, rot: 0, alto: 34, ancho: 40, largo: 54,
   noche: 'nada', edificios: [141731, 141732, 141744, 141745],
   build(B, h, L) {
-    const ZN = [116, 120, 124], aux = L.aux.panel(1.6, 0.18, 0), y0 = Math.min(-2, hy0(h) - 2);
+    const ZN = [82, 86, 92], aux = L.aux.panel(1.6, 0.3, 0), y0 = Math.min(-2, hy0(h) - 2);
     // volumen principal: de la lámina SO hasta 30 m de voladizo hacia el NE (u = a lo largo de la diagonal SO→NE)
     const P = (u, v) => [u * 0.7071 + v * 0.7071, u * 0.7071 - v * 0.7071];   // u hacia el NE, v hacia el SE
     const caja2D = (u0, u1, v0, v1) => [P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)];
