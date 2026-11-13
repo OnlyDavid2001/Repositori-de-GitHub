@@ -140,14 +140,14 @@ function top(m, k) { const r = []; if (!m) return r; for (let i = 0; i < m.lengt
 function initDebug(ctx) {
   if (C.debug) return C.debug;
   const css = document.createElement('style');
-  css.textContent = '#ccDbg{position:fixed;top:12px;left:12px;z-index:5;max-width:min(430px,calc(100vw - 24px));padding:9px 12px;border-radius:10px;' +
+  css.textContent = '#ccDbg{position:fixed;top:12px;left:12px;z-index:5;max-width:min(470px,calc(100vw - 24px));padding:9px 12px;border-radius:10px;' +
     'background:rgba(10,14,20,.86);border:1px solid rgba(255,194,71,.55);color:#f3f1ea;font:12px/1.42 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;' +
     'font-variant-numeric:tabular-nums;pointer-events:none;display:none}#ccDbg b{color:#ffc247;font-weight:600}#ccDbg .h{font-size:14px;font-weight:700}' +
     '#ccDbg .d{color:#b9c0c7}#ccDbg .k{display:inline-block;min-width:74px;color:#b9c0c7}';
   document.head.appendChild(css);
   const el = document.createElement('div'); el.id = 'ccDbg'; document.body.appendChild(el);
   let on = false, timer = 0; const q = {};
-  const pct = v => (v * 100).toLocaleString('es-ES', { maximumFractionDigits: v < 0.1 ? 1 : 0 }) + ' %';
+  const pct = v => (v * 100).toLocaleString('es-ES', { maximumFractionDigits: v < 0.1 ? 1 : 0 }) + '\u00a0%';   // sin cortar «6,7 %»
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const corto = n => n.split(/ \/ | \(/)[0];
   // edificio delante de la cámara: se avanza por el rayo a pasos de 1,5 m (hasta 400 m) y se para en la primera planta que lo
@@ -188,10 +188,10 @@ function initDebug(ctx) {
         const S = SECS[r.seccionIdx];
         h.push('<div><span class="k">Sección</span>' + esc(r.seccion) + ' <span class="d">· ' + S.e + ' edificios</span></div>');
       } else h.push('<div><span class="k">Zona</span><b>' + (r.zona === 'industrial' ? 'periferia industrial' : 'periferia') + '</b> <span class="d">(perfil sintético; ref. ' + esc(r.barrioRef) + ')</span></div>');
-      h.push('<div><span class="k">Estilos</span>' + top(r.mezcla, 3).map(([i, p]) => esc(C.estilos[i].n) + ' ' + pct(p)).join(' · ') + '</div>');
+      h.push('<div><span class="k">Estilos</span>' + top(r.mezcla, 3).map(([i, p]) => esc(C.estilos[i].n).replace(/ /g, '\u00a0') + '\u00a0' + pct(p)).join(' · ') + '</div>');
       h.push('<div><span class="k">Comercio</span>' + r.densidad.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' locales/ha <span class="d">(' +
         r.locales.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' en la celda de 2,25 ha' + (r.zona !== 'bcn' ? ', estimado' : '') + ')</span></div>');
-      h.push('<div><span class="k">Negocios</span>' + r.negocios.slice(0, 4).map(n => esc(corto(n.n)) + ' ' + pct(n.q)).join(' · ') + '</div>');
+      h.push('<div><span class="k">Negocios</span>' + r.negocios.slice(0, 4).map(n => esc(corto(n.n)).replace(/ /g, '\u00a0') + '\u00a0' + pct(n.q)).join(' · ') + '</div>');
     }
     if (f) {
       const fx = ctx.mods && ctx.mods.fx, V = fx && fx.varOf ? fx.varOf(f.b) : null, fam = fx && fx.famOf ? fx.famOf(f.b) : null;
