@@ -500,7 +500,8 @@ void main(){
   vec3 alb = texture2D(groundTex, uv).rgb;
   vec3 n = normalize(texture2D(normTex, (vPos.xz/uCell + 0.5)/uGrid).xyz*2.0 - 1.0);
   float dist = length(vPos - uCam);
-  float d1 = vnoise(vPos.xz*0.9)*0.5 + vnoise(vPos.xz*0.12)*0.5;
+  // G1V2: el grano de 1 m con ruido periódico (vnoise a 0,9 ciclos/m con coordenadas de ~15 km dejaba hash21 sin bits: liso)
+  float d1 = pn(mod(vPos.xz, 512.0), vec2(0.90625))*0.5 + vnoise(vPos.xz*0.12)*0.5;
   float d2 = vnoise(vPos.xz*0.012);
   float veg = clamp((alb.g - max(alb.r, alb.b))*7.0, 0.0, 1.0);
   float dark = 1.0 - smoothstep(0.30, 0.48, alb.g);
