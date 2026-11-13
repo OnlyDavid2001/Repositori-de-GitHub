@@ -5,6 +5,19 @@ Worktree `/home/user/wt/g1-suelo`, rama `wt-g1-suelo`. Ficheros: `streets.js`, `
 `suelos.js` (allanado de calles, `FLAT`, `allanado.bin.gz`: si cambias el allanado, regenera el precalculado con
 `tools/allanado.sh` o deja que el juego lo calcule; el artefacto publicado no sirve .gz, así que allí siempre se calcula).
 
+## Lo que dijo el jurado de la línea base (antes de la fase: media 4,4 sobre 10; meta 8)
+Dos jurados independientes puntuaron las 24 vistas del banco (`git show origin/wt-g1-banco:gta/tools/views_g1.json`;
+capturas ANTES en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/antes/a_<vista>.jpg`, hoja `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/hoja_antes.jpg`, todas las notas y defectos
+por vista en `/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/g1/banco/linea_base.json`, rúbrica en `g1/rubrica.md` de la rama wt-g1-banco). Defectos que caen en tu
+carril, de más a menos graves: **atácalos primero** (en la etapa en la que estés, y el crítico y el repaso los comprueban
+con esas mismas vistas):
+1. Marcas viales incoherentes: pasos de cebra rotos, desalineados, duplicados y cortados por el borde de la calzada; líneas sueltas sin lógica; rotondas sin anillo (eix_xamfra, espanya_dron).
+2. Parches de asfalto superpuestos de distinto tono con bordes rectos (polígonos que se pisan) y rejillas o rectángulos negros que parecen agujeros (eix_xamfra, sagrada_pie, espanya_dron, gracia_calle).
+3. Asfalto negro puro sin grano, juntas ni marcas en casi todas las calles (tibidabo_ctra, eix_calle, sarria_major, gracia_calle).
+4. Panot hexagonal gris gigante y uniforme en el Passeig de Gràcia, que ocupa lo que debería ser calzada y acera (pg_pie); losas lisas sin material en la Rambla y el Gòtic (rambla_noche, gotic_calle).
+5. Playa de la Barceloneta rota: borde en escalera entre la arena y el paseo, arena con muaré, sin orilla (barceloneta_playa; la arena con G1V y la orilla con G1L).
+6. La estrella central de la Plaça de Catalunya es una mancha gris ilegible (pcat_pie).
+
 ## Etapa 1 (G1S1) · Plano, sin irregularidades y sin parpadeos
 1. **Calles, aceras, plazas y carreteras planas**: sin inclinación lateral, sin escalones ni picos entre polígonos, bordillos
    a la misma altura a lo largo, rasantes suaves. Mide: recorre las calles con `heightAt` y lista los tramos con pendiente
