@@ -24,8 +24,10 @@ Qué hay en condal.json (v = 1):
   rej        rejillas en base64 de zlib (DecompressionStream('deflate')), Uint16 little-endian, fila a fila (z hacia el norte):
                sec 12,5 m: 0 = fuera de Barcelona; k = secciones[k−1] (par sección-barrio)
                com 150 m: locales activos ×10 por celda de 2,25 ha (Barcelona: remuestreo de rejilla_comercial, ceros donde
-                    no hay locales; fuera: estimación por superficie construida de vivienda, ver «sintética» abajo)
-               per 100 m: 1 + índice de perfil de periferia (se usa donde la rejilla de secciones da 0)
+                    no hay locales; fuera: estimación por superficie construida de vivienda, ver «sintética» abajo; las celdas a
+                    caballo del límite suman lo real y lo estimado con solo los edificios de fuera)
+               per 100 m: 1 + índice de perfil de periferia (se usa donde la rejilla de secciones da 0); 0 = sin perfil (ningún
+                    edificio en la ventana de 300 m: mar, pistas del aeropuerto, campo abierto)
 """
 import base64, collections, json, math, os, struct, sys, zlib
 import numpy as np
@@ -236,9 +238,19 @@ qs = np.quantile(gfa[cal], np.linspace(0, 1, 11)); qs[-1] = 1e12
 bins = np.clip(np.searchsorted(qs, gfa, side='right') - 1, 0, 9)
 mean_n = np.array([com[cal & (bins == k)].mean() for k in range(10)])
 print('calibración locales/celda por decil de superficie de vivienda:', np.round(mean_n, 1).tolist())
-syn = np.where(gfa > 0, mean_n[bins] * 0.8, 0.0)
-comF = np.where(cellIn, com, syn)
+# la parte sintética de cada celda sale solo de los edificios de FUERA de Barcelona (gfaO): las celdas a caballo del límite
+# conservan sus locales reales y suman los estimados de su parte de periferia (antes la celda se decidía solo por su centro y
+# perdía los reales del lado de Barcelona). En las celdas enteras de Barcelona gfaO = 0 y queda solo lo real.
+gfaO = np.zeros((NZC, NXC)); resO = res & ~inCityB
+np.add.at(gfaO, (cj_[resO], ci_[resO]), BA[resO] * np.maximum(1, BH[resO] / 3.1))
+binsO = np.clip(np.searchsorted(qs, gfaO, side='right') - 1, 0, 9)
+syn = np.where(gfaO > 0, mean_n[binsO] * 0.8, 0.0)
+comF = com + syn
 comR = np.clip(np.round(comF * 10), 0, 65535).astype(np.uint16)
+mixC = (com > 0) & (syn > 0)
+print('rejilla comercial publicada: %.0f locales = %.0f reales + %.0f sintéticos; en las celdas con centro en Barcelona %.0f; '
+      '%d celdas mixtas (reales + sintéticos), con %.0f reales conservados' % (comR.sum() / 10, com.sum(), syn.sum(), comR[cellIn].sum() / 10,
+      int(mixC.sum()), com[mixC].sum()))
 print('celdas con locales: Barcelona', int((comR[cellIn] > 0).sum()), 'de', int(cellIn.sum()), '· fuera (sintéticas)', int((comR[~cellIn] > 0).sum()))
 
 # ---------------------------------------------------------------- periferia (100 m)
@@ -273,7 +285,10 @@ out_idx = np.argwhere(np.ones_like(inP))
 pts = shapely.points(PX.ravel(), PZ.ravel())
 near, dist = bTree.query_nearest(pts, return_distance=True, all_matches=False)
 nb = np.empty(len(pts), int); nb[near[0]] = near[1]; dd = np.empty(len(pts)); dd[near[0]] = dist
+# sin ningún edificio en la ventana de 300 m (mar, pistas del aeropuerto, campo abierto) no hay perfil: at() da zona null
+vacP = ft3 == 0
 for (j, i), bix, d in zip(out_idx, nb, dd):
+    if vacP[j, i]: continue
     band = int(np.searchsorted(BANDS, d)); isI = int(INDM[j, i]); key = (int(bix), band, isI)
     if key not in prof:
         w = WB[band]; mz = w * BMIX[bix] + (1 - w) * (indv if isI else gen)
@@ -286,7 +301,9 @@ for (j, i), bix, d in zip(out_idx, nb, dd):
         ng = sorted(([k, round(10000 * v)] for k, v in q.items() if round(10000 * v) > 0), key=lambda t: (-t[1], t[0]))
         prof[key] = len(plist); plist.append([key[0], band, isI, permil(mz), ng])
     perR[j, i] = prof[key] + 1
-print('perfiles de periferia', len(plist), '· celdas industriales', int((INDM & ~inP).sum()))
+sinZ = (secR[np.clip((BZ // CS).astype(int), 0, NZS - 1), np.clip((BX // CS).astype(int), 0, NXS - 1)] == 0) & (perR[pj_, pi_] == 0)
+assert not sinZ.any(), 'edificios sin zona: %d' % int(sinZ.sum())
+print('perfiles de periferia', len(plist), '· celdas industriales', int((INDM & ~inP).sum()), '· celdas sin edificios en 300 m (sin perfil)', int(vacP.sum()), 'de', vacP.size)
 
 # ---------------------------------------------------------------- salida
 O = {'v': 1, 'gen': 'tools/cc/empaquetar.py', 'geo': {'OX': OX, 'OZ': OZ},

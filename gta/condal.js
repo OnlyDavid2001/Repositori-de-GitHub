@@ -5,13 +5,16 @@
    window.BCN_CONDAL = {
      ready                 promesa: datos cargados (la descarga empieza al cargar este fichero, en paralelo con el resto)
      loaded                ¿listo?
-     at(x, z, out?)        → { zona: 'bcn' | 'periferia' | 'industrial' | null, seccion (id «distrito-sección» o null), seccionIdx,
+     at(x, z, out?)        → { zona: 'bcn' | 'periferia' | 'industrial' | null (sin edificios en 300 m: mar, pistas, campo), seccion (id «distrito-sección» o null), seccionIdx,
                               barrio (nombre o null), barrioIdx (índice en META.barris; −1 fuera), barrioRef (el de referencia,
                               también fuera de Barcelona), distrito, mezcla (Float32Array 22: probabilidad de cada estilo, suma 1;
                               0,7 sección + 0,3 barrio, con menos peso de sección si tiene < 30 edificios), detalles ({clave: 0–1}
                               del barrio), negocios ([{id, n, e (escaparate), q (cuota 0–1)}] de mayor a menor), locales (locales
                               activos en la celda de 150 m), densidad (locales/ha = locales / 2,25) }
-                           mezcla, detalles y negocios son objetos compartidos: no los modifiques. Sin datos: null.
+                           mezcla, detalles y negocios son objetos compartidos: no los modifiques. Fuera del mundo o sin datos
+                           cargados: null. Pensado para posiciones de edificio: todo edificio tiene zona; en la orilla del mar o
+                           junto a la pista puede salir 'periferia' (con densidad 0), así que no sirve para saber si hay tierra.
+                           Comercio: en las celdas de 150 m a caballo del límite, locales reales + los estimados de la parte de fuera.
      estilos[22]           {id, n, pl [mín, máx] plantas, an [mín, máx] m, pal ['#hex'], dg desgaste_base}
      escaparates[24]       ids de modelo · negocios[59] {id, n, e} · detalles[11] claves de detalles_prob
      barrios[73]           {c codigo, n, m (META), d distrito, e edificios, mezcla, plantas (Float32Array 10), detalles, negocios, la}
@@ -110,6 +113,7 @@ C.ready = (async () => {
   C.stats = { descargaMs: Math.round(t1 - t0), decodMs: Math.round(performance.now() - t1), secciones: N, barrios: BARS.length, perfilesPeriferia: PERF.length };
   return C;
 })();
+C.ready.catch(() => {});   // app.js recibe el rechazo con su await; esto evita el «Uncaught (in promise)» si falla antes
 
 function at(x, z, out) {
   if (!C.loaded || !(x >= 0 && z >= 0 && x < WX && z < WZ)) return null;
@@ -181,7 +185,7 @@ function initDebug(ctx) {
     const r = at(px, pz, q), ll = GEO.gameToLonLat(px, pz);
     h.push('<div class="h">Condal City <span class="d">· F8</span></div>');
     h.push('<div class="d">' + (f ? 'edificio delante, a ' + Math.round(f.t) + ' m' : 'bajo la cámara') + ' · ' + ll[0].toFixed(5) + ', ' + ll[1].toFixed(5) + '</div>');
-    if (!r || !r.zona) h.push('<div><span class="k">Zona</span>sin datos (fuera del mapa)</div>');
+    if (!r || !r.zona) h.push('<div><span class="k">Zona</span>sin datos (fuera del mapa o sin edificios cerca: mar, pistas, campo)</div>');
     else {
       if (r.zona === 'bcn') {
         h.push('<div><span class="k">Barrio</span><b>' + esc(r.barrio) + '</b> <span class="d">(' + esc(r.distrito) + ')</span></div>');
@@ -191,14 +195,17 @@ function initDebug(ctx) {
       h.push('<div><span class="k">Estilos</span>' + top(r.mezcla, 3).map(([i, p]) => esc(C.estilos[i].n).replace(/ /g, '\u00a0') + '\u00a0' + pct(p)).join(' · ') + '</div>');
       h.push('<div><span class="k">Comercio</span>' + r.densidad.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' locales/ha <span class="d">(' +
         r.locales.toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' en la celda de 2,25 ha' + (r.zona !== 'bcn' ? ', estimado' : '') + ')</span></div>');
-      h.push('<div><span class="k">Negocios</span>' + r.negocios.slice(0, 4).map(n => esc(corto(n.n)).replace(/ /g, '\u00a0') + '\u00a0' + pct(n.q)).join(' · ') + '</div>');
+      const vac = r.negocios.find(n => /^Local vac/.test(n.n));   // «Local vacío» aparte: no es un negocio que se vea
+      h.push('<div><span class="k">Negocios</span>' + r.negocios.filter(n => n !== vac).slice(0, 4).map(n => esc(corto(n.n)).replace(/ /g, '\u00a0') + '\u00a0' + pct(n.q)).join(' · ') +
+        (vac ? ' <span class="d">· vacíos\u00a0' + pct(vac.q) + '</span>' : '') + '</div>');
     }
     if (f) {
       const fx = ctx.mods && ctx.mods.fx, V = fx && fx.varOf ? fx.varOf(f.b) : null, fam = fx && fx.famOf ? fx.famOf(f.b) : null;
       const BR = ctx.BREC, nuevo = BR && BR.estilo ? C.estilos[BR.estilo[f.b]] : null;
       const tipo = BR && BR.elig[f.b] ? ['vivienda', 'nave', 'equipamiento'][BR.tipo[f.b]] || '?' : 'sin fachada de detalle';
       h.push('<div><span class="k">Edificio</span>#' + f.b + ' · ' + Math.round(f.d.y1 - f.d.yb) + ' m · clase ' + f.d.cls + ' · ' + tipo + '</div>');
-      h.push('<div><span class="k">Estilo hoy</span>' + (V ? '<b>' + esc(fam || V.fam || '?') + '</b> · variante ' + esc(V.id || '?') + (V.acab ? ' <span class="d">(' + esc(V.acab) + ')</span>' : '') : '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (fachada genérica)</span>') + '</div>');
+      const elig = !BR || !BR.elig || !!BR.elig[f.b];
+      h.push('<div><span class="k">Estilo hoy</span>' + (!elig ? '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (no tiene fachada de detalle)</span>' : V ? '<b>' + esc(fam || V.fam || '?') + '</b> · variante ' + esc(V.id || '?') + (V.acab ? ' <span class="d">(' + esc(V.acab) + ')</span>' : '') : '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (fachada genérica)</span>') + '</div>');
       h.push('<div><span class="k">Estilo nuevo</span>' + (nuevo ? '<b>' + esc(nuevo.n) + '</b>' + (BR.varEst ? ' · variante ' + (BR.varEst[f.b] + 1) : '') : '<span class="d">— (llega en la Fase 3)</span>') + '</div>');
     }
     el.innerHTML = h.join('');

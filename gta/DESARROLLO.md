@@ -1947,3 +1947,32 @@ monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando aca
   más alto, estrecho y aireado (r 0,25, 470 hojas).
 - `setHour`: `lt` (madrugada) mezcla el cielo/bruma de noche entre azul profundo (21–24 h) y casi negro (0–6 h).
   FS_SEA: Fresnel con la normal media y pista cálida del sol bajo. FS_TER: arena con albedo ~0,45.
+
+## 15. Condal City: datos reales por punto (`condal.js`, `window.BCN_CONDAL`, `data/condal.json`)
+
+- `condal.js` (Condal City, Fase 1): `window.BCN_CONDAL` — `ready` (promesa), `loaded`, `at(x, z, out?)` →
+  `{zona 'bcn'|'periferia'|'industrial'|null, seccion, seccionIdx, barrio, barrioIdx (META), barrioRef, distrito, mezcla
+  (Float32Array 22, suma 1), detalles {clave: 0–1}, negocios [{id, n, e, q}], locales, densidad (locales/ha)}`; `mezcla`,
+  `detalles` y `negocios` son compartidos (no modificar). `estilos[22]`, `escaparates[24]`, `negocios[59]`, `detalles[11]`,
+  `barrios[73]`, `secciones`, `perif`, `top(mezcla, k)`, `toLonLat(x, z)`, `fromLonLat(lon, lat)` (UTM 31N, Krüger orden 6;
+  la misma fórmula que `tools/cc/geo_utm.js`: x = E − 418400,7; z = N − 4567997,6).
+- Datos: `data/condal.json`, generado por `tools/cc/empaquetar.py [condal_city_datos.json]` (necesita pyproj, shapely 2 y
+  numpy; lee también data/meta.json, terrain.png y buildings*.png). Si cambian los edificios o el JSON, relanzarlo.
+- Carga: index.html carga condal.js tras geo.js; la descarga empieza al cargar el script; app.js hace `await BCN_CONDAL.ready`
+  justo después de publicar BCN_BARRI (antes de los edificios) y, al terminar, `BCN_CONDAL.initDebug(CTX)`.
+- Depuración: **F8** abre/cierra la ventana Condal City (arriba a la izquierda): barrio y distrito (o periferia y barrio de
+  referencia), sección y edificios, 3 estilos más probables, comercio (locales/ha y locales de la celda), 4 negocios
+  principales y el edificio de delante (rayo desde la cámara por pasos de 1,5 m contra las plantas de `ctx.city`; si toca el
+  suelo, el edificio más cercano a ≤ 12 m): índice, alto, clase, tipo, estilo de hoy (familia y variante de
+  `ctx.mods.fx.famOf/varOf`) y estilo nuevo (lee `BREC.estilo` y `BREC.varEst` cuando la Fase 3 los cree).
+  «Local vacío» se muestra aparte («vacíos x %»); en edificios sin fachada de detalle (`BREC.elig` = 0) no hay variante.
+  `?condal=1` la abre al cargar; `BCN_CONDAL.debug.show(true)` desde el arnés. `tools/shot.js` con `PAGE=1` captura la
+  página entera (capas HTML incluidas).
+- Zonas: todo edificio tiene zona; las celdas de 100 m de periferia sin ningún edificio en la ventana de 300 m (mar, pistas
+  del aeropuerto, campo abierto) dan `zona` null. En la orilla o junto a un edificio puede salir 'periferia' con densidad 0:
+  `at()` no sirve para saber si hay tierra.
+- Comercio (rejilla de 150 m): en Barcelona, remuestreo conservativo de `rejilla_comercial`; fuera, estimación por superficie
+  construida de vivienda. Las celdas a caballo del límite suman lo real y lo estimado con solo los edificios de fuera
+  (empaquetar.py imprime el total publicado = reales + sintéticos).
+- Si falla la carga, `BCN_CONDAL.ready` se rechaza y app.js lo recibe con su `await` (hay un `.catch` vacío para que no salga
+  «Uncaught (in promise)»).
