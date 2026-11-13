@@ -37,7 +37,7 @@ window.BCN_LIGHTING = { init(ctx) {
   // ao: intensidad de la oclusión ambiental (0 = nada, pero el pase sigue: sirve para comparar) · aoR: radio en mundo (m) ·
   // aoFar: distancia (m) a la que ya no hay oclusión (empieza a desvanecerse en aoFar × 0,73) · aoDbg: 1 = ver solo la oclusión
   const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0,
-              ao: 1, aoR: 0.7, aoFar: 110, aoDbg: 0,
+              ao: 1, aoDay: 1.45, aoR: 0.8, aoFar: 110, aoDbg: 0,   // G1L3 · aoDay: de día, más fuerte (sombra de contacto); de noche como estaba
               soft: 0.006 };   // G1L1 · soft: anchura de la penumbra por metro de distancia al que tapa (0 = sombra de siempre)
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
   let pipe = null, cur = 'alta', auto = true;
@@ -92,8 +92,8 @@ window.BCN_LIGHTING = { init(ctx) {
     if (key === gradeW) return; gradeW = key;
     put(ip, 'colorCurvesEnabled', w > 0.01);
     cc.highlightsHue = 38; cc.highlightsDensity = P.gWarm * w * (1 + 1.4 * gf); cc.highlightsSaturation = 0;
-    cc.shadowsHue = 215; cc.shadowsDensity = P.gCool * w; cc.shadowsSaturation = 0;
-    cc.globalSaturation = P.gSat * w * (1 - 0.8 * gf); cc.midtonesExposure = P.gMid * w;
+    cc.shadowsHue = 215; cc.shadowsDensity = P.gCool * w * (1 + 0.8 * gf); cc.shadowsSaturation = 0;   // G1L3: en la hora dorada, sombras más frías
+    cc.globalSaturation = P.gSat * w * (1 + 0.25 * gf);   // G1L3: el oro va en la luz, no en saturar todo (el dron salía de juguete) cc.midtonesExposure = P.gMid * w;
   }
   // umbral del bloom (Babylon compara con umbral^(1/2.2)). De noche baja (×0,7): lo más brillante de la ciudad —avenidas,
   // escaparates, farolas— ha de florecer aunque la exposición no lo lleve tan arriba como al sol
@@ -334,7 +334,7 @@ void main(){
   for (int i = 0; i < 12; i++) {
     if (float(i) >= uAo.y) break;
     float t = (float(i) + 0.5)/uAo.y, an = rot + float(i)*2.3999632;
-    vec3 v = posAt(uv + vec2(cos(an), sin(an))*rUV*mix(0.1, 1.0, t)) - P;
+    vec3 v = posAt(uv + vec2(cos(an), sin(an))*rUV*mix(0.06, 1.0, t*t)) - P;
     float vv = dot(v, v);
     s += max(0.0, 1.0 - vv/R2)*max(dot(v, N) - bias, 0.0)/sqrt(vv + 1e-4);
   }
@@ -385,7 +385,7 @@ void main(){
       e.setFloat4('uAo', P.aoR, AO.n, P.aoFar * 0.73, P.aoFar);
     });
     p1.onApplyObservable.add(e => e.setFloat2('uTx', 1 / p1.width, 1 / p1.height));
-    p2.onApplyObservable.add(e => { e.setFloat2('uHx', 1 / p2.width, 1 / p2.height); e.setFloat4('uK', 2.6 * P.ao, L.tone.x, P.aoDbg, 0);
+    p2.onApplyObservable.add(e => { e.setFloat2('uHx', 1 / p2.width, 1 / p2.height); e.setFloat4('uK', 2.6 * P.ao * (1 + (P.aoDay - 1) * (1 - L.night)), L.tone.x, P.aoDbg, 0);
       e.setTextureFromPostProcess('tScene', p0); });
     AO.pp = [p0, p1, p2];
   }
