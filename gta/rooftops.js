@@ -72,6 +72,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // materiales (canal auxiliar de K.PBR, §6.7)
   const A_PAINT = pbrAux(0.55, 0, 0, 0), A_MATTE = pbrAux(0.9, 0, 0, 0), A_GALV = pbrAux(0.42, 1, 0, 0), A_RUST = pbrAux(0.7, 0, 3, 0);
   const A_FIBRO = pbrAux(0.85, 0, 3, 0), A_LOUV = pbrAux(0.5, 0, 1, 0), A_PV = pbrAux(0.18, 0.2, 0, 0), A_GLASS = pbrAux(0.12, 0, 0, 0);
+  // lucernarios en hilera de las naves: vidrio armado / policarbonato, rugoso (con 0,12 reflejaba el cielo y de noche se leían
+  // como rayas azuladas, casi placas solares)
+  const A_SKYL = pbrAux(0.55, 0, 0, 0);
   const A_CLOTH = pbrAux(0.95, 0, 0, 0), A_PILOT = pbrAux(0.5, 0, 0, 1), A_TILE = pbrAux(0.85, 0, 0, 0);
   const patAux = g => { const a = [g, 0, 0, 0]; return a.concat(a, a, a); }, A_WARM = pbrAux(0.5, 0, 0, 0.5);
   const CLOTHES = [[236, 236, 232], [200, 60, 56], [60, 90, 160], [230, 200, 80], [90, 150, 110], [240, 170, 180], [40, 40, 46], [170, 200, 225], [220, 120, 60]];
@@ -114,6 +117,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // ---------------------------------------------------------------- plan de un edificio: lista de elementos en mundo
   // Cada elemento: { t: tipo, x, z, y, a (ángulo), …medidas }. Determinista: seed(b, 90, k).
   const MODERN = new Set(['poblenou', 'les_corts', 'sant_andreu', 'nou_barris', 'periferia', 'horta_guinardo', 'sants']);
+  const EXTRA = new Set([1, 2, 3, 5, 8, 9, 10, 11, 12, 13]);
   const TERRACE = new Set(['eixample', 'gracia', 'sant_gervasi', 'sarria_pedralbes', 'barceloneta', 'ciutat_vella', 'poble_sec']);
   const AWN = [[46, 110, 70], [200, 70, 52], [230, 220, 196], [52, 84, 140], [214, 150, 60], [120, 120, 118]];
   const take = (b, k, n) => { seed(b, 90, k); const a = new Array(n); for (let i = 0; i < n; i++) a[i] = R(); return a; };
@@ -149,13 +153,20 @@ window.BCN_ROOFTOPS = { init(ctx) {
   }
   function plan0(b) {
     // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
-    const tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
-    const d = bget(b); if (d.cls !== 0 && d.cls !== 2 && d.cls !== 6 && !(BREC.elig[b] && tipo > 0)) return null;
+    let tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
+    const d = bget(b), resid = d.cls === 0 || d.cls === 2 || d.cls === 6;
+    // G1T1: también las cubiertas planas que antes quedaban vacías: industria, comercio, equipamientos y oficinas sin fachada
+    // de detalle (los de más de 16 000 m² de caja, las torres, los volúmenes elevados): azotea de nave (< 14 m) o de
+    // equipamiento. Fuera los templos e invernaderos (14, 15), el cristal con pilares (4) y la clase 7
+    if (!resid && !(BREC.elig[b] && tipo > 0) && !EXTRA.has(d.cls)) return null;
     const y = roofY(b); if (y === null) return null;
     if (PAL.roof(b) >= 0 && !PAL.flat(b)) return planTeja(b, d, y);
     const x0 = city.BB[b * 4], z0 = city.BB[b * 4 + 1], x1 = city.BB[b * 4 + 2], z1 = city.BB[b * 4 + 3];
     const Hm = y - d.yb, area = (x1 - x0) * (z1 - z0);
-    if (Hm < 3.6 || area < 40 || area > 14000) return null;      // n3 E1: también las casas de una planta (antes, desde 6 m)
+    if (!resid && !(BREC.elig[b] && tipo > 0)) tipo = Hm < 14 ? 1 : 2;
+    // n3 E1: también las casas de una planta (antes, desde 6 m). G1T1: hasta 250 000 m² de caja (antes 14 000: las cubiertas
+    // grandes de Poblenou, la Zona Franca o los centros comerciales salían lisas y vacías desde el aire)
+    if (Hm < 3.6 || area < 40 || area > 250000) return null;
     const fam = PAL.FAMS[PAL.fam(b)];
     const ang = axis(d.rings[0]);
     // ¿cabe un rectángulo l × w (girado a) con centro (x, z), a 0,7 m del borde (dentro del peto)?
@@ -184,7 +195,33 @@ window.BCN_ROOFTOPS = { init(ctx) {
         const tx = (bx - ax) / L, tz = (bz - az) / L; let nx = -tz, nz = tx;
         if (!inside(d, (ax + bx) / 2 + nx * 0.5, (az + bz) / 2 + nz * 0.5)) { nx = -nx; nz = -nz; }
         items.push({ t: 'peto', ax, az, bx, bz, nx, nz, y, h: pH, L, col: petoC }); } }
-    const big = area > 110, nMax = Math.max(3, Math.min(12, 3 + Math.floor(area / 140)));
+    const big = area > 110, nMax = area > 1700 ? Math.min(36, 12 + Math.floor((area - 1700) / 900)) : Math.max(3, Math.min(12, 3 + Math.floor(area / 140)));
+    // G1T1 · CUBIERTAS GRANDES (> 600 m² de caja), con orden: en las naves, hileras de lucernarios a lo largo del eje cada 7–9 m
+    // (como las de Poblenou y la Zona Franca); en los equipamientos y oficinas, un cuarto de máquinas y baterías de aparatos
+    // de clima con su chimenea. Van primero (ocupan su sitio) y el sorteo de abajo rellena alrededor
+    if (area > 600 && tipo > 0) {
+      const r0 = d.rings[0], m0 = r0.length / 2, ca = Math.cos(ang), sa = Math.sin(ang);
+      let u0 = 1e9, u1 = -1e9, w0 = 1e9, w1 = -1e9;
+      for (let i = 0; i < m0; i++) { const px = r0[i * 2], pz = r0[i * 2 + 1], u = px * ca + pz * sa, w = pz * ca - px * sa;
+        u0 = Math.min(u0, u); u1 = Math.max(u1, u); w0 = Math.min(w0, w); w1 = Math.max(w1, w); }
+      const P = (u, w) => [u * ca - w * sa, u * sa + w * ca], gg = take(b, 200, 8);
+      if (tipo === 1) {
+        const sp = 7 + gg[0] * 2, segL = 9 + gg[1] * 5, sw = 1.3 + gg[2] * 0.6, pit = gg[3] < 0.6;
+        let nS = 0;
+        for (let w = w0 + 4 + gg[4] * 2; w < w1 - 3 && nS < 60; w += sp)
+          for (let u = u0 + 3; u + segL < u1 - 3 + 1e-6 && nS < 60; u += segL + 2.5) { const [cx, cz] = P(u + segL / 2, w);
+            if (fits(cx, cz, segL, sw, ang) && free(cx, cz, 0)) { items.push({ t: 'sky', x: cx, z: cz, y, a: ang, s: segL, w: sw, pit }); nS++; } }
+        for (const it of items) if (it.t === 'sky') used.push([it.x, it.z, sw / 2 + 0.3]);
+      } else {
+        const nC = Math.min(4, 1 + Math.floor(area / 2500));
+        for (let ci = 0; ci < nC; ci++) { const rr = take(b, 201 + ci, 44), l = 4 + rr[40] * 3, w = 3 + rr[41] * 1.5, p = spot(l, w, rr);
+          if (p) items.push({ t: 'caseta', x: p[0], z: p[1], y, a: ang, l, w, h: 2.6 + rr[42] * 0.8, col: shade(mixc(wall, [200, 202, 200], 0.6), 0.95), door: rr[39] < 0.5 ? 1 : -1, rail: false, ladder: rr[38] < 0.5, doorC: [72, 76, 80] });
+          const ra = take(b, 206 + ci, 44), n = 4 + Math.floor(ra[40] * 3), q = spot(n * 0.95, 0.5, ra);
+          if (q) items.push({ t: 'ac', x: q[0], z: q[1], y, a: ang, n, col: [208, 210, 206] });
+          const rv = take(b, 211 + ci, 44), nv = 2 + Math.floor(rv[40] * 3), v = spot(nv * 0.6, 0.6, rv);
+          if (v) items.push({ t: 'vent', x: v[0], z: v[1], y, a: ang, n: nv, metal: true, h: 1.2 + rv[42], hs: rv.slice(10, 16), col: [170, 172, 170] }); }
+      }
+    }
     let nAnt = 0;
     // 1 · caseta de escalera (casi todos los edificios de pisos; dos en los muy grandes), con puerta, rejilla y, a veces,
     // barandilla en su terrado y escalera de gato
@@ -723,7 +760,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
         }
         break; }
       case 'tank': {
-        const pitch = it.rad * 2 + 0.3;
+        const pitch = it.rad * 2 + 0.3, [cx, cz] = loc(it, 0, 0, ox, oz);
+        // bancada de obra bajo la fila (apoya en la cubierta: sin ella, con las patas finas, el depósito parecía flotar)
+        bx(W, cx, cz, y, it.n * pitch + 0.1, it.rad * 1.5, it.legs, it.a, [172, 166, 156], A_MATTE);
         for (let i = 0; i < it.n; i++) { const [x, z] = loc(it, (i - (it.n - 1) / 2) * pitch, 0, ox, oz), y1 = y + it.legs;
           for (const q of [-1, 1]) { const [lx, lz] = loc(it, (i - (it.n - 1) / 2) * pitch, q * it.rad * 0.55, ox, oz); post(W, lx, lz, y, y1, it.rad * 1.3, it.a, [70, 66, 60], A_RUST); }   // patas: dos perfiles
           rev(W, F0, x, z, [[it.rad, y1], [it.rad, y1 + it.h], [0, y1 + it.h + 0.16]], 6, it.col, K.PBR, { aux: it.fib ? A_FIBRO : A_GALV, cap: 2 }); }
@@ -774,10 +813,10 @@ window.BCN_ROOFTOPS = { init(ctx) {
         bx(W, x, z, y, it.s, it.w, 0.4, it.a, [200, 198, 192], A_MATTE);
         if (it.pit) { const hl = it.s / 2 - 0.05, hw = it.w / 2 - 0.05, yb = y + 0.4, yr = yb + Math.min(hw, 0.6) * 0.7;
           const Pp = (u, v, yy) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, yy, pz]; };
-          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_GLASS);
-          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_GLASS);
+          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
+          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
         } else { const hl = it.s / 2 - 0.06, hw = it.w / 2 - 0.06, Pp = (u, v) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, y + 0.46, pz]; };
-          quad(W, F0, ...Pp(-hl, -hw), ...Pp(hl, -hw), ...Pp(hl, hw), ...Pp(-hl, hw), [110, 130, 140], K.PBR, A_GLASS); }
+          quad(W, F0, ...Pp(-hl, -hw), ...Pp(hl, -hw), ...Pp(hl, hw), ...Pp(-hl, hw), [110, 130, 140], K.PBR, A_SKYL); }
         break; }
       case 'vent': {
         for (let i = 0; i < it.n; i++) { const [x, z] = loc(it, (i - (it.n - 1) / 2) * 0.6, 0, ox, oz), h = it.h * (0.8 + 0.4 * it.hs[i % 6]);
@@ -828,7 +867,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
         if (it.t === 'peto') { if (it.L > 1.2) peto(W, it, ox, oz, 2); }
         else if (it.t === 'ac') bx(W, x, z, y, it.n * 0.95 - 0.1, 0.34, 0.66, it.a, it.col, A_PAINT);
         else if (it.t === 'pv') bx(W, x, z, y + 0.2, it.n * 1.05, it.rows * 2.4 - 0.6, 0.55, it.a, [44, 52, 78], A_PV);
-        else if (it.t === 'sky') bx(W, x, z, y, it.s, it.w, 0.5, it.a, [150, 160, 166], A_MATTE);
+        else if (it.t === 'sky') bx(W, x, z, y, it.s, it.w, 0.5, it.a, [84, 90, 94], A_MATTE);   // G1T1: vidrio y marco de media (antes gris claro: de noche, rayas claras sobre la nave a oscuras); G1T3: más oscuro aún (112,122,128 → 84,90,94), de noche seguían leyéndose como rayas azuladas
         else if (it.t === 'vent') bx(W, x, z, y, it.n * 0.6 - 0.15, 0.45, it.h + 0.15, it.a, it.metal ? [170, 172, 170] : it.col, A_MATTE);
         else if (it.t === 'shed') bx(W, x, z, y, it.l, it.w, 1.95, it.a, it.col, A_GALV);
         else if (it.t === 'plant') bx(W, x, z, y, it.l, 0.5, 0.8, it.a, GREEN[1], A_MATTE);

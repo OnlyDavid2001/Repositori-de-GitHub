@@ -250,21 +250,42 @@ add({ id: 'edificis_trade', nombre: 'Edificis Trade', nivel: 'B', x: 8677.4, z: 
   } });
 
 // ================================================================== Glòries y Poblenou
-// Mercat dels Encants. Gran cubierta de espejo facetada, a 15–26 m, sobre el mercado en rampa.
+// Mercat dels Encants. Gran cubierta suspendida a 18–26 m, casi plana y ondulada (sin pico): por arriba, chapa de paneles
+// grandes bronce oscuro; por debajo, el espejo de acero pulido que refleja el mercado. Debajo, el mercado: losa y puestos.
 add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 15594.2, rot: 0, alto: 26, ancho: 115, largo: 136,
   noche: 'nada', edificios: [139521],
   build(B, h, L) {
-    const pl = [[-89, 7], [7, -89], [10, 72], [-6, 88], [-36, 58]], ESP = [206, 214, 222], aux = L.aux.panel(3.2, 0.35);
-    L.prisma(B, pl, -5, 3.5, [150, 138, 120], K.LISO, { techo: [122, 112, 100] });
+    const pl = [[-89, 7], [7, -89], [10, 72], [-6, 88], [-36, 58]], ESP = [196, 204, 212], BRZ = [122, 102, 72];
+    L.prisma(B, pl, -5, 3.5, [150, 138, 120], K.LISO, { techo: [118, 112, 104] });
     const out = [];
-    for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 24));
+    for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 9));
       for (let j = 0; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); }
-    const o2 = inflar(out, 4), c = centro(out), ys = out.map((p, i) => 15 + 5 * ((i * 7) % 3) + (p[1] + 90) * 0.035);
-    const mid = out.map((p, i) => [c[0] + (o2[i][0] - c[0]) * 0.55, c[1] + (o2[i][1] - c[1]) * 0.55, 21 + 3 * ((i * 5) % 2)]);
-    for (let i = 0; i < out.length; i++) { const j = (i + 1) % out.length, A = [o2[i][0], ys[i], o2[i][1]], Bp = [o2[j][0], ys[j], o2[j][1]], M = [mid[i][0], mid[i][2], mid[i][1]], N = [mid[j][0], mid[j][2], mid[j][1]];
-      L.poly(B, [A, Bp, N], ESP, K.METAL, aux); L.poly(B, [A, N, M], L.shade(ESP, 0.93), K.METAL, aux);
-      L.poly(B, [M, N, [c[0], 25, c[1]]], L.shade(ESP, 1.04), K.METAL, aux);
-      if (i % 2 === 0) L.tambor(B, mid[i][0], mid[i][1], -1, mid[i][2], 0.5, { lados: 6, col: [190, 190, 192], k: K.METAL }); }
+    const o2 = inflar(out, 4), c = centro(out), NR = 9;
+    // lámina ondulada de poca pendiente: anillos del borde al centro; la altura es una ola suave que sube hacia el borde
+    const alt = (x, z, s) => 19.5 + 2.2 * Math.sin((x * 0.6 + z * 0.8) / 26) + 1.4 * Math.cos((x * 0.8 - z * 0.6) / 17) + 3.2 * s * s;
+    const R = []; for (let r = 0; r <= NR; r++) { const s = 1 - r / NR * 0.96;
+      R.push(o2.map(p => { const x = c[0] + (p[0] - c[0]) * s, z = c[1] + (p[1] - c[1]) * s; return [x, alt(x, z, s), z]; })); }
+    const ny = t => { let n = 0; for (let i = 0; i < t.length; i++) { const a = t[i], b = t[(i + 1) % t.length]; n += (a[2] - b[2]) * (a[0] + b[0]); } return n; };
+    const cara = (t, arriba, col, k, aux) => { if ((ny(t) > 0) !== arriba) t = t.slice().reverse(); L.poly(B, t, col, k, aux); };
+    const baja = p => [p[0], p[1] - 0.45, p[2]], auxS = L.aux.panel(4.2, 0.1), auxI = L.aux.panel(1.6, 0.08);
+    for (let r = 0; r < NR; r++) for (let i = 0; i < o2.length; i++) { const j = (i + 1) % o2.length, A = R[r][i], Bp = R[r][j], C = R[r + 1][j], D = R[r + 1][i];
+      const f = 0.97 + 0.04 * (((i * 7 + r * 3) % 5) / 4);
+      cara([A, Bp, C], true, L.shade(BRZ, f), K.METAL, auxS); cara([A, C, D], true, L.shade(BRZ, f * 0.97), K.METAL, auxS);
+      cara([A, Bp, C].map(baja), false, ESP, K.METAL, auxI); cara([A, C, D].map(baja), false, L.shade(ESP, 0.97), K.METAL, auxI); }
+    cara(R[NR], true, BRZ, K.METAL, auxS); cara(R[NR].map(baja), false, ESP, K.METAL, auxI);          // cierre del centro
+    // canto de la lámina (franja de 0,45 m) y pilares finos
+    for (let i = 0; i < o2.length; i++) { const j = (i + 1) % o2.length, A = R[0][i], Bp = R[0][j];
+      L.poly(B, [A, Bp, baja(Bp), baja(A)], [92, 80, 62], K.METAL); L.poly(B, [baja(A), baja(Bp), Bp, A], [92, 80, 62], K.METAL); }
+    for (const r of [3, 6]) for (let i = 0; i < o2.length; i += 3) { const p = R[r][i]; L.tambor(B, p[0], p[2], 3.4, p[1] - 0.4, 0.35, { lados: 8, col: [200, 202, 204], k: K.METAL }); }
+    // el mercado bajo la cubierta: hileras de puestos con toldo sobre la losa
+    const dentro = (x, z, P) => { let k = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) { const p = P[a], q = P[b];
+      if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) k = !k; } return k; };
+    const P2 = inflar(pl, -9), TOL = [[150, 92, 74], [92, 112, 130], [178, 156, 112], [104, 120, 96], [196, 190, 178]];
+    for (let x = -80; x <= 80; x += 6.4) for (let z = -80; z <= 80; z += 9) { if (((x + 80) / 6.4) % 4 > 2.5) continue;   // pasillo cada 3 puestos
+      if (!dentro(x, z, P2) || !dentro(x + 2, z + 3, P2) || !dentro(x - 2, z - 3, P2)) continue;
+      const t = TOL[Math.floor(Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5)) % TOL.length];
+      L.caja(B, x, z, 3.5, 6.2, 3.2, 2.2, 0, [150, 144, 136], K.LISO);
+      L.cubierta(B, x, z, 5.7, 3.8, 6.1, 0.5, { tipo: 'dos', ang: 90, col: t, k: K.LISO }); }
   } });
 
 // Disseny Hub (la «grapadora», MBM 2013). Silueta: gran volumen prismático de zinc gris oscuro levantado a ~14 m que vuela
@@ -273,11 +294,11 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
 add({ id: 'disseny_hub', nombre: 'Disseny Hub', nivel: 'B', x: 13725.2, z: 15753.1, rot: 0, alto: 34, ancho: 40, largo: 54,
   noche: 'nada', edificios: [141731, 141732, 141744, 141745],
   build(B, h, L) {
-    const ZN = [96, 100, 104], aux = L.aux.panel(1.6, 0.18, 0), y0 = Math.min(-2, hy0(h) - 2);
+    const ZN = [116, 120, 124], aux = L.aux.panel(1.6, 0.18, 0), y0 = Math.min(-2, hy0(h) - 2);
     // volumen principal: de la lámina SO hasta 30 m de voladizo hacia el NE (u = a lo largo de la diagonal SO→NE)
     const P = (u, v) => [u * 0.7071 + v * 0.7071, u * 0.7071 - v * 0.7071];   // u hacia el NE, v hacia el SE
     const caja2D = (u0, u1, v0, v1) => [P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1)];
-    L.prisma(B, caja2D(-14, 34, -27, 27), 14, 33.5, ZN, K.METAL, { aux, techo: [84, 86, 90] });
+    L.prisma(B, caja2D(-14, 34, -27, 27), 14, 33.5, ZN, K.METAL, { aux, techo: [132, 134, 136], auxTecho: L.aux.panel(3, 0.12, 0) });
     // franja de ventanal corrido en la cara del voladizo y bajo el remate (vidrio oscuro; de noche, encendido)
     L.prisma(B, caja2D(-14.3, 34.3, -27.3, 27.3), 27.5, 29.2, [150, 200, 240], K.EMISIVO, { aux: L.aux.emisivo(1.2, true) });
     // sofito del voladizo con su línea de luz, y la base: muro bajo de hormigón y talud verde hasta la cota 13
