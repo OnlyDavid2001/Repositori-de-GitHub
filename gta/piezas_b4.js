@@ -316,7 +316,7 @@ pieza('pb_gotico', function (env, run, q) {
       box(W1, F, tt + 0.25, tt + 0.29, y0, y0 + 1.75, d, d + 0.03, shade(wd, 0.7), K.WOOD, 4); box(W1, F, tt + 0.25, q.c - 0.25, y0 + 1.75, y0 + 1.79, d, d + 0.03, shade(wd, 0.7), K.WOOD, 1); }
   }
   if (vi === 0 || vi === 3) P.escudo(W0, F, q.c, Math.min(top + 1.4, yt + 1.2), vi === 3 ? 2.1 : 1.6, sc);
-  if (!q.dep && q.bw >= w + 1.6) P.farol(W1 || W0, F, ct + 0.55, Math.min(top - 0.6, q.gl + 3.0), env.iron);
+  if (!q.dep && q.bw >= w + 1.55) P.farol(W0, F, ct + 0.55, Math.min(top - 0.6, q.gl + 3.0), env.iron);
 });
 // ventana geminada: dos luces de medio punto con columnita y capitel, alféizar de piedra
 function geminada(env, run, q) {
