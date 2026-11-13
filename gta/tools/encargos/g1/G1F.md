@@ -42,3 +42,9 @@ Notas del crítico, lo más visible primero; hoja final a 1280×720 (de día y d
   como en la foto del usuario de la madrugada (`noche_tardia_carmel_0a4h.jpg`).
 - G1L: los escaparates blancos quemados (el «5,09» de eix_calle) siguen quemando: no hay exposición automática; baja el
   brillo de esos interiores.
+- G1T: la corona 'atico' de facades.js (hacia la línea 792, `wr(W0, F, 0, L, C + 0.2, y1 + 0.35, wallC, kw)`) dibuja el
+  último piso como un muro liso sin huecos con barandilla de vidrio encima: en la vista `azoteas` se lee como una banda de
+  vidrio translúcido verde menta, pálida de noche. Dale huecos (ventanas o puertas de terraza) y un material de muro.
+- G1T: medianeras (layoutB: un muro que toca al vecino en 2 de 3 muestras y cuya cubierta queda por debajo de y1 − 2,5
+  se dibuja como fachada de patio con ventanas): en la realidad es una medianera ciega por encima del vecino; dibújala
+  ciega, con enfoscado o ladrillo y huellas del edificio derribado (escaleras, franjas de forjados).
