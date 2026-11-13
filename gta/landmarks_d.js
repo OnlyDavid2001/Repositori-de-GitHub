@@ -20,8 +20,9 @@ const circulo = (cx, cy, r, n) => { const p = []; for (let i = 0; i < n; i++) { 
 function roseton(B, x, y, z, r, dir, col) {
   const d = dir < 0 ? -1 : 1;
   L.extruir(B, circulo(x, y, r * 1.18, 20), z, z + d * 0.5, col || PIEDRA, K.PIEDRA);
-  L.extruir(B, circulo(x, y, r, 20), z - d * 0.12, z, VIDRIO, K.LISO);
-  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI; L.bar(B, [x - Math.cos(a) * r, y - Math.sin(a) * r, z - d * 0.2], [x + Math.cos(a) * r, y + Math.sin(a) * r, z - d * 0.2], 0.16, col || PIEDRA, K.PIEDRA); }
+  // vidriera 5 cm por delante del aro (antes quedaba dentro del muro, coplanaria con su cara: parpadeo) y tracería delante
+  L.extruir(B, circulo(x, y, r, 20), z + d * 0.45, z + d * 0.55, VIDRIO, K.LISO);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI; L.bar(B, [x - Math.cos(a) * r, y - Math.sin(a) * r, z + d * 0.62], [x + Math.cos(a) * r, y + Math.sin(a) * r, z + d * 0.62], 0.16, col || PIEDRA, K.PIEDRA); }
 }
 // torre octogonal con franjas oscuras (huecos del campanario): bandas = [[y0, y1], …]
 function torreOct(B, x, z, y0, y1, r, col, bandas, o) {
@@ -119,7 +120,7 @@ add({ id: 'catedral', nombre: 'Catedral de Barcelona', nivel: 'A', x: 12750.6, z
     // fachada neogótica: muro, gablete, portada apuntada y rosetón, con pináculos en el gablete
     L.caja(B, 0, -45.6, -2, 27, 3, 29, 0, C, K.PIEDRA, { aux: aPie });
     L.extruir(B, [[-12.5, 27], [12.5, 27], [0, 41]], -47.1, -44.1, C, K.PIEDRA, { aux: aPie });
-    L.extruir(B, apuntado(6.5, -1, 8, 15), -47.4, -47.1, OSCURO, K.LISO);
+    L.extruir(B, apuntado(6.5, -1, 8, 15), -47.4, -46.9, OSCURO, K.LISO);
     roseton(B, 0, 20, -47.1, 3.4, -1, C);
     for (const x of [-7, 7]) { L.caja(B, x, -47.4, -2, 1.4, 1.4, 29, 0, C2, K.PIEDRA); pinaculo(B, x, -47.4, 27, 9, 1.4, C); }
     pinaculo(B, 0, -45.6, 40, 6, 1.2, C);
@@ -161,7 +162,7 @@ add({ id: 'santa_maria_mar', nombre: 'Santa Maria del Mar', nivel: 'A', x: 13207
       L.caja(B, s * 8.1, z, 24, 1.8, 2, 8, 0, C2, K.PIEDRA); }
     // fachada: contrafuertes, portada apuntada, rosetón y galería
     for (const x of [-7.8, 7.8]) L.caja(B, x, -39.3, -2, 2.2, 1.6, 30, 0, C2, K.PIEDRA, { aux: aPie });
-    L.extruir(B, apuntado(5.5, -1, 7.5, 12.5), -38.9, -38.6, OSCURO, K.LISO);
+    L.extruir(B, apuntado(5.5, -1, 7.5, 12.5), -38.9, -38.4, OSCURO, K.LISO);
     roseton(B, 0, 20.5, -38.75, 4.6, -1, C);
     L.caja(B, 0, -39, 29, 14, 0.9, 1.2, 0, C2, K.PIEDRA);
     // campanarios octogonales, del mismo tono claro, que pasan 10 m por encima de la nave (remate plano a 45 m)
@@ -221,7 +222,7 @@ add({ id: 'santa_maria_pi', nombre: 'Santa Maria del Pi', nivel: 'B', x: 12526.1
     const v0 = B.nv;
     L.nave(B, { ancho: 21, largo: 46, alto: 25, col: C, k: K.PIEDRA, aux: aPie, tejado: [150, 132, 110] });
     L.caja(B, 0, -23.4, -2, 21, 1.2, 29, 0, C, K.PIEDRA, { aux: aPie });                      // hastial de la fachada
-    L.extruir(B, apuntado(4.5, -1, 6, 10), -24.3, -24, OSCURO, K.LISO);
+    L.extruir(B, apuntado(4.5, -1, 6, 10), -24.3, -23.8, OSCURO, K.LISO);
     roseton(B, 0, 17, -24.1, 4.8, -1, C);
     for (let z = -16; z <= 16; z += 8) for (const s of [-1, 1]) L.caja(B, s * 11.2, z, -2, 1.4, 2, 26, 0, C2, K.PIEDRA);
     L.xf(B, v0, -17, -9, -7.6);
@@ -245,7 +246,7 @@ add({ id: 'merce', nombre: 'Basílica de la Mercè', nivel: 'B', x: 12997.7, z: 
     // fachada barroca con remate curvo
     const pf = [[-10, -2], [10, -2], [10, 22]]; for (let i = 0; i <= 8; i++) { const t = i / 8 * Math.PI; pf.push([Math.cos(t) * 10 * (i === 0 || i === 8 ? 1 : 0.9), 22 + Math.sin(t) * 5]); } pf.push([-10, 22]);
     L.extruir(B, pf, -24.2, -22.4, C, K.PIEDRA, { aux: aPie });
-    L.extruir(B, [[-2.4, -1], [2.4, -1], [2.4, 6], [0, 8.4], [-2.4, 6]], -24.5, -24.2, OSCURO, K.LISO);
+    L.extruir(B, [[-2.4, -1], [2.4, -1], [2.4, 6], [0, 8.4], [-2.4, 6]], -24.5, -24.0, OSCURO, K.LISO);
     // cúpula sobre tambor, linterna y estatua
     L.tambor(B, 0, 13, 18, 28, 8.4, { lados: 16, col: C, k: K.PIEDRA, aux: aPie });
     L.cupula(B, 0, 13, 28, 8.4, 8.5, { lados: 16, anillos: 5, col: C2, k: K.PIEDRA });
@@ -455,7 +456,7 @@ add({ id: 'sant_jaume', nombre: 'Palau de la Generalitat i Casa de la Ciutat', n
       const y0 = Math.min(h.y(cx - w / 2, cz), h.y(cx + w / 2, cz), h.y(cx, cz)) - 1.5, f = cz + dir * 0.6;
       L.caja(B, cx, cz - dir * 3, y0, w, 7.2, alto - y0, 0, C, K.VENTANAS, { aux: L.aux.ventanas(5.6, 3.8, 0.38, 0.5), techo: C2 });
       L.caja(B, cx, f + dir * 0.1, alto - 0.2, w + 0.8, 1.4, 1, 0, C2, K.PIEDRA);
-      L.extruir(B, [[cx - 2.4, y0], [cx + 2.4, y0], [cx + 2.4, h.y(cx, cz) + 6], [cx, h.y(cx, cz) + 8.2], [cx - 2.4, h.y(cx, cz) + 6]], f, f + dir * 0.25, OSCURO, K.LISO);
+      L.extruir(B, [[cx - 2.4, y0], [cx + 2.4, y0], [cx + 2.4, h.y(cx, cz) + 6], [cx, h.y(cx, cz) + 8.2], [cx - 2.4, h.y(cx, cz) + 6]], f - dir * 0.2, f + dir * 0.25, OSCURO, K.LISO);
       return { y: h.y(cx, cz), f };
     };
     // mástil con bandera: asta clara y paño rectangular a franjas (la bandera catalana: amarilla con cuatro barras rojas)

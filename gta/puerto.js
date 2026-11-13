@@ -528,8 +528,19 @@ function portVell() {
         L.prisma(B, pl, yb, yb + 5, [70, 76, 82], K.CORTINA, { aux: AUX.cortina(5, 3, 0.2), sinTecho: true });
         L.prisma(B, pl, yb + 5, yb + top, [208, 200, 186], K.VENTANAS, { aux: AUX.ventanas(4.4, 6, 0.75, 0.5), sinTecho: true });
         const cx = pl.reduce((s, p) => s + p[0], 0) / pl.length, cz = pl.reduce((s, p) => s + p[1], 0) / pl.length;
-        L.prisma(B, L.mover(pl.map(p => [p[0] - cx, p[1] - cz]), cx, cz, 0, 1.04), yb + top, yb + top + 1.2, [200, 202, 204], K.METAL, { aux: AUX.panel(1.5, 0.06, 0) });
-        for (let k = -2; k <= 2; k++) bx(B, cx + k * 22, cz, yb + top + 1.2, 10, 50, 2.4, 0, [130, 150, 160], K.CORTINA, AUX.cortina(2.4, 1.2, 0.1)); }
+        // cubierta: vuelo de chapa gris con canto, peto y, encima, lucernarios a dos aguas en hileras a lo largo del eje
+        // largo de la planta (solo donde caben enteros), con su bancada; y grupos de máquinas de clima
+        const yc = yb + top + 1.2;
+        L.prisma(B, L.mover(pl.map(p => [p[0] - cx, p[1] - cz]), cx, cz, 0, 1.04), yb + top, yc, [104, 108, 112], K.METAL, { aux: AUX.panel(1.2, 0.05, 0), techo: [138, 140, 138], auxTecho: AUX.panel(1.2, 0.04, 0) });
+        let ang = 0, lmax = 0; for (let i = 0; i < pl.length; i++) { const a = pl[i], b = pl[(i + 1) % pl.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l > lmax) { lmax = l; ang = Math.atan2(b[0] - a[0], b[1] - a[1]); } }
+        const ux = Math.sin(ang), uz = Math.cos(ang), W = (u, v) => [cx + ux * u + uz * v, cz + uz * u - ux * v], cab = (x, z) => pip(x, z, pl);
+        let n = 0;
+        for (let v = -120; v <= 120 && n < 40; v += 14) for (let u = -150; u <= 150 && n < 40; u += 24) { const q = [W(u - 9, v - 3), W(u + 9, v - 3), W(u + 9, v + 3), W(u - 9, v + 3), W(u, v)];
+          if (!q.every(p => cab(p[0], p[1])) || !q.every(p => cab(p[0] + 2, p[1] + 2) && cab(p[0] - 2, p[1] - 2))) continue;
+          const [x, z] = q[4], a = Math.atan2(ux, uz) / D2R; n++;
+          bx(B, x, z, yc, 4.6, 18.6, 0.5, a, [120, 122, 124], K.METAL, AUX.panel(0.8, 0.05, 0));
+          L.cubierta(B, x, z, yc + 0.5, 4.2, 18.2, 1.3, { tipo: 'dos', ang: a, col: [62, 78, 88], k: K.CORTINA, aux: AUX.cortina(1.3, 1.2, 0.1), colHastial: [120, 122, 124], kHastial: K.METAL });
+          if (n % 3 === 1) { const m = W(u, v + 7); if (cab(m[0], m[1])) for (let j = -1; j <= 1; j++) bx(B, m[0] + ux * j * 2.6, m[1] + uz * j * 2.6, yc, 2.0, 1.4, 1.3, a, [176, 178, 176], K.METAL, AUX.panel(0.5, 0.1, 0)); } } }
     } });
   ficha({ id: 'pu_bertran', nombre: 'Moll de Sant Bertran (ferris)', etiqueta: false, x: 12720, z: 11950, alto: 40, ancho: 400, largo: 600, edificios: PD.ferri,
     build(B, h) {

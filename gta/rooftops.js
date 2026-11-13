@@ -72,6 +72,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
   // materiales (canal auxiliar de K.PBR, §6.7)
   const A_PAINT = pbrAux(0.55, 0, 0, 0), A_MATTE = pbrAux(0.9, 0, 0, 0), A_GALV = pbrAux(0.42, 1, 0, 0), A_RUST = pbrAux(0.7, 0, 3, 0);
   const A_FIBRO = pbrAux(0.85, 0, 3, 0), A_LOUV = pbrAux(0.5, 0, 1, 0), A_PV = pbrAux(0.18, 0.2, 0, 0), A_GLASS = pbrAux(0.12, 0, 0, 0);
+  // lucernarios en hilera de las naves: vidrio armado / policarbonato, rugoso (con 0,12 reflejaba el cielo y de noche se leían
+  // como rayas azuladas, casi placas solares)
+  const A_SKYL = pbrAux(0.55, 0, 0, 0);
   const A_CLOTH = pbrAux(0.95, 0, 0, 0), A_PILOT = pbrAux(0.5, 0, 0, 1), A_TILE = pbrAux(0.85, 0, 0, 0);
   const patAux = g => { const a = [g, 0, 0, 0]; return a.concat(a, a, a); }, A_WARM = pbrAux(0.5, 0, 0, 0.5);
   const CLOTHES = [[236, 236, 232], [200, 60, 56], [60, 90, 160], [230, 200, 80], [90, 150, 110], [240, 170, 180], [40, 40, 46], [170, 200, 225], [220, 120, 60]];
@@ -757,7 +760,9 @@ window.BCN_ROOFTOPS = { init(ctx) {
         }
         break; }
       case 'tank': {
-        const pitch = it.rad * 2 + 0.3;
+        const pitch = it.rad * 2 + 0.3, [cx, cz] = loc(it, 0, 0, ox, oz);
+        // bancada de obra bajo la fila (apoya en la cubierta: sin ella, con las patas finas, el depósito parecía flotar)
+        bx(W, cx, cz, y, it.n * pitch + 0.1, it.rad * 1.5, it.legs, it.a, [172, 166, 156], A_MATTE);
         for (let i = 0; i < it.n; i++) { const [x, z] = loc(it, (i - (it.n - 1) / 2) * pitch, 0, ox, oz), y1 = y + it.legs;
           for (const q of [-1, 1]) { const [lx, lz] = loc(it, (i - (it.n - 1) / 2) * pitch, q * it.rad * 0.55, ox, oz); post(W, lx, lz, y, y1, it.rad * 1.3, it.a, [70, 66, 60], A_RUST); }   // patas: dos perfiles
           rev(W, F0, x, z, [[it.rad, y1], [it.rad, y1 + it.h], [0, y1 + it.h + 0.16]], 6, it.col, K.PBR, { aux: it.fib ? A_FIBRO : A_GALV, cap: 2 }); }
@@ -808,10 +813,10 @@ window.BCN_ROOFTOPS = { init(ctx) {
         bx(W, x, z, y, it.s, it.w, 0.4, it.a, [200, 198, 192], A_MATTE);
         if (it.pit) { const hl = it.s / 2 - 0.05, hw = it.w / 2 - 0.05, yb = y + 0.4, yr = yb + Math.min(hw, 0.6) * 0.7;
           const Pp = (u, v, yy) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, yy, pz]; };
-          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_GLASS);
-          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_GLASS);
+          quad(W, F0, ...Pp(-hl, -hw, yb), ...Pp(hl, -hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
+          quad(W, F0, ...Pp(-hl, hw, yb), ...Pp(hl, hw, yb), ...Pp(hl, 0, yr), ...Pp(-hl, 0, yr), [96, 120, 132], K.PBR, A_SKYL);
         } else { const hl = it.s / 2 - 0.06, hw = it.w / 2 - 0.06, Pp = (u, v) => { const [px, pz] = loc(it, u, v, ox, oz); return [px, y + 0.46, pz]; };
-          quad(W, F0, ...Pp(-hl, -hw), ...Pp(hl, -hw), ...Pp(hl, hw), ...Pp(-hl, hw), [110, 130, 140], K.PBR, A_GLASS); }
+          quad(W, F0, ...Pp(-hl, -hw), ...Pp(hl, -hw), ...Pp(hl, hw), ...Pp(-hl, hw), [110, 130, 140], K.PBR, A_SKYL); }
         break; }
       case 'vent': {
         for (let i = 0; i < it.n; i++) { const [x, z] = loc(it, (i - (it.n - 1) / 2) * 0.6, 0, ox, oz), h = it.h * (0.8 + 0.4 * it.hs[i % 6]);
