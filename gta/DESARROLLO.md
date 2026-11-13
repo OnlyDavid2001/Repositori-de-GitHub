@@ -1842,3 +1842,82 @@ Pl. de la Sagrada Família).
   hueca: quien llega por la calle de Mallorca (pies > 0,9 m por debajo) pasa por debajo.
 - `tools/mz_partidas.js` relanzado: las manzanas precalculadas salen idénticas (593 manzanas, 294 037 edificios), así que
   `data/mz_partidas.json` no cambia y el juego no las recalcula al cargar (`MZC.nB === nB0`).
+
+## 14. Fase gráfica 1 (del 5 al 8): luz, suelo, azoteas y huecos, árboles y monte
+
+Encargos en `tools/encargos/g1/` (reglas comunes en `comun.md`), progresos `G1x1`–`G1x3` e `INT1` en
+`tools/encargos/progreso/`. Integración INT1 en la rama `wt-g1-int`: banco, suelo (G1S), azoteas y huecos (G1T), árboles y
+monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando acaben.
+
+### 14.1 Banco de pruebas (G1B)
+- `tools/views_g1.json`: 24 vistas fijas (a pie de calle de día y de noche, dron, lejos, montaña y mar), con coordenadas
+  fijas. `tools/hoja_g1.py <prefijo> <salida.jpg>` hace la hoja de una tanda; con `--comparar <antes> <después> <salida>`,
+  la hoja ANTES/DESPUÉS. `tools/encargos/g1/rubrica.md`: seis criterios (luz, materiales, geometría, vegetación,
+  coherencia, lejanía), escala 5/7/8/10, «el defecto manda» (nota ≤ criterio más bajo + 2) y fotos de referencia por vista.
+- `data/views_g1_nominatim.json`: lo descargado de Nominatim para colocar las vistas.
+
+### 14.2 Luz de cine, mar y lejanía (G1L; `app.js` preludio, `FS_SKY`, `FS_SEA`; `lighting.js`)
+- Cielo: `skyDay()` = (1 − uNight)(1 − uSunH.w) (todo lo diurno vale 0 de noche y con la luna); `kHorz` (blanqueo cálido
+  del horizonte, el mismo en `skyGrad` y `horzCol`: sin costura entre monte lejano y cielo); halo de Mie alrededor del sol.
+  El resplandor del horizonte del lado del sol empieza con el sol a 32°; nubes encendidas (salmón y oro) con el sol bajo.
+- Perspectiva aérea en `fogL`: extinción por canales (el azul se rellena antes), lóbulo de Mie hacia el sol y
+  desaturación de lo lejano (hasta 80 %) según la cantidad de bruma.
+- `shade`: Fresnel de Schlick con rugosidad. `albFloor(aL, n, vis)`: suelo de albedo de día (relleno del cielo y de las
+  fachadas soleadas; ×2,6 en el suelo y ×4,2 en el suelo en sombra; muros y forja 0,03). Solo de día.
+- Sombras: `shSoft`/`shCasc`/`shMap` (PCSS en la cascada cercana, solo en calidad alta; `uShP.w = P.soft`, 0,006 m de
+  penumbra por metro hasta lo que tapa; `BCN.light.set({soft:0})` vuelve a la de antes). Todo mesh con niveles LOD en la
+  lista de una cascada pasa sus LOD al material de profundidad (`shRender`): así se quitó el aviso «Feedback loop».
+- `lighting.js`: `grade()` (curvas de color diurnas: luces cálidas `gWarm`, sombras frías `gCool`, `gSat`, `gMid`; en la
+  hora dorada, luces más doradas y sombras más frías); `P.aoDay` = 1,45 (oclusión de día más fuerte, radio 0,8 m, muestras
+  con reparto t²). `L.K`: `fogDD` 2,6, `fogDay`, `sunD` 1,16, `expD` 1,07. Ajustes con `BCN.light.set({...})`.
+- `FS_SEA`: `nD` (ruido de valor con derivada, retícula plegada cada 256 celdas), tres trenes de mar de fondo y cinco
+  octavas de mar de viento que se apagan con el píxel y pasan a rugosidad; Fresnel (f0 0,02) con `skyGrad`; brillo del sol
+  normalizado + destellos (glitter); color por profundidad; `calmAt` (agua del puerto: olas al 22 %, `seaC` con rizo fino
+  y rodales de brisa); espuma en escolleras y swash en la orilla; estelas nocturnas de la costa sin bloques.
+- Pendiente: exposición automática y TAA (Babylon 9 no los da con nuestros ShaderMaterial).
+
+### 14.3 Suelo, marcas viales y calles planas (G1S; `suelos.js`, `ground.js`, `streets.js`, `plazas.js`)
+- Allanado por el eje: cada nudo de 5 m toma la cota filtrada del punto del eje más cercano de cada tramo que lo alcanza,
+  con peso ((RB − e)/(RB + hw))²; banda a nivel FW = 5 m (aceras) y talud hasta RB = 11 m (pistas: 1,5 y 7 m). `RAS`
+  incluye las clases 9, 12 y 15; `preClave` versión 8 (si cambia el cálculo, súbela y relanza `tools/allanado.sh`). Las
+  pistas de clase 9 llevan el modelo de acera 6 (tierra y grava). Medida: `tools/medir_suelo.js` (como `eval` de una vista).
+- Marcas por boca de cruce (`ground.js`): paso de cebra de 4 m tras la calzada transversal (o al empezar el xamfrà),
+  recortado si pisa otra calzada (`P.zr` = bandas libres, ≥ 60 %); línea de detención; flechas por carril en entradas
+  anchas; líneas de carril que empiezan 10 m después de lo pintado del cruce; rotondas por lazo cerrado de calzada
+  (ceda el paso en las entradas, nada en el anillo). La pintura sigue la cinta real (misma subdivisión que app.js) y va a
+  `LIFT` = 4 cm sobre la cinta más alta. Depuración: `BCN_GROUND.survey()`, `BCN_GROUND.mouths(x, z, r)`, `?zlift=1`.
+- Asfalto: `BCN_SUELOS.asfalto` = `asfaltoG1` (desgaste < 1,8 comprimido a 1,5–1,8); `asfalto0` es el de antes y lo usan
+  las aceras. `roadGLSL` lee `Ta` de FS_ROAD (tono de lejos) para que el de cerca case; parches por carril (no rombos);
+  tapas, arquetas e imbornales sin patrón fijo.
+- `streets.js` `ramblaST(w)`: eje del paseo central de La Rambla, con su panot de ondas.
+
+### 14.4 Azoteas, huecos y parpadeos (G1T; `rooftops.js`, hitos, `puerto.js`, `aeropuerto.js`)
+- `plan0` planifica también las clases 1, 2, 3, 5 y 8–13 sin fachada de detalle (`tipo` 1 si < 14 m, 2 si no) y cajas de
+  hasta 250 000 m². Cubiertas > 600 m²: lucernarios en hilera (naves, vidrio armado `A_SKYL`) o grupos de máquinas
+  (equipamientos), claves `seed(b, 90, 200–214)`. `nMax` = 12 + (área − 1 700)/900, hasta 36. Bancada bajo los depósitos.
+- Reglas contra parpadeos: nada de tapas coplanarias (un remate sobre un prisma, +0,1 m o −0,03 m respecto a su techo);
+  bandas sobre paredes con desplazamiento real del polígono (`offsP`), nunca escalando desde el centroide; una pieza que se
+  apoya en un muro entra en él (puertas −0,2 a −0,5 m).
+- Herramientas: `tools/parpadeo.js` + `tools/parpadeo_pagina.js` (detector por píxeles con la cámara movida 1,2 cm y
+  picking forzado; `HITOS=a:b` recorre los hitos) y `tools/coplanarias.js` (inventario geométrico de solapes coplanarios
+  por malla de hito). `INV=tools/coplanarias.js node tools/parpadeo.js /tmp/x '[{"x":12000,"z":14400,"agl":60,"yaw":0,"pitch":0.5}]'`.
+- Encants rehecho como lámina por anillos (`R[r][i]`, `alt(x,z,s)`; caras con normal de Newell) con el mercado debajo;
+  Maremàgnum con cubierta de chapa y lucernarios según su eje.
+
+### 14.5 Árboles, monte y mobiliario (G1V; `trees.js`, `nature.js`, `furniture.js`, `app.js` FS_TER)
+- `BCN_TREES.WIND_GLSL` define `treeWind(p, W, kind)`; `VS_TREE` lo suma (necesita `uTime` y `uKind`). Impostor de calle
+  de 3 planos a 60° (`impCanvas`). Reparto de calle (`treesOf`): adulto en el 95 % de los alcorques, 3 % plantón, 2 % vacío
+  (nunca dos vacíos seguidos), separación 9,5 m; Eixample 80 % plátano; barrios de mar con palmeras (`seaSp`, también en
+  las plazas del frente marítimo, con guarda en `plazas.js`). Nivel medio de calle (`S.tF`) 320–400 m.
+- `nature.js`: nivel 0 tarjetas; 1 tarjetas grandes sobre núcleo bajo; 2 impostor de atlas (`natImp`, 1024×512, 4
+  especies × de lado/desde arriba; `vC.g` = tesela, 0 = silueta procedimental). Viento en el VS. El último nivel se aclara
+  con la calidad (media 0,78; baja 0,55; lee `BCN.light.quality`).
+- `FS_TER` (monte, de día y donde la ortofoto es verde): hierba seca, calveros, roca en lo empinado, pinaza, y de cerca
+  briznas y piedrecitas; de lejos (píxel > 1,5 m), masa de pinar gris verdosa con rodales. Ruido periódico `pn()` sobre
+  mod(xz, 512 m) (con coordenadas de 15–20 km, `hash21` sacaba rayas).
+- Mobiliario: ocupación de la acera por celda (`cell.treeNear` en `cellCtx`); primero semáforos, luego bolardos; farolas
+  que se corren ±3 m; papeleras, bancos, buzones y parquímetros se omiten si no caben. Fuera los pasajeros parados de la T1.
+
+### 14.6 Integración (INT1)
+- `BCN.light.quality` (getter nuevo en `lighting.js`): `'alta' | 'media' | 'baja'`, la calidad en curso (también en modo
+  auto). Antes no existía y `nature.js` leía `undefined` (siempre calidad alta).

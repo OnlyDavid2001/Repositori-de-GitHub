@@ -452,6 +452,7 @@ void main(){
       ms: Math.round(win.ms * 10) / 10, w: engine.getRenderWidth(), h: engine.getRenderHeight(),
       shadow: SH.off ? 0 : { res: SH.res, half: SH.casc.map(c => Math.round(c.half)), n: SH.casc.map(c => c.n), tris: SH.casc.map(c => Math.round(c.tris)), renders: SH.renders, ok: SH.dark || !SH.casc.some(c => c.dirty || c.late > 0), dark: SH.dark },
       ao: AO.on ? { n: AO.n, k: P.ao, first: (cam._postProcesses.find(p => p) || {}).name } : 0 }) };
+  Object.defineProperty(M, 'quality', { get: () => cur });      // INT1: calidad en curso ('alta' | 'media' | 'baja'); la leen nature.js y streets.js
   Object.defineProperty(M, 'shadow', { get: () => SH });        // depuración: BCN.light.shadow (cascadas, mapas, materiales)
   Object.defineProperty(M, 'pipe', { get: () => pipe });         // depuración: BCN.light.pipe
   return M;

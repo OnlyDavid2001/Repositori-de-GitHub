@@ -735,7 +735,7 @@ void main(){
 
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();
-  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tI: 2100 };
+  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tN0: [55, 70], tF0: [320, 400], tI: 2100 };
   // mobiliario de detalle: se construye en las celdas a menos de HB (algo más que el relevo por píxel, FU.hiRange) y se quita a partir de HD
   const HB = FU.buildHi && FU.hiRange ? FU.hiRange[1] + 8 : -1, HD = HB + 25, furnTris = [0, 0];
   let job = null, queue = [], tris = 0, planT = 0, instT = 0, lastIP = null, added = 0;
@@ -816,7 +816,15 @@ void main(){
     for (const m of PITM) band(m, -2, -1, 60, 75);
     matW.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1));
   }
+  // INT1: los niveles cercano y medio de los árboles de calle (los más caros: hasta ~700 k triángulos a pie en el Eixample, y
+  // proyectan sombra) se acortan con la calidad de BCN.light (alta 1; media 0,8; baja 0,6). Si la calidad cambia (modo auto),
+  // se recalculan las bandas y las instancias
+  const TQK = { alta: 1, media: 0.8, baja: 0.6 };
+  let tq = 'alta';
+  const lightQ = () => (window.BCN && window.BCN.light && window.BCN.light.quality) || 'alta';
+  function treeQ() { const k = TQK[tq] || 1; S.tN = S.tN0.map(v => v * k); S.tF = S.tF0.map(v => v * k); setBands(); }
   function update(P, groundY, dt) {
+    { const lq = lightQ(); if (lq !== tq) { tq = lq; treeQ(); lastIP = null; } }
     const alt = Math.max(0, P.y - groundY);
     if ((planT -= dt) <= 0) { planT = 0.25; plan(P, alt); }
     const t0 = performance.now();
@@ -836,8 +844,8 @@ void main(){
   function setRange(q) {
     S.on = q > 0;
     const k = q >= 2 ? 1.4 : 1;
-    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
-    setBands();
+    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN0: [55 * k, 70 * k], tF0: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
+    tq = lightQ(); treeQ();
     if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = nPit = 0; }
     lastIP = null; planT = 0;
   }
