@@ -867,7 +867,7 @@ window.BCN_ROOFTOPS = { init(ctx) {
         if (it.t === 'peto') { if (it.L > 1.2) peto(W, it, ox, oz, 2); }
         else if (it.t === 'ac') bx(W, x, z, y, it.n * 0.95 - 0.1, 0.34, 0.66, it.a, it.col, A_PAINT);
         else if (it.t === 'pv') bx(W, x, z, y + 0.2, it.n * 1.05, it.rows * 2.4 - 0.6, 0.55, it.a, [44, 52, 78], A_PV);
-        else if (it.t === 'sky') bx(W, x, z, y, it.s, it.w, 0.5, it.a, [112, 122, 128], A_MATTE);   // G1T1: vidrio y marco de media (antes gris claro: de noche, rayas claras sobre la nave a oscuras)
+        else if (it.t === 'sky') bx(W, x, z, y, it.s, it.w, 0.5, it.a, [84, 90, 94], A_MATTE);   // G1T1: vidrio y marco de media (antes gris claro: de noche, rayas claras sobre la nave a oscuras); G1T3: más oscuro aún (112,122,128 → 84,90,94), de noche seguían leyéndose como rayas azuladas
         else if (it.t === 'vent') bx(W, x, z, y, it.n * 0.6 - 0.15, 0.45, it.h + 0.15, it.a, it.metal ? [170, 172, 170] : it.col, A_MATTE);
         else if (it.t === 'shed') bx(W, x, z, y, it.l, it.w, 1.95, it.a, it.col, A_GALV);
         else if (it.t === 'plant') bx(W, x, z, y, it.l, 0.5, 0.8, it.a, GREEN[1], A_MATTE);

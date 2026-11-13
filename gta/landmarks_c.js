@@ -285,7 +285,7 @@ add({ id: 'encants', nombre: 'Mercat dels Encants', nivel: 'B', x: 13609.9, z: 1
       if (!dentro(x, z, P2) || !dentro(x + 2, z + 3, P2) || !dentro(x - 2, z - 3, P2)) continue;
       const t = TOL[Math.floor(Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5)) % TOL.length];
       L.caja(B, x, z, 3.5, 6.2, 3.2, 2.2, 0, [150, 144, 136], K.LISO);
-      L.cubierta(B, x, z, 5.7, 3.8, 6.4, 0.5, { tipo: 'dos', ang: 90, col: t, k: K.LISO }); }
+      L.cubierta(B, x, z, 5.7, 3.8, 6.1, 0.5, { tipo: 'dos', ang: 90, col: t, k: K.LISO }); }
   } });
 
 // Disseny Hub (la «grapadora», MBM 2013). Silueta: gran volumen prismático de zinc gris oscuro levantado a ~14 m que vuela

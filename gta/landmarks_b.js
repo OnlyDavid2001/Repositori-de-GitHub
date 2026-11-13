@@ -410,7 +410,8 @@ add({ id: 'caixaforum', nombre: 'CaixaForum (Casaramona)', nivel: 'B', x: 10462.
   build(B, h, L) {
     const LAD = L.color('#b5543a'), PIE = L.color('#e0d2b0');
     const pl = plantaDe(h, 59057) || L.rect(80, 88), c = caja2(pl), yb = minY(h, pl, 2);
-    L.prisma(B, pl, yb, 11, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [150, 120, 100] });
+    // el ladrillo acaba donde empieza la banda de piedra (antes llegaba a 11 y la banda se pintaba encima: 555 m² coplanarios)
+    L.prisma(B, pl, yb, 10.2, LAD, K.LADRILLO, { aux: L.aux.ladrillo(0.3, 0.6), techo: [150, 120, 100] });
     banda(B, pl, 10.2, 11, PIE, K.PIEDRA);
     almenas(B, pl, 11, 4.2, 1.6, 0.6, 1.3, PIE, K.PIEDRA);
     // dos torres de aguja en las esquinas de la fachada (+Z)
