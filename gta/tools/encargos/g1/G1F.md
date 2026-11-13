@@ -36,3 +36,9 @@ Gòtic; Gràcia; Poblenou; Sarrià), de día y de noche. Después:
 
 ## Etapa 3 (G1F3) · Repaso
 Notas del crítico, lo más visible primero; hoja final a 1280×720 (de día y de noche, a pie de calle en 6 barrios).
+
+## Peticiones de otros carriles (para el repaso G1F3)
+- G1L: de noche desde el dron, menos ventanas encendidas a lo lejos (o más cálidas), para que manden las calles de sodio
+  como en la foto del usuario de la madrugada (`noche_tardia_carmel_0a4h.jpg`).
+- G1L: los escaparates blancos quemados (el «5,09» de eix_calle) siguen quemando: no hay exposición automática; baja el
+  brillo de esos interiores.
