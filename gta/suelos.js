@@ -73,7 +73,7 @@ function asfalto(cls, hw, x0, z0, x1, z1) {
   const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, n = nivel(mx, mz), i = Math.floor(n), f = n - i;
   let w = i >= 4 ? BASE[4] : BASE[i] * (1 - f) + BASE[i + 1] * f;
   const av = avenida(x0, z0, x1, z1), h = hash(Math.round(mx * 0.5), Math.round(mz * 0.5)), zn = zona(mx, mz, 260);
-  w += (zn - 0.5) * 1.1 + (h - 0.5) * 0.7;
+  w += (zn - 0.5) * 1.1 + (h - 0.5) * 0.25;   // G1S2: menos azar por polilínea (antes 0,7): en los cruces se apilaban cintas de tonos muy distintos
   if (cls <= 1 || cls === 10) w = 1.1 + (h - 0.5) * 0.8;                 // autopistas y rondas: mantenimiento propio, seminuevas
   else if (cls === 2) w -= 0.35;                                          // vías principales: se reasfaltan antes
   else if (cls === 6 || cls === 8 || cls === 11) w += 0.45;               // servicio, accesos: lo último que se arregla
