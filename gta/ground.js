@@ -231,7 +231,9 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       const stop = !ringLeg && !entry && hw >= 2.5 && (cls <= 6 || cls === 8 || cls === 10 || cls === 11) && cls >= 2;
       const giveway = entry && hw >= 2.5;
       const aGive = info.aMin + 0.6;
-      const zFree = zOk && freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3);
+      let zFree = zOk && freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3);
+      // si en el sitio del xamfrà pisa otra calzada (laterales, ramales), pegado al cruce como antes
+      if (zOk && !zFree && !entry && a0 > info.aMin + 1.0) { a0 = info.aMin + 1.0; zFree = freeRect(s, info, a0, a0 + 4, -hw + 0.3, hw - 0.3); }
       const aStop = zFree ? a0 + 4 + 1.0 : info.aMin + 1.0;
       const sb0 = oneWay ? -hw + 0.25 : 0.12;
       P = { info, a0, zOk: zFree, oneWay, sb0,  stop: stop && aStop + 0.4 <= L && freeRect(s, info, aStop, aStop + 0.4, sb0, hw - 0.25), aStop,
