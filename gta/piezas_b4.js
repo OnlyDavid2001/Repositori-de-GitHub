@@ -37,10 +37,12 @@ const h01 = (a, b) => { let h = Math.imul(a ^ 0x5bd1e995, 0x9e3779b1) ^ Math.imu
 const hx = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
 const LAMPC = [255, 214, 150], ALU = [168, 170, 168];
 
+const gcd = (a, b) => b ? gcd(b, a % b) : a, STEPS = {};
 // color de la parcela virtual g de un tramo: la 0, el del edificio; las demás, de la paleta, sin repetir la vecina
 function colPar(env, run, g, pal) {
   if (g === 0) return run.wallC;
-  const n = pal.length, st = 1 + ((h01(env.b, 37) * (n - 1)) | 0), i = (((h01(env.b, 31 + run.i) * n) | 0) + g * st) % n;
+  const n = pal.length, S = STEPS[n] || (STEPS[n] = [...Array(n).keys()].filter(s => s > 0 && gcd(s, n) === 1)), st = S[(h01(env.b, 37) * S.length) | 0];
+  const i = (((h01(env.b, 31 + run.i) * n) | 0) + g * st) % n;   // paso primo con n: recorre toda la paleta sin repetir la vecina
   return shade(pal[i], 0.94 + h01(env.b, 41 + g + run.i * 8) * 0.1);
 }
 
@@ -277,7 +279,7 @@ pieza('corona_quart', function (env, run, q) {
 // portalón de medio punto con dovelas grandes; el del palacio, abierto: el zaguán y la escalera del patio al fondo
 pieza('pb_gotico', function (env, run, q) {
   const { W0, W1 } = env, F = q.F, top = env.F1, rr = q.rr, vi = env.V.vi, a = q.a, b = a + q.bw, col = run.wallC, kw = env.kw;
-  const sc = shade(env.stone, 1.06);
+  const sc = shade(env.stone, 1.12);
   if (!q.portal) {
     if (rr[0] < (vi === 3 ? 0.7 : 0.3)) { wr(W0, F, a, b, q.yB, top, col, kw); return; }   // muro ciego
     if (vi === 3 || rr[1] < 0.5) {                    // ventanuco alto con reja
@@ -303,10 +305,9 @@ pieza('pb_gotico', function (env, run, q) {
     hpl(W0, F, tt, ct, yc, -dep, -0.7, shade(col, 0.5), kw); jamb(W0, F, tt, ys, yc, -dep, -0.7, shade(col, 0.7), kw); jamb(W0, F, ct, ys, yc, -dep, -0.7, shade(col, 0.7), kw);
     const wd = [72, 52, 34];
     jamb(W0, F, tt + 0.08, y0, ys + 0.2, -1.4, -0.4, wd, K.WOOD); jamb(W0, F, ct - 0.08, y0, ys + 0.2, -1.4, -0.4, wd, K.WOOD);
-    rect(W0, F, tt, ct, y0, yc, -dep, shade(col, 1.18), kw);
+    rect(W0, F, tt, ct, y0, yc, -dep, shade(col, 1.04), kw);
     const n = 8, sw = (w - 0.3) / n;
     for (let i = 0; i < n; i++) box(W0, F, tt + 0.15 + i * sw, ct - 0.1, y0 + i * 0.22, y0 + (i + 1) * 0.22, -dep, -dep + 1.0, shade(col, 1.12), kw, 1);
-    if (W1) lattice(W1, F, tt + 0.15, ct - 0.1, y0 + n * 0.22, y0 + n * 0.22 + 0.9, -dep + 1.0, env.iron, K.IRON, 1);
   } else {                                            // portalón de madera claveteado con postigo
     const d = -dep + 0.02, wd = [[78, 54, 34], [60, 42, 28], [88, 64, 40]][(rr[2] * 3) | 0];
     rect(W0, F, tt, ct, y0, yt, d, wd, K.WOOD);
@@ -314,7 +315,7 @@ pieza('pb_gotico', function (env, run, q) {
       box(W1, F, q.c - 0.03, q.c + 0.03, y0, yt, d, d + 0.04, shade(wd, 0.7), K.WOOD, 4);
       box(W1, F, tt + 0.25, tt + 0.29, y0, y0 + 1.75, d, d + 0.03, shade(wd, 0.7), K.WOOD, 4); box(W1, F, tt + 0.25, q.c - 0.25, y0 + 1.75, y0 + 1.79, d, d + 0.03, shade(wd, 0.7), K.WOOD, 1); }
   }
-  if (vi === 0 || vi === 3) P.escudo(W0, F, q.c, Math.min(top + 1.2, yt + 1.05), vi === 3 ? 1.25 : 1.0, sc);
+  if (vi === 0 || vi === 3) P.escudo(W0, F, q.c, Math.min(top + 1.4, yt + 1.2), vi === 3 ? 2.1 : 1.6, sc);
   if (!q.dep && q.bw >= w + 1.6) P.farol(W1 || W0, F, ct + 0.55, Math.min(top - 0.6, q.gl + 3.0), env.iron);
 });
 // ventana geminada: dos luces de medio punto con columnita y capitel, alféizar de piedra
@@ -353,7 +354,7 @@ pieza('vano_gotico', function (env, run, q) {
   const gem = vi === 0 ? q.D === 1 && q.W % 2 === 0 : vi === 1 ? q.W === (q.nb >> 1) : vi === 2 ? q.D === 1 && rr[2] < 0.45 : q.D === 1 && q.W === (q.nb >> 1);
   if (portalBay || (!gem && rr[0] < [0.25, 0.35, 0.3, 0.72][vi])) { wr(W0, F, a, b, k, Pk, col, kw); return; }
   if (gem && q.bw >= 2.6 && q.m >= 3.0) { geminada(env, run, q); return; }
-  const w = 0.6 + rr[1] * 0.35, h = 0.95 + rr[3] * 0.65, c = q.c + (rr[4] - 0.5) * Math.max(0, q.bw - w - 1.1);
+  const w = 0.75 + rr[1] * 0.4, h = 1.15 + rr[3] * 0.65, c = q.c + (rr[4] - 0.5) * Math.max(0, q.bw - w - 1.1);
   const st = k + 0.75 + rr[5] * 0.45, yt = Math.min(Pk - 0.4, st + h), sc = shade(env.stone, 1.08);
   if (yt - st < 0.5) { wr(W0, F, a, b, k, Pk, col, kw); return; }
   env.windowHole(W0, F, a, b, c - w / 2, c + w / 2, k, Pk, st, yt, 0.36, col, kw, rr[6] < 0.5 ? 0.3 + rr[7] * 0.5 : 0);
@@ -414,6 +415,13 @@ pieza('pb_casas_baratas', function (env, run, q) {
     if (W1 && rr[5] < 0.45) KIT.T.planter(W1, F, q.c - 0.2 + rr[2] * 0.3, 0.08, st, rr[5], rr[2], rr[3]);
   }
   if (q.W > 0 && q.W % 2 === 0) box(W0, F, a - 0.06, a + 0.06, q.gl, top, 0, 0.05, shade(col, 0.96), K.STUCCO, 4);
+  if (env.nF === 0 && top - q.gl > 3.4) {            // casita de una planta con el muro alto: cenefa pintada y respiradero de la cambra
+    rect(W1 || W0, F, a, b, q.gl + 2.62, q.gl + 2.78, 0.012, so, K.STUCCO);
+    const yv = Math.min(top - 0.75, q.gl + 3.35);
+    if (!esPuerta && top - yv > 0.6) { rect(W0, F, q.c - 0.28, q.c + 0.28, yv, yv + 0.32, 0.006, [46, 42, 38], K.STUCCO);
+      lattice(W1 || W0, F, q.c - 0.28, q.c + 0.28, yv, yv + 0.32, 0.02, [200, 196, 188], K.BAL, 0);
+      box(W0, F, q.c - 0.34, q.c + 0.34, yv - 0.05, yv, 0, 0.06, [214, 210, 200], K.STUCCO, 7); }
+  }
 });
 // patio delantero: murete encalado con su albardilla, cancela de hierro en la puerta de cada casa y plantas detrás
 pieza('cb_patio', function (env, run, q) {
@@ -453,7 +461,7 @@ pieza('corona_casas_baratas', function (env, run, q) {
       for (const f of [0.6, 0.85]) box(W1, F, u - 0.45, u + 0.5, y1 + 1.0 + 2.2 * f, y1 + 1.03 + 2.2 * f, -1.2, -1.17, [120, 120, 118], K.METAL, 7); }
     return;
   }
-  const yE = y1 - 0.1, ov = 0.42, dR = 2.6, yR = yE + 1.1, dos = V.vi === 2;
+  const yE = y1 + 0.9, ov = 0.42, dR = 2.4, yR = yE + 1.25, dos = V.vi === 2;   // alero a la altura del peto de los demás (tapa el de rooftops.js), ~27°
   const tile = [[170, 84, 58], [150, 78, 56], [182, 98, 66]][(h01(env.b, 9) * 3) | 0];
   for (let W = 0; W < q.nb; W++) wr(W0, F, W * q.bw, (W + 1) * q.bw, C, yE, colCB(env, run, W), kw);
   const c0 = colCB(env, run, 0);
