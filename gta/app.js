@@ -452,7 +452,7 @@ void main(){
       if (rt < 0.5 && mod(ri, 16.0) > 7.5) rt = 4.0;          // baldosa clara (losas más grandes que la rasilla)
     }
     else if (abs(style-1.0) < 0.5) { roof = mix(vec3(0.62,0.64,0.67), vec3(0.72,0.71,0.68), r); rt = 2.0; }
-    else if (abs(style-3.0) < 0.5) roof = vec3(0.46,0.48,0.52);
+    else if (abs(style-3.0) < 0.5 || abs(style-12.0) < 0.5) { roof = mix(vec3(0.46,0.48,0.52), vec3(0.58,0.58,0.57), r); rt = r < 0.5 ? 2.0 : 3.0; }   // FX: vidrio y oficinas: tela asfáltica o grava (no losa lisa)
     else if (abs(style-9.0) < 0.5) { roof = vec3(0.76,0.76,0.77); rt = 2.0; }
     else if (abs(style-10.0) < 0.5) { roof = vec3(0.80,0.82,0.84); rt = 2.0; }
     else { roof = base*0.95; rt = 3.0; }

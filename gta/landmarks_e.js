@@ -73,14 +73,14 @@ add({ id: 'torre_collserola', nombre: 'Torre de Collserola', nivel: 'A', x: 7580
       const a = (A0 + k * 120) * Math.PI / 180, sa = Math.sin(a), ca = Math.cos(a), px = ca, pz = -sa;
       for (const s of [-1, 1]) {
         const o = s * 1.1;
-        L.bar(B, [px * o * 0.3, 203, pz * o * 0.3], [sa * R12 + px * o, YT, ca * R12 + pz * o], 0.22, CAB, K.METAL);
+        L.bar(B, [px * o * 0.3, 203, pz * o * 0.3], [sa * R12 + px * o, YT, ca * R12 + pz * o], 0.07, CAB, K.METAL);
         const ax = sa * 95 + px * o * 3, az = ca * 95 + pz * o * 3, ay = yT(h, ax, az);
-        L.bar(B, [sa * R0 + px * o, Y0, ca * R0 + pz * o], [ax, ay + 0.5, az], 0.22, CAB, K.METAL);
+        L.bar(B, [sa * R0 + px * o, Y0, ca * R0 + pz * o], [ax, ay + 0.5, az], 0.07, CAB, K.METAL);
         L.caja(B, ax, az, ay - 1.5, 3, 3, 2.3, (A0 + k * 120), [150, 150, 146], K.LISO);
       }
       // vientos bajos: del fuste (60 m) a anclajes más cercanos, entre las puntas
       const b = a + Math.PI / 3, bx = Math.sin(b) * 60, bz = Math.cos(b) * 60, by = yT(h, bx, bz);
-      L.bar(B, [0, 62, 0], [bx, by + 0.5, bz], 0.18, CAB, K.METAL);
+      L.bar(B, [0, 62, 0], [bx, by + 0.5, bz], 0.06, CAB, K.METAL);
       L.caja(B, bx, bz, by - 1.5, 2.4, 2.4, 2, 0, [150, 150, 146], K.LISO);
     }
   } });
