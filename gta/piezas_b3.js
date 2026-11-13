@@ -151,9 +151,9 @@ pieza('frente_torre', function (env, run, q) {
   for (let i = 0; i < n; i++) { const u = e0 + (e1 - e0) * (i + 0.5) / n; if (gate && Math.abs(u - c) < 1.1) continue;
     const h = 0.9 + h01(env.b, q.W * 8 + i) * 0.8;
     box(W1 || W0, F, u - 0.55, u + 0.55, g + 0.5, g + 0.5 + h, -1.4, -0.45, [56 + (i % 2) * 12, 90, 48], K.LEAF, 7);
-    if ((r + i * 0.37) % 1 < 0.4) for (let j = 0; j < 4; j++) {   // buganvilla sobre la verja: matas de flor y hoja de alturas desiguales
-      const v = h01(env.b, q.W * 64 + i * 8 + j), x = u - 0.7 + j * 0.42, hh = 0.25 + v * 0.55;
-      box(W1 || W0, F, x, x + 0.38 + v * 0.2, g + 1.55 - v * 0.4, g + 1.8 + hh, d - 0.18, d + 0.12 + v * 0.08, j % 3 === 1 ? [74, 104, 52] : BUGA[(j + i) % 3], K.LEAF, 7); } }
+    if ((r + i * 0.37) % 1 < 0.3) for (let j = 0; j < 6; j++) {   // buganvilla que cuelga de la verja: ramos estrechos, flor y hoja alternas
+      const v = h01(env.b, q.W * 64 + i * 8 + j), x = u - 0.95 + j * 0.33 + v * 0.1, top = g + 1.7 + v * 0.45;
+      box(W1 || W0, F, x, x + 0.2 + v * 0.16, top - 0.3 - v * 0.65, top, d + 0.02, d + 0.14 + v * 0.06, j % 2 ? [70, 102, 50] : BUGA[(j + i) % 3], K.LEAF, 7); } }
   if (q.W === (q.nb > 2 ? 1 : 0) && h01(env.b, 91) < 0.4 && env.F1 - g > 2) {   // palmera: tronco y penacho por encima del primer piso
     const u = gate ? (q.W === 0 ? b - 0.6 : a + 0.6) : c, dd = -Math.min(1.3, q.dep * 0.6), ht = env.F1 + 3.2 + h01(env.b, 92) * 3, cc = [112, 100, 82];
     box(W0, F, u - 0.16, u + 0.16, g, ht, dd - 0.16, dd + 0.16, cc, K.WOOD, 4);
@@ -207,7 +207,7 @@ pieza('vano_torre', function (env, run, q) {
 pieza('corona_torre', function (env, run, q) {
   const { W0, W1, C, y1, V } = env, F = run.F, L = run.L, wc = run.wallC, vi = V.vi;
   env.tejaC = env.tejaC || [[168, 82, 56], [150, 76, 54], [178, 98, 66], [140, 92, 70]][(h01(env.b, 21) * 4) | 0];
-  const tc = env.tejaC, dr = Math.min(3.4, 0.9 + L * 0.18), hRoof = dr * (vi === 3 ? 0.8 : 0.62);
+  const tc = env.tejaC, dr = Math.min(3.4, 0.9 + L * 0.18), hRoof = dr * (vi === 3 ? 1.0 : 0.92);
   if (vi === 1) {                                     // villa novecentista: cornisa con balaustrada y urnas; tejado bajo detrás
     wr(W0, F, 0, L, C, y1, wc, env.kw);
     box(W0, F, 0, L, y1 - 0.2, y1, 0, 0.45, env.uV, K.STUCCO); box(W0, F, 0, L, y1, y1 + 0.18, -0.02, 0.22, shade(env.uV, 1.04), K.STUCCO);
@@ -234,8 +234,10 @@ pieza('corona_torre', function (env, run, q) {
     quad(W0, F, c, y1 + hg + 0.2, ed, a1 + 0.4, y1 - 0.2, ed, a1 + 0.4, y1 - 0.45, ed, c, y1 + hg - 0.05, ed, env.wood, K.WOOD);
   }
   P.tejado(W0, F, L, y1, e, dr, hRoof, tc);
-  // torreón: casa señorial (siempre, en el tramo del portal o en el más largo) o modernista con cono (a veces)
-  const tor = vi === 2 ? run.r === env.lay.portal || !env.lay.portal : vi === 0 && h01(env.b, 22) < 0.6 && run.r === env.lay.portal;
+  // torreón: casa señorial (siempre) o modernista con cono (a veces)
+  // (en el tramo de calle más largo del edificio, que es el que da a la calle principal)
+  let lg = null; for (const r of env.lay.runs) if (r.kind === 'street' && (!lg || r.L > lg.L)) lg = r;
+  const tor = run.r === lg && (vi === 2 || (vi === 0 && h01(env.b, 22) < 0.6));
   if (tor && L >= 7 && !env._torre) { env._torre = 1; const tw = Math.min(4.2, Math.max(3.0, L * 0.28)), left = h01(env.b, 23) < 0.5;
     const u0 = left ? 0.3 : L - tw - 0.3; P.torreon(env, F, u0, u0 + tw, C - 0.2, y1 + 3.4, Math.min(3.6, tw), vi === 0 ? 2.6 : 1.8, vi === 0); }
 });
@@ -470,9 +472,11 @@ pieza('fab_fachada', function (env, run, q) {
   if (vi !== 3 && L > 10 && run.r === env.lay.portal && h01(env.b, 51) < 0.75) {   // rótulo pintado de la fábrica: cartela clara con trazos
     const w = Math.min(L * 0.6, 16), u0 = (L - w) / 2, y = C - 1.4;
     if (y > y0 + 1) { rect(W0, F, u0, u0 + w, y, y + 1.1, 0.16, [214, 202, 176], K.PBR, pbrAux(0.85, 0, 0, 0));
-      if (W1) { const n = Math.round(w / 0.75), ink = [[70, 52, 40], [40, 60, 90], [120, 40, 36]][(h01(env.b, 52) * 3) | 0];
-        for (let i = 0; i < n; i++) { if (h01(env.b, 60 + i) < 0.18) continue; const u = u0 + 0.4 + i * (w - 0.8) / n;
-          box(W1, F, u, u + (w - 0.8) / n * 0.7, y + 0.25, y + 0.85, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0)); } } }
+      if (W1) { const n = Math.round((w - 0.8) / 0.55), lw = (w - 0.8) / n, ink = mixc([[70, 52, 40], [40, 60, 90], [120, 40, 36]][(h01(env.b, 52) * 3) | 0], [214, 202, 176], 0.3);
+        for (let i = 0; i < n; i++) { const r = h01(env.b, 60 + i); if (r < 0.12) continue; const u = u0 + 0.4 + i * lw, y0 = y + 0.28, y1 = y + 0.82, t = 0.07;
+          box(W1, F, u, u + t, y0, y1, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0));          // letras pintadas (trazos de palo seco, ilegibles)
+          if (r > 0.4) box(W1, F, u + lw * 0.55 - t, u + lw * 0.55, y0, y1, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0));
+          const yh = r < 0.55 ? y1 - t : r < 0.8 ? (y0 + y1) / 2 : y0; box(W1, F, u, u + lw * 0.55, yh, yh + t, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0)); } } }
   }
 });
 pieza('corona_fabrica', function (env, run, q) {
