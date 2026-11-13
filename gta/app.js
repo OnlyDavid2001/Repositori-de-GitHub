@@ -273,10 +273,11 @@ vec3 ambL(vec3 n){ return mix(uGndL, uSkyL, n.y*0.5+0.5); }
 const float kAlbF = 0.030;
 // en el suelo (normal hacia arriba) el mínimo es mayor: el asfalto en sombra ha de quedar gris oscuro, no negro; en muros y
 // forja, menos (la forja negra sigue negra)
-vec3 albFloor(vec3 aL, vec3 n){ return aL + (kAlbF*(1.0 + 1.6*smoothstep(0.7, 0.95, n.y))*skyDay())*(1.0 - aL); }
-vec3 lit(vec3 alb, vec3 n){ float ndl = max(dot(n,uSunDir),0.0), dw = skyDay();
-  if (dw > 0.001) alb = toScr(albFloor(toLin(alb), n));
-  return alb*toScr(uSunL*(ndl*sunVisN(n)) + ambL(n)); }
+// y en el suelo en sombra (vis = visibilidad del sol), algo más: hace de luz de relleno del cielo y de las fachadas soleadas
+vec3 albFloor(vec3 aL, vec3 n, float vis){ return aL + (kAlbF*(1.0 + smoothstep(0.7, 0.95, n.y)*(1.6 + 1.6*(1.0 - vis)))*skyDay())*(1.0 - aL); }
+vec3 lit(vec3 alb, vec3 n){ float ndl = max(dot(n,uSunDir),0.0), dw = skyDay(), vis = sunVisN(n);
+  if (dw > 0.001) alb = toScr(albFloor(toLin(alb), n, vis*step(0.05, ndl)));
+  return alb*toScr(uSunL*(ndl*vis) + ambL(n)); }
 vec3 envRefl(vec3 r, float rough){
   vec3 d = normalize(vec3(r.x, max(r.y, 0.02), r.z));
   float s = max(dot(d,uSunDir),0.0);
@@ -286,7 +287,7 @@ vec3 envRefl(vec3 r, float rough){
   return mix(uFogCol*vec3(0.62,0.6,0.58), c, smoothstep(-0.02 - rough, 0.22 + rough, r.y)); }
 vec3 shade(vec3 alb, vec3 N, vec3 V, float rough, float metal, float ao){
   float ndl = max(dot(N,uSunDir),0.0), ndv = max(dot(N,V),0.0), pol = 1.0 - rough, vis = sunVisN(N);   // pol: lo pulido que está
-  vec3 albL = albFloor(toLin(alb), N), f0 = mix(vec3(0.04), albL, metal);
+  vec3 albL = albFloor(toLin(alb), N, vis*step(0.05, ndl)), f0 = mix(vec3(0.04), albL, metal);
   vec3 c = albL*(1.0 - metal)*(uSunL*(ndl*vis) + ambL(N)*ao);
   // brillo del sol: lóbulo de Blinn-Phong normalizado, más estrecho e intenso cuanto más pulido
   float a = max(rough*rough, 0.03), sh = 2.0/(a*a) - 2.0;
@@ -919,6 +920,8 @@ void main(){
   vec3 water = mix(shallow, deep, smoothstep(0.0, 0.45, cd));
   water = mix(water, mix(vec3(0.270,0.420,0.370), vec3(0.020,0.080,0.110), uNight), calm*0.9);   // G1L3: puerto verdoso gris
   water *= (uSkyCol*1.2 + uSunCol*0.35*max(uSunDir.y,0.0))*(1.0 + 0.6*clamp(dot(g, -uSunDir.xz)*6.0, 0.0, 1.0)*(1.0 - uNight)*(1.0 - calm));
+  // G1L3: en el agua quieta del puerto, rodales de brisa (más y menos rizada: más clara y más oscura), que no sea pintura lisa
+  water *= 1.0 + calm*(1.0 - uNight)*(vnoise(p*0.011 + vec2(t*0.006, 0.0))*0.5 + vnoise(p*0.037 - vec2(0.0, t*0.01))*0.3 - 0.4)*0.55;
   vec3 r = reflect(-V, n); r.y = abs(r.y);
   // Fresnel de Schlick (agua: f0 = 0,02); con rugosidad el máximo en rasante baja un poco (como en shade)
   float ndv = max(dot(n,V),0.0), fres = 0.02 + 0.035*calm*(1.0 - uNight) + (max(1.0 - rough*0.25, 0.02) - 0.02)*pow(1.0 - ndv, 5.0);
