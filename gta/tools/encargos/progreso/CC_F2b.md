@@ -14,7 +14,12 @@ Worktree `/home/user/wt/cc-f2b`, rama `wt-cc-f2b`. Capturas en `/tmp/claude-0/-h
       de la tribuna de piedra más sobria. Cero errores de consola.
 - [x] Vistas del bloque 2 en `tools/cc/vistas_estilos.json` (Vila Olímpica, Raval, Carmel, Quadrat d'Or, Rambla de Catalunya,
       Dreta/Girona).
-- [ ] Hojas de día (una carga por variante, `lote2.sh`: color de la variante) y de noche; medidas
+- [x] Hojas: `hoja_b2_dia.jpg` (10:30, 6 estilos × 4 variantes; filas: olímpico, casa obrera, autoconstrucción, modernista,
+      Eixample ornamentado, Eixample temprano; columnas v0–v3) y `hoja_b2_noche.jpg` (23:00, v0 y v2 de cada estilo, de dos en dos
+      por fila). A diferencia de F2a, **una carga por variante** (`lote2.sh`: `?estilo=<id>&v=<n>` + la misma variante forzada
+      sobre el mismo edificio con spotAt), así que el color del muro es el de la variante. Cero errores y avisos de consola en
+      las 36 cargas (24 de día, 12 de noche) y en la medida de rendimiento.
+- [x] Medidas (abajo).
 
 ## Qué tiene cada estilo (piezas en piezas_b2.js)
 - **Olímpico 80–90**: ladrillo cara vista con cantos de forjado de hormigón, mallorquinas de lamas, barandillas de tubo de hierro
@@ -53,5 +58,34 @@ Worktree `/home/user/wt/cc-f2b`, rama `wt-cc-f2b`. Capturas en `/tmp/claude-0/-h
   transitable (peto bajo con barandilla de hierro). Farola de brazo en la esquina del tramo del portal. v0 4 balcones
   simétrica (3,8 m, guardapolvos) · v1 5 balcones (3,0 m) · v2 chaflán sobrio (ventanas con antepecho de la 3.ª planta
   arriba, balcón corrido en el chaflán) · v3 balcón corrido en la planta principal.
+
+## Medidas (fps_eval.js, calidad media, 960×540, vistas de la Fase 0, selector natural)
+- Eixample a pie: **5.167.055** triángulos / **866** llamadas (F2a 5.194.012 / 866; Fase 0 5,2 M / 866).
+- Gòtic a pie: **6.490.808** / **647** (F2a 6.332.852 / 644; Fase 0 6,40 M / 649): +2,5 % de triángulos sobre F2a (+1,4 % sobre la
+  Fase 0), sobre todo por la casa obrera (cables, pintadas, tendederos) que el selector pone ahora en el Raval y el Gòtic.
+- Aérea: **1.315.294** / **304** (igual).
+- Carga 17,9 s (antes 17–20 s). Nada por fotograma: todo se construye en las celdas de siempre. Los tipos 176–179 son ramas del
+  sombreador de detalle (el trencadís hace un Voronoi de 3×3 por fragmento solo donde hay trencadís: frisos y albardillas).
+
+## Lo flojo / pendiente
+- Variantes que se distinguen poco a pie de calle: Eixample temprano v0 frente a v1 (solo cambia el ritmo, 3,8 m frente a 3,0 m;
+  he añadido un eje central marcado en v0 después de la hoja, verificado solo de noche) y autoconstrucción v0 (el peto
+  escalonado sube como mucho 1 m).
+- La torreta del Eixample ornamentado v2 va en el chaflán o al final del tramo del portal: en el edificio de la hoja no se ve
+  (no tiene chaflán y la esquina queda fuera de cuadro). La del modernista v3 sí se ve.
+- Los anchos estrechos (casa obrera 5–9 m, autoconstrucción 4–8 m) salen como fachadas largas hasta que la Fase 3 parta en
+  parcelas; los huecos irregulares de la autoconstrucción ayudan, pero un frente de 40 m sigue pareciendo una sola casa.
+- La escalera exterior de la autoconstrucción v3 tapa el último vano de la planta baja (la pieza pb lo deja ciego), pero si el
+  generador decide comercio en ese vano el escaparate queda detrás de la escalera.
+- El escaparate de estilos (spotAt) elige edificios más altos que el rango del estilo en algunos casos (Eixample ornamentado
+  de 8 plantas en la hoja): es el edificio real, con la altura real.
+
+## Peticiones al núcleo del kit (no tocado desde este bloque)
+- `T.rail` lee la barandilla de `env.V` y no de la variante de la planta (`q.V`): la planta noble no puede cambiar de barandilla
+  si la pieza no cambia `env.V` alrededor de la llamada (lo hago en vano_ornamentado). Mejor: que `vanoDef` pase `q.V` a `rail`.
+- Un `T.corona(env, run, q)` con la coronación de siempre, para piezas de corona que solo añaden algo (hoy hay que redibujar la
+  cornisa entera; por eso existe `cornisa_b2`).
+- Un campo de q con la cota de la acera en el vano (`gl`) también en la ranura vano, y saber si el edificio tiene chaflán
+  (`env.chaflan` a nivel de edificio) para poner la torreta solo una vez y en la esquina buena.
 
 ## Pendiente / notas
