@@ -67,8 +67,8 @@ void main(){
   } else if (pat < 9.5) {                           // 9: explanada central de la Plaça de Catalunya: rosa de los vientos de piedras de colores
     vec2 d = W - uRose; float r = length(d), th = atan(d.y, d.x), PI4 = 0.7853982;
     vec3 cW = vec3(0.84, 0.81, 0.75), cL = vec3(0.70, 0.68, 0.64), cG = vec3(0.52, 0.51, 0.52), cK = vec3(0.22, 0.22, 0.24), cR = vec3(0.60, 0.37, 0.29), cY = vec3(0.76, 0.63, 0.42);
-    float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 15.5 : 10.0;
-    float lat = abs(sin(da))*r, hw = Rp*0.25*max(0.0, 1.0 - r/Rp), aw = max(fw*1.5, 0.02);
+    float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 16.2 : 11.0;
+    float lat = abs(sin(da))*r, hw = Rp*0.32*max(0.0, 1.0 - r/Rp), aw = max(fw*0.6, 0.02);   // FX-suelo: puntas más anchas y menos difuminadas (a pie, de canto, no se leían)
     float inS = (1.0 - smoothstep(hw - aw, hw + aw, lat))*step(cos(da), 1.1)*step(0.0, cos(da));
     vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cL) : (da > 0.0 ? cR : cY);   // G1S3: puntas claras sobre disco oscuro (antes, gris sobre gris: una mancha)
     // fondo por anillos: disco gris, anillos negro, blanco y rojo, campo de sectores claros con líneas rojas, cenefa exterior negra
@@ -84,7 +84,7 @@ void main(){
     // juntas: losas de ~0,8 m en anillos de 0,75 m
     float ring = floor(r/0.75), nb = max(8.0, floor(6.2832*(ring + 0.5)*0.75/0.8)), ja = abs(fract(th/6.2832*nb) - 0.5)*6.2832/nb*r, jr = abs(fract(r/0.75) - 0.5)*0.75;
     float jt = smoothstep(0.004, 0.012, min(jr, ja)), aj = smoothstep(0.02, 0.1, fw);
-    alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4); rough = 0.6;
+    alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4)*mix(0.9, 1.07, vnoise(W*0.09 + 5.0)); rough = 0.6;   // FX-suelo: + tono de mundo a gran escala (losas menos repetidas)
     { float gr = 1.0 - smoothstep(0.002, 0.012, fw);   // REV3: grano de la piedra a pie, como en el dibujo 1
       alb *= mix(1.0, mix(0.88, 1.09, vnoise(W*17.0))*mix(0.93, 1.05, vnoise(W*6.0 + 3.0)), gr); }
   } else {                                          // 10: macizo de flores: hojas verdes con manchas de flor del color del vértice
@@ -498,10 +498,10 @@ SING.push({ key: 'Plaça de Catalunya', ax: 136, lift: 1.4, lampGrid: true,
     W('cring', c[0], c[1], 0, { skip: gaps, rings: [[16.2, 16.6, 0.05, [56, 56, 60], 64], [17.2, 17.9, 0.03, [214, 208, 196], 64], [17.9, 18.6, 0.05, [150, 80, 62], 64],
       [43.6, 44.2, 0.03, [214, 208, 196], 128], [44.2, 45.0, 0.05, [150, 80, 62], 128], [45.0, 45.7, 0.06, [56, 56, 60], 128],
       [46.2, 46.9, 0.46, [168, 162, 150], 128, 0.15], [46.15, 46.95, 0.52, [190, 184, 172], 128, 0.15]] });
-    // palomas: grupos pequeños por toda la explanada y en el paseo anular; una bandada que levanta el vuelo
+    // palomas: grupos pequeños por toda la explanada y en el paseo anular
     for (let k = 0; k < 30; k++) { const a = hash2(k, 61) * 6.28, r = k < 24 ? 4 + Math.sqrt(hash2(k, 63)) * 40 : 47.8 + hash2(k, 65) * 2;
       W('pigeons', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a, { n: 6 + Math.floor(hash2(k, 67) * 12), r: 1.2 + hash2(k, 69) * 2.4 }); }
-    W('flock', c[0] - 12, c[1] - 18, 0.6, { n: 28 });
+    // FX-suelo: sin bandada en vuelo (se leía como cajas negras flotando en el cielo)
     for (const [a, r] of [[0.5, 48.3], [2.3, 48.3], [3.9, 48.3]]) W('cart', c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, a + Math.PI / 2);
     // farolas a lo largo de los paseos de las esquinas (alumbran las copas por debajo)
     for (const k of CAT.corners) { const a = Math.atan2(k[1] - c[1], k[0] - c[0]), L = Math.hypot(k[0] - c[0], k[1] - c[1]);
@@ -638,8 +638,9 @@ function terrace(B, F, y, h) {
 }
 // banco-farola del Passeig de Gràcia (Pere Falqués, 1906): asiento curvo de trencadís blanco que abraza una farola de forja
 function bancFanal(B, F, y) {
-  const tr = [214, 212, 202], ir = [52, 56, 54];
+  const ir = [52, 56, 54];   // FX-suelo: trencadís de albedo ≤ 0,6 (antes 0,84: un bloque blanco quemado), cada pieza con su tono
   for (let k = 0; k < 10; k++) { const a0 = -2.2 + k * 0.44, a1 = a0 + 0.44, R0 = 1.25, R1 = 1.85, P = (r, a) => [Math.cos(a) * r, Math.sin(a) * r];
+    const tv = hash2(k, Math.round(y * 37)), tr = tv < 0.18 ? [128, 140, 136] : tv < 0.3 ? [150, 138, 118] : shade([152, 150, 142], 0.9 + 0.12 * hash2(k, 5));
     const [x0, z0] = P(R0, a0), [x1, z1] = P(R0, a1), [x2, z2] = P(R1, a1), [x3, z3] = P(R1, a0);
     quad(B, F, x3, y + 0.45, z3, x2, y + 0.45, z2, x1, y + 0.45, z1, x0, y + 0.45, z0, tr, K.FURN, A0.GLOSS);
     quad(B, F, x2, y, z2, x2, y + 0.45, z2, x3, y + 0.45, z3, x3, y, z3, shade(tr, 0.92), K.FURN, A0.GLOSS);
@@ -1273,11 +1274,14 @@ window.BCN_PLAZAS = { async init(ctx) {
     for (const [t, x, z, a, ex, u, v] of items) {
       if (++ni % 60 === 0) yield;
       const y = ex.y !== undefined ? ex.y : yAt(x, z), F = fr(x, z, a), h = hash2(Math.round(x * 5), Math.round(z * 5));
+      if (t === 'palm' && TRS && treeMeshes(3)) {   // FX-suelo: palmera de trees.js (3) en vez de la pieza propia
+        const sc = 0.88 + 0.26 * h; BABYLON.Quaternion.RotationYawPitchRollToRef(h * 40, 0, 0, tq); tv.set(x, y - 0.12, z); ts.set(sc, sc * (0.95 + 0.12 * ((h * 13) % 1)), sc);
+        BABYLON.Matrix.ComposeToRef(ts, tq, tv, tm); for (let q = 0; q < 16; q++) trees.m.push(tm.m[q]); trees.k.push(3); continue; }
       if (P2PIECE[t]) { const L = P2PIECE[t](Wo, F, y, h, ex, Wh); if (L) lamps.push([x, z, L]); continue; }
       if (t === 'tree') { const k = TRS && TRS.seaSp && TSP[ex.sp] !== undefined ? TRS.seaSp(x, z, TSP[ex.sp]) : TSP[ex.sp];   // G1V3: palmeras en el frente marítimo
         if (k !== undefined && treeMeshes(k)) { const sc = (ex.alc ? 0.8 : 0.88) + 0.26 * h; BABYLON.Quaternion.RotationYawPitchRollToRef(h * 40, 0, 0, tq); tv.set(x, y - 0.12, z); ts.set(sc, sc * (0.95 + 0.12 * ((h * 13) % 1)), sc);
           BABYLON.Matrix.ComposeToRef(ts, tq, tv, tm); for (let q = 0; q < 16; q++) trees.m.push(tm.m[q]); trees.k.push(k); }
-        else tree(Wo, F, y, TREES[ex.sp] || TREES.platan, h, ex.alc);
+        // FX-suelo: sin pieza propia de esferas (ciprés, o sin malla de trees.js): «fuera los árboles poco currados»
         if (ex.alc) quads.push([x - 0.7, z - 0.7, 1.4, [7, C.iron, 0], true]); }
       else if (P3PIECE[t]) { const L = P3PIECE[t](Wo, F, y, h, ex, { o, gAt, hAt, x, z, a, Wh }); if (L) lamps.push([x, z, L]); }
       else if (t === 'lamp' || t === 'lampC') { const H = ex.H || (t === 'lampC' ? 4.2 : 4.5); if (FUR) { FUR.lamp(Wo, AS, F, y, H, 0.35); FUR.lamp(Wh, AH, F, y, H, 0.35); } lamps.push([x, z, H]); lampPts.push([x, y, z]); }
