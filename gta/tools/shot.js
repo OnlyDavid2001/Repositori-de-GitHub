@@ -6,6 +6,7 @@
    variables de entorno opcionales:
      DIR=<carpeta gta>   (por defecto, la carpeta padre de tools/)
      SIZE=960x540  FMT=jpg|png  FRAMES=3  DRAW=1800 (radio de volúmenes simples, m)  HOUR=17
+     PAGE=1 (captura la página entera con sus capas HTML, p. ej. la ventana F8 de condal.js, en vez de solo el lienzo)
      Q='?param=1' (query de la página)  TIMEOUT=900 (s para cargar)  KEEP=1 (no cerrar: depuración)
    cada vista: { x, z, y | agl | walk:true, yaw, pitch, hour?, fx?:0-2, st?:0-2, frames?, eval?:"js antes de renderizar" }
    salida: <prefijo>_<nombre>.<fmt>; imprime estadísticas y TODOS los errores de consola. Código de salida 1 si hubo errores. */
@@ -62,9 +63,10 @@ const [W, H] = (process.env.SIZE || '960x540').split('x').map(Number), FMT = pro
     const frames = v.frames || +process.env.FRAMES || 3;
     for (let f = 0; f < frames; f++) await p.evaluate(() => { window.BCN.st.keys = {}; window.BCN.scene.render(); });
     const info = await p.evaluate(() => window.BCN.detailStats ? window.BCN.detailStats() : null);
-    const durl = await p.evaluate(f => document.getElementById('c').toDataURL(f === 'png' ? 'image/png' : 'image/jpeg', 0.92), FMT);
     const file = out + '_' + (v.name || i) + '.' + FMT; fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
-    fs.writeFileSync(file, Buffer.from(durl.split(',')[1], 'base64'));
+    if (process.env.PAGE) await p.screenshot(FMT === 'png' ? { path: file, type: 'png', timeout: 600000 } : { path: file, type: 'jpeg', quality: 92, timeout: 600000 });
+    else { const durl = await p.evaluate(f => document.getElementById('c').toDataURL(f === 'png' ? 'image/png' : 'image/jpeg', 0.92), FMT);
+      fs.writeFileSync(file, Buffer.from(durl.split(',')[1], 'base64')); }
     console.log('vista', v.name || i, ((Date.now() - t1) / 1000).toFixed(1) + ' s →', file, JSON.stringify(info));
   }
   if (!process.env.KEEP) await b.close();

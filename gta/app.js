@@ -1511,6 +1511,10 @@ const PAL = {
 // barrios: cajas y consulta, ANTES de los edificios (la paleta elige el color por familia de barrio al cargarlos)
 for (const b of META.barris) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const r of b.r) for (const q of r) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1]; } b.bb = [x0, z0, x1, z1]; }
 window.BCN_BARRI = { at: (x, z) => barriAt(x, z), barris: META.barris, districtes: META.districtes };   // consulta de barrio para otros módulos (paleta, fachadas)
+// Condal City (condal.js): datos reales por punto (sección, barrio, mezcla de estilos, comercio). Se descargan en paralelo desde
+// que se carga la página; aquí se espera a que estén, ANTES de leer los edificios (las fases siguientes deciden el estilo al cargar)
+if (window.BCN_CONDAL) try { setMsg('Datos de barrios y secciones…', 0.355); await window.BCN_CONDAL.ready; }
+  catch (e) { console.error('Condal City: sin datos (' + (e && e.message || e) + ')'); }
 const bldChunks = []; let bldTris = 0, bldCount = 0;
 // registro compacto de cada edificio, para releer su planta cuando haga falta la fachada de detalle
 const BREC = { dv: [], n: 0 };
@@ -1941,6 +1945,7 @@ function flushAll() {
     let n = 0; do { m.update(P, g, 0.3, 0); } while (m.busy && m.busy() && ++n < 100000);
   }
 }
+if (window.BCN_CONDAL && window.BCN_CONDAL.loaded) window.BCN_CONDAL.initDebug(CTX);   // F8: datos del barrio y del edificio de delante
 LOADT.push(["listo", Math.round(performance.now())]);
 Object.assign(window.BCN, { ready: true, views: VIEWS, applyView, flyTo, setHour, cam, st, scene, engine, heightAt, poi, stats: { bldCount, bldTris, roadTris },
   ctx: CTX, reg, mods: MODS, fx: FXS, streets: STS, light: LIGHT, lm: LMS ? LMS.api : null,
