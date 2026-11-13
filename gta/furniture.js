@@ -449,15 +449,48 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
   // ámbitos y sacan los mismos números: los objetos caen en el mismo sitio
   function place(cell, A) {
     const hi = A.lod === 2, { W, ox, oz, inCell, nearJ, freeWalk } = cell;
+    // G1V2: ocupación de la acera. Nada se monta sobre otra pieza ni dentro de un alcorque: cada pieza guarda su radio y la
+    // siguiente se aparta (farolas: se corren a lo largo de la calle) o no se pone. Primero se reservan los semáforos y los
+    // bolardos del cruce (mandan ellos), luego farolas, papeleras, bancos, buzones y parquímetros. Las dos pasadas (sencilla
+    // y detalle) hacen lo mismo en el mismo orden, así que las piezas siguen cayendo en el mismo sitio
+    const occ = [], take = (x, z, r) => { occ.push(x, z, r); };
+    const busy = (x, z, r) => { for (let i = 0; i < occ.length; i += 3) if ((occ[i] - x) ** 2 + (occ[i + 1] - z) ** 2 < (r + occ[i + 2] + 0.45) ** 2) return true;
+      return !!cell.treeNear && cell.treeNear(x, z, r + 0.75); };
     const fr = (x, z, a) => ({ x: x - ox, z: z - oz, tx: Math.cos(a), tz: Math.sin(a), nx: -Math.sin(a), nz: Math.cos(a) });
     const log = (t, x, z, a) => { if (LOG && !hi) LOG.push([t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, Math.round(a * 100) / 100]); };
+    // semáforos y bolardos de los extremos de tramo que llegan a un cruce (emit: 0 y 1, solo reservan su sitio; 2, los pone)
+    const okX = new Set(), kX = (x, z) => Math.round(x * 20) + ',' + Math.round(z * 20);
+    const cross = (seg, emit) => { const { s, hw, tx, tz, px, pz, L, ang } = seg;
+      // semáforos: en los extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra;
+      // y bolardos en el bordillo, flanqueando el paso de cebra
+      if (hw >= 3) for (const [e, dir] of [[0, 1], [2, -1]]) {
+        const o = s * 6, jx = SEG[o + e], jz = SEG[o + e + 1], jk = cell.jKey(jx, jz); if (!cell.Jset.has(jk)) continue;
+        let back = 3; for (const j of cell.J) if (cell.jKey(j[0], j[1]) === jk) for (const s2 of j[2]) if (s2 !== s) back = Math.max(back, SEG[s2 * 6 + 4] + 2.2);
+        if (back + 4 > L) continue;
+        const ux = tx * dir, uz = tz * dir;
+        for (const [b, sd] of [[back - 0.45, 1], [back - 0.45, -1], [back + 4.45, -1]]) { const qb = (hw + 0.42) * sd, x = jx + ux * b + px * dir * qb, z = jz + uz * b + pz * dir * qb;
+          if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
+          if (emit === 1) { if (!busy(x, z, 0.12)) { take(x, z, 0.12); okX.add(kX(x, z)); } continue; } if (emit === 0 || !okX.has(kX(x, z))) continue;
+          bollard(W, A, fr(x, z, 0), walkY(ns, x, z) - 0.02); log('bolardo', x, z, 0); }
+        const q = hw + 0.55, x = jx + ux * (back + 4.5) + px * dir * q, z = jz + uz * (back + 4.5) + pz * dir * q;
+        if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
+        if (emit === 0) { take(x, z, 0.3); okX.add(kX(x, z)); continue; } if (emit === 1 || !okX.has(kX(x, z))) continue;
+        const a = Math.atan2(-ux, uz);
+        signal(W, A, fr(x, z, a), walkY(ns, x, z) - 0.02, Math.floor((ang + 12.5664) / 1.5708) % 2 === 0); log('semaforo', x, z, a);
+      }
+    };
+    // reserva: 0 = semáforos, 1 = bolardos que no pisen un semáforo (ni otro bolardo de la esquina de al lado); luego, al emitir, solo los reservados
+    for (const ph of [0, 1]) cell.forEachSeg(seg => { if (FURN.has(seg.cls) && seg.hw >= 2) cross(seg, ph); });
     cell.forEachSeg(seg => {
       const { s, cls, hw, ax, az, tx, tz, px, pz, L, ang, along } = seg;
       if (!FURN.has(cls) || hw < 2) return;
       const out = side => side > 0 ? ang : ang + Math.PI;    // ángulo del marco cuyo +d mira hacia el lado `side` de la calle
       // farolas: cada 24 m alternando acera, con brazo sobre la calzada y su charco de luz
-      along(24, 5, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.5, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
-        if (!inCell(x, z) || nearJ(x, z, 6) || aeroIn(x, z)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+      along(24, 5, (u0, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.5;
+        let u = u0, x = 0, z = 0, ns = -2;                    // G1V2: si el sitio está ocupado (alcorque, semáforo…), se corre hasta 3 m
+        for (const du of [0, 1.5, -1.5, 3, -3]) { u = u0 + du; if (u < 0 || u > L) continue; x = ax + tx * u + px * side * off; z = az + tz * u + pz * side * off;
+          if (!inCell(x, z) || nearJ(x, z, 6) || aeroIn(x, z)) return; ns = freeWalk(x, z); if (ns >= -1 && !busy(x, z, 0.25)) break; ns = -2; }
+        if (ns < -1) return; take(x, z, 0.25);
         const y = walkY(ns, x, z) - 0.02, H = hw > 6 ? 9.5 : 7.8, reach = Math.min(1.9, hw * 0.45);
         lamp(W, A, fr(x, z, out(-side)), y, H, reach); log('farola', x, z, out(-side));
         if (hi || !cell.pools) return;
@@ -469,7 +502,7 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
       });
       // papeleras
       along(37, 13, (u, n) => { const side = n % 2 ? -1 : 1, off = hw + 0.6, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
-        if (!inCell(x, z) || nearJ(x, z, 5)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        if (!inCell(x, z) || nearJ(x, z, 5) || busy(x, z, 0.3)) return; const ns = freeWalk(x, z); if (ns < -1) return; take(x, z, 0.3);
         seed(T_BIN, n, s); const c = R() < 0.6 ? [150, 153, 157] : [84, 88, 92];
         bin(W, A, fr(x, z, out(side)), walkY(ns, x, z) - 0.02, c); log('papelera', x, z, out(side));
       });
@@ -477,6 +510,7 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
       along(53, 27, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 2.4, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (!inCell(x, z) || nearJ(x, z, 8)) return;
         if (freeWalk(x, z) < -1 || coverAt(x + px * side * 1.6, z + pz * side * 1.6, -1) > -1e8) return;
+        if (busy(x, z, 1.0) || busy(x + tx * 0.8, z + tz * 0.8, 0.4) || busy(x - tx * 0.8, z - tz * 0.8, 0.4)) return; take(x, z, 1.0);
         const [ns] = nearestCar(x, z);
         bench(W, A, fr(x, z, out(-side)), walkY(ns, x, z) - 0.02); log('banco', x, z, out(-side));
       });
@@ -517,12 +551,12 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
       });
       // buzón amarillo: uno cada 190 m, con la boca hacia la acera
       if (hw >= 3) along(190, 60, (u, n) => { const side = n % 2 ? 1 : -1, off = hw + 0.8, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
-        if (!inCell(x, z) || nearJ(x, z, 9)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        if (!inCell(x, z) || nearJ(x, z, 9) || busy(x, z, 0.35)) return; const ns = freeWalk(x, z); if (ns < -1) return; take(x, z, 0.35);
         mailbox(W, A, fr(x, z, out(side)), walkY(ns, x, z) - 0.02); log('buzon', x, z, out(side));
       });
       // parquímetros: donde hay banda de aparcamiento, cada 64 m alternando acera, con la pantalla hacia la acera
       if ((cls === 4 || cls === 5) && hw >= 3) along(64, 35, (u, n) => { const side = n % 2 ? -1 : 1, off = hw + 0.55, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
-        if (!inCell(x, z) || nearJ(x, z, 7)) return; const ns = freeWalk(x, z); if (ns < -1) return;
+        if (!inCell(x, z) || nearJ(x, z, 7) || busy(x, z, 0.25)) return; const ns = freeWalk(x, z); if (ns < -1) return; take(x, z, 0.25);
         meter(W, A, fr(x, z, out(side)), walkY(ns, x, z) - 0.02); log('parquimetro', x, z, out(side));
       });
       // motos aparcadas en batería, de culo al bordillo: grupos de 2 a 5 (a 47 m de los contenedores; nunca sobre una estación de Bicing)
@@ -537,21 +571,7 @@ window.BCN_FURNITURE = { log: LOG, parts: { lamp, bin, bench, container, iglu, b
           scooter(W, A, fr(x, z, bang + ms[m][1]), roadY(s, x, z), MOTO[ms[m][0]]); }
         log('motos', cxp, czp, bang);
       });
-      // semáforos: en los extremos de tramo que llegan a un cruce, a la derecha de quien llega y antes del paso de cebra;
-      // y bolardos en el bordillo, flanqueando el paso de cebra
-      if (hw >= 3) for (const [e, dir] of [[0, 1], [2, -1]]) {
-        const o = s * 6, jx = SEG[o + e], jz = SEG[o + e + 1], jk = cell.jKey(jx, jz); if (!cell.Jset.has(jk)) continue;
-        let back = 3; for (const j of cell.J) if (cell.jKey(j[0], j[1]) === jk) for (const s2 of j[2]) if (s2 !== s) back = Math.max(back, SEG[s2 * 6 + 4] + 2.2);
-        if (back + 4 > L) continue;
-        const ux = tx * dir, uz = tz * dir;
-        for (const [b, sd] of [[back - 0.45, 1], [back - 0.45, -1], [back + 4.45, -1]]) { const qb = (hw + 0.42) * sd, x = jx + ux * b + px * dir * qb, z = jz + uz * b + pz * dir * qb;
-          if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
-          bollard(W, A, fr(x, z, 0), walkY(ns, x, z) - 0.02); log('bolardo', x, z, 0); }
-        const q = hw + 0.55, x = jx + ux * (back + 4.5) + px * dir * q, z = jz + uz * (back + 4.5) + pz * dir * q;
-        if (!inCell(x, z)) continue; const ns = freeWalk(x, z); if (ns < -1) continue;
-        const a = Math.atan2(-ux, uz);
-        signal(W, A, fr(x, z, a), walkY(ns, x, z) - 0.02, Math.floor((ang + 12.5664) / 1.5708) % 2 === 0); log('semaforo', x, z, a);
-      }
+      cross(seg, 2);
     });
   }
 

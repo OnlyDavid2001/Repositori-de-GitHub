@@ -662,6 +662,9 @@ void main(){
     const inCell = (x, z) => x >= x0 && x < x0 + CS && z >= z0 && z < z0 + CS;
     const nearJ = (x, z, r) => { for (const j of J) if (Math.hypot(x - j[0], z - j[1]) < r) return true; return false; };
     const freeWalk = (x, z) => { const [s, d] = nearestCar(x, z); return d > 0.25 && coverAt(x, z, -1) < -1e8 ? s : -2; };
+    // G1V2: ¿hay a menos de r un árbol, plantón o alcorque de calle (celda y vecinas)? Para que el mobiliario no caiga en un alcorque
+    const TN = []; for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) if (i >= 0 && j >= 0 && i < NX && j < NZ) TN.push(treesOf(j * NX + i));
+    const treeNear = (x, z, r) => { for (const T of TN) for (let i = 0; i < T.length; i += 7) if ((T[i] - x) ** 2 + (T[i + 2] - z) ** 2 < r * r) return true; return false; };
     const marks = []; let depth = 0;
     const forEachSeg = cb => {
       depth++;
@@ -676,7 +679,7 @@ void main(){
       }
       depth--;
     };
-    return { ci, W, ox, oz, x0, z0, inCell, nearJ, freeWalk, J, Jset, jKey, forEachSeg, marks };
+    return { ci, W, ox, oz, x0, z0, inCell, nearJ, freeWalk, treeNear, J, Jset, jKey, forEachSeg, marks };
   }
   // Cada hook recorre los tramos por su cuenta, pero la malla queda ordenada por tramo y, dentro de cada tramo, por orden
   // de llamada (mobiliario, marcas viales): el mismo orden de triángulos que si todo saliera de un único bucle, de modo
