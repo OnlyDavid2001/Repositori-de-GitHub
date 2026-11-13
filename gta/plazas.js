@@ -67,8 +67,8 @@ void main(){
   } else if (pat < 9.5) {                           // 9: explanada central de la Plaça de Catalunya: rosa de los vientos de piedras de colores
     vec2 d = W - uRose; float r = length(d), th = atan(d.y, d.x), PI4 = 0.7853982;
     vec3 cW = vec3(0.84, 0.81, 0.75), cL = vec3(0.70, 0.68, 0.64), cG = vec3(0.52, 0.51, 0.52), cK = vec3(0.22, 0.22, 0.24), cR = vec3(0.60, 0.37, 0.29), cY = vec3(0.76, 0.63, 0.42);
-    float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 15.5 : 10.0;
-    float lat = abs(sin(da))*r, hw = Rp*0.25*max(0.0, 1.0 - r/Rp), aw = max(fw*1.5, 0.02);
+    float k = floor(th/PI4 + 0.5), da = th - k*PI4, mainP = 1.0 - mod(abs(k), 2.0), Rp = mainP > 0.5 ? 16.2 : 11.0;
+    float lat = abs(sin(da))*r, hw = Rp*0.32*max(0.0, 1.0 - r/Rp), aw = max(fw*0.6, 0.02);   // FX-suelo: puntas más anchas y menos difuminadas (a pie, de canto, no se leían)
     float inS = (1.0 - smoothstep(hw - aw, hw + aw, lat))*step(cos(da), 1.1)*step(0.0, cos(da));
     vec3 star = mainP > 0.5 ? (da > 0.0 ? cW : cL) : (da > 0.0 ? cR : cY);   // G1S3: puntas claras sobre disco oscuro (antes, gris sobre gris: una mancha)
     // fondo por anillos: disco gris, anillos negro, blanco y rojo, campo de sectores claros con líneas rojas, cenefa exterior negra
@@ -84,7 +84,7 @@ void main(){
     // juntas: losas de ~0,8 m en anillos de 0,75 m
     float ring = floor(r/0.75), nb = max(8.0, floor(6.2832*(ring + 0.5)*0.75/0.8)), ja = abs(fract(th/6.2832*nb) - 0.5)*6.2832/nb*r, jr = abs(fract(r/0.75) - 0.5)*0.75;
     float jt = smoothstep(0.004, 0.012, min(jr, ja)), aj = smoothstep(0.02, 0.1, fw);
-    alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4); rough = 0.6;
+    alb = c*mix(mix(0.78, 1.0, jt)*mix(0.93, 1.06, hash21(vec2(ring, floor(th/6.2832*nb)))), 0.95, aj)*mix(0.9, 1.06, n1*0.6 + n2*0.4)*mix(0.9, 1.07, vnoise(W*0.09 + 5.0)); rough = 0.6;   // FX-suelo: + tono de mundo a gran escala (losas menos repetidas)
     { float gr = 1.0 - smoothstep(0.002, 0.012, fw);   // REV3: grano de la piedra a pie, como en el dibujo 1
       alb *= mix(1.0, mix(0.88, 1.09, vnoise(W*17.0))*mix(0.93, 1.05, vnoise(W*6.0 + 3.0)), gr); }
   } else {                                          // 10: macizo de flores: hojas verdes con manchas de flor del color del vértice

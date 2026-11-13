@@ -402,7 +402,12 @@ void main(){
   // puntos del tramo no hay ningún edificio a 60 m a ninguno de los dos lados, o si hay un lado abierto y la ladera es fuerte
   // (desnivel transversal > 15 % a ±20 m o pendiente del tramo > 7 %). Ahí: ni acera ensanchada (S2) ni árboles, alcorques o
   // plantones de calle, y la acera se queda en un arcén de tierra y grava de 1,3 m (modelo 6 del campo, sin bordillo)
-  const ruralCache = new Map(), HAT = ctx.heightAt;
+  const ruralCache = new Map(), HAT = ctx.heightAt, urbCache = new Map();
+  function urbanSeg(s) { let v = urbCache.get(s); if (v !== undefined) return v;
+    const o = s * 6, hw = SEG[o + 4], mx = (SEG[o] + SEG[o + 2]) / 2, mz = (SEG[o + 1] + SEG[o + 3]) / 2; let nb = 0;
+    for (let k = 0; k < 8 && nb < 5; k++) { const ca = Math.cos(k * Math.PI / 4), sa = Math.sin(k * Math.PI / 4);
+      for (let d = hw + 2; d < 110; d += 4) if (coverAt(mx + ca * d, mz + sa * d, -1) > -1e8) { nb++; break; } }
+    v = nb >= 5; urbCache.set(s, v); return v; }
   function ruralSeg(s) {
     let v = ruralCache.get(s); if (v !== undefined) return v;
     const o = s * 6, hw = SEG[o + 4], ax = SEG[o], az = SEG[o + 1], bx = SEG[o + 2], bz = SEG[o + 3], L = Math.hypot(bx - ax, bz - az) || 1;
@@ -415,10 +420,7 @@ void main(){
     v = open2 >= 2 || open1 >= 2 && (cross > 0.15 || slope > 0.07);
     // FX-suelo: en el tejido urbano nunca es rural (los tramos cortos dentro de los cruces anchos del Eixample miraban de
     // través por las calles, no veían edificios y el xamfrà salía de tierra): edificios a menos de 110 m en 5 de 8 rumbos
-    if (v) { const mx = (ax + bx) / 2, mz = (az + bz) / 2; let nb = 0;
-      for (let k = 0; k < 8 && nb < 5; k++) { const ca = Math.cos(k * Math.PI / 4), sa = Math.sin(k * Math.PI / 4);
-        for (let d = hw + 2; d < 110; d += 4) if (coverAt(mx + ca * d, mz + sa * d, -1) > -1e8) { nb++; break; } }
-      if (nb >= 5) v = false; }
+    if (v && urbanSeg(s)) v = false;
     ruralCache.set(s, v); return v;
   }
   const treeCache = new Map(), PLZ = window.BCN_PLAZAS;
@@ -484,7 +486,8 @@ void main(){
   const atlasK = BABYLON.RawTexture.CreateRGBATexture(new Uint8Array(AT * AT * 4), AT, AT, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
   atlasK.wrapU = atlasK.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; matW.setTexture('tKind', atlasK);
   const SU = window.BCN_SUELOS, kindCache = new Map();
-  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = SEG[o + 5] === 9 || ruralSeg(s) ? [6, 0.6] :   // G1S1: las pistas (clase 9) son de tierra siempre, también en parques
+  const kindOf = s => { let k = kindCache.get(s); if (!k) { const o = s * 6; k = SEG[o + 5] === 9 && !urbanSeg(s) || ruralSeg(s) ? [6, 0.6] :   // FX-suelo: en el tejido urbano (plazoletas de la Gran Via), la senda de clase 9 lleva acera, no tierra
+         // G1S1: las pistas (clase 9) son de tierra siempre, también en parques
        SU ? SU.acera(SEG[o + 5], SEG[o + 4], SEG[o], SEG[o + 1], SEG[o + 2], SEG[o + 3]) : [0, 0.3]; kindCache.set(s, k); } return k; };
   matW.setTexture('tField', atlas); matW.setTexture('tPanD', tPanD); matW.setTexture('tPanN', tPanN); matW.setTexture('tGrD', tGrD); matW.setTexture('tGrN', tGrN);
   const freeSlots = []; for (let k = SLOTS * SLOTS - 1; k >= 0; k--) freeSlots.push(k);

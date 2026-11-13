@@ -1428,7 +1428,7 @@ const RSEG = [];   // tramos de eje de calle (x0,z0,x1,z1,semiancho,clase): fach
         const A = (k - 1) * 14 + sd * 7, B = k * 14 + sd * 7; if (Math.max(SK[A + 6], SK[B + 6]) < 0.25) continue;
         const b0 = pos.length / 3;
         pos.push(SK[A], SK[A + 1] - 0.02, SK[A + 2], SK[A + 3], SK[A + 4], SK[A + 5], SK[B], SK[B + 1] - 0.02, SK[B + 2], SK[B + 3], SK[B + 4], SK[B + 5]);
-        for (let q = 0; q < 4; q++) { col.push(124, 106, 82, 9); uvs.push(sd ? 1 : -1, 0, hw, 0); }
+        for (let q = 0; q < 4; q++) { col.push(108, 93, 72, 9); uvs.push(sd ? 1 : -1, 0, hw, 0); }
         if (sd) idx.push(b0, b0 + 1, b0 + 3, b0, b0 + 3, b0 + 2); else idx.push(b0, b0 + 2, b0 + 3, b0, b0 + 3, b0 + 1);
       }
     }
