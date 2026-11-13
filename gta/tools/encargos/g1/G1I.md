@@ -30,3 +30,13 @@ ANTES y DESPUÉS en la vista donde se vio; al final se fusionan en wt-g1-int.
 
 ## Fachadas (cuando termine G1F)
 Fusión de `wt-g1-fach`, comprobación, capturas DESPUÉS finales de las 24 vistas, jurado final y hoja final.
+
+## Peticiones de última hora para los arreglos (llegaron al cerrar G1F)
+- **edificios**: en `gotic_calle` (12712, 13385, yaw 0,704) una losa gris cruza la calle a unos 11 m: es la malla de
+  volumen de edificio `b15_16` (app.js, matBld), entre (12673,0, 13430,8, y 11,5) y (12685,5, 1342…): un volumen del
+  registro que salta la calle; recórtalo o quítalo (G1F3).
+- **edificios**: en las manzanas lejanas, los bajos de balcones y voladizos se leen como bandas negras (fondo de pg_pie y
+  eix_dron): es el shader de volumen (FS_BLD en app.js); dales la luz rebotada del suelo como ya hace el shader de fachada
+  de detalle (G1F3).
+- **fusión final**: `palette.js` solo tiene la sección de G1F al final (la de sarria_pedralbes); al fusionar wt-g1-fach,
+  conservarla.
