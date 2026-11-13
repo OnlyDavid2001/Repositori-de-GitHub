@@ -37,16 +37,40 @@ const roadGLSL = `
     // rodadas: más oscuras en el centro de cada carril
     float lane = abs(fract((x + hw)/3.3) - 0.5);
     asf *= mix(1.0, 0.9, smoothstep(0.32, 0.05, lane)*(0.5 + 0.5*vnoise(P*0.3)));
-    // tapas de alcantarilla en el eje y rejas de imbornal junto al bordillo
-    float mh = length(vec2((fract(v/31.0 + 0.37) - 0.5)*31.0, x - hw*0.3));
-    float mhole = (1.0 - smoothstep(0.32, 0.34, mh))*step(2.5, hw);
-    float ring = smoothstep(0.26, 0.28, mh)*(1.0 - smoothstep(0.32, 0.34, mh));
-    vec2 dg = vec2((fract(v/23.0 + 0.11) - 0.5)*23.0, abs(x) - (hw - 0.32));
-    float drain = step(abs(dg.x), 0.45)*step(abs(dg.y), 0.2)*step(2.5, hw);
-    float bars = step(0.5, fract(dg.x*11.0));
-    asf = mix(asf, vec3(0.13, 0.13, 0.14)*(0.8 + 0.4*step(0.5, fract((P.x + P.y)*8.0))), mhole*(1.0 - ring));
-    asf = mix(asf, vec3(0.20, 0.19, 0.18), mhole*ring);
-    asf = mix(asf, vec3(0.05, 0.05, 0.06) + bars*0.08, drain);
+    // G1S2 · tapas y rejillas, sin patrón fijo: cada 26 m de calle, una tapa redonda de fundición (60 cm, con su marco y
+    // un anillo de mortero alrededor) en el centro de un carril elegido al azar, o ninguna. Alguna arqueta rectangular
+    // junto al bordillo y los imbornales (rejilla de 90 x 35 cm con barras de través) a un lado u otro cada 18 a 30 m.
+    float pq = length(fwidth(P)), dk = 1.0 - smoothstep(0.02, 0.08, pq);
+    float bi = floor(v/26.0), hb = hash21(vec2(bi, 3.1)), nl = max(1.0, floor(2.0*hw/3.3 + 0.5));
+    float lx = -hw + (floor(hash21(vec2(bi, 7.7))*nl) + 0.5)*(2.0*hw/nl);
+    vec2 md = vec2(v - (bi + 0.2 + 0.6*hb)*26.0, x - lx);
+    float mh = length(md)*step(hash21(vec2(bi, 1.9)), 0.62)*step(2.5, hw) + step(0.62, hash21(vec2(bi, 1.9)))*9.0 + step(hw, 2.5)*9.0;
+    float mortar = 1.0 - smoothstep(0.40, 0.43, mh), frame = smoothstep(0.27, 0.285, mh)*(1.0 - smoothstep(0.315, 0.33, mh));
+    float disc = 1.0 - smoothstep(0.27, 0.285, mh);
+    float ang = atan(md.y, md.x), pat = step(0.5, fract(mh*14.0))*0.5 + step(0.5, fract(ang*3.8197))*0.5*step(0.09, mh);
+    vec3 iron = vec3(0.16, 0.155, 0.15)*(0.85 + 0.3*pat*dk + 0.15*vnoise(P*9.0));
+    asf = mix(asf, asf*vec3(1.35, 1.32, 1.25), mortar*(1.0 - disc - frame)*0.8*dk);
+    asf = mix(asf, iron, disc*(1.0 - frame));
+    asf = mix(asf, vec3(0.30, 0.29, 0.27), frame);
+    // arqueta rectangular de registro (90 x 60 cm) junto al bordillo, una de cada pocas manzanas
+    float bj = floor(v/41.0), sj = hash21(vec2(bj, 5.3)) > 0.5 ? 1.0 : -1.0;
+    vec2 rq = vec2(v - (bj + 0.3 + 0.4*hash21(vec2(bj, 2.2)))*41.0, x*sj - (hw - 1.1));
+    float arq = step(abs(rq.x), 0.45)*step(abs(rq.y), 0.30)*step(hash21(vec2(bj, 9.4)), 0.35)*step(3.0, hw);
+    float arqF = arq*(1.0 - step(abs(rq.x), 0.40)*step(abs(rq.y), 0.25));
+    asf = mix(asf, vec3(0.19, 0.185, 0.18)*(0.85 + 0.25*step(0.5, fract(rq.x*10.0 + 0.25))*step(0.5, fract(rq.y*10.0 + 0.25))*dk + 0.1*vnoise(P*7.0)), arq);
+    asf = mix(asf, vec3(0.32, 0.31, 0.29), arqF);
+    // imbornales junto a los dos bordillos, con la mancha de humedad que dejan aguas abajo
+    float lenD = 18.0 + 12.0*hash21(vec2(floor(v/30.0), 4.4)), sd = x > 0.0 ? 1.0 : -1.0;
+    float bk = floor((v + sd*7.0)/lenD);
+    vec2 dg = vec2(v + sd*7.0 - (bk + 0.5)*lenD, abs(x) - (hw - 0.22));
+    float on = step(hash21(vec2(bk, sd + 6.0)), 0.8)*step(2.5, hw);
+    float drain = step(abs(dg.x), 0.45)*step(abs(dg.y), 0.17)*on;
+    float dframe = drain*(1.0 - step(abs(dg.x), 0.40)*step(abs(dg.y), 0.13));
+    float bars = smoothstep(0.35, 0.65, fract(dg.x*12.0))*dk;
+    float wet = on*(1.0 - smoothstep(0.0, 0.5, abs(dg.y) - 0.1))*smoothstep(0.4, 0.6, dg.x)*(1.0 - smoothstep(0.6, 3.5, dg.x))*0.35;
+    asf *= 1.0 - wet*(0.5 + 0.5*vnoise(P*3.0));
+    asf = mix(asf, vec3(0.03, 0.03, 0.035) + bars*vec3(0.14, 0.135, 0.13), drain);
+    asf = mix(asf, vec3(0.24, 0.23, 0.22), dframe);
     alb = mix(alb, asf, near);
     vec3 tn = mix(texture2D(tAsN, P/6.0).xyz, texture2D(tAsN, P.yx*(0.73/6.0) + vec2(0.31, 0.17)).xyz, gB)*2.0 - 1.0;
     N = normalize(vec3(tn.x, 1.0, tn.y)*vec3(near*0.9, 1.0, near*0.9));
@@ -87,9 +111,15 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
   function islandAt(x, z, r) { const c = cellOf(x, z);
     for (let q = ROADS.start[c]; q < ROADS.start[c + 1]; q++) { const s2 = ROADS.list[q]; if (CAR.has(SEG[s2 * 6 + 5]) && segD(s2, x, z) < SEG[s2 * 6 + 4] + r) return false; }
     return true; }
+  // ¿hay calzada en casi todo el círculo de radio R alrededor de (cx, cz)? (una rotonda de verdad; descarta los cruces junto
+  // a un jardín, que también tienen isleta en medio pero no anillo)
+  function ringClosed(cx, cz, R) { let n = 0;
+    for (let k = 0; k < 16; k++) { const t = k * Math.PI / 8, x = cx + Math.cos(t) * R, z = cz + Math.sin(t) * R, c = cellOf(x, z);
+      for (let q = ROADS.start[c]; q < ROADS.start[c + 1]; q++) { const s2 = ROADS.list[q]; if (CAR.has(SEG[s2 * 6 + 5]) && segD(s2, x, z) < SEG[s2 * 6 + 4] + Math.max(2, R * 0.15)) { n++; break; } } }
+    return n >= 13; }
   // ¿el punto cae sobre otra calzada que no es la de este tramo ni su continuación? (cruces vecinos, calzadas dobles, laterales)
-  function blocked(s, x, z) { const c = cellOf(x, z), o = s * 6;
-    for (let q = ROADS.start[c]; q < ROADS.start[c + 1]; q++) { const s2 = ROADS.list[q]; if (s2 === s) continue; const o2 = s2 * 6; if (!CAR.has(SEG[o2 + 5])) continue;
+  function blocked(s, x, z, skip) { const c = cellOf(x, z), o = s * 6;
+    for (let q = ROADS.start[c]; q < ROADS.start[c + 1]; q++) { const s2 = ROADS.list[q]; if (s2 === s || skip && skip.indexOf(s2) >= 0) continue; const o2 = s2 * 6; if (!CAR.has(SEG[o2 + 5])) continue;
       if (segD(s2, x, z) > SEG[o2 + 4] - 0.2) continue;
       const shared = [0, 2].some(e => [0, 2].some(f => Math.abs(SEG[o + e] - SEG[o2 + f]) < 0.3 && Math.abs(SEG[o + e + 1] - SEG[o2 + f + 1]) < 0.3));
       if (shared) { const d1x = SEG[o + 2] - SEG[o], d1z = SEG[o + 3] - SEG[o + 1], d2x = SEG[o2 + 2] - SEG[o2], d2z = SEG[o2 + 3] - SEG[o2 + 1];
@@ -97,7 +127,7 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       return true; }
     return false; }
   const freeRect = (s, info, a0, a1, b0, b1) => { for (const [a, b] of [[a0, b0], [a1, b0], [a1, b1], [a0, b1], [(a0 + a1) / 2, (b0 + b1) / 2]])
-    if (blocked(s, info.jx + info.ux * a + info.qx * b, info.jz + info.uz * a + info.qz * b)) return false; return true; };
+    if (blocked(s, info.jx + info.ux * a + info.qx * b, info.jz + info.uz * a + info.qz * b, info.chain)) return false; return true; };
   function endInfo(s, e) {
     const key = s * 2 + (e ? 1 : 0); if (ends.has(key)) return ends.get(key);
     const o = s * 6, jx = SEG[o + (e ? 2 : 0)], jz = SEG[o + (e ? 3 : 1)], legs = legsAt(jx, jz);
@@ -116,8 +146,11 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
         if (coverAt) for (const sd of [-1, 1]) for (let a = aMin; a < aMin + 18; a += 1) {
           if (coverAt(jx + ux * a + qx * sd * (hw + 6.5), jz + uz * a + qz * sd * (hw + 6.5), -1) > -1e8) { dB = Math.min(dB, a); break; } }
         // rotonda: dos ramas casi opuestas y de través respecto a esta boca, en un anillo que se cierra alrededor de ella
-        let ring = null;
-        for (let i = 0; i < legs.length && !ring; i++) for (let k = i + 1; k < legs.length && !ring; k++) {
+        // rotonda: el cruce está en un lazo corto de calzada que gira siempre al mismo lado y sin quiebros fuertes (en
+        // cualquier forma, también ovalada); si no, el método del circuncentro (anillos que OSM no cierra en el recorte)
+        const lp = loopAt(jx, jz, legs);
+        let ring = lp && !lp.segs.has(s) ? { a: lp.a, b: lp.b, R: lp.R } : null;
+        if (!lp) for (let i = 0; i < legs.length && !ring; i++) for (let k = i + 1; k < legs.length && !ring; k++) {
           const A = legs[i], B = legs[k]; if (A.s === s || B.s === s) continue;
           if (A.ux * B.ux + A.uz * B.uz > -0.3 || Math.abs(A.ux * ux + A.uz * uz) > 0.7 || Math.abs(B.ux * ux + B.uz * uz) > 0.7) continue;
           const la = Math.min(A.L, 40), lb = Math.min(B.L, 40), x1 = A.ux * la, z1 = A.uz * la, x2 = B.ux * lb, z2 = B.uz * lb;   // circuncentro de (0,0), P1, P2
@@ -125,29 +158,66 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
           const n1 = x1 * x1 + z1 * z1, n2 = x2 * x2 + z2 * z2, cx = (n1 * z2 - n2 * z1) / d, cz = (n2 * x1 - n1 * x2) / d, R = Math.hypot(cx, cz);
           // y en el centro, una isleta: ni edificio ni calzada a menos de 0,4 R (descarta los cruces enrevesados de las laterales)
           const wx = jx + cx, wz = jz + cz;
-          if (R > 8 && R < 140 && -(cx * ux + cz * uz) / R > 0.75 && !(coverAt && coverAt(wx, wz, -1) > -1e8) && islandAt(wx, wz, Math.max(3, R * 0.4))) ring = { a: A.s, b: B.s, R };
+          if (R > 8 && R < 140 && -(cx * ux + cz * uz) / R > 0.75 && !(coverAt && coverAt(wx, wz, -1) > -1e8) && islandAt(wx, wz, Math.max(3, R * 0.4)) && ringClosed(wx, wz, R)) ring = { a: A.s, b: B.s, R };
         }
-        r = { jx, jz, ux, uz, qx, qz, hw, aMin, dB, legs, ring, oth };
+        // continuación recta del tramo más allá de su otro extremo (los tramos son trozos de polilínea: a veces de pocos
+        // metros), para que el paso de cebra y la detención quepan aunque el primer trozo sea corto
+        const chain = []; let len = 0, cur = s, cux = ux, cuz = uz, ce = e ? 0 : 1;
+        for (let k = 0; k < 4 && len < 40; k++) { const oc = cur * 6, fx = SEG[oc + ce * 2], fz = SEG[oc + ce * 2 + 1], lg = legsAt(fx, fz);
+          if (lg.length !== 2) break; const nx = lg.find(l => l.s !== cur); if (!nx || nx.ux * cux + nx.uz * cuz < 0.8 || nx.hw < hw - 0.6) break;
+          chain.push(nx.s); len += nx.L; cur = nx.s; cux = nx.ux; cuz = nx.uz; ce = kJ(SEG[cur * 6], SEG[cur * 6 + 1]) === kJ(fx, fz) ? 1 : 0; }
+        r = { jx, jz, ux, uz, qx, qz, hw, aMin, dB, legs, ring, oth, chain, ext: len };
       }
     }
     ends.set(key, r); return r;
   }
+  // lazos de rotonda por cruce (caché) y el conjunto de tramos que son anillo
+  const loops = new Map(), ringSegs = new Set();
+  function loopAt(jx, jz, legs) {
+    const k0 = kJ(jx, jz); if (loops.has(k0)) return loops.get(k0);
+    let res = null;
+    for (const l0 of legs) {
+      const segs = new Set([l0.s]); let cur = l0.s, dx = l0.ux, dz = l0.uz, len = l0.L, turn = 0, sx = 0, sz = 0, n = 0, ok = false, last = -1;
+      let nx0 = SEG[cur * 6 + 0] === jx && SEG[cur * 6 + 1] === jz || kJ(SEG[cur * 6], SEG[cur * 6 + 1]) === k0 ? 2 : 0;
+      for (let st = 0; st < 160 && len < 900; st++) {
+        const fx = SEG[cur * 6 + nx0], fz = SEG[cur * 6 + nx0 + 1]; sx += fx; sz += fz; n++;
+        if (kJ(fx, fz) === k0) { ok = true; last = cur; break; }
+        let best = null, ba = 9;
+        for (const l of legsAt(fx, fz)) { if (l.s === cur || l.hw < 2) continue;
+          const a = Math.atan2(dx * l.uz - dz * l.ux, dx * l.ux + dz * l.uz);
+          if (turn !== 0 && Math.sign(a) !== Math.sign(turn) && Math.abs(a) > 0.08) continue;
+          if (Math.abs(a) < Math.abs(ba)) { ba = a; best = l; } }
+        if (!best || Math.abs(ba) > 0.9) break;
+        turn += ba; cur = best.s; segs.add(cur); dx = best.ux; dz = best.uz; len += best.L;
+        nx0 = kJ(SEG[cur * 6], SEG[cur * 6 + 1]) === kJ(fx, fz) ? 2 : 0;
+      }
+      if (!ok || segs.size < 3) continue;
+      // cierre: el giro en el propio cruce también cuenta
+      const lastLeg = legs.find(l => l.s === last); if (!lastLeg) continue;
+      const ain = Math.atan2(dx * l0.uz - dz * l0.ux, dx * l0.ux + dz * l0.uz); turn += ain;
+      if (Math.abs(Math.abs(turn) - 2 * Math.PI) > 0.8 || Math.abs(ain) > 1.2) continue;
+      const R = len / (2 * Math.PI), cx = sx / n, cz = sz / n;
+      if (R < 6 || R > 140 || coverAt && coverAt(cx, cz, -1) > -1e8) continue;
+      res = { segs, a: l0.s, b: last, R }; for (const q of segs) ringSegs.add(q); break;
+    }
+    loops.set(k0, res); return res;
+  }
   // ¿la boca (s, e) es un tramo del anillo de una rotonda en ese cruce?
-  function isRing(s, info) { if (!info) return false;
+  function isRing(s, info) { if (!info) return false; if (ringSegs.has(s)) return true;
     for (const l of info.legs) { if (l.s === s) continue; const o = endInfo(l.s, SEG[l.s * 6] === info.jx && SEG[l.s * 6 + 1] === info.jz ? 0 : 1); if (o && o.ring && (o.ring.a === s || o.ring.b === s)) return true; }
     return false; }
-  // T (tres ramas, dos de ellas en recta): el paso de la vía que sigue, solo en una de las dos ramas
+  // T (tres ramas, dos de ellas en recta) en una vía ancha: el paso de la vía que sigue, solo en una de las dos ramas
   function throughSkip(s, info) {
     if (info.legs.length !== 3) return false;
     const me = info.legs.find(l => l.s === s); if (!me) return false;
     const cont = info.legs.find(l => l.s !== s && l.ux * me.ux + l.uz * me.uz < -0.94);
-    return !!cont && cont.s < s;
+    return !!cont && cont.s < s && me.hw > 9;              // solo en las vías anchas: en las calles, paso en las dos ramas (como en Barcelona)
   }
   // geometría de la boca: a0 (inicio del paso de cebra), dónde acaba lo pintado (aEnd) y qué se pinta
   const plans = new Map();
   function plan(s, e) {
     const key = s * 2 + (e ? 1 : 0); if (plans.has(key)) return plans.get(key);
-    const info = endInfo(s, e), o = s * 6, cls = SEG[o + 5], L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]);
+    const info = endInfo(s, e), o = s * 6, cls = SEG[o + 5], L = Math.hypot(SEG[o + 2] - SEG[o], SEG[o + 3] - SEG[o + 1]) + (info ? info.ext : 0);
     let P = null;
     if (info) {
       const ringLeg = isRing(s, info), entry = !!info.ring, hw = info.hw;
@@ -171,8 +241,18 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
     }
     plans.set(key, P); return P;
   }
+  // metros de pintura de cruce que entran en el tramo s por su extremo e cuando ese extremo no es cruce sino la continuación
+  // de un tramo corto que sale de uno (para cortar ahí las líneas de carril)
+  function spill(s, e) { let cur = s, ce = e, d = 0;
+    for (let k = 0; k < 4 && d < 40; k++) { const oc = cur * 6, nx0 = SEG[oc + ce * 2], nz0 = SEG[oc + ce * 2 + 1], lg = legsAt(nx0, nz0);
+      if (lg.length !== 2) return 0; const nx = lg.find(l => l.s !== cur); if (!nx) return 0;
+      const fe = kJ(SEG[nx.s * 6], SEG[nx.s * 6 + 1]) === kJ(nx0, nz0) ? 1 : 0; d += nx.L;
+      const P = plan(nx.s, fe); if (P) return P.info.chain.indexOf(s) >= 0 ? Math.max(0, P.aEnd - d) : 0;
+      cur = nx.s; ce = fe; }
+    return 0; }
   // altura de la pintura: sobre la más alta de las cintas que hay en ese punto (en los cruces se apilan varias)
   function yAt(s, x, z, info) { let y = roadY(s, x, z);
+    if (info && info.chain.length) { let best = segD(s, x, z); for (const c of info.chain) { const d = segD(c, x, z); if (d < best - 0.01) { best = d; y = roadY(c, x, z); } } }
     if (info) for (const l of info.oth) if (segD(l.s, x, z) < l.hw) y = Math.max(y, roadY(l.s, x, z));
     return y + 0.025; }
   // un polígono de pintura en coordenadas de boca (a: metros desde el cruce hacia fuera, b: de través, + = carril de entrada)
@@ -205,7 +285,7 @@ window.BCN_GROUND = { roadGLSL, init(ctx) {
       if (!CAR.has(cls) || hw < 2) return;
       const ex = [0, 0];                                       // metros sin pintar de carril en cada extremo
       for (const e of [0, 1]) {
-        const P = plan(s, e); if (!P) continue; const info = P.info; ex[e] = P.aEnd;
+        const P = plan(s, e); if (!P) { ex[e] = spill(s, e); continue; } const info = P.info; ex[e] = P.aEnd;
         const mid = (a, b) => inCell(info.jx + info.ux * a + info.qx * b, info.jz + info.uz * a + info.qz * b);
         // paso de cebra: bandas de 50 cm cada metro, centradas en la calzada
         if (P.zOk && mid(P.a0 + 2, 0)) {
