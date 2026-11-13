@@ -118,6 +118,14 @@ void main(){
     vec3 refl = envRefl(r, 0.0);                      // cielo, y por debajo del horizonte la calle de enfrente, oscura
     float fres = 0.06 + 0.94*pow(1.0 - max(dot(N, V), 0.0), 5.0);
     vec3 inside = mix(vec3(0.030,0.034,0.040), vec3(0.10,0.085,0.065), h);
+    // G1F1: tribunas, galerías y muros cortina: fondo de habitación en paralaje (pared a ~3 m con su color, puerta oscura y
+    // suelo), en vez de un tono plano; de lejos se queda en el tono medio
+    { vec2 pb = P - vec2(dot(V, T), dot(V, Bv))*(3.0/max(dot(V, N), 0.2));
+      vec2 rq = pb/vec2(3.4, 3.1), rf = fract(rq); float hr = hash21(floor(rq) + 1.3);
+      vec3 wc = hr < 0.35 ? vec3(0.86, 0.80, 0.68) : (hr < 0.6 ? vec3(0.66, 0.74, 0.62) : (hr < 0.8 ? vec3(0.80, 0.62, 0.48) : vec3(0.90, 0.88, 0.84)));
+      float door = step(abs(rf.x - 0.25 - 0.5*step(0.5, hash21(floor(rq) + 7.7))), 0.12)*step(rf.y, 0.68);
+      vec3 room = mix(wc, wc*0.25, door)*mix(0.55, 1.0, smoothstep(0.0, 0.35, rf.y));
+      inside = mix(inside, room*0.16, nearF*0.85); }
     float yy = fract(P.y/3.1);
     inside = mix(inside, vec3(0.62,0.56,0.46), step(0.58, h2)*0.30*smoothstep(0.25, 0.9, yy));   // visillos
     if (kind > 10.5) inside = vec3(0.30,0.26,0.20)*(0.7 + 0.6*vnoise(P*2.3)) + vCol.rgb*0.25;   // escaparate iluminado
@@ -241,10 +249,11 @@ void main(){
   if (vInfo.y > 0.99 && vInfo.w < 0.5 && (kind < 1.5 || (kind > 15.5 && kind < 19.5) || (kind > 99.5 && kind < 100.5))) {
     float dTop = vInfo.x*8.0, hG = vInfo.z*16.0 - 4.0;
     float wc = vnoise(vec2(P.x*2.3, 7.1))*0.7 + vnoise(vec2(P.x*7.9, 3.3))*0.3;
-    float wl = mix(0.2, 1.8, wc*wc);
-    float wst = (1.0 - smoothstep(0.0, wl, dTop + 0.15*vnoise(P*vec2(9.0, 1.5))))*smoothstep(0.3, 0.7, wc + 0.2);
-    wst *= 0.55 + 0.45*vnoise(vec2(P.x*16.0, P.y*0.8));
-    alb *= mix(vec3(1.0), vec3(0.72, 0.70, 0.67), wst*0.8);
+    float wl = mix(0.35, 2.4, wc*wc);
+    float wst = (1.0 - smoothstep(0.0, wl, dTop + 0.15*vnoise(P*vec2(9.0, 1.5))))*smoothstep(0.32, 0.68, wc);
+    wst *= mix(0.3, 1.0, smoothstep(0.3, 0.7, vnoise(vPos.xz*0.012 + 5.3)));   // fachadas recién pintadas y otras más gastadas
+    wst *= 0.45 + 0.55*smoothstep(0.25, 0.75, vnoise(vec2(P.x*14.0, P.y*0.6)));   // regueros verticales
+    alb *= mix(vec3(1.0), vec3(0.64, 0.63, 0.60), wst*(0.45*nearF + 0.25));
     float lim = 0.5 + 0.45*vnoise(vec2(P.x*0.8, 1.7)) + 0.1*vnoise(P*5.0);
     float zc = 1.0 - smoothstep(lim - 0.15, lim + 0.04, hG);
     float spl = smoothstep(0.55, 0.8, vnoise(P*11.0))*(1.0 - smoothstep(0.0, 0.4, hG));

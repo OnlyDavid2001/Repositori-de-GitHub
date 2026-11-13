@@ -629,6 +629,9 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
     tint = vec3(1.08, 0.94, 0.74);
   } else {
     on = homeOn(fract(sd*0.6180339 + 0.21));
+    // G1F1: ventana tras visillo (todas las de la fachada): la regla de antes, por celda de vidrio, encendía a menudo dos
+    // trozos por ventana (~1 de cada 2 con luz al anochecer). Mismo reparto, con dos sorteos
+    if (mode > 1.5) on = max(on, homeOn(fract(sd*0.3819660 + 0.63)));
     day = 0.44 + 0.2*h3;
     tint = h3 < 0.12 ? vec3(0.55, 0.72, 1.25)*(0.8 + 0.2*sin(uTime*7.0 + sd)) : (h3 < 0.25 ? vec3(0.92, 0.98, 1.08) : vec3(1.10, 0.92, 0.70));
   }
