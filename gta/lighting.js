@@ -244,7 +244,12 @@ void main(){
     c.C.set(X.x * c.cx + Y.x * c.cy + Z.x * cz, X.y * c.cx + Y.y * c.cy + Z.y * cz, X.z * c.cx + Y.z * c.cy + Z.z * cz);
     c.U.set(c.C.x, c.C.y, c.C.z, 1 / half); c.K.set(1 / half, 1 / (2 * SH.R));
     const o = shList(c, c.C, half);
-    for (const m of o.list) if (!c.set.has(m)) { c.set.add(m); c.rtt.setMaterialForRendering(m, shMat(c.k, m)); }
+    for (const m of o.list) { if (!c.set.has(m)) { c.set.add(m); c.rtt.setMaterialForRendering(m, shMat(c.k, m)); }
+      // G1L1: los niveles LOD de una malla (la silueta lejana de la Sagrada Família, por ejemplo) también llevan el material de
+      // profundidad: si no, el mapa se pintaba con su material normal, que lee el propio mapa (aviso de WebGL «feedback loop»)
+      const lv = m.getLODLevels ? m.getLODLevels() : null;
+      if (lv) for (const l of lv) if (l.mesh && !c.set.has(l.mesh)) { c.set.add(l.mesh);
+        c.rtt.setMaterialForRendering(l.mesh, l.mesh.metadata && l.mesh.metadata.bcn ? shMat(c.k, l.mesh) : shMat(c.k, m)); } }
     c.rtt.renderList = o.list; c.sig = o.sig; c.n = o.list.length; c.dirty = false; c.late = 0; c.wait = 0;
     c.tris = 0; for (const m of o.list) c.tris += m.getTotalIndices() / 3 * (m.hasThinInstances ? m.thinInstanceCount : 1);
     c.rtt.resetRefreshCounter(); SH.renders++;
