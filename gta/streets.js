@@ -219,11 +219,13 @@ void main(){
   const VS_TREE = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
 #include<instancesDeclaration>
-uniform mat4 viewProjection;
+uniform mat4 viewProjection; uniform float uTime; uniform float uKind;
 varying vec3 vPos; varying vec3 vN; varying vec2 vUV; varying float vH; varying float vHl;
+` + (TR.WIND_GLSL || 'vec3 treeWind(vec3 p, mat4 W, float k){ return vec3(0.0); }') + `
 void main(){
 #include<instancesVertex>
-  vec4 wp = finalWorld*vec4(position, 1.0); vPos = wp.xyz; vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
+  vec4 wp = finalWorld*vec4(position, 1.0); wp.xyz += treeWind(position, finalWorld, uKind); vPos = wp.xyz;   // G1V1: viento (trees.js)
+  vN = normalize(mat3(finalWorld)*normal); vUV = uv; vHl = position.y;
   vH = fract(sin(dot(finalWorld[3].xz, vec2(12.9898, 78.233)))*43758.5453);
   gl_Position = viewProjection*wp; }`;
   // farolas de una celda a partir de sus charcos (cc.pools, furniture.js): cada charco son 1–3 quads con uv = (du, q − lo)/Rp,
@@ -338,7 +340,7 @@ void main(){
   // ARB4: tutores de pino claro con atados de cinta (atlas propio, TR.stakeCanvas) y copa joven verde claro
   const SAPG = TR.sapling(), sapSp = (bark, leaf) => ({ bark, leaf: leaf || TR.SP[0].leaf, fl: 0, bm: 0 });
   const tStake = canvasTex(TR.stakeCanvas()), tFlat = canvasTex(TR.flatCanvas());
-  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.22, 1.4, 0.86, 0.92])),
+  const SAPM = { trunk: mkTreeMat('sapT', 0, tBkD, tBkN, sapSp([0.62, 0.56, 0.47, 0.35])), leaf: mkTreeMat('sapL', 1, tLeafN[0], null, sapSp([1, 1, 1, 1], [1.0, 1.1, 0.84, 0.92])),
     stakesA: mkTreeMat('sapA', 0, tStake, tFlat, sapSp([1, 1, 1, 1])), stakesB: mkTreeMat('sapB', 0, tStake, tFlat, sapSp([1, 1, 1, 1])),
     guard: mkTreeMat('sapG', 0, tBkD, tBkN, sapSp([0.30, 0.31, 0.32, 0])) };
   const SAP = {}; for (const k of ['trunk', 'leaf', 'stakesA', 'stakesB', 'guard']) { SAP[k] = mkGeoMesh('tNS' + k, SAPG[k], SAPM[k]); reg(SAP[k], k === 'leaf' ? { cast: true, alphaTex: tLeafN[0], layer: 'tree' } : { cast: true, layer: 'tree' }); }
@@ -422,13 +424,13 @@ void main(){
       const s = ROADS.list[k], o = s * 6, cls = SEG[o + 5], hw = SEG[o + 4];
       const rambla = cls === 7 && hw >= 4.5; if (!(TREE.has(cls) && hw >= 2.4) && !rambla) continue;
       const ax = SEG[o], az = SEG[o + 1], dx = SEG[o + 2] - ax, dz = SEG[o + 3] - az, L = Math.hypot(dx, dz); if (L < 2) continue;
-      const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 10.5, a0 = ax * tx + az * tz;
+      const tx = dx / L, tz = dz / L, px = -tz, pz = tx, sp = rambla ? 9 : 9.5, a0 = ax * tx + az * tz;
       const spc = TR.pick(s, ax, az, SEG[o + 2], SEG[o + 3], hw, rambla);   // especie: la misma en toda la calle o tramo
       const K = streetKind(s); if (K.cv && !K.wide) continue;              // Ciutat Vella: fuera árboles y alcorques
       if (ruralSeg(s)) continue;                                           // REV4: carretera de montaña: nada de calle
       // reparto de alcorques vacíos y plantones, estable por calle (la misma clave de recta y tramo de 320 m que la especie)
       const th = Math.round(((Math.atan2(tz, tx) + 6.2832) % 3.1416) / 0.05), ln = Math.round((-ax * tz + az * tx) / 18) * (tz < 0 || tz === 0 && tx < 0 ? -1 : 1);
-      const kS = hash2(th * 131 + 7, ln * 17 + 3), fSap = 0.18 + 0.27 * kS, grate = hash2(th * 71 + 1, ln * 29 + 5) < 0.6;
+      const grate = hash2(th * 71 + 1, ln * 29 + 5) < 0.6;
       for (let u = Math.ceil(a0 / sp) * sp - a0; u < L; u += sp) for (const side of [-1, 1]) {
         const off = rambla ? hw - 1.2 : hw + 1.3, x = ax + tx * u + px * side * off, z = az + tz * u + pz * side * off;
         if (x < x0 || x >= x0 + CS || z < z0 || z >= z0 + CS) continue;
@@ -441,10 +443,14 @@ void main(){
         const [ns, nd] = nearestCar(x, z); if (nd < 1.0) continue;
         if (coverAt(x, z, -1) > -1e8 || !rambla && coverAt(x + px * side * 1.4, z + pz * side * 1.4, -1) > -1e8) continue;
         const y = walkY(ns, x, z), h = hash2(Math.round(x * 7), Math.round(z * 7)), n = Math.round((a0 + u) / sp);
-        // adulto: solo en calle ancha y una posición de cada dos (al tresbolillo entre aceras). Si no: plantón (NSP: tres
-        // tutores, NSP + 1: dos tutores y protector) o alcorque vacío (−1 con reja, −2 tierra sola)
-        if (K.wide && ((n + (side > 0 ? 1 : 0)) & 1) === 0) out.push(x, y - 0.17, z, h * 6.2832, 0.9 + 0.38 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), spc);
-        else if (hash2(n * 3 + (side > 0 ? 1 : 0), ln * 7 + th) < fSap) out.push(x, y - 0.04, z, h * 6.2832, 0.85 + 0.3 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), NSP + (hash2(th, ln * 3 + 11) < 0.55 ? 0 : 1));
+        // plantón: NSP tres tutores, NSP + 1 dos tutores y protector; alcorque vacío: −1 con reja, −2 tierra sola
+        // G1V3 (el nivel medio, tF, se acorta de 430–520 a 320–400 m: con adultos en todos los alcorques salían ~1 800 en él): plátano (o la especie de la calle) adulto como norma en todos los alcorques: el 3 % plantón y el 2 % alcorque
+        // vacío, nunca dos vacíos seguidos en la misma acera (antes, en las calles que no eran anchas, solo plantones con
+        // tutores gigantes y alcorques vacíos: el «elimínalos todos» del usuario). En calle estrecha, el adulto algo menor
+        const hS = hash2(n * 3 + (side > 0 ? 1 : 0), ln * 7 + th), hP = hash2((n - 1) * 3 + (side > 0 ? 1 : 0), ln * 7 + th);
+        const pitS = hS >= 0.03 && hS < 0.05 && !(hP >= 0.03 && hP < 0.05);
+        if (hS >= 0.03 && !pitS) out.push(x, y - 0.17, z, h * 6.2832, (K.wide ? 0.9 : 0.78) + (K.wide ? 0.38 : 0.26) * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), spc);
+        else if (!pitS) out.push(x, y - 0.04, z, h * 6.2832, 0.85 + 0.3 * hash2(Math.round(z * 5), Math.round(x * 5)), Math.atan2(tz, tx), NSP + (hash2(th, ln * 3 + 11) < 0.55 ? 0 : 1));
         else out.push(x, y, z, 0, 0, Math.atan2(tz, tx), grate ? -1 : -2);
       }
     }
@@ -682,6 +688,9 @@ void main(){
     const inCell = (x, z) => x >= x0 && x < x0 + CS && z >= z0 && z < z0 + CS;
     const nearJ = (x, z, r) => { for (const j of J) if (Math.hypot(x - j[0], z - j[1]) < r) return true; return false; };
     const freeWalk = (x, z) => { const [s, d] = nearestCar(x, z); return d > 0.25 && coverAt(x, z, -1) < -1e8 ? s : -2; };
+    // G1V2: ¿hay a menos de r un árbol, plantón o alcorque de calle (celda y vecinas)? Para que el mobiliario no caiga en un alcorque
+    const TN = []; for (let j = cz - 1; j <= cz + 1; j++) for (let i = cx - 1; i <= cx + 1; i++) if (i >= 0 && j >= 0 && i < NX && j < NZ) TN.push(treesOf(j * NX + i));
+    const treeNear = (x, z, r) => { for (const T of TN) for (let i = 0; i < T.length; i += 7) if ((T[i] - x) ** 2 + (T[i + 2] - z) ** 2 < r * r) return true; return false; };
     const marks = []; let depth = 0;
     const forEachSeg = cb => {
       depth++;
@@ -696,7 +705,7 @@ void main(){
       }
       depth--;
     };
-    return { ci, W, ox, oz, x0, z0, inCell, nearJ, freeWalk, J, Jset, jKey, forEachSeg, marks };
+    return { ci, W, ox, oz, x0, z0, inCell, nearJ, freeWalk, treeNear, J, Jset, jKey, forEachSeg, marks };
   }
   // Cada hook recorre los tramos por su cuenta, pero la malla queda ordenada por tramo y, dentro de cada tramo, por orden
   // de llamada (mobiliario, marcas viales): el mismo orden de triángulos que si todo saliera de un único bucle, de modo
@@ -726,7 +735,7 @@ void main(){
 
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();
-  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [430, 520], tI: 2100 };
+  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tI: 2100 };
   // mobiliario de detalle: se construye en las celdas a menos de HB (algo más que el relevo por píxel, FU.hiRange) y se quita a partir de HD
   const HB = FU.buildHi && FU.hiRange ? FU.hiRange[1] + 8 : -1, HD = HB + 25, furnTris = [0, 0];
   let job = null, queue = [], tris = 0, planT = 0, instT = 0, lastIP = null, added = 0;
@@ -827,7 +836,7 @@ void main(){
   function setRange(q) {
     S.on = q > 0;
     const k = q >= 2 ? 1.4 : 1;
-    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [430 * k, 520 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
+    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN: [55 * k, 70 * k], tF: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
     setBands();
     if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = nPit = 0; }
     lastIP = null; planT = 0;

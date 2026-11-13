@@ -114,9 +114,11 @@ function card(g, cx, cy, cz, sz, nx, ny, nz, tile, ao, Htop) {
 }
 // cartel lejano (parte 7): un cuadrilátero que el VS orienta a la cámara alrededor del centro de la copa. position = (u, v, 0)
 // (v = -2: se alarga hacia abajo para el tronco); normal = (radio horizontal, radio vertical, altura del centro)
-function board(rx, ry, cy, trunk) {
-  const g = G(), vb = trunk ? -2 : -1;
-  for (const [u, v] of [[-1, vb], [1, vb], [1, 1], [-1, 1]]) { g.P.push(u, v, 0); g.N.push(rx, ry, cy); g.C.push(1, 0.5, trunk ? 1 : 0, 7); }
+// G1V1: tile = tesela del atlas de impostores (0 piñonero, 1 carrasco, 2 encina, 3 mata) en vC.g; sin tesela (cañas), la
+// silueta procedimental de antes
+function board(rx, ry, cy, trunk, tile) {
+  const g = G(), vb = trunk ? -2 : -1, tg = tile === undefined ? 0 : (tile + 0.5) / 4;
+  for (const [u, v] of [[-1, vb], [1, vb], [1, 1], [-1, 1]]) { g.P.push(u, v, 0); g.N.push(rx, ry, cy); g.C.push(1, tg, trunk ? 1 : 0, 7); }
   g.I.push(0, 1, 2, 0, 2, 3); return pack(g);
 }
 function pack(g) {
@@ -138,43 +140,49 @@ function shellCards(g, cx, cy, cz, rx, ry, rz, n, sz0, sz1, tile, Htop, upOnly) 
 }
 function pinea(lv) {   // pino piñonero: tronco alto que se abre en ramas y una copa plana de ramilletes (sombrilla)
   _s = 11; const g = G(), H = 8.2;
-  if (lv === 2) return board(3.9, 1.5, 6.7, true);
+  if (lv === 2) return board(3.9, 1.5, 6.7, true, 0);
   cyl(g, 0, -0.3, 0, 0.35, 5.6, 0.15, 0.3, 0.16, [7, 4][lv], 1, H);
   if (lv === 0) {
     for (const [bx, by, bz] of [[-1.6, 6.4, 0.9], [1.9, 6.3, -0.8], [0.4, 6.5, 1.9], [0.6, 6.4, -1.9]]) cyl(g, 0.3, 4.9, 0.13, bx, by, bz, 0.12, 0.06, 3, 1, H);
     blob(g, 0.3, 6.45, 0.1, 3.1, 0.5, 2.9, 2, 7, 0, 0.06, H);
     for (let k = 0; k < 19; k++) { const a = rnd(6.2832), r = Math.sqrt(rnd(0.02, 1)) * 3.4, t = r / 3.6;
       card(g, 0.3 + Math.cos(a) * r, 6.8 + 0.4 * (1 - t * t) + rnd(-0.18, 0.18), 0.1 + Math.sin(a) * r, rnd(1.05, 1.5), Math.cos(a) * t * 0.7, 1, Math.sin(a) * t * 0.7, 0, 0.75 + 0.25 * (1 - t), H); }
-  } else blob(g, 0.3, 6.7, 0.1, 3.7, 1.15, 3.5, 3, 7, 0, 0.04, H);
+  } else {   // G1V1: nivel medio de tarjetas grandes sobre un núcleo bajo (antes, un bulto liso: «bola»)
+    for (const [bx, by, bz] of [[-1.6, 6.4, 0.9], [1.9, 6.3, -0.8]]) cyl(g, 0.3, 4.9, 0.13, bx, by, bz, 0.12, 0.06, 3, 1, H);
+    blob(g, 0.3, 6.5, 0.1, 2.9, 0.45, 2.7, 2, 6, 0, 0.05, H);
+    for (let k = 0; k < 11; k++) { const a = k / 11 * 6.2832 + rnd(-0.25, 0.25), r = k < 2 ? rnd(0, 0.8) : Math.sqrt(rnd(0.25, 1)) * 3.1, t = r / 3.6;
+      card(g, 0.3 + Math.cos(a) * r, 6.85 + 0.35 * (1 - t * t) + rnd(-0.12, 0.12), 0.1 + Math.sin(a) * r, rnd(1.65, 2.05), Math.cos(a) * t * 0.7, 1, Math.sin(a) * t * 0.7, 0, 0.75 + 0.25 * (1 - t), H); }
+  }
   return pack(g);
 }
 function halep(lv) {   // pino carrasco: tronco algo torcido y copa irregular y abierta, de ramilletes sueltos
   _s = 23; const g = G(), H = 9.5;
-  if (lv === 2) return board(2.7, 2.5, 6.4, true);
+  if (lv === 2) return board(2.7, 2.5, 6.4, true, 1);
   cyl(g, 0, -0.3, 0, 0.5, 3.6, 0.2, 0.24, 0.17, [6, 3][lv], 1, H);
   const B = [[0.6, 5.6, 0.6, 1.9], [-0.4, 6.4, -0.6, 1.7], [0.3, 7.6, 0.1, 1.5], [1.3, 6.6, -0.8, 1.3]];
   if (lv === 0) {
     cyl(g, 0.5, 3.6, 0.2, 0.2, 7.2, -0.3, 0.17, 0.08, 5, 1, H);
     for (const b of B) { blob(g, b[0], b[1], b[2], b[3] * 0.7, b[3] * 0.5, b[3] * 0.66, 2, 5, 0, 0.1, H); shellCards(g, b[0], b[1], b[2], b[3] * 0.85, b[3] * 0.62, b[3] * 0.8, 4, 0.85, 1.2, 0, H, false); }
-  } else for (let k = 0; k < 2; k++) { const b = B[k]; blob(g, b[0], b[1] + 0.2, b[2], b[3] * 1.25, b[3] * 0.9, b[3] * 1.2, 3, 5, 0, 0.08, H); }
+  } else for (const b of B) { blob(g, b[0], b[1], b[2], b[3] * 0.62, b[3] * 0.45, b[3] * 0.6, 2, 4, 0, 0.1, H); shellCards(g, b[0], b[1], b[2], b[3] * 0.8, b[3] * 0.6, b[3] * 0.78, 2, 1.25, 1.6, 0, H, false); }
   return pack(g);
 }
 function ilex(lv) {    // encina: tronco corto y copa redonda, densa y rugosa
   _s = 37; const g = G(), H = 6.6;
-  if (lv === 2) return board(3.0, 2.4, 4.1, true);
+  if (lv === 2) return board(3.0, 2.4, 4.1, true, 2);
   cyl(g, 0, -0.3, 0, 0.1, 2.3, 0.05, 0.27, 0.2, [6, 3][lv], 1, H);
   if (lv === 0) { blob(g, 0.1, 4.0, 0, 2.55, 1.95, 2.4, 3, 7, 0, 0.1, H); shellCards(g, 0.1, 4.0, 0, 2.95, 2.3, 2.8, 20, 0.95, 1.35, 1, H, false); }
-  else blob(g, 0.1, 4.0, 0, 3.0, 2.3, 2.8, 3, 7, 0, 0.04, H);
+  else { blob(g, 0.1, 4.0, 0, 2.4, 1.8, 2.3, 2, 6, 0, 0.08, H); shellCards(g, 0.1, 4.0, 0, 2.85, 2.2, 2.7, 10, 1.45, 1.85, 1, H, false); }
   return pack(g);
 }
 function bush(lv) {    // arbusto (lentisco, coscoja): mata baja y rugosa
   _s = 51; const g = G(), H = 1.6;
-  if (lv === 2) return board(1.35, 0.8, 0.55, false);
+  if (lv === 2) return board(1.35, 0.8, 0.55, false, 3);
   if (lv === 0) { blob(g, 0.1, 0.5, 0.2, 1.0, 0.65, 0.95, 2, 6, 0, 0.15, H); shellCards(g, 0.1, 0.5, 0.2, 1.2, 0.8, 1.1, 7, 0.5, 0.7, 1, H, true); }
-  else blob(g, 0.15, 0.5, 0.25, 1.4, 0.8, 1.3, 2, 5, 0, 0.05, H);
+  else { blob(g, 0.15, 0.45, 0.25, 1.0, 0.6, 0.95, 2, 5, 0, 0.1, H); shellCards(g, 0.15, 0.5, 0.25, 1.25, 0.8, 1.15, 4, 0.75, 0.95, 1, H, true); }
   return pack(g);
 }
-function grass() { _s = 61; const g = G(); blades(g, 11, 0.45, 0.95, 0.05, 0.35, 3); return pack(g); }
+// G1V2: mata de hierba más baja, fina y poblada (antes, 11 hojas de hasta 1 m que se leían como pinchos sueltos)
+function grass() { _s = 61; const g = G(); blades(g, 22, 0.22, 0.62, 0.032, 0.45, 3); return pack(g); }
 function reed(lv) { if (lv) return board(0.9, 1.25, 1.25, false); _s = 71; const g = G(); blades(g, 9, 1.8, 2.9, 0.035, 0.12, 4); return pack(g); }
 function stone() { _s = 81; const g = G(); rock(g, 0.9, 0.55, 0.75); return pack(g); }
 
@@ -182,7 +190,7 @@ function stone() { _s = 81; const g = G(); rock(g, 0.9, 0.55, 0.75); return pack
 const VS = `precision highp float;
 attribute vec3 position; attribute vec3 normal; attribute vec4 color; attribute vec4 icol; attribute vec2 uv;
 #include<instancesDeclaration>
-uniform mat4 viewProjection; uniform vec3 uCam;
+uniform mat4 viewProjection; uniform vec3 uCam; uniform float uTime;
 varying vec3 vPos; varying vec3 vN; varying vec4 vC; varying vec4 vI; varying vec2 vUV;
 void main(){
 #include<instancesVertex>
@@ -197,12 +205,28 @@ void main(){
     float vy = position.y < -1.5 ? -1.0 - (normal.z*sy/ry)*(1.0 - ay) : position.y;
     wp = vec4(ctr + R*position.x*normal.x*sx + U*vy*ry, 1.0);
     vN = V; vUV = vec2(position.x, vy);
-  } else { wp = finalWorld*vec4(position, 1.0); vN = normalize(mat3(finalWorld)*normal); }
+  } else { wp = finalWorld*vec4(position, 1.0); vN = normalize(mat3(finalWorld)*normal);
+    // G1V1: viento en las tarjetas de hojas (6), la hierba (3) y las cañas (4): vaivén con la altura en la planta (vC.g) y
+    // una racha que recorre el monte; fase por instancia (sin trabajo en la CPU)
+    if (color.a > 2.5 && color.a < 6.5 && (color.a > 5.5 || color.a < 4.5)) {
+      vec2 o = finalWorld[3].xz; float ph = dot(o, vec2(0.071, 0.053)), gust = 0.65 + 0.35*sin(uTime*0.37 + o.x*0.004 + o.y*0.003);
+      float amp = (color.a > 5.5 ? 0.07 : 0.07)*color.g*color.g*gust*min(length(finalWorld[1].xyz), 1.6);
+      wp.x += amp*(sin(uTime*1.7 + ph) + 0.45*sin(uTime*3.9 + ph*2.3 + position.y));
+      wp.z += amp*0.7*(sin(uTime*1.3 + ph*1.4) + 0.4*sin(uTime*4.4 + ph + position.x));
+      if (color.a > 5.5) wp.y += amp*0.25*sin(uTime*5.1 + ph*3.0 + position.x*2.0);
+    }
+  }
   vPos = wp.xyz;
   gl_Position = viewProjection*wp; }`;
 // vI.rgb: color de la ortofoto bajo la planta (crudo, como lo lee FS_TER) · vI.a: azar por instancia (0–1)
 const FS = `
-varying vec3 vN; varying vec4 vC; varying vec4 vI; varying vec2 vUV; uniform vec4 uBand; uniform sampler2D tLeaf;
+varying vec3 vN; varying vec4 vC; varying vec4 vI; varying vec2 vUV; uniform vec4 uBand; uniform sampler2D tLeaf; uniform sampler2D tImp;
+// G1V1: cobertura de alfa que no se pierde con los mipmaps (la tarjeta lejana no se deshace en puntos) y borde nítido
+float cover(float a, vec2 uv, float sz){
+  vec2 dx = dFdx(uv*sz), dy = dFdy(uv*sz); float lod = max(0.0, 0.5*log2(max(dot(dx, dx), dot(dy, dy))));
+  a *= 1.0 + lod*0.28;
+  return clamp((a - 0.45)/max(fwidth(a), 1e-4) + 0.5, 0.0, 1.0);
+}
 // la misma conversión a verde oliva que FS_TER (app.js), para que la planta y el suelo que la rodea casen
 vec3 olive(vec3 a){
   float mt = smoothstep(60.0, 200.0, vPos.y), vg = clamp((a.g - max(a.r, a.b))*9.0, 0.0, 1.0)*(1.0 - uNight);
@@ -215,6 +239,9 @@ void main(){
   float d = dith();
   if (d < smoothstep(uBand.z, uBand.w, dist) || d >= smoothstep(uBand.x, uBand.y, dist)) discard;
   float part = floor(vC.a + 0.5), ao = vC.r, hl = vC.g, rn = vI.a;
+  // G1V3: nada de copas, matas ni tarjetas pegadas a la cámara (salían como una elipse enorme cortada por el plano cercano):
+  // se funden con tramado entre 2,6 m y 1,2 m. La hierba (3) sí se queda junto a la cámara
+  if (part != 3.0 && dist < 2.6 && d > smoothstep(1.2, 2.6, dist)) discard;
   vec3 n = normalize(vN);
   float px = length(fwidth(vPos));
   float nf = 1.0 - smoothstep(0.08, 0.35, px);            // detalle fino solo si el píxel es pequeño (sin centelleo)
@@ -228,7 +255,7 @@ void main(){
     alb *= mix(vec3(0.94, 1.0, 0.92), vec3(1.06, 1.0, 1.08), rn);
     if (part < 6.5) {
       vec4 t = texture2D(tLeaf, vUV);
-      if (t.a < 0.45) discard;
+      if (cover(t.a, vUV, 128.0) < 0.5) discard;
       alb *= (0.55 + 0.6*t.r)*mix(0.62, 1.0, ao);
       // la cara de la tarjeta que mira a la cámara: la normal de la copa, algo vuelta hacia el que mira (luz envolvente)
       vec3 nn = normalize(n*(dot(n, V) < 0.0 ? 0.6 : 1.0) + V*0.25 + vec3(0.0, 0.35, 0.0));
@@ -240,6 +267,22 @@ void main(){
       if (uv.y < -1.0) {                                // tronco bajo la copa (solo visto de lado)
         if (vC.b < 0.5 || abs(uv.x) > 0.075 || uv.y < -1.0 - 6.0*(1.0 - abs(V.y))) discard;
         alb = vec3(0.22, 0.17, 0.13); c = lit(alb, normalize(R*uv.x*8.0 + V));
+      } else if (vC.g > 0.05) {
+        // G1V1: impostor de verdad (atlas dibujado de ramilletes con su claroscuro), de lado y desde arriba; espejo por ejemplar
+        float tl = floor(vC.g*4.0), top = smoothstep(0.5, 0.88, abs(V.y));
+        vec2 q = vec2(clamp((rn > 0.5 ? -uv.x : uv.x)*0.5 + 0.5, 0.015, 0.985), clamp(uv.y*0.5 + 0.5, 0.015, 0.985));
+        vec3 sd = texture2D(tImp, vec2((tl + q.x)*0.25, 0.5 + q.y*0.5)).rgb, tp = texture2D(tImp, vec2((tl + q.x)*0.25, q.y*0.5)).rgb;
+        vec3 t = mix(sd, tp, top);
+        // G1V2: la cobertura no adelgaza al bajar de mip (el bosque lejano se quedaba ralo): se engorda con el nivel de mip
+        vec2 qx = dFdx(q*256.0), qy = dFdy(q*256.0); float lod = max(0.0, 0.5*log2(max(dot(qx, qx), dot(qy, qy))));
+        float tg = t.g*(1.0 + lod*0.22);
+        float cov = clamp((tg - 0.5)/max(fwidth(tg), 1e-4) + 0.5, 0.0, 1.0);
+        if (cov < 0.5) discard;
+        float z = sqrt(max(1.0 - dot(uv, uv)*0.8, 0.0));
+        vec3 nn = normalize(R*uv.x*0.8 + U*(uv.y*0.6 + 0.35) + V*(z*0.7 + 0.3));
+        alb *= 0.42 + 0.85*t.r;
+        c = lit(alb, nn);
+        c += alb*vec3(1.0, 1.15, 0.6)*uSunCol*max(dot(-V, uSunDir), 0.0)*0.12*sunVis();
       } else {
         float r = length(uv), cl = vnoise(uv*3.2 + rn*31.0)*0.65 + vnoise(uv*7.0 + rn*7.0)*0.35;
         if (r > 0.72 + 0.32*cl) discard;
@@ -346,7 +389,7 @@ window.BCN_NATURE = { async init(ctx) {
   const S = { on: QS.get('nat') !== '0', q: 1 };
   // NAT2: el nivel 0 (tarjetas de hojas) llega a ~90 m, el 1 (bultos) a ~210 m y el 2 (carteles de 2 triángulos) a 1,3 km:
   // desde el aire y a media distancia se ve el bosque en relieve por muy poco (medido en stats().tris)
-  const TREE = { ends: [[70, 90], [170, 210], [1050, 1300]], keep: [1, 1, 0.45], grow: [1, 1, 1.25], close: 55 };
+  const TREE = { ends: [[70, 90], [170, 210], [1050, 1300]], keep: [1, 1, 0.62], grow: [1, 1, 1.3], close: 55 };   // G1V2: más denso de lejos
   const TYPES = [
     Object.assign({ id: 'pinea', geo: [0, 1, 2].map(pinea), sc: [0.8, 1.25] }, TREE),
     Object.assign({ id: 'halep', geo: [0, 1, 2].map(halep), sc: [0.75, 1.2] }, TREE),
@@ -378,9 +421,52 @@ window.BCN_NATURE = { async init(ctx) {
     const t = new BABYLON.DynamicTexture('natLeaf', cv, scene, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
     t.wrapU = t.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; t.hasAlpha = true; t.update(false); return t;
   })();
+  // G1V1 · atlas de impostores (4 especies × [de lado, desde arriba], teselas de 256 px): ramilletes con claroscuro (luz arriba,
+  // sombra abajo y dentro), borde deshilachado de agujas u hojas. Canales: r = claroscuro, g = cobertura, b = 0, alfa opaco
+  // (sin premultiplicar: los mipmaps no ensucian el borde de negro). Sustituye al disco de ruido de antes («bolas» lejanas)
+  const impTex = (() => {
+    const T = 256, W = T * 4, Hh = T * 2;
+    const mk = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; return [cv, cv.getContext('2d', { willReadFrequently: true })]; };
+    const [cS, gS] = mk(), [cC, gC] = mk();
+    gS.fillStyle = 'rgb(115,115,115)'; gS.fillRect(0, 0, W, Hh); gC.fillStyle = '#000'; gC.fillRect(0, 0, W, Hh);
+    gS.lineCap = gC.lineCap = 'round'; _s = 131;
+    // especie: [rx, ry] del cartel (m) y reparto de ramilletes [x, y, r] en metros desde el centro de la copa
+    const SPC = [[3.9, 1.5], [2.7, 2.5], [3.0, 2.4], [1.35, 0.8]];
+    const side = k => { const o = [], [rx, ry] = SPC[k];
+      if (k === 0) { for (let i = 0; i < 46; i++) { const x = rnd(-3.2, 3.2), t = x / 3.5, r = rnd(0.55, 0.9); o.push([x, -0.15 + 0.55 * (1 - t * t) + rnd(-0.35, 0.3), r]); }
+        for (let i = 0; i < 10; i++) o.push([rnd(-2.2, 2.2), rnd(-0.75, -0.45), rnd(0.35, 0.55)]); }
+      else if (k === 1) { for (let c = 0; c < 6; c++) { const cx = rnd(-1.7, 1.7), cy = rnd(-1.5, 1.5) * (1 - Math.abs(cx) / 3.2);
+        for (let i = 0; i < 9; i++) o.push([cx + rnd(-0.6, 0.6), cy + rnd(-0.45, 0.45), rnd(0.32, 0.55)]); } }
+      else if (k === 2) { for (let i = 0; i < 70; i++) { const a = rnd(6.2832), r = Math.sqrt(rnd()) * 0.8; o.push([Math.cos(a) * r * 2.3, Math.sin(a) * r * 1.75, rnd(0.45, 0.72)]); } }
+      else { for (let i = 0; i < 26; i++) { const a = rnd(3.1416), r = Math.sqrt(rnd()) * 0.8; o.push([Math.cos(a) * r * 1.0, -0.35 + Math.sin(a) * r * 0.65, rnd(0.2, 0.36)]); } }
+      return o.map(([x, y, r]) => [Math.max(-rx + r, Math.min(rx - r, x)), Math.max(-ry + r, Math.min(ry - r, y)), r]); };
+    const topv = k => { const o = [], R = Math.min(SPC[k][0], 3.0) * 0.82, n = [60, 50, 70, 26][k];
+      for (let i = 0; i < n; i++) { const a = rnd(6.2832), d = Math.sqrt(rnd()) * (k === 1 && i % 3 ? 0.9 : 0.8); o.push([Math.cos(a) * d * R, Math.sin(a) * d * R, rnd(0.45, 0.8) * R / 3]); }
+      return o.map(([x, y, r]) => [x / R * (SPC[k][0] - r), y / R * (SPC[k][1] * 0 + SPC[k][0] - r) * 0.97, r]); };
+    for (let k = 0; k < 4; k++) for (let v = 0; v < 2; v++) {
+      const [rx, ry] = v ? [SPC[k][0], SPC[k][0]] : SPC[k], x0 = k * T, y0 = v ? T : 0, L = (v ? topv(k) : side(k)).sort((a, b) => v ? a[2] - b[2] : a[1] - b[1]);
+      const PXx = x => x0 + (x / rx * 0.5 + 0.5) * T, PXy = y => y0 + (0.5 - y / ry * 0.5) * T, sx = T / 2 / rx, sy = T / 2 / ry;
+      for (const [x, y, r] of L) {
+        const cx = PXx(x), cy = PXy(y), ax = r * sx, ay = r * sy, hi = v ? 0.55 + 0.45 * (1 - Math.hypot(x / rx, y / ry)) : 0.45 + 0.4 * (y / ry * 0.5 + 0.5);
+        const G2 = gS.createRadialGradient(cx - ax * 0.25, cy - ay * 0.35, 0, cx, cy, Math.max(ax, ay));
+        G2.addColorStop(0, 'rgb(' + (255 * Math.min(1, hi + 0.25) | 0) + ',0,0)'); G2.addColorStop(1, 'rgb(' + (255 * hi * 0.38 | 0) + ',0,0)');
+        for (const [g2, st] of [[gS, G2], [gC, '#fff']]) { g2.fillStyle = st; g2.beginPath(); g2.ellipse(cx, cy, ax * 0.78, ay * 0.78, 0, 0, 6.2832); g2.fill(); }
+        // borde deshilachado: agujas (pinos) u hojitas (encina, mata)
+        const nN = k < 2 ? 22 : 16;
+        for (let i = 0; i < nN; i++) { const a = rnd(6.2832), r0 = rnd(0.45, 0.75), r1 = rnd(0.95, 1.18), sh = (hi * rnd(0.5, 1.15)) * 255 | 0;
+          const p0x = cx + Math.cos(a) * ax * r0, p0y = cy + Math.sin(a) * ay * r0, p1x = cx + Math.cos(a) * ax * r1, p1y = cy + Math.sin(a) * ay * r1;
+          for (const [g2, st] of [[gS, 'rgb(' + Math.min(255, sh) + ',0,0)'], [gC, '#fff']]) { g2.strokeStyle = st; g2.lineWidth = k < 2 ? 1.6 : 2.6; g2.beginPath(); g2.moveTo(p0x, p0y); g2.lineTo(p1x, p1y); g2.stroke(); } }
+      }
+    }
+    const S2 = gS.getImageData(0, 0, W, Hh), C2 = gC.getImageData(0, 0, W, Hh).data, D = S2.data;
+    for (let o = 0; o < D.length; o += 4) { D[o + 1] = C2[o]; D[o + 2] = 0; D[o + 3] = 255; }
+    gS.putImageData(S2, 0, 0);
+    const t = new BABYLON.DynamicTexture('natImp', cS, scene, true, BABYLON.Texture.TRILINEAR_SAMPLINGMODE);
+    t.wrapU = t.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; t.anisotropicFilteringLevel = 4; t.update(true); return t;
+  })();
   const mats = [];
-  function mat(name, band) { const m = mkMat('nat_' + name, VS, FS, ['position', 'normal', 'color', 'icol', 'uv'], ['uBand'], ['tLeaf']);
-    m.setVector4('uBand', new BABYLON.Vector4(band[0], band[1], band[2], band[3])); m.setTexture('tLeaf', leafTex); mats.push(m); return m; }
+  function mat(name, band) { const m = mkMat('nat_' + name, VS, FS, ['position', 'normal', 'color', 'icol', 'uv'], ['uBand'], ['tLeaf', 'tImp']);
+    m.setVector4('uBand', new BABYLON.Vector4(band[0], band[1], band[2], band[3])); m.setTexture('tLeaf', leafTex); m.setTexture('tImp', impTex); mats.push(m); return m; }
   function mesh(name, g, m, cast) {
     const me = new BABYLON.Mesh(name, scene);
     me.setVerticesData('position', g.P, false); me.setVerticesData('normal', g.N, false); me.setVerticesData('color', g.C, false, 4); me.setVerticesData('uv', g.U, false, 2); me.setIndices(g.I);
@@ -417,11 +503,11 @@ window.BCN_NATURE = { async init(ctx) {
     return false; };
   // probabilidades por muestra y clase: [pinea, halep, ilex, bush, grass, reed, rock]
   const PROB = {
-    [C_FOREST]: [0.05, 0.11, 0.08, 0.12, 0.08, 0, 0.008],
+    [C_FOREST]: [0.05, 0.11, 0.08, 0.15, 0.16, 0, 0.008],   // G1V2: más matorral y hierba bajo el pinar
     [C_PARK]: [0.045, 0.015, 0.025, 0.05, 0.40, 0, 0.003],
     [C_GRASS]: [0.006, 0.004, 0.006, 0.05, 0.45, 0.004, 0.004],
     [C_FARM]: [0, 0, 0, 0.006, 0.05, 0.008, 0],
-    [C_SCRUB]: [0.012, 0.03, 0.012, 0.14, 0.16, 0, 0.03],
+    [C_SCRUB]: [0.012, 0.03, 0.012, 0.18, 0.24, 0, 0.03],
   };
   const CLEAR = [2.6, 2.6, 2.8, 1.3, 0.7, 0.9, 1.0];   // distancia mínima al borde de la calle
   // NAT2 · miradores y explanadas despejados: nada de plantas en la huella de los hitos (rectángulo ancho × largo girado
@@ -561,6 +647,8 @@ window.BCN_NATURE = { async init(ctx) {
   function select(P) {
     lastSel = { x: P.x, y: P.y, z: P.z }; dirty = false;
     const L = TYPES.map(T => T.mesh.map(() => []));
+    // G1V3: el último nivel (el más poblado: impostores y matas lejanas) se aclara con la calidad (media 0,78; baja 0,55)
+    const LQ = window.BCN && window.BCN.light && window.BCN.light.quality, kq = LQ === 'baja' ? 0.55 : LQ === 'media' ? 0.78 : 1;
     for (const [ci, C] of cells) {
       if (cellD(ci, P) > RMAX + 2) continue;
       for (let t = 0; t < TYPES.length; t++) { const A = C[t]; if (!A) continue; const T = TYPES[t], E = T.ends, nl = E.length, Lt = L[t];
@@ -568,7 +656,7 @@ window.BCN_NATURE = { async init(ctx) {
           const d = Math.hypot(A[k] - P.x, A[k + 1] + 3 - P.y, A[k + 2] - P.z); if (d > T.R + 2) continue;
           const r = A[k + 9];
           for (let l = 0; l < nl; l++) {
-            if (d > E[l][1] + 2 || (l && d < E[l - 1][0] - 2) || r >= T.keep[l]) continue;
+            if (d > E[l][1] + 2 || (l && d < E[l - 1][0] - 2) || r >= T.keep[l] * (l && l === nl - 1 ? kq : 1)) continue;
             Lt[l === 0 && d < T.close ? 0 : l + 1].push(A, k, T.grow[l]);
           }
         } }
