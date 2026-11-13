@@ -28,7 +28,7 @@ const TYPES = [
   { n: 'FORN DE PA', w: 10, sign: ['#6b3d14', '#f6e8c9'], awn: [150, 90, 40], wall: [226, 205, 170], floor: [FL.DAMERO, [176, 104, 72], [206, 160, 120]], warm: 0.85, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [150, 105, 60]], far: [LY.MOSTRADOR, [140, 96, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 160, 90], pal: PAL.PAN, shape: SH.REDONDO },
   { n: 'FARMÀCIA', w: 5, sign: ['#0f6b3a', '#ffffff'], awn: [31, 110, 66], wall: [206, 214, 210], floor: [FL.BALDOSA, [214, 218, 220], [170, 176, 180]], warm: 0.15, lamp: LAMP.FOCOS,
-    back: [BACK.ESTANTES, [230, 232, 230]], far: [LY.MOSTRADOR, [232, 236, 234]], near: [LY.ISLA, [225, 228, 226]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
+    back: [BACK.ESTANTES, [200, 204, 200]], far: [LY.MOSTRADOR, [204, 208, 206]], near: [LY.ISLA, [198, 200, 198]], shelf: [LY.CRUZ, [220, 224, 222]], acc: [40, 170, 80], pal: PAL.FARMACIA, shape: SH.CAJA },
   { n: 'FERRETERIA', w: 4, sign: ['#2b2b2f', '#f2c230'], awn: [60, 60, 66], wall: [168, 164, 156], floor: [FL.TERRAZO, [120, 116, 110], [156, 150, 140]], warm: 0.4, lamp: LAMP.TUBOS,
     back: [BACK.HERRAMIENTAS, [176, 140, 90]], far: [LY.MOSTRADOR, [96, 84, 70]], near: [LY.ISLA, [92, 92, 98]], shelf: [LY.TARIMA, [70, 70, 74]], acc: [200, 60, 40], pal: PAL.FERRETERIA, shape: SH.CAJA },
   { n: 'BAR', w: 13, sign: ['#7c1d22', '#f6e8c9'], awn: [166, 36, 33], wall: [98, 62, 44], floor: [FL.DAMERO, [44, 40, 38], [190, 180, 160]], warm: 1.0, lamp: LAMP.CALIDA,
@@ -52,14 +52,14 @@ const TYPES = [
   { n: 'QUEVIURES', w: 10, sign: ['#5c3b16', '#f6e8c9'], awn: [166, 36, 33], wall: [226, 214, 180], floor: [FL.DAMERO, [206, 196, 174], [150, 70, 56]], warm: 0.7, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [140, 100, 60]], far: [LY.MOSTRADOR, [130, 92, 56]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 86, 54]], acc: [190, 60, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
   { n: 'ÒPTICA', w: 3, sign: ['#1a4f8a', '#ffffff'], awn: [38, 56, 107], wall: [212, 212, 208], floor: [FL.BALDOSA, [206, 208, 210], [160, 162, 166]], warm: 0.2, lamp: LAMP.FOCOS,
-    back: [BACK.GAFAS, [250, 250, 246]], far: [LY.MOSTRADOR, [236, 236, 232]], near: [LY.ISLA, [228, 230, 232]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
+    back: [BACK.GAFAS, [214, 214, 210]], far: [LY.MOSTRADOR, [204, 204, 200]], near: [LY.ISLA, [198, 200, 202]], shelf: [LY.TARIMA, [236, 236, 232]], acc: [30, 90, 160], pal: PAL.GAFAS, shape: SH.GAFAS },
   { n: 'PAPERERIA', w: 4, sign: ['#b8401c', '#fff4c9'], awn: [219, 204, 168], wall: [200, 216, 232], floor: [FL.BALDOSA, [196, 190, 176], [150, 146, 136]], warm: 0.5, lamp: LAMP.TUBOS,
     back: [BACK.ESTANTES, [220, 220, 214]], far: [LY.MOSTRADOR, [70, 110, 160]], near: [LY.ISLA, [210, 206, 196]], shelf: [LY.TARIMA, [60, 100, 150]], acc: [230, 180, 40], pal: PAL.VARIADO, shape: SH.CAJA },
   { n: 'FORMATGERIA', w: 3, sign: ['#6b5a1e', '#fff4c9'], awn: [150, 120, 40], wall: [232, 220, 188], floor: [FL.DAMERO, [220, 210, 190], [80, 68, 56]], warm: 0.8, lamp: LAMP.FOCOS,
     back: [BACK.ESTANTES, [130, 92, 54]], far: [LY.MOSTRADOR, [228, 224, 212]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.TARIMA, [120, 84, 50]], acc: [200, 150, 40], pal: PAL.QUESO, shape: SH.REDONDO },
   // solo en comercios anchos (lo decide shopPlan): w = 0 lo deja fuera del sorteo general
   { n: 'SUPERMERCAT', w: 0, sign: ['#c8201c', '#ffffff'], awn: [166, 36, 33], wall: [204, 208, 206], floor: [FL.BALDOSA, [222, 222, 216], [170, 170, 166]], warm: 0.05, lamp: LAMP.TUBOS,
-    back: [BACK.ESTANTES, [225, 228, 230]], far: [LY.LINEALES, [228, 230, 232]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
+    back: [BACK.ESTANTES, [184, 188, 190]], far: [LY.LINEALES, [190, 192, 194]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
 ];
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
 const WSUM = TYPES.reduce((s, t) => s + t.w, 0);
