@@ -489,20 +489,57 @@ vec3 shGlass(vec3 room, vec3 V, vec3 N){
   // lo oscuro sube más y las luminarias (que ya pasan de 1) se quedan como de día
   // G1F2: de día el interior se ve MÁS OSCURO que la fachada al sol (como en las fotos: el escaparate es un hueco con género, no
   // una pantalla), y lo muy claro (paredes blancas de farmacia, óptica, súper) se comprime para que no se queme ni de día ni de noche
-  room /= 1.0 + 0.55*max(lum - 0.42, 0.0)*(1.0 - smoothstep(1.4, 2.6, lum));
-  float g = mix(0.58, mix(mix(2.0, 1.35, smoothstep(0.18, 0.62, lum)), 1.0, smoothstep(1.2, 2.4, lum)), uDusk);
+  // G1F3: compresión más fuerte desde gris medio (el fondo claro ya no se lee como una caja blanca vacía) y de día algo más oscuro
+  room /= 1.0 + 1.1*max(lum - 0.30, 0.0)*(1.0 - smoothstep(1.4, 2.6, lum));
+  float g = mix(0.50, mix(mix(2.0, 1.35, smoothstep(0.18, 0.62, lum)), 1.0, smoothstep(1.2, 2.4, lum)), uDusk);
   // de noche cerrada la exposición sube algo más (el ojo se adapta). De madrugada el comercio está cerrado y queda una luz de vigilancia
   g *= (1.0 - 0.12*uNight)*(1.0 - 0.93*uLate*uDusk);
-  return emit(room, g)*(1.0 - k) + envRefl(reflect(-V, N), 0.0)*k*(1.0 - 0.4*uDusk);
+  // G1F3: el reflejo pesa más (Fresnel algo más abierto) y lo que se refleja por debajo de ~20 grados es la fachada de enfrente,
+  // en sombra (oscura y templada), no la bruma clara del horizonte: el vidrio se lee como vidrio y no como un panel gris
+  k = clamp(max(k, 0.11 + 0.89*pow(1.0 - max(dot(N, V), 0.0), 2.4)), 0.0, 1.0);
+  vec3 r = reflect(-V, N), env = envRefl(r, 0.0);
+  float opp = 1.0 - smoothstep(0.05, 0.45, r.y);
+  env = mix(env, env*vec3(0.42, 0.38, 0.34)*(0.85 + 0.3*vnoise(vec2(atan(r.z, r.x)*40.0, r.y*12.0))), opp*(1.0 - 0.6*uDusk));
+  return emit(room, g)*(1.0 - k) + env*k*(1.0 - 0.4*uDusk);
+}
+// G1F3 · ¿cierra este comercio a esta hora? De noche cerrada la mayoría baja la persiana metálica (hacia las 21–22 h); bares,
+// restaurantes y cafés siguen casi todos abiertos, y alguna farmacia de guardia. tp = tipo (fila de TYPES), sd = semilla del local
+float shClosed(float tp, float sd){
+  float open = (tp > 2.5 && tp < 3.5) || (tp > 6.5 && tp < 7.5) || (tp > 10.5 && tp < 11.5) ? 0.22 : (tp > 0.5 && tp < 1.5 ? 0.7 : 1.0);
+  float frac = (0.86*smoothstep(0.45, 0.95, uNight) + 0.1*uLate)*open;
+  return step(hash21(vec2(sd, 17.3)), frac);
 }`;
 regKind('SHOPWIN', 20, `
     float sw = vCol.r*16.0, stb = floor(vCol.g*255.0 + 0.5), stp = mod(stb, 32.0), sfl = floor(stb/32.0);
     vec2 so = vec2(vInfo.x*sw, vInfo.y*6.0 - 1.0);
     float spx = max(max(fwidth(so.x), fwidth(so.y)), 1e-4);
     vec3 stu = T*(mod(sfl, 2.0) > 0.5 ? -1.0 : 1.0);
-    vec3 srm = shRoom(so, vec3(-dot(V, stu), -V.y, dot(V, n)), vec3(sw, vInfo.z*8.0, vInfo.w*16.32), stp, floor(vCol.b*255.0 + 0.5), spx, dist, step(1.5, mod(sfl, 4.0)));
-    vec3 c = shGlass(srm, V, N);
-    FRAG(c); return;`, SHOP_DECL);
+    float ssd = floor(vCol.b*255.0 + 0.5);
+    if (shClosed(stp, ssd) < 0.5) {
+      vec3 srm = shRoom(so, vec3(-dot(V, stu), -V.y, dot(V, n)), vec3(sw, vInfo.z*8.0, vInfo.w*16.32), stp, ssd, spx, dist, step(1.5, mod(sfl, 4.0)));
+      vec3 c = shGlass(srm, V, N);
+      FRAG(c); return;
+    }
+    // G1F3 · cerrado: persiana metálica bajada sobre el vidrio (lamas onduladas cada 8 cm, guía y barra de abajo), galvanizada o
+    // pintada, con mugre abajo y, en la mitad de los locales, pintadas. Sigue al sombreado común (sol, ambiente y farolas)
+    float hc = hash21(vec2(ssd, 4.1)), sq = so.y/0.08, sfw = fwidth(sq), sfar = smoothstep(0.3, 0.9, sfw);
+    alb = hc < 0.5 ? vec3(0.50, 0.51, 0.50) : (hc < 0.72 ? vec3(0.36, 0.37, 0.38) : (hc < 0.86 ? vec3(0.22, 0.32, 0.25) : vec3(0.36, 0.18, 0.15)));
+    alb *= mix(0.86 + 0.28*vnoise(so*vec2(0.7, 3.0) + ssd), 1.0, sfar*0.5);
+    float sl = sin(sq*6.2832);
+    alb *= mix(0.84 + 0.16*sl, 0.95, sfar);
+    N = normalize(N + vec3(0.0, 1.0, 0.0)*cos(sq*6.2832)*0.35*(1.0 - sfar));
+    alb *= mix(0.62, 1.0, smoothstep(0.0, 0.9, so.y))*(1.0 - 0.18*smoothstep(0.55, 0.85, vnoise(so*vec2(1.3, 0.5) + ssd*3.1)));
+    if (hash21(vec2(ssd, 8.9)) < 0.55) {
+      // grafiti: manchas de pintura de dos colores con contorno oscuro, en la mitad baja
+      // trazos de firma (tags): bandas finas y onduladas de un color apagado con algún relleno, solo en una franja a media altura
+      vec2 gq = so*vec2(2.2, 3.2) + ssd*1.7;
+      float band = (1.0 - smoothstep(0.35, 0.95, abs(so.y - 1.0 - 0.25*sin(so.x*1.3 + ssd))))*step(0.35, vnoise(vec2(so.x*0.8, ssd)));
+      float gn = vnoise(gq)*0.6 + vnoise(gq*2.3)*0.4, line = 1.0 - smoothstep(0.012, 0.035, abs(gn - 0.5));
+      float fill = smoothstep(0.62, 0.66, gn);
+      vec3 gc = mix(vec3(0.42), 0.42 + 0.3*cos(6.2832*(hash21(vec2(ssd, 2.2)) + vec3(0.0, 0.33, 0.67))), 0.7);
+      alb = mix(alb, mix(gc, vec3(0.08), 0.5*step(0.5, hash21(vec2(ssd, 5.5)))), max(line, fill*0.6)*band*(1.0 - sfar*0.6));
+    }
+    rough = 0.55; metal = 0.35;`, SHOP_DECL);
 
 // ------------------------------------------------------------------ zaguanes y pisos (tipo K.HOMEWIN): la misma técnica, otra habitación
 // Empaquetado por vértice (lo escribe roomQuad): color.r = ancho/16 m · color.g = modo (0 zaguán, 1 piso) + 2·sentido del marco ·
@@ -558,6 +595,13 @@ vec4 hmFurn(vec2 p, float W, float sd, float px){
 vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist){
   float h1 = hash21(vec2(sd, 3.7)), h2 = hash21(vec2(sd, 9.1)), h3 = hash21(vec2(sd*1.3, 5.3));
   bool zg = mode < 0.5;
+  // G1F3 · de lejos (> ~130 m) no se traza la habitación: su tono medio, con la misma regla de encendido (coste de fragmento)
+  if (!zg && dist > 130.0) {
+    float fon = homeOn(fract(sd*0.6180339 + 0.21));
+    if (mode > 1.5) fon = max(fon, homeOn(fract(sd*0.3819660 + 0.63)));
+    vec3 ft = h3 < 0.05 ? vec3(0.55, 0.72, 1.25) : (h3 < 0.14 ? vec3(0.92, 0.98, 1.08) : vec3(1.14, 0.90, 0.62));
+    return hmWall(h1)*0.6*((0.44 + 0.2*h3)*(1.0 - 0.92*uDusk)*0.7 + fon*1.2)*mix(vec3(1.0), ft, fon) + ft*fon*0.35;
+  }
   o = clamp(o, vec2(0.02), sz.xy - 0.02);
   d.z = max(d.z, 0.03);
   d += step(abs(d), vec3(1e-4))*2e-4;
@@ -668,7 +712,8 @@ vec3 hmRoom(vec2 o, vec3 d, vec3 sz, float mode, float sd, float px, float dist)
 // vidrio de portal o de ventana: el interior y el reflejo con el Fresnel de shGlass. En el portal, reja de forja sobre el vidrio
 vec3 hmGlass(vec3 room, vec3 V, vec3 N, vec2 o, float W, float mode, float px, float sd){
   vec3 r = reflect(-V, N);
-  float k = clamp((mode < 0.5 ? 0.07 : 0.10) + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2), 0.0, 1.0);
+  // G1F3: Fresnel más abierto en los pisos (vistos desde la calle, en rasante, brillan del cielo como en las fotos)
+  float k = clamp(mode < 0.5 ? 0.07 + 0.90*pow(1.0 - max(dot(N, V), 0.0), 3.2) : 0.13 + 0.87*pow(1.0 - max(dot(N, V), 0.0), 2.2), 0.0, 1.0);
   vec3 c = emit(room, 1.0)*(1.0 - k) + envRefl(r, 0.0)*k*(1.0 - 0.4*uDusk) + uSunCol*pow(max(dot(r, uSunDir), 0.0), 350.0)*2.0;
   if (mode < 0.5) {
     // reja: barrotes cada 12 cm, dos travesaños y una banda de anillos; de lejos se funde a su tono medio
@@ -768,10 +813,13 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       for (let j = 0; j < k; j++) { const w0 = a + Math.round(n * j / k), w1 = a + Math.round(n * (j + 1) / k); if (w1 > w0) list.push({ w0, w1 }); } };
     if (N >= 0) { seg(0, N); seg(N + 1, nb); } else seg(0, nb);
     const dir = (-F.nz * F.tx + F.nx * F.tz) > 0 ? 0 : 1;     // ¿la tangente T del shader va en el sentido de u?
+    const prev = [];   // G1F3: en un mismo frente no se repite el tipo de los dos comercios anteriores (antes salían dos «FORN DE PA» seguidos)
     for (const s of list) {
       env.rnd(10, run.i, s.w0);
       const r = [R(), R(), R(), R(), R(), R()], n = s.w1 - s.w0;
       s.type = API.force >= 0 ? API.force : n >= 3 && n * bw >= 9.5 && r[0] < 0.3 ? SUPER : pickType(r[1]);
+      for (let j = 1; j < 4 && API.force < 0 && prev.indexOf(s.type) >= 0; j++) s.type = pickType((r[1] * 7.13 + j * 0.377) % 1);
+      prev.unshift(s.type); prev.length = Math.min(prev.length, 2);
       s.T = TYPES[s.type];
       s.door = s.w0 + Math.min(n - 1, (r[2] * n) | 0);
       s.sign = r[3] < 0.93; s.awn = r[4] < 0.35; s.seed = 1 + ((r[5] * 254) | 0);

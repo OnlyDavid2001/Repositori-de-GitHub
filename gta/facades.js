@@ -262,6 +262,9 @@ void main(){
     alb *= 1.0 + 0.12*(1.0 - smoothstep(0.0, 0.05, abs(hG - lim)));   // cerco claro de sales en el borde de la humedad
     rough = mix(rough, 0.95, zc);
   }
+  // G1F3 · luz rebotada del suelo y de la fachada de enfrente en las caras que miran abajo (bajos de balcones, tribunas, vuelos y
+  // cornisas): antes solo recibían el ambiente del suelo y salían negras puras. De día sobre todo; de noche la pone lampBath
+  if (n.y < -0.3) emis += alb*toScr((uSkyL*0.12 + uSunL*0.07*max(uSunDir.y, 0.0))*vec3(1.0, 0.94, 0.84))*smoothstep(-0.3, -0.8, n.y)*ao;
   vec3 c = shade(alb, N, V, rough, metal, ao) + emis;
   // baño de sodio de las farolas en los bajos (de noche; los vidrios ya han salido: escaparates y ventanas no se tocan)
   if (uDusk > 0.001) { float sd = lampBath(vPos, n, 1.0/92.0)*smoothstep(0.05, 0.3, uDusk);
@@ -487,7 +490,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
         galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
         cwSp: V.cw ? [[92, 108, 122], [112, 120, 126], [84, 100, 108], [120, 130, 138]][(r[3] * 4) | 0] : null, cwMt: V.cw ? [[178, 182, 186], [150, 156, 160], [196, 198, 200]][(r[2] * 3) | 0] : null,
-        losaV: r[4] < 0.55 ? shade(mixc(p, [92, 88, 82], 0.7), 0.62) : r[4] < 0.8 ? [72, 70, 66] : [58, 66, 62] });   // bajo la losa: piedra a la sombra, gris o verde oscuro
+        losaV: r[4] < 0.55 ? shade(mixc(p, [120, 114, 104], 0.5), 0.8) : r[4] < 0.8 ? [122, 118, 110] : [104, 112, 104] });   // G1F3: menos negro   // bajo la losa: piedra a la sombra, gris o verde oscuro
     }
 
     for (let i = 0; i < runs.length; i++) {
@@ -557,7 +560,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     let V = null;
     if (EST && FXV !== 'off') {
       const fv = FXV ? FXV.split(':') : null, fam = fv ? fv[0] : famOf(b);
-      seed(b, 6); const r = R(), rm = R(), j = [R(), R(), R(), R()];
+      seed(b, 6); const r = R(), rm = R(), j = [R(), R(), R(), R(), R(), R(), R()];
       const mz = !fv && EST.MEZCLA && EST.MEZCLA[fam], L = EST.FAM[mz && rm < mz.p && EST.FAM[mz.f] ? mz.f : fam];
       if (L && L.length) {
         if (fv && fv[1] !== undefined) V = L[(+fv[1] || 0) % L.length];
@@ -576,6 +579,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
           const V0 = L[i0];
           V = Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
             remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
+          // G1F3 · Poblenou y Sant Andreu: la rejilla de huecos cambia por edificio (antes, la misma en todos los bloques de ladrillo):
+          // vano más o menos ancho, balconeras, ventanas o mezcla, balcones sueltos o casi corridos, y uno de cada tres en estuco
+          if ((fam === 'poblenou' || fam === 'sant_andreu') && V0.hueco !== 'taller') {
+            V.bay = V0.bay * (0.82 + j[4] * 0.36);
+            if (V0.hueco === 'mixto' || !V0.hueco) V.hueco = j[5] < 0.3 ? 'ventana' : j[5] < 0.62 ? 'mixto' : 'balconera';
+            if (V0.balP !== undefined) V.balP = Math.min(1, Math.max(0.15, V0.balP + (j[6] - 0.5) * 0.7));
+            if (V0.acab === 'ladrillo' && j[6] * 7.3 % 1 < 0.34) V.acab = 'estuco';
+          }
         }
       }
     }
@@ -741,7 +752,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         else { Q = 0.08; Bh = tipo === 'terraza' ? Math.min(2.5, m - 0.42) : Math.min(2.45, m * V.alto); }
         const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh, car = V.carp;
         // cierre: persiana interior (se), ventanas abiertas con habitación (~25 %), hojas, cadeneta
-        const open = rr[7] < 0.32 && RQ && car !== 'mallorquina' && car !== 'alicantina';
+        const open = rr[7] < 0.38 && RQ && car !== 'alicantina';   // G1F3: más ventanas abiertas (38 %), también tras las mallorquinas
         const se = open || car === 'ninguna' ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.45 ? 0.12 + rr[1] * 0.5 : 0;
         const room = open ? { x0: tt - 0.55, W: Vw + 1.1, yF: k + 0.02, H: Math.max(2.6, yt - k + 0.15), D: 4, mode: 1, seed: 1 + ((rr[8] * 254) | 0) } : null;
         if (open && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz, +((st + yt) / 2).toFixed(1), D]);
@@ -764,7 +775,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
           rect(W0, F, tt - lw - 0.03, tt - 0.03, st + 0.02, yt, 0.05, shutV, kk); rect(W0, F, ct + 0.03, ct + lw + 0.03, st + 0.02, yt, 0.05, shutV, kk);
           if (W1) { jamb(W1, F, tt - lw - 0.03, st + 0.02, yt, 0, 0.05, shade(shutV, 0.7), K.WOOD); jamb(W1, F, ct + lw + 0.03, st + 0.02, yt, 0, 0.05, shade(shutV, 0.7), K.WOOD); }
         } else if (car === 'mallorquina') {           // hojas de lamas en el hueco, a medio cerrar
-          const f0 = 0.25 + rr[5] * 0.75, f1 = rr[6] < 0.5 ? f0 : 0.2 + rr[4] * 0.8;
+          const f0 = open ? 0.1 + rr[5] * 0.4 : 0.25 + rr[5] * 0.75, f1 = rr[6] < 0.5 ? f0 : open ? 0.1 + rr[4] * 0.4 : 0.2 + rr[4] * 0.8;   // G1F3: abiertas, hojas plegadas a los lados
           rect(W0, F, tt, tt + Vw / 2 * f0, st, yt, -0.12, shutV, K.SHUT); rect(W0, F, ct - Vw / 2 * f1, ct, st, yt, -0.12, shutV, K.SHUT);
         } else if (car === 'alicantina' && !vent && rr[5] < 0.8) {   // persiana de cadeneta colgada por fuera, a media altura
           const h = (0.25 + rr[4] * 0.75) * Bh, kb = yt - h;
