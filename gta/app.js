@@ -480,6 +480,13 @@ void main(){
 const FS_TER = `
 uniform sampler2D groundTex; uniform sampler2D normTex; uniform vec2 uSize; uniform vec2 uGrid; uniform float uCell;
 uniform sampler2D uStreet; uniform vec4 uStreetR; uniform sampler2D uShore;
+// G1V2: ruido de valor periódico (periodo per, en celdas de la red): el suelo del monte lo usa sobre mod(xz, 512 m), porque
+// con coordenadas de mundo de ~20 km por frecuencias de varios ciclos por metro hash21 recibía enteros de 1e5 y se quedaba
+// sin bits (p·456 > 1e7): salían rayas. La red se reduce a enteros < per y entra en el hash escalada (h)
+float pnh(vec2 i){ return hash21(i*0.0131 + 0.37); }
+float pnz(vec2 p, vec2 per){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0 - 2.0*f); vec2 j = mod(i + 1.0, per); i = mod(i, per);
+  return mix(mix(pnh(i), pnh(vec2(j.x, i.y)), f.x), mix(pnh(vec2(i.x, j.y)), pnh(j), f.x), f.y); }
+float pn(vec2 q, vec2 k){ return pnz(q*k, 512.0*k); }
 // trama de copas (0–1) según el tamaño del píxel px: de cerca copas de ~3–9 m, a media distancia rodales de ~28 m y de lejos
 // (NAT2) bosquetes de 45–90 m, que siguen dando volumen hasta varios km sin centellear; muy lejos, nada
 float canopyW(vec2 q, float px){
@@ -513,32 +520,38 @@ void main(){
     alb = mix(alb, ol, vg*mix(0.55, 1.0, mt));
     // G1V2: suelo del monte (Collserola, Montjuïc, el Carmel): la ortofoto de 5 m daba un césped liso. Hierba seca de base,
     // calveros de tierra ocre, roca gris en lo empinado (y más arriba), pinaza rojiza bajo las copas (la trama cw) y, de
-    // cerca, matojos y grano. Mismo brillo que la ortofoto (calibrado de DÍA): solo cambian el tono y el dibujo. Cada escala se
-    // apaga con el tamaño del píxel (sin moiré); de noche no se aplica (vg ya lleva 1 − uNight)
+    // cerca, matojos, briznas, piedrecitas y grietas. El brillo medio es el de la ortofoto (calibrado de DÍA): los tonos base
+    // se normalizan a su luminancia y el dibujo fino se multiplica después (si no, la normalización se lo comía). Cada escala
+    // se apaga con el tamaño del píxel (sin moiré); de noche no se aplica (vg ya lleva 1 − uNight)
     float mk = vg*smoothstep(30.0, 75.0, vPos.y)*(1.0 - smoothstep(1.2, 4.0, px));
     if (mk > 0.001) {
-      vec2 q = vPos.xz;
-      vec3 n0 = normalize(texture2D(normTex, (q/uCell + 0.5)/uGrid).xyz*2.0 - 1.0);
-      float sl = 1.0 - n0.y, f1 = 1.0 - smoothstep(0.05, 0.25, px), f2 = 1.0 - smoothstep(0.25, 1.0, px);
-      float e1 = vnoise(q*0.09 + 5.3)*0.6 + vnoise(q*0.31 + 1.1)*0.4;            // calveros (~5–12 m)
-      float e2 = vnoise(q*1.1)*0.6 + vnoise(q*3.7)*0.4;                          // grano (~0,3–1 m)
-      vec3 hb = mix(vec3(0.46, 0.44, 0.26), vec3(0.38, 0.42, 0.22), vnoise(q*0.045 + 2.0));   // hierba seca y verde de monte
-      hb *= mix(1.0, 0.80 + 0.40*e2, f2);
-      vec3 ti = mix(vec3(0.55, 0.43, 0.30), vec3(0.62, 0.52, 0.38), vnoise(q*0.21));         // tierra ocre (licorella y sauló)
-      ti *= mix(1.0, 0.86 + 0.28*hash21(floor(q*7.0)), f1*0.7);                            // piedrecitas
-      vec3 ro = mix(vec3(0.50, 0.49, 0.46), vec3(0.42, 0.38, 0.34), vnoise(q*0.17 + 9.0));   // roca (pizarra y granito)
-      float cr = abs(vnoise(q*0.8 + 4.0) - 0.5);                                           // grietas
-      ro *= mix(1.0, 0.70 + 0.6*smoothstep(0.0, 0.08, cr), f2);
-      vec3 pz = vec3(0.44, 0.31, 0.20)*(0.85 + 0.3*e2);                                     // pinaza
-      float wT = smoothstep(0.55, 0.78, e1 + sl*0.6)*(1.0 - smoothstep(0.75, 0.95, cw));
-      float wR = smoothstep(0.30, 0.55, sl + 0.25*(e1 - 0.5) + 0.12*smoothstep(250.0, 450.0, vPos.y));
+      vec2 q = mod(vPos.xz, 512.0), gq = (vPos.xz/uCell + 0.5)/uGrid;
+      // pendiente suavizada (tres muestras): la normal del relieve es bilineal por celda y, tal cual, pintaba bandas
+      float ny = (texture2D(normTex, gq).y + texture2D(normTex, gq + 1.5/uGrid).y + texture2D(normTex, gq - 1.5/uGrid).y)*(2.0/3.0) - 1.0;
+      float sl = 1.0 - ny, f1 = 1.0 - smoothstep(0.04, 0.2, px), f2 = 1.0 - smoothstep(0.2, 0.9, px);
+      float e1 = pn(q, vec2(0.09375))*0.6 + pn(q + 37.0, vec2(0.3125))*0.4;            // calveros (~5–12 m)
+      float e2 = pn(q, vec2(1.125))*0.6 + pn(q, vec2(3.75))*0.4;                          // grano (~0,3–1 m)
+      vec3 hb = mix(vec3(0.46, 0.44, 0.26), vec3(0.38, 0.42, 0.22), pn(q + 91.0, vec2(0.046875)));   // hierba seca y verde de monte
+      vec3 ti = mix(vec3(0.55, 0.43, 0.30), vec3(0.62, 0.52, 0.38), pn(q + 13.0, vec2(0.203125)));         // tierra ocre (licorella y sauló)
+      vec3 ro = mix(vec3(0.50, 0.49, 0.46), vec3(0.42, 0.38, 0.34), pn(q + 211.0, vec2(0.171875)));   // roca (pizarra y granito)
+      vec3 pz = vec3(0.44, 0.31, 0.20);                                                    // pinaza
+      float wT = smoothstep(0.58, 0.80, e1 + sl*0.25)*(1.0 - smoothstep(0.75, 0.95, cw));
+      float wR = smoothstep(0.26, 0.42, sl + 0.22*(e1 - 0.5) + 0.10*smoothstep(250.0, 450.0, vPos.y));
       float wP = smoothstep(0.62, 0.85, cw)*(1.0 - wR)*0.8;
+      float wG = (1.0 - wR)*(1.0 - wT)*(1.0 - wP);
       vec3 m = mix(mix(mix(hb, ti, wT), pz, wP), ro, wR);
-      // matojos de cerca: manchas verdes oscuras de ~0,5 m sobre la hierba (no en la roca ni en la tierra)
-      m = mix(m, vec3(0.22, 0.27, 0.13), smoothstep(0.66, 0.8, vnoise(q*1.9 + 7.0))*f2*(1.0 - wR)*(1.0 - wT)*0.8);
       float lm = dot(m, vec3(0.30, 0.60, 0.10)), la = dot(alb, vec3(0.30, 0.60, 0.10));
-      alb = mix(alb, m*(la/max(lm, 0.02))*mix(0.92, 1.12, e1)*mix(1.0, 1.10, wT + wR), mk*0.85);
-      n = normalize(n + vec3(e2 - 0.5, 0.0, vnoise(q*1.1 + 3.0) - 0.5)*0.35*f2*mk*(0.4 + wR));
+      m *= (la/max(lm, 0.02))*mix(0.92, 1.12, e1)*mix(1.0, 1.10, wT + wR);
+      // dibujo fino (después de normalizar): grano y briznas en mechones en la hierba, piedrecitas en la tierra, grietas en
+      // la roca y matojos verde oscuro de ~0,5 m
+      float bl = pn(q + 0.1*e2, vec2(7.0, 2.5));
+      float dt = mix(1.0, 0.78 + 0.44*e2, f2*(wG + wP))*mix(1.0, 0.74 + 0.52*bl, f1*wG);
+      dt *= mix(1.0, 0.80 + 0.40*pnh(floor(q*7.0)), f1*wT);
+      dt *= mix(1.0, 0.62 + 0.38*smoothstep(0.0, 0.07, abs(pn(q + 5.0, vec2(0.8125)) - 0.5)), f2*wR);
+      m *= dt;
+      m = mix(m, vec3(0.20, 0.25, 0.11)*(la/0.42)*(0.8 + 0.4*e2), smoothstep(0.68, 0.80, pn(q + 3.0, vec2(1.875)))*f2*wG*0.65);
+      alb = mix(alb, m, mk*0.9);
+      n = normalize(n + vec3(e2 - 0.5, 0.0, pn(q + 2.7, vec2(1.125)) - 0.5)*0.35*f2*mk*(0.4 + wR));
     }
     // NAT: relieve de copas. La misma trama de claros y oscuros (cw) se usa como altura de las copas (~6 m) y tuerce la
     // normal: las copas se leen como bultos con su lado al sol y su lado en sombra. Se apaga donde la trama ya no se
