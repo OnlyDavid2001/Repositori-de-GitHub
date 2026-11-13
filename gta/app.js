@@ -666,8 +666,8 @@ void main(){
   }
   if (sandM > 0.001) {
     vec2 q = vPos.xz; float px = length(fwidth(q));
-    // FX luzveg: albedo de arena seca de verdad (~0,5; antes 0,8: a mediodía salía casi blanca)
-    vec3 sa = mix(vec3(0.60, 0.52, 0.39), vec3(0.67, 0.59, 0.45), vnoise(q*0.03));
+    // FX luzveg: albedo de arena seca de verdad (~0,45; antes 0,8: a mediodía salía casi blanca)
+    vec3 sa = mix(vec3(0.52, 0.45, 0.34), vec3(0.59, 0.52, 0.40), vnoise(q*0.03));
     sa *= 0.93 + 0.1*vnoise(q*0.21) + 0.05*vnoise(q*1.3);
     float g1 = 1.0 - smoothstep(0.004, 0.016, px), g2 = 1.0 - smoothstep(0.08, 0.30, px), g3 = 1.0 - smoothstep(0.25, 0.9, px);
     sa *= mix(1.0, 0.86 + 0.28*hash21(floor(q*60.0)), g1*0.6);
@@ -982,6 +982,9 @@ void main(){
     g += ga*(a*wf*f*6.0); lost += a*a*(1.0 - f)*0.6;
     q = R*q + 17.3; wf *= 2.3; am *= 0.62; }
   float rough = clamp(sqrt(lost)*2.2 + smoothstep(0.5, 30.0, px)*0.25, 0.0, 1.0);
+  // FX luzveg: en rasante, la inclinación de las olas medianas se queda en la mitad (se estiraban en vetas borrosas; la
+  // superficie lejana se lee como un espejo rizado del cielo, como en las fotos)
+  g *= mix(0.5, 1.0, smoothstep(0.06, 0.45, V.y));
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
   // color del agua: turquesa somera junto a la costa, azul profundo mar adentro; el puerto más oscuro y verdoso (agua quieta y
   // turbia). La luz que entra en el agua es la del cielo y la del sol (dispersión bajo la superficie, más en las crestas)
