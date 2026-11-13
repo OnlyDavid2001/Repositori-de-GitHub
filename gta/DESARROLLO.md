@@ -1980,7 +1980,8 @@ monte (G1V) y luz y mar (G1L). Las fachadas (G1F) se fusionan aparte, cuando aca
 ## 16. Condal City: kit modular de fachadas (`kit.js`, `window.BCN_KIT`; bloques `estilos_bN.js` + `piezas_bN.js`)
 
 Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas_estilos.js`, **`kit.js`**, `piezas_b1.js`,
-`estilos_b1.js` (y después las parejas de los bloques 2–4), `facades.js`. Esquema de campos y ranuras: cabecera de `kit.js`.
+`estilos_b1.js`, `piezas_b2.js`, `estilos_b2.js`, `piezas_b3.js`, `estilos_b3.js`, `piezas_b4.js`, `estilos_b4.js`, `facades.js`
+(22 estilos tras la fusión F2m). Esquema de campos y ranuras: cabecera de `kit.js`.
 
 - **Estilos**: `BCN_KIT.estilo(id, { nombre, comun, variantes: [4] })`; `id` = el del catálogo (`BCN_CONDAL.estilos`). Cada
   variante = BASE (la de `fachadas_estilos.js` + campos nuevos) + comun + la variante, congelada; `nobleV` y `chaflanV` son
@@ -1992,7 +1993,9 @@ Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas
   tras pisos y coronación). Las demás piezas son geometría con su propia firma (`arco`, `fronton`, `aire`, `parabolica`, `cajon`,
   `jardinera`, `placas`, `pergola`, `lamas`, `urna` en kit.js; `puerta`, `ventanaPVC`, `loggia`, `frente_verja`, `frente_arcos`,
   `antenas`, `pilastras`, `urnas` en piezas_b1.js). `BCN_KIT.T` (lo rellena facades.js al iniciarse) da `wr`, `rail`, `ropa`,
-  `planter`, `galeriaV`, `tribunaV`, `patioV`, `vano`, `vidAux`, `wallAux`, `KW`, `walkAt`, `coverAt`; `BCN_KIT.TI` (interiors.js)
+  `planter`, `galeriaV`, `tribunaV`, `patioV`, `vano`, `corona` (la coronación de siempre, F2m), `vidAux`, `wallAux`, `KW`,
+  `walkAt`, `coverAt` (`rail(…, vw, V)` toma la barandilla de la variante que se le pase: `T.vano` le pasa `q.V`, la noble
+  incluida); `BCN_KIT.TI` (interiors.js)
   da `portalBay` y `roomQuad`; `BCN_KIT.medidas(q)` da el hueco de siempre de un vano de piso (para añadir frontones, recercados…).
 - **Selector provisional** (la Fase 3 lo precalcula): `palette.js` `pick` llama a `BCN_KIT.elige(b, cls, seed, x, z, Hm)` en las
   clases 0 y 6: estilo al azar por la mezcla de `BCN_CONDAL.at` × compatibilidad de la altura real con las plantas del estilo
@@ -2008,7 +2011,11 @@ Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas
   del estilo (provisional hasta la Fase 4). Lo no comercial y el portal, la pieza `pb` del estilo. `pbRec`/`pbFr`: soportales,
   pilotis, patio delantero (la planta baja se dibuja en un marco retranqueado; techo, suelo y laterales del hueco los pone el núcleo).
 - **Plantas**: `env.lv[0..nF]` (cotas de forjado); la noble (`noble.f`) más alta y las demás se reparten el resto. **Chaflán**:
-  tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → `env.V = V.chaflanV` en ese tramo (`run.chaflan`).
+  tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → `env.V = V.chaflanV` en ese tramo (`run.chaflan`);
+  `env.chaflan` = índice del tramo de chaflán del edificio (-1: ninguno). **Esquina**: `q.esquina` (-1 / 1 / 0) en las ranuras
+  `pb` y `vano` marca el primer / último vano de un tramo cuyo vecino de ese lado es de calle y gira más de ~30°
+  (`run.esq0` / `run.esq1`); `q.gl` (vano) es la cota de la acera delante del vano. `V.sinPeto`: rooftops.js no pone el peto
+  de la azotea (tejados a la calle de las casas baratas).
   **Ático** retranqueado con probabilidad `aticoP` (regla 5).
 - **Lejos**: `V.lejos = { muro, hp, bay, vidrio }` y `BCN_KIT.lejos(b)`, para que la Fase 3 lo lleve a FS_BLD.
 - **Escaparate**: `?estilo=<id>&v=<0..3>` (al cargar: estilo, variante y color en todo lo que es vivienda) o
