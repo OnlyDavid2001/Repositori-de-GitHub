@@ -124,6 +124,22 @@ function inPoly(r, x, z) { let c = false; for (let i = 0, j = r.length - 1; i < 
   if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
 function edgeDist(r, x, z) { let d = 1e9; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[j], b = r[i], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
   let t = l2 > 0 ? ((x - a[0]) * dx + (z - a[1]) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t)); } return d; }
+// Bugs · suelo: contorno con las esquinas redondeadas (radio min(2,5 m; 0,35 del lado más corto); curva cuadrática entre los
+// puntos de tangencia, que vale igual para esquinas salientes y entrantes). Solo para el suelo libre de la plaza (free)
+function roundPoly(r) { const n = r.length; if (n < 3) return r; const out = [];
+  for (let i = 0; i < n; i++) { const P = r[(i + n - 1) % n], V = r[i], N = r[(i + 1) % n];
+    const ax = P[0] - V[0], az = P[1] - V[1], bx = N[0] - V[0], bz = N[1] - V[1], la = Math.hypot(ax, az), lb = Math.hypot(bx, bz);
+    if (la < 1e-3 || lb < 1e-3) { out.push(V); continue; }
+    const cphi = Math.max(-1, Math.min(1, (ax * bx + az * bz) / (la * lb))), phi = Math.acos(cphi);   // ángulo interior entre los lados
+    if (phi > 2.97) { out.push(V); continue; }   // casi recta (< 10° de giro): se deja
+    const rad = Math.min(2.5, 0.35 * Math.min(la, lb)), t = Math.min(rad / Math.tan(phi / 2), 0.45 * Math.min(la, lb));
+    if (t < 0.15) { out.push(V); continue; }
+    const T1 = [V[0] + ax / la * t, V[1] + az / la * t], T2 = [V[0] + bx / lb * t, V[1] + bz / lb * t];
+    for (let k = 0; k <= 4; k++) { const q = k / 4, w0 = (1 - q) * (1 - q), w1 = 2 * q * (1 - q), w2 = q * q;
+      out.push([w0 * T1[0] + w1 * V[0] + w2 * T2[0], w0 * T1[1] + w1 * V[1] + w2 * T2[1]]); } }
+  return out; }
+// distancia con signo a un rectángulo redondeado de semilados (a, b) y radio rc (negativa dentro)
+const rrSD = (u, v, a, b, rc) => { const qx = Math.abs(u) - a + rc, qz = Math.abs(v) - b + rc; return Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - rc; };
 function solve3(A, y) { const d = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
   const D = d(A); if (Math.abs(D) < 1e-9) return null; return [0, 1, 2].map(c => d(A.map((r, i) => r.map((v, j) => j === c ? y[i] : v))) / D); }
 // especies de plaza → índice de trees.js (el ciprés no está en trees.js: sigue con la pieza propia)
@@ -1151,7 +1167,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     o.bb = [x0, z0, x1, z1];
     const cu = Math.cos(o.ang), su = Math.sin(o.ang); let hu = 0, hv = 0;
     for (const [x, z] of o.r) { const dx = x - o.c[0], dz = z - o.c[1]; hu = Math.max(hu, Math.abs(dx * cu + dz * su)); hv = Math.max(hv, Math.abs(-dx * su + dz * cu)); }
-    o.hu = hu; o.hv = hv; o.cu = cu; o.su = su; o.st = null; if (p.tile) Object.assign(o, { tile: true, noPav: true, named: p.named, segs: p.segs, rb: p.rb }); return o; });
+    o.hu = hu; o.hv = hv; o.cu = cu; o.su = su; o.st = null; o.rr = sg && sg.disc ? o.r : roundPoly(o.r); if (p.tile) Object.assign(o, { tile: true, noPav: true, named: p.named, segs: p.segs, rb: p.rb }); return o; });
   // las añadidas en P2 no pisan las de P1 que se solapan con ellas (Plaça Nova y Pla de la Seu dentro de la Avinguda de la Catedral)
   for (const o of PL.slice(nP1)) o.excl = PL.slice(0, nP1).filter(q => q.bb[0] < o.bb[2] && q.bb[2] > o.bb[0] && q.bb[1] < o.bb[3] && q.bb[3] > o.bb[1]);
   // paseos y ramblas: teselas con su propio relevo (se añaden al final de PL)
@@ -1175,7 +1191,7 @@ window.BCN_PLAZAS = { async init(ctx) {
 
   // P3: a 1,4 m del bordillo (allí la acera de streets.js sube y asomaba entre el césped: los «triangulitos» de Glòries)
   // ¿suelo libre de plaza? dentro del contorno, fuera de calzada (a 0,5 m del bordillo) y fuera de todo edificio
-  function free(o, x, z) { if (!inPoly(o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < (o.noPav ? 0.5 : 1.4)) return false; return coverAt(x, z, -1) < -1e8; }
+  function free(o, x, z) { if (!inPoly(o.rr || o.r, x, z)) return false; if (o.excl) for (const q of o.excl) if (inPoly(q.r, x, z)) return false; const nc = nearestCar(x, z); if (nc[0] >= 0 && nc[1] < (o.noPav ? 0.5 : 1.4)) return false; return coverAt(x, z, -1) < -1e8; }
   const zoneOf = (o, x, z) => { const dx = x - o.c[0], dz = z - o.c[1], u = dx * o.cu + dz * o.su, v = -dx * o.su + dz * o.cu, e = edgeDist(o.r, x, z);
     return o.sg ? o.sg.zone(u, v, x, z, e, o) : genZone(o, u, v, x, z, e); };
   // disposición genérica: borde de granito; en las medianas y grandes, parterres alineados con el eje; sauló en parques
@@ -1183,18 +1199,43 @@ window.BCN_PLAZAS = { async init(ctx) {
     const park = o.cat.some(c => /leisure|garden|park|grass/.test(c)), h = (o.id % 7) / 7;
     if (e < 2.2) return [1, C.granite, 0.3];
     if (o.t === 'gran' || o.t === 'mitjana') {
-      const gu = ((u % 18) + 18) % 18, gv = ((v % 14) + 14) % 14;
-      if (e > 7 && gu > 4 && gu < 14 && gv > 4 && gv < 10 && !(o.play && Math.abs(u - o.play[0]) < 9 && Math.abs(v - o.play[1]) < 7)) return (gu < 4.4 || gu > 13.6 || gv < 4.4 || gv > 9.6) ? [6, C.curb, 0.25] : [5, C.grass, 0];
+      // Bugs · suelo: parterres de 10 x 6 m como rectángulos redondeados (radio 1,5 m) en los ejes de la plaza, enteros o nada;
+      // su bordillo es una tira aparte (parterreCurbs), no una banda de la rejilla
+      if (parterreAt(o, u, v)) return [5, C.grass, 0];
       return park ? [3, C.saulo, 0.3] : h < 0.5 ? [1, C.granite, 0.3] : [2, C.panot, 0.35];
     }
     return park ? [3, C.saulo, 0.3] : h < 0.6 ? [2, C.panot, 0.4] : [1, C.granite, 0.35];
   }
+  const PT_A = 5, PT_B = 3, PT_R = 1.5;
+  function parterreAt(o, u, v) {
+    const a = Math.floor(u / 18), b = Math.floor(v / 14), cu = a * 18 + 9, cv = b * 14 + 7;
+    if (rrSD(u - cu, v - cv, PT_A, PT_B, PT_R) >= 0) return false;
+    if (!o._pt) o._pt = new Map(); const key = a * 4096 + b; let ok = o._pt.get(key);
+    if (ok === undefined) {
+      const W = (uu, vv) => [o.c[0] + uu * o.cu - vv * o.su, o.c[1] + uu * o.su + vv * o.cu];
+      ok = !(o.play && Math.abs(cu - o.play[0]) < 9 + PT_A && Math.abs(cv - o.play[1]) < 7 + PT_B);
+      const [cx, cz] = W(cu, cv); if (ok) ok = free(o, cx, cz) && edgeDist(o.r, cx, cz) > 7;
+      for (const [du, dv] of [[1, 1], [-1, 1], [-1, -1], [1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]]) { if (!ok) break;
+        const [x, z] = W(cu + du * (PT_A + 0.3), cv + dv * (PT_B + 0.3)); ok = free(o, x, z) && edgeDist(o.r, x, z) > 3; }
+      o._pt.set(key, ok ? [cu, cv] : false); }
+    return !!ok; }
+  // tira de bordillo (0,3 m, algo elevada) alrededor de cada parterre entero
+  function parterreCurbs(o, Wp, ox, oz, glowAt) { if (!o._pt) return 0; let n = 0;
+    const ring = (cu, cv, rc) => { const out = []; for (const [sx, sz, a0] of [[1, 1, 0], [-1, 1, 90], [-1, -1, 180], [1, -1, 270]])
+      for (let k = 0; k <= 3; k++) { const a = (a0 + k * 30) * D2R; out.push([cu + sx * (PT_A - PT_R) + Math.cos(a) * rc, cv + sz * (PT_B - PT_R) + Math.sin(a) * rc]); } return out; };
+    const W = (p) => [o.c[0] + p[0] * o.cu - p[1] * o.su, o.c[1] + p[0] * o.su + p[1] * o.cu];
+    for (const pt of o._pt.values()) { if (!pt) continue;
+      const A = ring(pt[0], pt[1], PT_R).map(W), B = ring(pt[0], pt[1], PT_R - 0.3).map(W), m = A.length;
+      const yA = A.map(p => o.hAt(p[0], p[1]) + 0.01), yB = B.map(p => o.hAt(p[0], p[1]) + 0.01), gA = A.map(p => glowAt(p[0], p[1]));
+      for (let i = 0; i < m; i++) { const j = (i + 1) % m;
+        quad(Wp, F0, A[i][0] - ox, yA[i], A[i][1] - oz, A[j][0] - ox, yA[j], A[j][1] - oz, B[j][0] - ox, yB[j], B[j][1] - oz, B[i][0] - ox, yB[i], B[i][1] - oz, C.curb, 0, pav(6, [gA[i], gA[j], gA[j], gA[i]], 0.25)); n++; } }
+    return n; }
   function pickSpecies(o, h) { const park = o.cat.some(c => /leisure|garden|park/.test(c)); return park ? (h < 0.4 ? 'pi' : h < 0.7 ? 'lledoner' : 'platan') : (h < 0.55 ? 'platan' : h < 0.8 ? 'lledoner' : h < 0.9 ? 'tipuana' : 'taronger'); }
 
   // trabajo de una plaza: devuelve { simple: [mallas], tris, lamps }
   function* buildPlaza(o) {
     const ox = Math.round(o.c[0]), oz = Math.round(o.c[1]), Wp = new GB(ox, oz), Wo = new GB(ox, oz), Wh = new GB(ox, oz);
-    seed(4100, o.id);
+    seed(4100, o.id); o._pt = null;
     const lamps = [], items = [], occ = [], lampPts = [];
     const U2W = (u, v) => [o.c[0] + u * o.cu - v * o.su, o.c[1] + u * o.su + v * o.cu];
     const fits = (x, z, r) => { if (!free(o, x, z)) return false; for (const [a, b] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!free(o, x + a, z + b)) return false;
@@ -1209,7 +1250,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     // ---- plataforma (P3): el suelo de la plaza es un plano ajustado al relieve por mínimos cuadrados y levantado lo justo para que
     // no asome ningún triángulo del terreno ni de la acera; en los bordes, faldón de piedra hasta la calle (y escalinatas donde
     // haga falta). Si el relieve es demasiado accidentado para un plano, una envolvente (máximo del suelo en ±1 m) sin bultos que asomen
-    const gAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05);
+    const gAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.12);   // Bugs · suelo: margen de 0,12 m sobre el relieve (antes 0,05)
     let hAt = (x, z) => Math.max(gAt(x, z), gAt(x + 1, z), gAt(x - 1, z), gAt(x, z + 1), gAt(x, z - 1)) + 0.03;
     o.plat = null;
     if (!o.noPav) {
@@ -1228,17 +1269,30 @@ window.BCN_PLAZAS = { async init(ctx) {
     // ---- pavimento: bloques de 4 m enteros si están libres y en una sola zona; si no, celdas de 1 m
     const ZK = z => z ? z[0] * 1e7 + z[1][0] * 65536 + z[1][1] * 256 + z[1][2] : -1;
     const [bx0, bz0, bx1, bz1] = o.bb, gx0 = Math.floor(bx0 / 4) * 4, gz0 = Math.floor(bz0 / 4) * 4;
-    const quads = [];
+    const quads = [], polys = [], rquads = [];   // rquads: losetas de caucho giradas con la zona de juegos (sin dientes)
+    // Bugs · suelo: celdas de 1 m por marching squares: etiqueta por esquina (zona, o −1 fuera del suelo libre) y, en cada lado
+    // donde cambia, el punto exacto por bisección (5 pasos, siempre desde la esquina menor para que dos celdas vecinas den el
+    // mismo punto). Cada zona de la celda es un polígono convexo sobre el borde de la celda: los bordes siguen su ángulo real
+    const ZM = new Map(), lab = (x, z) => { if (!free(o, x, z)) return -1; const zz = zoneOf(o, x, z); if (!zz) return -1; const k = ZK(zz); if (!ZM.has(k)) ZM.set(k, zz); return k; };
+    const cross = (a, b, la, lb, k) => { let p = a, q = b, lp = la; if (b[0] < a[0] || b[1] < a[1]) { p = b; q = a; lp = lb; }
+      const sp = lp === k; let lo = 0, hi = 1;
+      for (let it = 0; it < 5; it++) { const m = (lo + hi) / 2; if ((lab(p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m) === k) === sp) lo = m; else hi = m; }
+      const t = (lo + hi) / 2; return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, 1]; };
+    const msCell = (x0, z0) => {
+      const C4 = [[x0, z0], [x0 + 1, z0], [x0 + 1, z0 + 1], [x0, z0 + 1]], L4 = C4.map(c => lab(c[0], c[1]));
+      if (L4[0] >= 0 && L4[1] === L4[0] && L4[2] === L4[0] && L4[3] === L4[0]) { quads.push([x0, z0, 1, ZM.get(L4[0])]); return; }
+      const ks = []; for (const l of L4) if (l >= 0 && ks.indexOf(l) < 0) ks.push(l);
+      for (const k of ks) { const pts = [];
+        for (let e = 0; e < 4; e++) { const f = (e + 1) & 3; if (L4[e] === k) pts.push([C4[e][0], C4[e][1], 0]);
+          if ((L4[e] === k) !== (L4[f] === k)) pts.push(cross(C4[e], C4[f], L4[e], L4[f], k)); }
+        if (pts.length >= 3) polys.push([pts, ZM.get(k), x0, z0]); } };
     let nb = 0;
     if (!o.noPav) for (let gz = gz0; gz < bz1; gz += 4) { for (let gx = gx0; gx < bx1; gx += 4) {
       const pts = [[0, 0], [4, 0], [0, 4], [4, 4], [2, 2], [2, 0], [0, 2], [4, 2], [2, 4]];
       let all = true, z0k = null, same = true;
       for (const [a, b] of pts) { const x = gx + a, z = gz + b; if (!free(o, x, z)) { all = false; break; } const zz = zoneOf(o, x, z); const k = ZK(zz); if (z0k === null) z0k = k; else if (k !== z0k) same = false; }
       if (all && same) { const zz = zoneOf(o, gx + 2, gz + 2); if (zz) quads.push([gx, gz, 4, zz]); }
-      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x0 = gx + i, z0 = gz + j;
-        // P3: borde suavizado: celda entera si sus cuatro esquinas están libres, triángulo si lo están tres (sin dientes de sierra)
-        const cf = [free(o, x0, z0), free(o, x0 + 1, z0), free(o, x0 + 1, z0 + 1), free(o, x0, z0 + 1)], nf = cf[0] + cf[1] + cf[2] + cf[3];
-        if (nf < 3 && !(nf === 2 && free(o, x0 + 0.5, z0 + 0.5))) continue; const zz = zoneOf(o, x0 + 0.5, z0 + 0.5); if (zz) quads.push([x0, z0, 1, zz, false, nf === 3 ? cf.indexOf(false) : -1]); }
+      else for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) msCell(gx + i, gz + j);
       if (++nb % 60 === 0) yield; } }
     yield;
     // ---- objetos de la plaza
@@ -1290,7 +1344,7 @@ window.BCN_PLAZAS = { async init(ctx) {
       else if (t === 'sbench') stoneBench(Wo, F, y, ex.len || 2.4, ex.wood);
       else if (t === 'canaletes') { canaletes(Wo, F, y); lamps.push([x, z, 3.6]); }
       else if (t === 'play') { playground(Wo, F, y, h); for (let j = -6; j < 6; j++) for (let i = -8; i < 8; i++) { const p = [x + (i + 0.5) * Math.cos(a) - (j + 0.5) * Math.sin(a), z + (i + 0.5) * Math.sin(a) + (j + 0.5) * Math.cos(a)];
-          if (free(o, p[0], p[1])) quads.push([p[0] - 0.55, p[1] - 0.55, 1.1, [4, h < 0.5 ? C.rubberR : C.rubberG, 0.1], true]); } }
+          if (free(o, p[0], p[1])) rquads.push([p[0], p[1], a, [4, h < 0.5 ? C.rubberR : C.rubberG, 0.1]]); } }
       else if (t === 'kiosk') kiosk(Wo, F, y);
       else if (t === 'pergola') pergola(Wo, F, y, ex.len || 12);
       else if (t === 'pingpong') pingpong(Wo, F, y);
@@ -1307,17 +1361,11 @@ window.BCN_PLAZAS = { async init(ctx) {
     const LGR = 9;
     const glowAt = (x, z) => { let g = 0; for (const [lx, lz, H] of lamps) { const d2 = (lx - x) ** 2 + (lz - z) ** 2, r = H * 1.5; if (d2 < 9 * r * r) g += Math.exp(-d2 / (r * r)); } return Math.min(1, g); };
     let nq = 0;
-    for (const [x, z, s, zz, top, miss] of quads) {
+    for (const [x, z, s, zz, top] of quads) {
       const xs = [x, x + s], zs = [z, z + s], dy = top ? 0.008 : 0, ys = [], gs = [];
       for (const [i, j] of [[0, 0], [1, 0], [1, 1], [0, 1]]) { ys.push(o.hAt(xs[i], zs[j]) + dy); gs.push(glowAt(xs[i], zs[j])); }
       const col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(x), Math.round(z)) < 0.1 ? 0.25 : 0));
       const P4 = [[x, z], [x + s, z], [x + s, z + s], [x, z + s]];
-      if (miss >= 0) {   // triángulo: las tres esquinas libres, y faldón por la hipotenusa
-        const t = [1, 2, 3].map(q => (miss + q) % 4), A = P4[t[0]], Bq = P4[t[2]], nx = P4[miss][0] - (A[0] + Bq[0]) / 2, nz = P4[miss][1] - (A[1] + Bq[1]) / 2;
-        quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, P4[t[1]][0] - ox, ys[t[1]], P4[t[1]][1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, col, 0, pav(zz[0], gs, wear));
-        const ga = gAt(A[0] + nx * 0.6, A[1] + nz * 0.6) - 0.12, gb = gAt(Bq[0] + nx * 0.6, Bq[1] + nz * 0.6) - 0.12;
-        if (ys[t[0]] - ga > 0.14 || ys[t[2]] - gb > 0.14) quad(Wp, F0, A[0] - ox, ys[t[0]], A[1] - oz, Bq[0] - ox, ys[t[2]], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35));
-        if (++nq % 300 === 0) yield; continue; }
       quad(Wp, F0, x - ox, ys[0], z - oz, x + s - ox, ys[1], z - oz, x + s - ox, ys[2], z + s - oz, x - ox, ys[3], z + s - oz, col, 0, pav(zz[0], gs, wear));
       // faldón de piedra en el borde exterior del pavimento: del canto de la plataforma hasta el suelo de fuera (algo enterrado)
       if (!top) for (const [i0, i1, nx, nz] of [[0, 1, 0, -1], [1, 2, 1, 0], [2, 3, 0, 1], [3, 0, -1, 0]]) {
@@ -1328,7 +1376,26 @@ window.BCN_PLAZAS = { async init(ctx) {
         quad(Wp, F0, A[0] - ox, ys[i0], A[1] - oz, Bq[0] - ox, ys[i1], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35)); }
       if (++nq % 300 === 0) yield;
     }
-    return { Wp, Wo, Wh, lampPts, lamps: lamps.length, nItems: items.length, nQuads: quads.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
+    // polígonos de las celdas de borde (abanico de quads) y faldón en los cortes que dan a suelo no libre
+    for (const [pts, zz, cx0, cz0] of polys) {
+      const n = pts.length, ys = pts.map(p => o.hAt(p[0], p[1])), gs = pts.map(p => glowAt(p[0], p[1])), col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(cx0), Math.round(cz0)) < 0.1 ? 0.25 : 0));
+      for (let i = 1; i + 1 < n; i += 2) { const c = Math.min(i + 2, n - 1), P = [0, i, i + 1, c];
+        quad(Wp, F0, pts[0][0] - ox, ys[0], pts[0][1] - oz, pts[i][0] - ox, ys[i], pts[i][1] - oz, pts[i + 1][0] - ox, ys[i + 1], pts[i + 1][1] - oz, pts[c][0] - ox, ys[c], pts[c][1] - oz, col, 0, pav(zz[0], P.map(q => gs[q]), wear));
+        if (c === i + 1) Wp.ni -= 3; }   // abanico impar: el último quad es un triángulo (fuera el segundo, degenerado)
+      let mx = 0, mz = 0; for (const p of pts) { mx += p[0] / n; mz += p[1] / n; }
+      for (let i = 0; i < n; i++) { const f = (i + 1) % n, A = pts[i], Bq = pts[f]; if (!A[2] || !Bq[2]) continue;
+        let nx = -(Bq[1] - A[1]), nz = Bq[0] - A[0]; const l = Math.hypot(nx, nz); if (l < 0.02) continue; nx /= l; nz /= l;
+        const cxm = (A[0] + Bq[0]) / 2, czm = (A[1] + Bq[1]) / 2; if (nx * (cxm - mx) + nz * (czm - mz) < 0) { nx = -nx; nz = -nz; }
+        if (lab(cxm + nx * 0.3, czm + nz * 0.3) >= 0) continue;
+        const ga = gAt(A[0] + nx * 0.4, A[1] + nz * 0.4) - 0.12, gb = gAt(Bq[0] + nx * 0.4, Bq[1] + nz * 0.4) - 0.12;
+        if (ys[i] - ga < 0.14 && ys[f] - gb < 0.14) continue;
+        quad(Wp, F0, A[0] - ox, ys[i], A[1] - oz, Bq[0] - ox, ys[f], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35)); }
+      if (++nq % 300 === 0) yield; }
+    if (!o.noPav) parterreCurbs(o, Wp, ox, oz, glowAt);
+    for (const [cx, cz, a, zz] of rquads) { const c = Math.cos(a) * 0.51, sn = Math.sin(a) * 0.51, P4 = [[-c + sn, -sn - c], [c + sn, sn - c], [c - sn, sn + c], [-c - sn, -sn + c]].map(d => [cx + d[0], cz + d[1]]);
+      const ys = P4.map(q => o.hAt(q[0], q[1]) + 0.008), gs = P4.map(q => glowAt(q[0], q[1]));
+      quad(Wp, F0, P4[0][0] - ox, ys[0], P4[0][1] - oz, P4[1][0] - ox, ys[1], P4[1][1] - oz, P4[2][0] - ox, ys[2], P4[2][1] - oz, P4[3][0] - ox, ys[3], P4[3][1] - oz, zz[1], 0, pav(zz[0], gs, zz[2])); }
+    return { Wp, Wo, Wh, lampPts, lamps: lamps.length, nItems: items.length, nQuads: quads.length + polys.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
   }
   function* runJob(o) {
     const r = yield* buildPlaza(o);

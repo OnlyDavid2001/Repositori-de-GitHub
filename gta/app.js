@@ -1324,13 +1324,45 @@ await tick();
   matTer.setTexture('groundTex', groundTex); matSea.setTexture('groundTex', groundTex);
   const COAST = [], EDG = new Map();    // NAT2: bordes del relieve en la costa: x0, z0, x1, z1, x y z del tercer vértice (lado de tierra)
   const dv = terr.view('meshes'); let p = 0, tris = 0;
+  // Bugs · suelo: desplazamiento de los nudos de 20 m cerca de las calles (DN, en m; ≤ 0). En lugar de hundir cada nudo por la
+  // corrección más baja en ±20 m (pirámides invertidas que asomaban entre calles), (1) cada nudo con corrección cerca va a
+  // min(relieve suavizado 3x3, FLAT.h − 0,08); (2) en cada nudo de 5 m con corrección, si el terreno (la mayor de las dos
+  // diagonales posibles de su celda) queda por encima de la calle − 0,05, se bajan las cuatro esquinas lo que sobra (solo baja:
+  // basta una pasada); (3) el desplazamiento se suaviza con sus vecinos (min con la media 3x3) para que no haya hoyos ni aristas.
+  // Depende solo de la posición del nudo: los trozos vecinos lo comparten y las costuras no se abren
+  const DN = FLAT && FLAT.raw && FLAT.raw.tiles ? new Float32Array(GW * GH) : null;
+  if (DN) { const t0 = performance.now(), TS5 = 5 * 52, NTX5 = Math.ceil(WX / TS5), DONE = new Uint8Array(GW * GH);
+    const tgt = o => { if (DONE[o]) return; DONE[o] = 1; const gi = o % GW, gj = (o / GW) | 0; let hs = 0, n = 0;
+      for (let b = gj - 1; b <= gj + 1; b++) for (let a = gi - 1; a <= gi + 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH) { hs += H[b * GW + a]; n++; }
+      DN[o] = Math.min(0, Math.min(hs / n, FLAT.h(gi * CELL, gj * CELL) - 0.08) - H[o]); };
+    const cellOK = (ci, cj) => ci >= 0 && cj >= 0 && ci < GW - 1 && cj < GH - 1 && S[Math.min(NCZ - 1, (cj * CELL / CH) | 0) * NCX + Math.min(NCX - 1, (ci * CELL / CH) | 0)] === 1;
+    const pts = [];
+    FLAT.raw.tiles.forEach((T, key) => { if (!T) return; const tx = key % NTX5, tz = (key / NTX5) | 0;
+      for (let q = 0; q < T.length; q++) { if (!T[q]) continue; const x = (tx * 52 + q % 52) * 5, z = (tz * 52 + ((q / 52) | 0)) * 5, ci = Math.floor(x / CELL), cj = Math.floor(z / CELL);
+        if (!cellOK(ci, cj)) continue; const o = cj * GW + ci; tgt(o); tgt(o + 1); tgt(o + GW); tgt(o + GW + 1); pts.push(x, z); } });
+    for (let k = 0; k < pts.length; k += 2) { const x = pts[k], z = pts[k + 1], ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), u = x / CELL - ci, v = z / CELL - cj, o = cj * GW + ci;
+      const a = H[o] + DN[o], b = H[o + 1] + DN[o + 1], c = H[o + GW] + DN[o + GW], d = H[o + GW + 1] + DN[o + GW + 1];
+      const t1 = u >= v ? a + (b - a) * u + (d - b) * v : a + (d - c) * u + (c - a) * v, t2 = u + v <= 1 ? a + (b - a) * u + (c - a) * v : d + (c - d) * (1 - u) + (b - d) * (1 - v);
+      const e = Math.max(t1, t2) - (FLAT.h(x, z) - 0.05); if (e > 0) { DN[o] -= e; DN[o + 1] -= e; DN[o + GW] -= e; DN[o + GW + 1] -= e; } }
+    const D0 = DN.slice();
+    for (let o = 0; o < GW * GH; o++) { if (!DONE[o] && !D0[o]) { const gi = o % GW, gj = (o / GW) | 0; let any = false;
+        for (let b = gj - 1; b <= gj + 1 && !any; b++) for (let a = gi - 1; a <= gi + 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH && D0[b * GW + a]) { any = true; break; }
+        if (!any) continue; }
+      const gi = o % GW, gj = (o / GW) | 0; let sm = 0, n = 0;
+      for (let b = gj - 1; b <= gj + 1; b++) for (let a = gi - 1; a <= gi + 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH) { sm += D0[b * GW + a]; n++; }
+      DN[o] = Math.min(D0[o], sm / n); }
+    let nn = 0, deep = 0; for (let o = 0; o < GW * GH; o++) { if (DN[o] < 0) nn++; if (DN[o] < -1) deep++; }
+    window.BCN_TERDN = { nodos: nn, masDe1m: deep, ms: Math.round(performance.now() - t0) }; }
   for (let k = 0; k < M.nMesh; k++) {
     const cx = dv.getUint8(p), cz = dv.getUint8(p + 1), nV = dv.getUint32(p + 4, true), nI = dv.getUint32(p + 8, true); p += 12;
     const pos = new Float32Array(nV * 3);
     for (let v = 0; v < nV; v++, p += 6) { pos[v * 3] = dv.getUint16(p, true) / 10; pos[v * 3 + 1] = dv.getInt16(p + 2, true) / 10; pos[v * 3 + 2] = dv.getUint16(p + 4, true) / 10; }
     // S2: hunde los nudos bajo los que alguna calle quedó más baja que el relieve (FLAT.low, nudos de 20 m; en los trozos
     // simplificados, el mínimo en todo el triángulo que cubre el vértice), y 5 cm más, para que el terreno no asome
-    if (FLAT) { const sc = S[cz * NCX + cx] || 1, ox = cx * CH, oz = cz * CH;
+    if (FLAT && DN && (S[cz * NCX + cx] || 1) === 1) { const ox = cx * CH, oz = cz * CH;
+      for (let v = 0; v < nV; v++) { const gi = Math.round((pos[v * 3] + ox) / CELL), gj = Math.round((pos[v * 3 + 2] + oz) / CELL);
+        if (gi >= 0 && gj >= 0 && gi < GW && gj < GH) pos[v * 3 + 1] += DN[gj * GW + gi]; } }
+    else if (FLAT) { const sc = S[cz * NCX + cx] || 1, ox = cx * CH, oz = cz * CH;
       for (let v = 0; v < nV; v++) { const gi = Math.round((pos[v * 3] + ox) / CELL), gj = Math.round((pos[v * 3 + 2] + oz) / CELL); let lo = 0;
         for (let b = gj - sc + 1; b <= gj + sc - 1; b++) for (let a = gi - sc + 1; a <= gi + sc - 1; a++) if (a >= 0 && b >= 0 && a < GW && b < GH) { const l = FLAT.low[b * GW + a]; if (l < lo) lo = l; }
         if (lo < 0) pos[v * 3 + 1] += lo - 0.05; } }
