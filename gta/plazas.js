@@ -1222,7 +1222,7 @@ window.BCN_PLAZAS = { async init(ctx) {
   // tira de bordillo (0,3 m, algo elevada) alrededor de cada parterre entero
   function parterreCurbs(o, Wp, ox, oz, glowAt) { if (!o._pt) return 0; let n = 0;
     const ring = (cu, cv, rc) => { const out = []; for (const [sx, sz, a0] of [[1, 1, 0], [-1, 1, 90], [-1, -1, 180], [1, -1, 270]])
-      for (let k = 0; k <= 6; k++) { const a = (a0 + k * 15) * D2R; out.push([cu + sx * (PT_A - PT_R) + Math.cos(a) * rc, cv + sz * (PT_B - PT_R) + Math.sin(a) * rc]); } return out; };
+      for (let k = 0; k <= 3; k++) { const a = (a0 + k * 30) * D2R; out.push([cu + sx * (PT_A - PT_R) + Math.cos(a) * rc, cv + sz * (PT_B - PT_R) + Math.sin(a) * rc]); } return out; };
     const W = (p) => [o.c[0] + p[0] * o.cu - p[1] * o.su, o.c[1] + p[0] * o.su + p[1] * o.cu];
     for (const pt of o._pt.values()) { if (!pt) continue;
       const A = ring(pt[0], pt[1], PT_R).map(W), B = ring(pt[0], pt[1], PT_R - 0.3).map(W), m = A.length;
@@ -1380,7 +1380,8 @@ window.BCN_PLAZAS = { async init(ctx) {
     for (const [pts, zz, cx0, cz0] of polys) {
       const n = pts.length, ys = pts.map(p => o.hAt(p[0], p[1])), gs = pts.map(p => glowAt(p[0], p[1])), col = zz[1], wear = Math.min(1, zz[2] + (hash2(Math.round(cx0), Math.round(cz0)) < 0.1 ? 0.25 : 0));
       for (let i = 1; i + 1 < n; i += 2) { const c = Math.min(i + 2, n - 1), P = [0, i, i + 1, c];
-        quad(Wp, F0, pts[0][0] - ox, ys[0], pts[0][1] - oz, pts[i][0] - ox, ys[i], pts[i][1] - oz, pts[i + 1][0] - ox, ys[i + 1], pts[i + 1][1] - oz, pts[c][0] - ox, ys[c], pts[c][1] - oz, col, 0, pav(zz[0], P.map(q => gs[q]), wear)); }
+        quad(Wp, F0, pts[0][0] - ox, ys[0], pts[0][1] - oz, pts[i][0] - ox, ys[i], pts[i][1] - oz, pts[i + 1][0] - ox, ys[i + 1], pts[i + 1][1] - oz, pts[c][0] - ox, ys[c], pts[c][1] - oz, col, 0, pav(zz[0], P.map(q => gs[q]), wear));
+        if (c === i + 1) Wp.ni -= 3; }   // abanico impar: el último quad es un triángulo (fuera el segundo, degenerado)
       let mx = 0, mz = 0; for (const p of pts) { mx += p[0] / n; mz += p[1] / n; }
       for (let i = 0; i < n; i++) { const f = (i + 1) % n, A = pts[i], Bq = pts[f]; if (!A[2] || !Bq[2]) continue;
         let nx = -(Bq[1] - A[1]), nz = Bq[0] - A[0]; const l = Math.hypot(nx, nz); if (l < 0.02) continue; nx /= l; nz /= l;
