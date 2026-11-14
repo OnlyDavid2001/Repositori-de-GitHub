@@ -59,6 +59,8 @@ pieza('puerta', function (env, F, o) {
     box(W0, F, tt, tt + 0.07, y0, yt, d - 0.02, d + 0.04, mc, K.METAL, 4); box(W0, F, ct - 0.07, ct, y0, yt, d - 0.02, d + 0.04, mc, K.METAL, 4);
     box(W0, F, tt, ct, yt - 0.08, yt, d - 0.02, d + 0.04, mc, K.METAL, 2); box(W0, F, o.c - 0.035, o.c + 0.035, y0, yt, d - 0.02, d + 0.04, mc, K.METAL, 4);
     if (W1) box(W1, F, tt, ct, y0 + 0.9, y0 + 0.96, d + 0.04, d + 0.07, mc, K.METAL, 7);
+    if (env.pbPortal && W1 && yt - y0 > 2.0 && (!o.rr || o.rr[0] < 0.8)) { box(W1, F, ct + 0.35, ct + 0.53, Math.min(yt + 0.3, y0 + 2.5), Math.min(yt + 0.7, y0 + 2.9), 0.12, 0.32, [235, 220, 180], K.LAMP);   // F2R2: aplique
+      box(W1, F, ct + 0.41, ct + 0.47, Math.min(yt + 0.7, y0 + 2.9), Math.min(yt + 0.9, y0 + 3.1), 0, 0.3, env.iron || [40, 40, 40], K.METAL); }
   } else if (t === 'garaje') {
     rect(W0, F, tt, ct, y0 - 0.1, yt, d, o.met || [128, 130, 126], K.PBR, pbrAux(0.55, 0.45, 2, 0));
   } else if (t === 'persiana') {
@@ -67,7 +69,7 @@ pieza('puerta', function (env, F, o) {
   } else {                                            // madera: dos hojas de cuarterones
     const md = o.madera || env.wood;
     // F2R: en el portal del edificio, montante acristalado con reja y, detrás, el zaguán iluminado (como portalBay)
-    const zg = env.pbPortal && yt - y0 > 2.3 && w > 0.8, tr = zg ? yt - Math.min(0.8, (yt - y0) * 0.28) : yt;
+    const zg = env.pbPortal && yt - y0 > 2.3 && w > 0.8, tr = zg ? yt - Math.min(1.5, (yt - y0) * 0.45) : yt;   // F2R2: media puerta acristalada
     if (zg) {
       RQ(W0, F, tt + 0.05, ct - 0.05, tr, yt - 0.04, d - 0.01, { x0: tt - 0.4, W: w + 0.8, yF: y0, H: Math.max(3.3, yt - y0 + 0.3), D: 9, mode: 0, seed: 1 + ((o.rr ? o.rr[1] : 0.5) * 254 | 0) });
       box(W0, F, tt, ct, tr - 0.06, tr + 0.04, d - 0.02, d + 0.05, shade(md, 0.8), K.WOOD, 3);
@@ -82,7 +84,7 @@ pieza('puerta', function (env, F, o) {
         box(W1, F, u + 0.1, u + hw - 0.1, y0 + (yt - y0) * 0.5, yt - 0.25, d, d + 0.03, shade(md, 1.15), K.WOOD, 7); }
       if (n === 2) box(W1, F, o.c - 0.03, o.c + 0.03, y0, yt, d, d + 0.05, shade(md, 0.8), K.WOOD, 4);
       box(W1, F, o.c + 0.12, o.c + 0.18, y0 + 1.0, y0 + 1.1, d + 0.03, d + 0.08, [176, 140, 70], K.PBR, 7, pbrAux(0.3, 1, 0, 0)); } }
-    if (zg && W1 && (!o.rr || o.rr[0] < 0.7)) { box(W1, F, ct + 0.35, ct + 0.53, y0 + 2.5, y0 + 2.9, 0.12, 0.32, [235, 220, 180], K.LAMP);   // aplique
+    if (zg && W1 && (!o.rr || o.rr[0] < 0.93)) { box(W1, F, ct + 0.35, ct + 0.53, y0 + 2.5, y0 + 2.9, 0.12, 0.32, [235, 220, 180], K.LAMP);   // aplique
       box(W1, F, ct + 0.41, ct + 0.47, y0 + 2.9, y0 + 3.1, 0, 0.3, env.iron || [40, 40, 40], K.METAL); }
     void yt0;
   }
@@ -183,12 +185,12 @@ pieza('antenas', function (env, run, q) {
 // pilastras de orden gigante entre vanos (de la 1.ª planta a la cornisa), con basa y capitel
 pieza('pilastras', function (env, run, q) {
   // F2R: pilastras gigantes de 0,2 m de vuelo en tono piedra (contrastan con el estuco) y bandas de imposta entre ellas
-  const { W0, W1, F1, C } = env, F = run.F, L = run.L, col = mixc(shade(run.wallC, 0.8), env.stone || [200, 190, 170], 0.5); if (C <= run.cover + 1) return;
+  const { W0, W1, F1, C } = env, F = run.F, L = run.L, col = mixc(shade(run.wallC, 0.72), env.stone || [200, 190, 170], 0.35); if (C <= run.cover + 1) return;   // F2R2: más oscuras
   const y0 = Math.max(F1 + 0.1, run.cover + 0.2), y1 = C - 0.55;
   if (W1) for (let D = 2; D <= env.nF; D++) { const k = env.lv[D - 1]; if (k > y0 + 0.5 && k < y1 - 0.5) box(W1, F, 0, L, k - 0.2, k + 0.08, 0, 0.11, col, K.STUCCO, 3); }
   for (let W = 0; W <= q.nb; W++) { const u = Math.min(L - 0.3, Math.max(0.3, W * q.bw));
-    box(W0, F, u - 0.3, u + 0.3, y0, y1, 0, 0.2, col, K.STUCCO, 4);
-    box(W0, F, u - 0.32, u + 0.32, y1, y1 + 0.3, 0, 0.22, shade(col, 1.04), K.STUCCO, 7);
+    box(W0, F, u - 0.38, u + 0.38, y0, y1, 0, 0.32, col, K.STUCCO, 4);
+    box(W0, F, u - 0.44, u + 0.44, y1, y1 + 0.36, 0, 0.36, shade(col, 1.06), K.STUCCO, 7);
     if (W1) box(W1, F, u - 0.3, u + 0.3, y0, y0 + 0.35, 0, 0.18, shade(col, 0.95), K.STUCCO, 7); }
 });
 // urnas sobre los pedestales de la balaustrada (una sí, una no)
