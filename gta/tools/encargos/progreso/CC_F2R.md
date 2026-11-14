@@ -48,3 +48,13 @@ Estado: hecho. Capturas «después» en el scratchpad cc/f2r/ (r_* primera tanda
 - Pueblo, gótico, quart: vistas corregidas en vistas_estilos.json pero no recapturadas.
 - Ventana de pieza con habitación de noche detrás de las galerías del polígono v3; rótulo BAR invertido (Fase 4).
 - Medida de tiempo de construcción en máquina tranquila (Fase 6).
+
+## Rendimiento (fps_eval.js, calidad media, 960×540, vistas de la Fase 0; scratchpad cc/f2r/log_fps.txt)
+| vista | Fase 0 | F2m | F2R | sombra [0] Fase 0 → F2m → F2R |
+|---|---|---|---|---|
+| Eixample a pie | 5,2 M / 866 | 5 151 047 / 866 | 5 245 010 / 866 | 1 188 779 → 1 050 544 → 1 175 669 |
+| Gòtic a pie | 6,40 M / 649 | 6 568 524 / 647 | 6 706 094 / 647 | 1 335 650 → 1 511 946 → 1 625 928 |
+| aérea | 1,3 M / 304 | 1 315 294 / 304 | 1 315 294 / 304 | — |
+Llamadas iguales. El Eixample recupera el detalle perdido (vuelve a la cifra de la Fase 0). En el Gòtic, +4,8 % de triángulos y
++22 % en la sombra sobre la Fase 0: ahora casi todo es casa obrera, barroco y gótico (núcleo 0,9), con más detalle fino
+(cables, tendederos, bajantes de parcela). Pendiente para la Fase 6: sacar ese detalle fino de la pasada de sombras.
