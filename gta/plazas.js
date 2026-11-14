@@ -1269,7 +1269,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     // ---- pavimento: bloques de 4 m enteros si están libres y en una sola zona; si no, celdas de 1 m
     const ZK = z => z ? z[0] * 1e7 + z[1][0] * 65536 + z[1][1] * 256 + z[1][2] : -1;
     const [bx0, bz0, bx1, bz1] = o.bb, gx0 = Math.floor(bx0 / 4) * 4, gz0 = Math.floor(bz0 / 4) * 4;
-    const quads = [], polys = [];
+    const quads = [], polys = [], rquads = [];   // rquads: losetas de caucho giradas con la zona de juegos (sin dientes)
     // Bugs · suelo: celdas de 1 m por marching squares: etiqueta por esquina (zona, o −1 fuera del suelo libre) y, en cada lado
     // donde cambia, el punto exacto por bisección (5 pasos, siempre desde la esquina menor para que dos celdas vecinas den el
     // mismo punto). Cada zona de la celda es un polígono convexo sobre el borde de la celda: los bordes siguen su ángulo real
@@ -1344,7 +1344,7 @@ window.BCN_PLAZAS = { async init(ctx) {
       else if (t === 'sbench') stoneBench(Wo, F, y, ex.len || 2.4, ex.wood);
       else if (t === 'canaletes') { canaletes(Wo, F, y); lamps.push([x, z, 3.6]); }
       else if (t === 'play') { playground(Wo, F, y, h); for (let j = -6; j < 6; j++) for (let i = -8; i < 8; i++) { const p = [x + (i + 0.5) * Math.cos(a) - (j + 0.5) * Math.sin(a), z + (i + 0.5) * Math.sin(a) + (j + 0.5) * Math.cos(a)];
-          if (free(o, p[0], p[1])) quads.push([p[0] - 0.55, p[1] - 0.55, 1.1, [4, h < 0.5 ? C.rubberR : C.rubberG, 0.1], true]); } }
+          if (free(o, p[0], p[1])) rquads.push([p[0], p[1], a, [4, h < 0.5 ? C.rubberR : C.rubberG, 0.1]]); } }
       else if (t === 'kiosk') kiosk(Wo, F, y);
       else if (t === 'pergola') pergola(Wo, F, y, ex.len || 12);
       else if (t === 'pingpong') pingpong(Wo, F, y);
@@ -1391,6 +1391,9 @@ window.BCN_PLAZAS = { async init(ctx) {
         quad(Wp, F0, A[0] - ox, ys[i], A[1] - oz, Bq[0] - ox, ys[f], Bq[1] - oz, Bq[0] - ox, gb, Bq[1] - oz, A[0] - ox, ga, A[1] - oz, [118, 114, 108], 0, pav(6, [0, 0, 0, 0], 0.35)); }
       if (++nq % 300 === 0) yield; }
     if (!o.noPav) parterreCurbs(o, Wp, ox, oz, glowAt);
+    for (const [cx, cz, a, zz] of rquads) { const c = Math.cos(a) * 0.51, sn = Math.sin(a) * 0.51, P4 = [[-c + sn, -sn - c], [c + sn, sn - c], [c - sn, sn + c], [-c - sn, -sn + c]].map(d => [cx + d[0], cz + d[1]]);
+      const ys = P4.map(q => o.hAt(q[0], q[1]) + 0.008), gs = P4.map(q => glowAt(q[0], q[1]));
+      quad(Wp, F0, P4[0][0] - ox, ys[0], P4[0][1] - oz, P4[1][0] - ox, ys[1], P4[1][1] - oz, P4[2][0] - ox, ys[2], P4[2][1] - oz, P4[3][0] - ox, ys[3], P4[3][1] - oz, zz[1], 0, pav(zz[0], gs, zz[2])); }
     return { Wp, Wo, Wh, lampPts, lamps: lamps.length, nItems: items.length, nQuads: quads.length + polys.length, trees: trees.k.length ? { m: new Float32Array(trees.m), k: trees.k } : null };
   }
   function* runJob(o) {
