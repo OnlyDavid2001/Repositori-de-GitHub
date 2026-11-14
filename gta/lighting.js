@@ -112,7 +112,7 @@ window.BCN_LIGHTING = { init(ctx) {
   // fotograma, también al cambiar la hora (cada cascada guarda sus ejes de luz, así la que espera sigue siendo coherente); en
   // modo captura, todas a la vez tras el flush del arnés. Sin luz direccional (relevo sol → luna) no se pinta nada.
   const SH = { res: 0, filt: 0, R: 4000, base: [45, 400], casc: [], X: new B.Vector3(), Y: new B.Vector3(), Z: new B.Vector3(0, 1, 0),
-               sun: new B.Vector3(), s: 1, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true, dark: false, flushed: false };
+               sun: new B.Vector3(), s: 1, k: NaN, rk: 0, ver: -1, tick: 0, renders: 0, dead: false, all: SHOT, uP: new B.Vector4(0, 0, 0, 0), mats: new Map(), off: true, dark: false, flushed: false };
   const SH_VS = `precision highp float;
 attribute vec3 position;
 #ifdef INF
@@ -267,14 +267,23 @@ void main(){
     }
     if (dark) { SH.flushed = false; return; }
     // las cascadas crecen con la altura sobre el suelo, en escalones del 25 % (para no repintar a cada metro que se sube)
-    const s = Math.min(10, Math.pow(1.25, Math.round(Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25))));
+    // Bugs · parpadeo: con histéresis (el índice k solo cambia al salir de [k − 0,7, k + 0,7]): con el dron quieto cerca de un
+    // umbral, el vaivén ya no repinta los mapas una y otra vez con otro tamaño de téxel
+    { const x = Math.log(Math.max(1, (Pc.y - groundY) / 50)) / Math.log(1.25);
+      if (!(Math.abs(x - SH.k) <= 0.7)) SH.k = Math.round(x); }
+    const s = Math.min(10, Math.pow(1.25, SH.k));
+    let both = false;                                            // cambia el tamaño o el rango: las dos cascadas a la vez
     // rango de profundidad (a lo largo del sol) de los mapas: ha de abarcar el suelo de toda la cascada lejana, que está a la
     // altura de la cámara por debajo de su centro y, con el sol bajo, a semilado/tan(altura) más allá. Con el rango fijo de
     // 4 km, desde el aire (3–4 km de altura) todo lo que quedaba más lejos que eso del centro salía «detrás» del mapa y, por
     // tanto, en sombra: media ciudad oscura, con un borde recto (el plano a 4 km). Escalones ×1,25 (cambiarlo repinta todo)
     { const el = Math.max(0.12, S.y), need = 1.15 * (Math.max(0, Pc.y - groundY) + SH.base[1] * s * Math.sqrt(1 - el * el)) / el + 300;
-      const R = need <= 4000 ? 4000 : 4000 * Math.pow(1.25, Math.ceil(Math.log(need / 4000) / Math.log(1.25)));
-      if (R !== SH.R) { SH.R = R; SH.uP.y = 1 / (2 * R); for (const c of SH.casc) c.dirty = true; } }
+      // (histéresis: sube en cuanto hace falta, pero solo baja cuando sobra más de un escalón y medio)
+      const y = need <= 4000 ? -1 : Math.log(need / 4000) / Math.log(1.25), kt = y <= 0 ? 0 : Math.ceil(y);
+      if (kt > SH.rk || y < SH.rk - 1.7) SH.rk = kt;
+      const R = 4000 * Math.pow(1.25, SH.rk);
+      if (R !== SH.R) { SH.R = R; SH.uP.y = 1 / (2 * R); for (const c of SH.casc) c.dirty = true; both = true; } }
+    for (const c of SH.casc) if (c.half !== SH.base[c.k] * s) both = true;
     const check = ctx.reg.ver !== SH.ver || ++SH.tick >= 30;
     if (check) { SH.ver = ctx.reg.ver; SH.tick = 0; }
     let did = 0;
@@ -287,7 +296,7 @@ void main(){
       if (!need) continue;
       // en modo captura se espera (hasta 2 fotogramas) al flush del arnés, que llega con todo el detalle construido: así cada
       // vista pinta cada cascada una sola vez. Fuera de él, como mucho una cascada por fotograma (también al cambiar la hora)
-      if (SH.all ? !SH.flushed && ++c.wait < 3 : did > 0) continue;
+      if (SH.all ? !SH.flushed && ++c.wait < 3 : did > 0 && !both) continue;
       shRender(c, Pc, half); did++;
     }
     if (did) { SH.flushed = false; for (const m of SH.mats.values()) shMatU(m); }
