@@ -1084,7 +1084,7 @@ window.BCN_PLAZAS = { async init(ctx) {
   const { walkAt, coverAt, nearestCar } = city, matB = ctx.detail.matB, mkMesh = ctx.detail.mkMesh;
   const [AS, AH] = FUR ? FUR.levels : [null, null];
   const matP = ctx.mkMat('plazaPav', VS_PAV, FS_PAV, ['position', 'color', 'uv'], ['uPavFade', 'uRose']);
-  matP.setVector2('uPavFade', new BABYLON.Vector2(560, 640)); matP.setVector2('uRose', new BABYLON.Vector2(CAT.c[0], CAT.c[1]));
+  matP.setVector2('uPavFade', new BABYLON.Vector2(625, 640));   // Bugs · parpadeo: banda de 15 m matP.setVector2('uRose', new BABYLON.Vector2(CAT.c[0], CAT.c[1]));
   // ---- árboles de plaza con las especies de trees.js: las mismas mallas y materiales que streets.js (por nombre), con instancias propias
   const TRS = window.BCN_TREES, TM = {};
   function treeMeshes(k) {

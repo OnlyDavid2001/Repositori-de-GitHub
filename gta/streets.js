@@ -744,7 +744,8 @@ void main(){
 
   // ---------------------------------------------------------------- celdas e instancias
   const cells = new Map();
-  const S = { on: true, R0: 150, R1: 195, RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tN0: [55, 70], tF0: [320, 400], tI: 2100 };
+  const S = { on: true, R0: 182, R1: 195,   // Bugs · parpadeo: banda de 13 m (antes 150–195)
+              RB: 215, RD: 270, budget: 4, tN: [55, 70], tF: [320, 400], tN0: [55, 70], tF0: [320, 400], tI: 2100 };
   // mobiliario de detalle: se construye en las celdas a menos de HB (algo más que el relevo por píxel, FU.hiRange) y se quita a partir de HD
   const HB = FU.buildHi && FU.hiRange ? FU.hiRange[1] + 8 : -1, HD = HB + 25, furnTris = [0, 0];
   let job = null, queue = [], tris = 0, planT = 0, instT = 0, lastIP = null, added = 0;
@@ -854,7 +855,7 @@ void main(){
   function setRange(q) {
     S.on = q > 0;
     const k = q >= 2 ? 1.4 : 1;
-    Object.assign(S, { R0: 150 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN0: [55 * k, 70 * k], tF0: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
+    Object.assign(S, { R0: 182 * k, R1: 195 * k, RB: 215 * k, RD: 270 * k, tN0: [55 * k, 70 * k], tF0: [320 * k, 400 * k], tI: 2100 * (q >= 2 ? 1.3 : 1) });
     tq = lightQ(); treeQ();
     if (!S.on) { job = null; queue = []; for (const ci of [...cells.keys()]) drop(ci); for (const m of allTM) m.thinInstanceCount = 0; nTrees = [0, 0, 0]; treeTris = [0, 0, 0]; nSap = sapTris = nPit = 0; }
     lastIP = null; planT = 0;

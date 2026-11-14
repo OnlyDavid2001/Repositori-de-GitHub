@@ -1287,7 +1287,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
 
   // ---------------------------------------------------------------- celdas: construir, mostrar, liberar
   const cells = new Map();   // índice → { base, hi, lay: Map, blds }
-  const S = { on: true, R0: 170, R1: 215, RB: 245, RD: 310, H0: 70, H1: 95, HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
+  const S = { on: true, R0: 200, R1: 215, RB: 245, RD: 310, H0: 83, H1: 95,   // Bugs · parpadeo: bandas de 12–15 m
+               HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
   let job = null, queue = [], tris = [0, 0];
   const dirty = new Set();
   function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = (inf[v * 4 + 3] & ~1) | f; dirty.add(ch); }   // bits altos de .w: código lejano del estilo (F3a)
@@ -1377,7 +1378,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function setRange(q) {   // 0 apagado · 1 normal · 2 alto
     S.on = q > 0;
     const k = q >= 2 ? 1.45 : q < 1 ? q : 1;   // q < 1: radios reducidos (hojas de depuración)
-    Object.assign(S, { R0: 170 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 70 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
+    Object.assign(S, { R0: 200 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 83 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
     ctx.matBld.setVector2('uFx', new BABYLON.Vector2(S.R0, S.R1));
     matB.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1)); matH.setVector2('uFade', new BABYLON.Vector2(S.H0, S.H1));
     for (const m of [matB, matH]) m.setVector2('uFadeHi', new BABYLON.Vector2(S.H0, S.H1));   // fundido de entrada del ORNAMENTO (sustitutos)

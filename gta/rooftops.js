@@ -68,7 +68,8 @@ window.BCN_ROOFTOPS = { init(ctx) {
   if (!city || !detail || !PAL) throw new Error('faltan ctx.city, ctx.detail o BCN_PAL');
   const { CS, NX, NZ, ALL, bget, inside } = city;
   // franjas de fundido (distancia 3D del píxel a la cámara, m): [entra de, entra hasta, sale de, sale hasta]
-  const BAND = [null, [-2, -1, 170, 200], [170, 200, 360, 410], [360, 410, 720, 800]], HY = 20;
+  // Bugs · parpadeo: bandas de fundido de 12–20 m con el final donde estaba (antes 30–80 m: al bajar con el dron hervía media vista)
+  const BAND = [null, [-2, -1, 188, 200], [188, 200, 392, 410], [392, 410, 780, 800]], HY = 20;
   // materiales (canal auxiliar de K.PBR, §6.7)
   const A_PAINT = pbrAux(0.55, 0, 0, 0), A_MATTE = pbrAux(0.9, 0, 0, 0), A_GALV = pbrAux(0.42, 1, 0, 0), A_RUST = pbrAux(0.7, 0, 3, 0);
   const A_FIBRO = pbrAux(0.85, 0, 3, 0), A_LOUV = pbrAux(0.5, 0, 1, 0), A_PV = pbrAux(0.18, 0.2, 0, 0), A_GLASS = pbrAux(0.12, 0, 0, 0);
