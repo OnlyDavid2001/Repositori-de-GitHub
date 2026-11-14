@@ -155,6 +155,8 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
     let tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
     const d = bget(b), resid = d.cls === 0 || d.cls === 2 || d.cls === 6;
+    // Bugs · volúmenes: las losas de clase 5 (marquesinas, pérgolas, building=roof: 0,6 m sin muros) no llevan azotea de nave
+    if (d.cls === 5 && d.y1 - d.y0 < 1.5) return null;
     // G1T1: también las cubiertas planas que antes quedaban vacías: industria, comercio, equipamientos y oficinas sin fachada
     // de detalle (los de más de 16 000 m² de caja, las torres, los volúmenes elevados): azotea de nave (< 14 m) o de
     // equipamiento. Fuera los templos e invernaderos (14, 15), el cristal con pilares (4) y la clase 7
