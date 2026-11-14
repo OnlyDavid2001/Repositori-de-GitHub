@@ -33,3 +33,10 @@ con el fichero de F3R y con el nuevo, ab_montaje.jpg; c_*.jpg; fin_*.jpg tras fu
 - Carmel desde el aire sin bloques altos: las alturas son reales; con el límite de una planta el desarrollismo solo cabe en
   los ~10 % de volúmenes de 5+ plantas. Igual en Horta, Torre Baró, Pedralbes, Sarrià y Montbau (reparto lejos de fachadas_pct).
 - Chaflanes: la mitad del Eixample sigue sin detectar (tramos < 5 m en layoutB).
+
+## Medidas
+- fps_eval (vistas_fps_lig.json, calidad media), tras la fusión y el fichero nuevo: Eixample a pie 866 llamadas / 5,18 M
+  triángulos (F3b 866 / 4,99 M; Fase 0 866 / 5,2 M) · Gòtic a pie 647 / 6,57 M (F3b 6,39 M; F3a 6,72 M; Fase 0 649 / 6,4 M) ·
+  aérea 304 / 1,33 M (F3b 1,32 M). Mismas llamadas; triángulos dentro de lo que ya oscilaba entre F3a y F3b (más bajos con
+  tienda y otro reparto de estilos). No hay trabajo nuevo por fotograma. fps de SwiftShader (0,03–0,26) no comparables.
+- Generador: ~19 s de cálculo + ~21 s de carga del juego.
