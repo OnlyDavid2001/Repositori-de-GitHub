@@ -2052,7 +2052,8 @@ herramienta y el juego solo las lee, para que estilo, variante y color sean los 
   da variante y color de la parcela virtual k (para la Fase 3b).
 - **Volumen lejano**: `BCN_EDIF.lejosCode(b)` empaqueta `variante.lejos` (muro, altura de planta, ancho de vano, fracción de
   hueco) en 14 bits que app.js guarda ×2 en `uv.w` del volumen (el bit 0 sigue siendo la bandera de «fachada de detalle
-  construida» de facades.js, que ahora conserva los bits altos). FS_BLD pone la planta baja (4,3 m o 3,25 m) y los pisos a
+  construida» de facades.js, que ahora conserva los bits altos; el shader redondea `uv.w` antes de leer los bits: la
+  interpolación del varying deja 32766 en 32765,999 y `mod(w, 2)` daría casi 2, con muros tramados sin fachada delante). FS_BLD pone la planta baja (4,3 m o 3,25 m) y los pisos a
   las cotas de la fachada de detalle, el ancho de vano y el tamaño del hueco del estilo, y marca el muro (cantos de forjado
   oscuros en hormigón y claros en ladrillo, planta baja más oscura en piedra y más clara en travertino, vidrio casi entero).
 - **F8**: estilo y variante asignados (con el nombre de la variante y si vienen del fichero, del escaparate o del selector

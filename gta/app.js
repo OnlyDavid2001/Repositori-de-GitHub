@@ -365,7 +365,8 @@ void main(){
   vec3 V = uCam - vPos; float dist = length(V); V /= dist;
   if (dot(n, V) < 0.0) n = -n;
   // edificio con fachada de detalle ya construida: la pared simple cede el sitio con un fundido tramado
-  if (mod(vInfo.w, 2.0) > 0.5 && abs(n.y) < 0.5 && dith() >= smoothstep(uFx.x, uFx.y, dist)) discard;
+  // bit 0 de .w: bandera de facades.js; se redondea antes (la interpolación del varying deja 32766 en 32765,999 y mod daría ~2)
+  if (mod(floor(vInfo.w + 0.5), 2.0) > 0.5 && abs(n.y) < 0.5 && dith() >= smoothstep(uFx.x, uFx.y, dist)) discard;
   float a255 = floor(vCol.a*255.0 + 0.5); float style = floor(a255/16.0); float seed = (a255 - style*16.0)/15.0;
   vec3 base = vCol.rgb; vec3 glow = vec3(0.0);
   float h = vInfo.x*0.1, Ht = vInfo.y*0.1;
@@ -408,7 +409,7 @@ void main(){
       // Condal City (F3a): con estilo del kit (código en los bits altos de vInfo.w, edif.js lejosCode), las plantas, el ancho de
       // vano y la fracción de hueco son los de su variante (variante.lejos) y la planta baja y los pisos van a las mismas cotas
       // que la fachada de detalle (planta baja de 4,3 m o 3,25 m y pisos iguales hasta la cornisa): no salta al acercarse
-      float lc = floor(vInfo.w*0.5 + 0.01), muro = 0.0;
+      float lc = floor(floor(vInfo.w + 0.5)*0.5), muro = 0.0;
       float fh = 3.2, bayW = 2.7, wxa = 0.22, wxb = 0.78, wya = 0.26, wyb = 0.86, gH = 0.0, vd = 0.3;
       float fl, fy;
       if (lc > 0.5) {
