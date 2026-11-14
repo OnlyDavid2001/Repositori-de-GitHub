@@ -548,12 +548,29 @@ void main(){
       VIS[q] = ok; return ok;
     };
     let nExt = 0;
+    // Bugs · suelo: la ampliación es una máscara (1 = acera ampliada) que se desenfoca con una caja de radio 2 dos veces
+    // (~1,5 m) y se pasa a pv = (m − 0,5)·4: el contorno es la isolínea 0,5, redondeado y sin escalones de 1 m
+    const MX = new Float32Array(NT * NT);
     for (let j = 0; j < NT; j++) { for (let i = 0; i < NT; i++) { const q = j * NT + i;
         let pv = Math.max(WSW - dS[q], 0.6 - dP[q]);
         if (nW[q] >= 0 && dP[q] > 0.6 && ruralSeg(nW[q])) pv = Math.min(pv, 1.3 - dS[q]);   // REV4: arcén de 1,3 m
-        if (pv <= 0.3 && dS2[q] < EXT && dA[q] > 0.3 && seen(i & ~1, j & ~1)) { if (pv <= 0) nExt++; pv = Math.max(pv, 0.8); if (nW[q] < 0) nW[q] = nS[q]; }
+        if (pv <= 0.3 && dS2[q] < EXT && dA[q] > 0.3 && seen(i & ~1, j & ~1)) MX[q] = 1;
         PV[q] = pv; }
       if (j % 24 === 23) yield; }
+    { const T = new Float32Array(NT * NT), R = 2, k = 1 / (2 * R + 1);
+      for (let pass = 0; pass < 2; pass++) {
+        for (let j = 0; j < NT; j++) { const r = j * NT; let a = 0;
+          for (let i = -R; i <= R; i++) a += MX[r + Math.min(NT - 1, Math.max(0, i))];
+          for (let i = 0; i < NT; i++) { T[r + i] = a * k; a += MX[r + Math.min(NT - 1, i + R + 1)] - MX[r + Math.max(0, i - R)]; } }
+        for (let i = 0; i < NT; i++) { let a = 0;
+          for (let j = -R; j <= R; j++) a += T[Math.min(NT - 1, Math.max(0, j)) * NT + i];
+          for (let j = 0; j < NT; j++) { MX[j * NT + i] = a * k; a += T[Math.min(NT - 1, j + R + 1) * NT + i] - T[Math.max(0, j - R) * NT + i]; } }
+      } }
+    yield;
+    for (let q = 0; q < NT * NT; q++) { const m = MX[q]; if (m <= 0.05) continue;
+      const pe = (m - 0.5) * 4, pv = PV[q]; if (pe <= pv) continue;
+      if (pe > 0 && pv <= 0) nExt++;
+      PV[q] = pe; if (nW[q] < 0 && nS[q] >= 0) nW[q] = nS[q]; }
     cell.ext = nExt;
     // árboles de la celda y vecinas (para los alcorques)
     const pits = [];
