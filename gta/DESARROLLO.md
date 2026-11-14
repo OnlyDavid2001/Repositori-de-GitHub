@@ -2091,3 +2091,24 @@ herramienta y el juego solo las lee, para que estilo, variante y color sean los 
     grado más de recercado y +0,3 de balcones (`chaflanDe`); casi siempre comercio. La altura no se toca (+1 planta: no).
   - *Hitos* (regla 11): `SKIP` = { nombre: [R, Rv] }: en R solo se quitan equipamientos y naves (`BREC.tipo` > 0) y en Rv también las
     viviendas; parques y recintos con Rv = R. `BCN.fx.nSkip` cuenta los quitados.
+
+### 17.x F3R (repaso de la Fase 3)
+- **Regenerar `condal_edif.json` cuando cambie `layoutB`/`esChaflan` de facades.js** (frentes de calle, medianeras y chaflanes
+  deciden rachas, parcelas y estilos): la firma solo cubre los edificios, así que el juego no lo nota. `node tools/cc/generador.js`
+  tarda ~70 s con el juego ya en caché.
+- Regla 1: λ por barrio y estilo entre 0,02 y 50 y dos vueltas más con el reparto realmente asignado (rachas incluidas). La
+  estadística por barrio es ahora el **% de edificios con otro estilo** que el de fachadas_pct (½ Σ|asignado − mezcla|).
+- Regla 2: la repetición del estilo del anterior admite hasta ~3 plantas fuera de rango (compat ≥ 0,008); el generador imprime
+  la tasa medida (normal, Eixample, tras polígono/casas baratas).
+- Regla 5: ático del 30 % del estilo cuando la variante no trae `aticoP`; remontes con la probabilidad del barrio dividida por la
+  fracción de edificios que lo admiten (tope ×4), y +1 planta también en casas de 2 plantas (pueblo, casas baratas,
+  autoconstrucción, casa obrera, quart de casa). Ojo: hoy el remonte solo se dibuja en las piezas que leen `V.remonte`.
+- Regla 6: un tramo pegado a un vecino bajo es medianera si, a menos de 16 m de calzada, se aleja de la calle (la distancia a la
+  calzada cambia más de L/2 de un extremo al otro); lejos de la calle (patio), solo si el vecino deja ≥ 7 m sobre la acera.
+- Regla 8: en zonas de ≥ 15 locales/ha, las casas de planta baja de 3,25 m también llevan tienda (`shopsHere`).
+- Regla 10: `esChaflan` acepta el chaflán compartido por dos fincas (un vecino es la calle a ~45° y el otro una pared: ciego,
+  medianera o liso). La variante de chaflán y `run.chaflan` solo en la zona de chaflanes (`S.chfZ`).
+- Volumen lejano (app.js): si el edificio tiene parcelas virtuales, los lados del anillo exterior de al menos 2 anchos de parcela
+  (ancho = lado más largo / parcelas) se parten con el color de cada parcela (`BCN_EDIF.parcela` + `kit.colorDe`), en el orden
+  de facades.js (desde la esquina más cerrada) y con vértices duplicados en las juntas. Los búferes del trozo crecen si hace falta.
+- Rótulos: celdas 25–31 del atlas = 7 restaurantes con nombre inventado (se encienden como los demás; 17–24 son los anuncios).
