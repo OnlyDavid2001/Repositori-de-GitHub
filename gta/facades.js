@@ -484,11 +484,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const n = runs.length; if (n < 3) return false;
     const r = runs[i], a = runs[(i + n - 1) % n], c = runs[(i + 1) % n];
     const d1 = Math.abs(r.tx * a.tx + r.tz * a.tz), d2 = Math.abs(r.tx * c.tx + r.tz * c.tz), d3 = Math.abs(a.tx * c.tx + a.tz * c.tz);
-    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 6 && c.L > 6 && a.kind === 'street' && c.kind === 'street') return true;
+    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 3 && c.L > 3 && a.kind === 'street' && c.kind === 'street') return true;   // F3R2: calles vecinas > 3 m (antes 6: la finca de esquina con poco frente a la otra calle se perdía)
     // F3R: chaflán compartido por dos fincas (el caso normal del Eixample): un vecino es la calle a ~45° y el otro, la medianera
-    // con la finca de al lado (ciega, medianera vista o lisa), en cualquier ángulo
-    const pared = o => o.kind === 'blind' || o.kind === 'medianera' || o.kind === 'plain';
-    return (a.kind === 'street' && d1 > 0.5 && d1 < 0.87 && a.L > 6 && pared(c)) || (c.kind === 'street' && d2 > 0.5 && d2 < 0.87 && c.L > 6 && pared(a));
+    // con la finca de al lado (ciega o medianera vista; F3R2: no la lisa). F3R2: la medianera tiene que ser la de un chaflán de
+    // verdad: perpendicular a la calle vecina (|d3| < 0,3, lindero normal de la finca) o a la bisectriz del cruce (perpendicular
+    // al chaflán); en cualquier otro ángulo era un quiebro de fachada (falsos chaflanes en Sants, Les Corts o Sant Andreu)
+    const pared = o => o.kind === 'blind' || o.kind === 'medianera';
+    const comp = (s, w, ds, dw) => s.kind === 'street' && ds > 0.5 && ds < 0.87 && s.L > 3 && pared(w) && (d3 < 0.3 || dw < 0.3);
+    return comp(a, c, d1, d2) || comp(c, a, d2, d1);
   }
   // tonos y banderas de la variante (ámbito (b, 6, k): k = 1 el edificio, 2 + k las parcelas virtuales)
   function tonosV(env, V, k) {
@@ -552,7 +555,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function pComDe(S, V, esq, chf) {
     const dn = S.dn;
     const c = Math.min(1, V && V.com !== undefined ? V.com : 0.6);
-    let p = dn >= 15 ? 0.97 * (0.85 + 0.15 * c) : ((dn >= 5 ? (0.3 + (dn - 5) * 0.06) * (S.av || esq ? 1.35 : 0.8) : (0.02 + dn * 0.02) * (esq ? 2 : 1)) * (0.55 + 0.45 * c));
+    let p = dn >= 15 ? 0.95 + 0.03 * c :   // F3R2: «casi todos» (antes 0,97 × (0,85 + 0,15·com) ≈ 0,91)
+       ((dn >= 5 ? (0.3 + (dn - 5) * 0.06) * (S.av || esq ? 1.35 : 0.8) : (0.02 + dn * 0.02) * (esq ? 2 : 1)) * (0.55 + 0.45 * c));
     if (chf && S.chfZ) p = Math.max(p, 0.93);
     return Math.min(0.98, p);
   }
@@ -643,7 +647,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (!nF) F1 = C;
     const m = nF ? Rm / nF : 0;
     // F3R · regla 8: en las zonas de ≥ 15 locales/ha, las casas bajas (planta baja de 3,25 m) también llevan una tienda pequeña
-    const dnB = !shops && !cls6 && V && V.kit && H >= 6 ? sitio(b).dn : 0;
+    const dnB = !shops && !cls6 && V && V.kit && H >= 4.6 ? sitio(b).dn : 0;   // F3R2: también las de una planta (antes H ≥ 6)
     const shopsHere = (shops && F1 - gHi > 3.6) || (dnB >= 15 && F1 - gHi > 3.1);
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,

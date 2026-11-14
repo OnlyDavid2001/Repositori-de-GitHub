@@ -1689,7 +1689,7 @@ const BREC = { dv: [], n: 0 };
           // de parcela con el color de cada parcela (BCN_EDIF.parcela + kit.colorDe, el mismo que la fachada de detalle), en el
           // orden de facades.js (desde la esquina más cerrada); entre parcelas, vértices duplicados sin cara (corte de color nítido)
           let PC = null;
-          if (r === 0 && LJ && EDIF.parcelas(bi) > 1 && window.BCN_KIT.colorDe) {
+          if (r === 0 && LJ && EDOK && EDIF.parcelas(bi) > 1 && window.BCN_KIT.colorDe) {
             const nP = EDIF.parcelas(bi); let Lm = 0, s0 = 0, best = -1;
             for (let k = 0; k < m; k++) { const j = (k + 1) % m, L = Math.hypot(flat[j * 2] - flat[k * 2], flat[j * 2 + 1] - flat[k * 2 + 1]); if (L > Lm) Lm = L;
               const h = (k + m - 1) % m, t1 = Math.atan2(flat[k * 2 + 1] - flat[h * 2 + 1], flat[k * 2] - flat[h * 2]), t2 = Math.atan2(flat[j * 2 + 1] - flat[k * 2 + 1], flat[j * 2] - flat[k * 2]);
