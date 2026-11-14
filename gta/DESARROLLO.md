@@ -1544,7 +1544,7 @@ Lo que dejaron las etapas del día 3 en sus progresos (`tools/encargos/progreso/
   de 30 m² se colapsan. rooftops.js `plan0` no pone azotea a las losas de clase 5 (< 1,5 m de grueso) ni peto a las partes
   elevadas sin apoyo (`coverAt` en el centro y 4 puntos: con menos de 2 que lleguen a su base, voladizo al aire).
 - facades.js `coverAt(x, z, self, suelo)`: con `suelo`, solo cuentan los volúmenes que arrancan del suelo. `layoutB` lo usa para
-  el `cover` de cada tramo: una parte elevada vecina ya no «tapa» la planta baja (antes se comía la pared y quedaban persianas,
+  el `cover` de los tramos a menos de 16 m de calzada: una parte elevada vecina ya no «tapa» la planta baja (antes se comía la pared y quedaban persianas,
   dinteles y zócalos sueltos debajo del voladizo).
 
 #### E2

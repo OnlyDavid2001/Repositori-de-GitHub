@@ -448,8 +448,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const mx = (A[0] + Bp[0]) / 2, mz = (A[1] + Bp[1]) / 2;
       if (inside(d, mx + nx * 0.3, mz + nz * 0.3)) { nx = -nx; nz = -nz; }
       // ¿pegado a otro edificio? (medianera) — mira en tres puntos justo por fuera
-      let nIn = 0, cov = 1e9;
-      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b, true); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
+      // Bugs · volúmenes: hacia la calle (< 16 m de calzada) solo tapan los vecinos que arrancan del suelo; en los patios, como
+      // antes (las cubiertas de patio elevadas siguen tapando: así no crece la fachada de detalle donde no se ve)
+      let nIn = 0, cov = 1e9; const sueloC = roadDist(mx + nx * 2, mz + nz * 2) < 16;
+      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b, sueloC); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
       const cover = nIn >= 2 ? cov : -1e9;
       let kind;
       if (cover >= d.y1 - 2.5) kind = 'blind';
