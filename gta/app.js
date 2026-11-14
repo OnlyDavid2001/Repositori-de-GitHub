@@ -1738,7 +1738,7 @@ const BREC = { dv: [], n: 0 };
         //   0 vivienda de su familia de barrio (clases 0 y 6: también las casas de una planta y las torres de pisos) ·
         //   1 nave (naves bajas y grandes de la clase 0 y las clases 1 y 5, industria y almacenes) ·
         //   2 equipamiento u oficinas (clases 2, 8, 9, 11 y 13: escuelas, ambulatorios, oficinas, mercados; y las 1 y 5 altas)
-        // Fuera: casetas mínimas (< 3,8 m o < 35 m² de caja), volúmenes elevados (partes altas de otro edificio), los de más
+        // Fuera: casetas mínimas (< 3,8 m o < 35 m² de caja, salvo las fincas estrechas de abajo), volúmenes elevados (> 4 m: partes altas de otro edificio), los de más
         // de 16 000 m² de caja (manzanas y complejos enteros: etapa E2), vidrio (3, 12), cristal y pilares (4), los muy
         // grandes de la clase 10 (centros comerciales, aeropuerto) y los invernaderos y templos (14, 15). Los hitos los quitan.
         const Hm = Ht / 10, area = (bx1 - bx0) * (bz1 - bz0);
@@ -1746,8 +1746,10 @@ const BREC = { dv: [], n: 0 };
         // 6 m o más de alto, 6 m² o más de planta real y 2 m o más de lado menor (antes salían como una caja lisa con ventanas
         // pintadas entre fachadas con detalle y, además, tapaban los frentes de sus vecinos, que quedaban ciegos)
         const chica = area < 35 && (cls === 0 || cls === 6) && Hm >= 6 && pA >= 6 && Math.min(u1 - u0, w1 - w0) >= 2;
+        // hb va en decímetros: los volúmenes con la base hasta 4 m por encima del terreno (cuestas, porches) cuentan como de
+        // suelo (antes el corte era 1,5 m); facades.js arranca su fachada en la base del volumen
         let tp = -1;
-        if (hb < 15 && (area >= 35 || chica) && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
+        if (hb < 40 && (area >= 35 || chica) && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
           if (cls === 0) tp = Hm < 9 && area > 1800 ? 1 : Hm <= 110 ? 0 : -1;
           else if (cls === 6) tp = Hm <= 30 ? (Hm < 9 && area > 2500 ? 1 : 0) : -1;
           else if (cls === 1 || cls === 5) tp = Hm <= 14 ? 1 : Hm <= 60 ? 2 : -1;

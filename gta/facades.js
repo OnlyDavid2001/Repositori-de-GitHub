@@ -436,6 +436,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const d = bget(b);
     let gHi = -1e9, gLo = 1e9;
     for (const r of d.rings) for (let j = 0; j < r.length; j += 2) { const g = heightAt(r[j], r[j + 1]); if (g > gHi) gHi = g; if (g < gLo) gLo = g; }
+    // Bugs · fachadas: la fachada arranca en la base del volumen si queda por encima del terreno (volúmenes con la base hasta 4 m
+    // levantada, app.js)
+    if (d.y0 > gHi) gHi = d.y0;
     const H = d.y1 - gHi;
     if (H < 3.6) return null;
     const runs = [];
