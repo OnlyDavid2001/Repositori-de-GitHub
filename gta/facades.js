@@ -15,7 +15,7 @@
 (function () {
 'use strict';
 const GEO = window.BCN_GEO;
-const { K, GB, quad, rect, jamb, hpl, box, lattice, latticeSide, pbrAux, shade, mixc, seed, R, pick } = GEO;
+const { K, GB, quad, rect, jamb, hpl, box, lattice, latticeSide, pbrAux, signAux, shade, mixc, seed, R, pick } = GEO;
 
 // paletas (de Transeúnte)
 const SHUTTERS = [[43, 77, 51], [84, 87, 69], [36, 59, 77], [107, 77, 48], [60, 92, 64], [120, 118, 104]];
@@ -180,7 +180,8 @@ void main(){
     float id = floor(vInfo.z*255.0 + 0.5);
     vec2 uv = vec2((mod(id, 2.0) + vInfo.x)/2.0, (floor(id/2.0) + vInfo.y)/16.0);   // atlas de 2 x 16 celdas
     alb = texture2D(tSign, uv).rgb; rough = 0.5;
-    emis = emit(alb, shopOn()*0.4);                  // rótulo: encendido mientras el comercio está abierto
+    if (id < 16.5 || id > 24.5) emis = emit(alb, shopOn()*0.4);   // rótulo: encendido mientras el comercio está abierto
+    else { alb = mix(alb, vec3(0.62, 0.58, 0.52), 0.22)*mix(0.78, 1.04, vnoise(P*vec2(1.7, 3.1))); rough = 0.95; }   // F3b: anuncio pintado en una medianera, desvaído y sin luz
   } else if (kind < 9.5) {                            // toldo a rayas
     float s = step(0.5, fract(P.x*2.4));
     alb = mix(alb, vec3(0.88, 0.86, 0.80), s*0.85) * (0.85 + 0.2*vnoise(P*4.0)); rough = 0.9;
@@ -311,14 +312,19 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if ((i1 - i0 + 1) * (j1 - j0 + 1) > 400) return;
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * NX + i);
   };
-  // monumentos y piezas singulares: su entorno no se toca
-  const SKIP = { 'Sagrada Família': 110, 'Camp Nou': 230, 'Palau Nacional (MNAC)': 170, 'Catedral': 70, 'Hospital de Sant Pau': 260, 'Estadi Olímpic': 170,
-    'Castell de Montjuïc': 140, 'Aeroport · Terminal 1': 700, 'Aeroport · Terminal 2': 500, 'Estació de Sants': 160, 'Torre Glòries': 60, 'Hotel W': 60,
-    'Tres Xemeneies del Besòs': 120, 'Fòrum': 260, 'Park Güell': 140, 'Arc de Triomf': 30, 'Tibidabo': 120 };
-  const skipPts = META.poi.filter(q => SKIP[q.n]).map(q => [q.p[0], q.p[2], SKIP[q.n]]);
+  // monumentos y piezas singulares (regla 11): el hito ya quita los volúmenes que sustituye (landmarks.js). Alrededor, F3b recorta
+  // la exclusión: en el radio [R] solo quedan fuera los equipamientos y naves (tipo > 0: pabellones, gradas, terminales, museos)
+  // y, en el núcleo [Rv], también las viviendas (claustros, casas pegadas al templo); antes se quitaba todo en R y quedaban halos
+  // de edificios sin fachada de detalle. En parques y recintos (Park Güell, Montjuïc, Tibidabo, Anella, Fòrum, aeropuerto) Rv = R.
+  const SKIP = { 'Sagrada Família': [110, 45], 'Camp Nou': [230, 60], 'Palau Nacional (MNAC)': [170, 170], 'Catedral': [70, 35], 'Hospital de Sant Pau': [260, 90],
+    'Estadi Olímpic': [170, 170], 'Castell de Montjuïc': [140, 140], 'Aeroport · Terminal 1': [700, 700], 'Aeroport · Terminal 2': [500, 500], 'Estació de Sants': [160, 40],
+    'Torre Glòries': [60, 25], 'Hotel W': [60, 60], 'Tres Xemeneies del Besòs': [120, 120], 'Fòrum': [260, 260], 'Park Güell': [140, 140], 'Arc de Triomf': [30, 0], 'Tibidabo': [120, 120] };
+  const skipPts = META.poi.filter(q => SKIP[q.n]).map(q => [q.p[0], q.p[2], SKIP[q.n][0], SKIP[q.n][1]]);
+  let nSkip = 0, nSkip0 = 0;                          // quitados ahora · los que quitaba el radio entero de antes
   for (let b = 0; b < NB; b++) if (BREC.elig[b]) {
-    const cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2;
-    for (const s of skipPts) if (Math.hypot(cx - s[0], cz - s[1]) < s[2]) { BREC.elig[b] = 0; break; }
+    const cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2, viv = !(BREC.tipo && BREC.tipo[b] > 0);
+    let a = 0; for (const s of skipPts) { const dd = Math.hypot(cx - s[0], cz - s[1]); if (dd < s[2]) a = 1; if (dd < (viv ? s[3] : s[2])) { BREC.elig[b] = 0; nSkip++; break; } }
+    nSkip0 += a;
   }
   const ALL = csr(NB, (b, f) => rangeCells(BB[b * 4], BB[b * 4 + 1], BB[b * 4 + 2], BB[b * 4 + 3], f));
   const ELIG = csr(NB, (b, f) => { if (BREC.elig[b]) f(cellOf((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2)); });
@@ -445,7 +451,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       let kind;
       if (cover >= d.y1 - 2.5) kind = 'blind';
       else if (L < 2.2) kind = 'plain';
-      else kind = roadDist(mx + nx * 2, mz + nz * 2) < 16 ? 'street' : 'yard';
+      // regla 6 (F3b): pegado a un vecino 2+ plantas más bajo → medianera vista por encima de él (antes salían ventanas)
+      else {
+        // F3R: a menos de 16 m de calzada solo es medianera si el tramo se aleja de la calle (pared lateral, casi perpendicular al
+        // frente); lejos de la calle (patio), solo si el vecino deja 2+ plantas sobre la planta baja (≥ 7 m sobre la acera)
+        const rd = roadDist(mx + nx * 2, mz + nz * 2), med = cover > -1e8 && cover > gHi + 2 && d.y1 - cover >= 5.8 && L >= 3;
+        if (med && (rd < 16 ? Math.abs(roadDist(A[0] + nx * 2, A[1] + nz * 2) - roadDist(Bp[0] + nx * 2, Bp[1] + nz * 2)) > 0.5 * L : cover - gHi >= 7)) kind = 'medianera';
+        else kind = rd < 16 ? 'street' : 'yard';
+      }
       runs.push({ ax: A[0], az: A[1], tx, tz, nx, nz, L, kind, cover });
     }
     let portal = null, pl = 0; for (const r of runs) if (r.kind === 'street' && r.L > pl && r.cover < gHi) { pl = r.L; portal = r; }
@@ -473,7 +486,151 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const d1 = Math.abs(r.tx * a.tx + r.tz * a.tz), d2 = Math.abs(r.tx * c.tx + r.tz * c.tz), d3 = Math.abs(a.tx * c.tx + a.tz * c.tz);
     // F2R2: en los datos, los tramos vecinos del chaflán suelen salir cortos o partidos (24 de 1093 tramos en el Eixample de
     // dron_bajo): basta con que el tramo vaya a ~45° de los dos vecinos y que alguno sea de calle
-    return d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && (d3 < 0.3 || a.kind === 'street' || c.kind === 'street') && a.L > 2.5 && c.L > 2.5 && r.L >= 8;
+    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && (d3 < 0.3 || a.kind === 'street' || c.kind === 'street') && a.L > 2.5 && c.L > 2.5 && r.L >= 8) return true;
+    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 3 && c.L > 3 && a.kind === 'street' && c.kind === 'street') return true;   // F3R2: calles vecinas > 3 m (antes 6: la finca de esquina con poco frente a la otra calle se perdía)
+    // F3R: chaflán compartido por dos fincas (el caso normal del Eixample): un vecino es la calle a ~45° y el otro, la medianera
+    // con la finca de al lado (ciega o medianera vista; F3R2: no la lisa). F3R2: la medianera tiene que ser la de un chaflán de
+    // verdad: perpendicular a la calle vecina (|d3| < 0,3, lindero normal de la finca) o a la bisectriz del cruce (perpendicular
+    // al chaflán); en cualquier otro ángulo era un quiebro de fachada (falsos chaflanes en Sants, Les Corts o Sant Andreu)
+    const pared = o => o.kind === 'blind' || o.kind === 'medianera';
+    const comp = (s, w, ds, dw) => s.kind === 'street' && ds > 0.5 && ds < 0.87 && s.L > 3 && pared(w) && (d3 < 0.3 || dw < 0.3);
+    return comp(a, c, d1, d2) || comp(c, a, d2, d1);
+  }
+  // tonos y banderas de la variante (ámbito (b, 6, k): k = 1 el edificio, 2 + k las parcelas virtuales)
+  function tonosV(env, V, k) {
+    const p = env.p; env.rnd(6, k); const r = [R(), R(), R(), R(), R()];
+    Object.assign(env, { V, kw: KW[V.acab] !== undefined ? KW[V.acab] : KIT && KIT.ACAB[V.acab] !== undefined ? KIT.ACAB[V.acab] : K.STUCCO, uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
+        marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
+        galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
+        cwSp: V.cw ? [[92, 108, 122], [112, 120, 126], [84, 100, 108], [120, 130, 138]][(r[3] * 4) | 0] : null, cwMt: V.cw ? [[178, 182, 186], [150, 156, 160], [196, 198, 200]][(r[2] * 3) | 0] : null,
+        losaV: r[4] < 0.55 ? shade(mixc(p, [120, 114, 104], 0.5), 0.8) : r[4] < 0.8 ? [122, 118, 110] : [104, 112, 104] });   // G1F3: menos negro   // bajo la losa: piedra a la sombra, gris o verde oscuro
+  }
+  // F3b · un tramo de fachada (de calle o de patio) con su planta baja, sus pisos y su coronación. E = env del edificio o de la
+  // parcela virtual; i = ámbito de azar del tramo (las parcelas, i + 64·(j + 1))
+  function tramo(E, r, i, F, esq0, esq1, chf, portalRun) {
+    const run = { r, i, F, L: r.L, kind: r.kind, cover: r.cover, street: false }, Vt = E.V;
+    const L = r.L, street = r.kind === 'street';
+    const bwT = street ? 3.7 : 4.4, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
+    const N = portalRun && L >= 9 ? nb >> 1 : -1;
+    E.rnd(1, i); const rM = R();                      // ámbito del tramo
+    const M = street && E.tribunaOK && nb >= 3 && E.nF >= 3 && rM < 0.6 ? nb >> 1 : -9;
+    // cota de la acera al pie de la fachada: la misma que usa la malla de acera, para que puertas y escaparates casen con ella
+    const gnd = c => walkAt(r.ax + r.tx * c + r.nx * 0.3, r.az + r.tz * c + r.nz * 0.3);
+    const wallC = street ? E.p : shade(E.p, 0.95);
+    run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd; run.rM = rM;
+    curGnd = gnd; curF = F;                           // G1F1: acera del tramo para el desgaste de los paños (wallAux)
+    if (chf) E.V = chaflanDe(Vt, E.S);
+    run.chaflan = !!chf; run.esq0 = !!esq0; run.esq1 = !!esq1;
+    // regla 8: ¿bajo comercial? densidad real del sitio, calles principales y esquinas, chaflanes (interiors.js lo lee en run.com)
+    if (street && Vt && Vt.kit && E.S) { E.rnd(7, 2, i); run.com = R() < pComDe(E.S, E.V, run.esq0 || run.esq1, run.chaflan); }
+    I.groundFloor(E, run);
+    if (Vt) { pisosV(E, run); coronaV(E, run);
+      if (E.V.fachada && street) for (const n of E.V.fachada) { const fn = KIT.P[n]; if (fn) fn(E, run, { nb: Math.max(1, Math.round(L / E.V.bay)), bw: L / Math.max(1, Math.round(L / E.V.bay)) }); } }
+    else { D.floors(E, run); D.crown(E, run); }
+    E.V = Vt;
+    curGnd = null; curF = null;
+  }
+  // regla 10: variante de chaflán; en el Eixample y Sant Martí, con un grado más de recercado y más balcones
+  const CHF = new WeakMap();
+  function chaflanDe(V, S) {
+    const B = V.chaflanV || V; if (!S || !S.chfZ) return B;
+    let c = CHF.get(B); if (!c) { c = Object.assign({}, B, { recerc: Math.min(3, (B.recerc || 0) + 1), balP: Math.min(1, (B.balP !== undefined ? B.balP : 0.5) + 0.3) }); CHF.set(B, c); }
+    return c;
+  }
+  // F3b · datos del sitio por edificio: densidad comercial (locales/ha), avenida (fichero), zona de chaflanes y detalles del barrio
+  let DETM = null;
+  const DETK = ['ropa_tendida', 'macetas_y_plantas', 'aire_acondicionado', 'antena_parabolica', 'toldos'];
+  function detDe(at) {
+    const C = window.BCN_CONDAL, d = at && at.detalles; if (!C || !C.barrios || !d) return null;
+    if (!DETM) { DETM = {}; for (const k of DETK) { let s = 0, n = 0; for (const B of C.barrios) if (B.detalles && B.detalles[k] !== undefined) { s += B.detalles[k]; n++; } DETM[k] = n ? s / n : 0; } }
+    const f = k => DETM[k] > 0 ? Math.max(0, Math.min(2.5, (d[k] || 0) / DETM[k])) : 1;
+    return { ropa: f('ropa_tendida'), mac: f('macetas_y_plantas'), aire: f('aire_acondicionado'), parab: f('antena_parabolica'), toldo: f('toldos'),
+      pers: d.persianas_cerradas || 0, graf: d.grafitis || 0 };
+  }
+  function sitio(b, at) {
+    const PR = window.BCN_EDIF;
+    if (at === undefined) { const C = window.BCN_CONDAL; at = C && C.at((BB[b * 4] + BB[b * 4 + 2]) / 2, (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2); }
+    return { dn: at ? at.densidad || 0 : 0, av: !!(PR && PR.ok && (PR.frente(b) & 4)), chfZ: !!(at && (at.distrito === 'Eixample' || at.distrito === 'Sant Martí')),
+      dt: detDe(at), barrio: at ? (at.zona === 'bcn' ? at.barrio : 'perif') : null };
+  }
+  // regla 8: probabilidad de bajo comercial de un tramo de calle. ≥ 15 locales/ha casi todos; 5–15 mezcla, con prioridad para las
+  // avenidas y las esquinas; < 5 casi ninguno. El estilo pesa algo (V.com: casas con jardín, poco; bloques con bajos, mucho)
+  function pComDe(S, V, esq, chf) {
+    const dn = S.dn;
+    const c = Math.min(1, V && V.com !== undefined ? V.com : 0.6);
+    let p = dn >= 15 ? 0.95 + 0.03 * c :   // F3R2: «casi todos» (antes 0,97 × (0,85 + 0,15·com) ≈ 0,91)
+       ((dn >= 5 ? (0.3 + (dn - 5) * 0.06) * (S.av || esq ? 1.35 : 0.8) : (0.02 + dn * 0.02) * (esq ? 2 : 1)) * (0.55 + 0.45 * c));
+    if (chf && S.chfZ) p = Math.max(p, 0.93);
+    return Math.min(0.98, p);
+  }
+  // regla 9: ropa tendida y macetas de la variante × el factor del barrio (detalles_prob frente a la media de Barcelona)
+  const conDet = (V, V0, dt) => { if (dt) { V.ropa = Math.min(0.9, (V0.ropa || 0) * dt.ropa); V.mac = Math.min(0.9, (V0.mac || 0) * dt.mac); } return V; };
+  // F3b · parcela virtual k del edificio b: variante (del mismo estilo) y color del fichero, tonos propios; misma altura de planta
+  const VPC = new Map();
+  function varParc(b, k, vi) {
+    const key = b * 32 + k; if (VPC.has(key)) return VPC.get(key);
+    const Vb = varOf(b); let V = null;
+    if (Vb && Vb.kit && KIT.E[Vb.estilo]) {
+      const V0 = KIT.E[Vb.estilo].V[vi & 3]; seed(b, 6, 9, k); const j = [R(), R(), R()];
+      V = conDet(Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
+        remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: Vb.hp }), V0, sitio(b).dt);
+      if (Vb.coron === 'atico') V.coron = 'atico'; if (Vb.remonte) V.remonte = Vb.remonte;
+      if (V0.noble) V.nobleV = Object.assign({}, V, V0.noble, { noble: null, nobleV: null, chaflanV: null });
+      if (V0.chaflan) V.chaflanV = Object.assign({}, V, V0.chaflan, { chaflan: null, chaflanV: null });
+    }
+    if (VPC.size > 20000) VPC.clear();
+    VPC.set(key, V); return V;
+  }
+  function envParcela(env, b, k) {
+    const E = Object.create(env); if (!k) return E;
+    const pc = window.BCN_EDIF.parcela(b, k), V = varParc(b, k, pc.v); if (!V) return E;
+    const p = KIT.colorDe(b, pc.v, pc.c) || env.p;
+    E.p = p; E.u = mixc(p, [232, 222, 204], 0.55); E.stone = shade(mixc(p, [170, 160, 146], 0.3), 0.88); E.rv = shade(p, 0.58);
+    tonosV(E, V, 2 + k); return E;
+  }
+  // ---------------------------------------------------------------- regla 6 (F3b): medianera vista
+  // Pared de un edificio que asoma 2+ plantas por encima de su vecino pegado: ladrillo visto o enfoscado gris (o del tono de la
+  // fachada) y, encima, un anuncio antiguo pintado (rótulos inventados del atlas de interiors.js, celdas 17–24), un mural de
+  // planos de color, ventanas abiertas después o nada; grafitis abajo según detalles_prob.grafitis del barrio. Ámbito (b, 5, i).
+  const MED_LAD = [[150, 92, 70], [138, 84, 64], [164, 106, 80]], MED_EST = [[176, 170, 160], [196, 186, 168], [160, 156, 150], [204, 192, 170]];
+  const MURAL = [[214, 84, 60], [236, 186, 60], [60, 120, 170], [80, 150, 110], [230, 228, 216], [40, 44, 60], [190, 90, 150], [240, 140, 70]];
+  const ANUNCIO = [[122, 42, 28], [30, 60, 46], [34, 46, 86], [196, 160, 70], [60, 40, 30], [150, 40, 40], [40, 70, 100], [90, 30, 40]];   // fondos (= los del atlas)
+  function medianera(env, run) {
+    const { W0, W1, d, p, u } = env, { F, L, cover } = run, y1 = d.y1, yA = Math.max(env.y0, cover - 0.3), h = y1 - cover;
+    env.rnd(5, run.i); const r = [R(), R(), R(), R(), R(), R(), R(), R(), R(), R()];
+    const lad = r[0] < 0.45, col = lad ? MED_LAD[(r[1] * 3) | 0] : mixc(MED_EST[(r[1] * 4) | 0], p, 0.25 + r[9] * 0.3);
+    wr(W0, F, 0, L, yA, y1 + 0.35, col, lad ? KW.ladrillo : K.STUCCO);
+    box(W0, F, 0, L, y1 + 0.35, y1 + 0.45, -0.03, 0.08, u, K.STUCCO);
+    if (!W1) return;
+    const t = r[2];
+    if (t < 0.18 && h >= 5 && L >= 6) {               // anuncio antiguo pintado: fondo de color, filete y rótulo
+      const id = (r[3] * 8) | 0, w = Math.min(L - 1.2, 12), ht = w / 8, hb = ht * 2.4, uc = L * (0.3 + r[4] * 0.4), u0 = Math.max(0.6, Math.min(L - 0.6 - w, uc - w / 2)), yt = y1 - 0.8 - hb;
+      if (yt > cover + 0.5) {
+        rect(W1, F, u0 - 0.3, u0 + w + 0.3, yt, yt + hb, 0.012, shade(ANUNCIO[id], 0.92 + r[5] * 0.12), K.PLAIN);
+        rect(W1, F, u0 - 0.15, u0 + w + 0.15, yt + 0.12, yt + 0.18, 0.016, [214, 200, 168], K.PLAIN);
+        quad(W1, F, u0, yt + (hb - ht) / 2, 0.02, u0 + w, yt + (hb - ht) / 2, 0.02, u0 + w, yt + (hb + ht) / 2, 0.02, u0, yt + (hb + ht) / 2, 0.02, [255, 255, 255], K.SIGN, signAux(17 + id));
+      }
+    } else if (t < 0.3 && h >= 6 && L >= 5) {        // mural: planos de color superpuestos
+      const n = 4 + ((r[3] * 4) | 0), y0 = cover + 0.6, yb = y1 - 0.6;
+      for (let q = 0; q < n; q++) { seed(env.b, 5, run.i, 50 + q); const a = R(), bq = R(), c = R(), e = R(), f = R();
+        const u0 = 0.4 + a * (L - 0.8) * 0.7, u1 = Math.min(L - 0.4, u0 + 1.2 + bq * (L - 0.8) * 0.5), ya = y0 + c * (yb - y0) * 0.7, yb2 = Math.min(yb, ya + 1.2 + e * (yb - y0) * 0.6), dd = 0.012 + q * 0.004;
+        if (f < 0.35) quad(W1, F, u0, ya, dd, u1, ya + (yb2 - ya) * 0.3, dd, u1, yb2, dd, u0, yb2 - (yb2 - ya) * 0.4, dd, MURAL[(f * 23 | 0) % MURAL.length], K.PLAIN);
+        else rect(W1, F, u0, u1, ya, yb2, dd, MURAL[(f * 23 | 0) % MURAL.length], K.PLAIN); }
+    } else if (t < 0.52 && h >= 4 && L >= 4) {        // ventanas abiertas después: pocas, sueltas, con marco de aluminio
+      const n = 1 + ((r[3] * Math.min(4, L / 3)) | 0), nf = Math.max(1, Math.floor((h - 1) / 3));
+      for (let q = 0; q < n; q++) { seed(env.b, 5, run.i, 70 + q); const a = R(), c = R(), w = 0.8 + R() * 0.5, hh = 1.0 + R() * 0.3;
+        const uc = 0.8 + a * (L - 1.6), y = cover + 0.9 + ((c * nf) | 0) * 3.0; if (y + hh > y1 - 0.5) continue;
+        rect(W1, F, uc - w / 2, uc + w / 2, y, y + hh, 0.012, [38, 46, 54], K.GLASS);
+        box(W1, F, uc - w / 2 - 0.05, uc + w / 2 + 0.05, y - 0.05, y + hh + 0.05, 0, 0.05, [176, 178, 178], K.METAL, 7);
+        box(W1, F, uc - w / 2 - 0.08, uc + w / 2 + 0.08, y - 0.1, y - 0.04, 0, 0.1, [170, 166, 158], K.STUCCO); }
+    }
+    const pg = env.dt ? Math.min(0.6, env.dt.graf * 1.3) : 0.15;   // grafitis encima del tejado del vecino
+    if (r[6] < pg && L >= 3) {
+      const n = 2 + ((r[7] * 3) | 0), ub = r[8] * Math.max(0, L - 4);
+      for (let q = 0; q < n; q++) { seed(env.b, 5, run.i, 90 + q); const a = R(), c = R(), e = R(), f = R();
+        const u0 = Math.min(L - 0.5, ub + a * 3), w = 0.6 + c * 1.6, ya = cover + 0.15 + e * 0.5, hh = 0.5 + f * 0.9, dd = 0.03 + q * 0.004;
+        quad(W1, F, u0, ya, dd, Math.min(L - 0.1, u0 + w), ya + f * 0.2, dd, Math.min(L - 0.1, u0 + w * 0.9), ya + hh, dd, u0 + w * 0.1, ya + hh * (0.8 + e * 0.2), dd, MURAL[((a + f) * 37 | 0) % MURAL.length], K.PLAIN); }
+    }
   }
   function genB(lay, b, W0, W1, ox, oz) {
     const { d, gHi, H, runs } = lay;
@@ -492,7 +649,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     let Rm = C - F1, nF = Rm >= 2.5 ? Math.max(1, Math.round(Rm / (V ? V.hp : 3.15))) : 0;
     if (!nF) F1 = C;
     const m = nF ? Rm / nF : 0;
-    const shopsHere = shops && F1 - gHi > 3.6;
+    // F3R · regla 8: en las zonas de ≥ 15 locales/ha, las casas bajas (planta baja de 3,25 m) también llevan una tienda pequeña
+    const dnB = !shops && !cls6 && V && V.kit && H >= 4.6 ? sitio(b).dn : 0;   // F3R2: también las de una planta (antes H ≥ 6)
+    const shopsHere = (shops && F1 - gHi > 3.6) || (dnB >= 15 && F1 - gHi > 3.1);
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
       p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd, wa: wallAux };
@@ -503,19 +662,14 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const ES = window.BCN_CONDAL, cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2, at = ES && ES.at(cx, cz);
       const ce = ES && ES.estilos ? ES.estilos[KIT.indice(V.estilo)] : null;
       rnd(7, 1); const r0 = R(), r1 = R();
-      env.dg = Math.max(0.02, Math.min(1, (V.dg !== null ? V.dg : ce ? ce.dg : 0.35) + (at && at.detalles ? at.detalles.desgaste_extra || 0 : 0) + (r0 - 0.5) * 0.16));
-      const dn = at ? at.densidad : 0;                 // regla 8 (provisional hasta la Fase 4): ≥ 15 locales/ha casi todo; 5–15 mezcla; < 5 casi nada
-      env.pCom = (dn >= 15 ? 0.95 : dn >= 5 ? 0.3 + (dn - 5) * 0.06 : dn * 0.05) * V.com;
+      const PR = window.BCN_EDIF;                      // F3a: desgaste precalculado (estilo + barrio), salvo en el escaparate
+      env.dg = PR && PR.ok && !KIT.forced ? Math.max(0.02, PR.dg(b)) : Math.max(0.02, Math.min(1, (V.dg !== null ? V.dg : ce ? ce.dg : 0.35) + (at && at.detalles ? at.detalles.desgaste_extra || 0 : 0) + (r0 - 0.5) * 0.16));
       env.rCom = r1;
+      env.S = sitio(b, at);                            // F3b: densidad comercial, avenida, zona de chaflanes, negocios y detalles del sitio
+      env.dt = env.S.dt; env.negs = at && at.negocios;
+      env.pCom = pComDe(env.S, V, false, false);       // (lo de antes: el tramo decide con pComDe en genB → run.com)
     }
-    if (V) {                                          // ámbito (b, 6): tonos y banderas de la variante
-      rnd(6, 1); const r = [R(), R(), R(), R(), R()];
-      Object.assign(env, { V, kw: KW[V.acab] !== undefined ? KW[V.acab] : KIT && KIT.ACAB[V.acab] !== undefined ? KIT.ACAB[V.acab] : K.STUCCO, uV: mixc(p, [236, 228, 212], V.remate), shutV: V.carpCol[(r[0] * V.carpCol.length) | 0],
-        marcoV: V.marco[(r[1] * V.marco.length) | 0], tribV: r[2] < V.trib, forjV: shade(mixc(p, [176, 172, 164], 0.75), 0.9 + r[3] * 0.15),
-        galM: GALM[(r[1] * 7.7 % 1) * GALM.length | 0], galP: GALP[(r[2] * 5.3 % 1) * GALP.length | 0],
-        cwSp: V.cw ? [[92, 108, 122], [112, 120, 126], [84, 100, 108], [120, 130, 138]][(r[3] * 4) | 0] : null, cwMt: V.cw ? [[178, 182, 186], [150, 156, 160], [196, 198, 200]][(r[2] * 3) | 0] : null,
-        losaV: r[4] < 0.55 ? shade(mixc(p, [120, 114, 104], 0.5), 0.8) : r[4] < 0.8 ? [122, 118, 110] : [104, 112, 104] });   // G1F3: menos negro   // bajo la losa: piedra a la sombra, gris o verde oscuro
-    }
+    if (V) tonosV(env, V, 1);                         // ámbito (b, 6, 1): tonos y banderas de la variante
 
     curDg = env.dg ? 1 + Math.round(env.dg * 99) : 0;
     // kit: tramo de chaflán del edificio (env.chaflan: índice del tramo, -1 si no hay) y esquinas reales de cada tramo de calle
@@ -524,36 +678,37 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (V) for (let i = 0; i < runs.length; i++) { const r = runs[i];
       if (r.kind === 'street' && r.L >= 5 && r.L <= 24 && esChaflan(runs, i)) { env.chaflan = i; break; } }
     const nR = runs.length, giro = (r, o) => o && o !== r && o.kind === 'street' && Math.abs(r.tx * o.tx + r.tz * o.tz) < 0.87;
+    // F3b · regla 4: parcelas virtuales. El frente se parte en tramos del ancho de parcela (frente principal / parcelas del
+    // fichero); cada parcela, su variante y su color (BCN_EDIF.parcela), su portal y una bajante en la junta. La 0 es la del edificio.
+    const PRo = window.BCN_EDIF && window.BCN_EDIF.ok && V && V.kit && !KIT.forced ? window.BCN_EDIF : null;
+    const nP = PRo ? PRo.parcelas(b) : 1; let wP = 0, kP = 0;
+    if (nP > 1) { let Lm = 0; for (const r of runs) if (r.kind === 'street' && r.L > Lm) Lm = r.L; wP = Lm / nP; }
+    if (KIT) KIT.detF = env.dt ? { aire: env.dt.aire, parab: env.dt.parab } : null;   // regla 9: aparatos y antenas del barrio
+    env.parcV = nP > 1;                                // F3R: con parcelas del fichero, sin las pintadas de F2R (V.par)
+    const mkF = r => ({ x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz });
     env.esquinas = !!V && runs.some((r, i) => r.kind === 'street' && (giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR])));   // F2R: ¿tiene esquina real?
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
-      const F = { x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz };
+      const F = mkF(r);
       const run = { r, i, F, L: r.L, kind: r.kind, cover: r.cover, street: false };
       if (r.kind === 'blind') { D.blindRun(env, run); continue; }
       if (r.kind === 'plain') { D.plainRun(env, run); continue; }
-      const L = r.L, street = r.kind === 'street';
-      const bwT = street ? 3.7 : 4.4, nb = Math.max(1, Math.round(L / bwT)), bw = L / nb;
-      const N = r === lay.portal && L >= 9 ? nb >> 1 : -1;
-      rnd(1, i); const rM = R();                      // ámbito del tramo
-      const M = street && tribunaOK && nb >= 3 && nF >= 3 && rM < 0.6 ? nb >> 1 : -9;
-      // cota de la acera al pie de la fachada: la misma que usa la malla de acera, para que puertas y escaparates casen con ella
-      const gnd = c => walkAt(r.ax + r.tx * c + r.nx * 0.3, r.az + r.tz * c + r.nz * 0.3);
-      const wallC = street ? p : shade(p, 0.95);
-      run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd; run.rM = rM;
-      curGnd = gnd; curF = F;                         // G1F1: acera del tramo para el desgaste de los paños (wallAux)
-      // chaflán (kit): tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → campos de V.chaflan
-      // F2R: run.chaflan no depende de que la variante declare campos de chaflán (torreta modernista, mirador racionalista)
-      const chf = !!V && !!V.kit && street && L >= 5 && L <= 24 && (i === env.chaflan || esChaflan(runs, i));
-      if (chf && V.chaflanV) env.V = V.chaflanV;
-      run.chaflan = chf;
-      run.esq0 = street && giro(r, runs[(i + nR - 1) % nR]); run.esq1 = street && giro(r, runs[(i + 1) % nR]);
-      I.groundFloor(env, run);
-      if (V) { pisosV(env, run); coronaV(env, run);
-        if (env.V.fachada && street) for (const n of env.V.fachada) { const fn = KIT.P[n]; if (fn) fn(env, run, { nb: Math.max(1, Math.round(L / env.V.bay)), bw: L / Math.max(1, Math.round(L / env.V.bay)) }); } }
-      else { D.floors(env, run); D.crown(env, run); }
-      env.V = V;
-      curGnd = null; curF = null;
+      if (r.kind === 'medianera') { medianera(env, run); continue; }
+      const street = r.kind === 'street';
+      // chaflán: tramo de calle de 5–24 m a ~45° de sus vecinos → campos de V.chaflan (regla 10: solo en el Eixample y Sant Martí,
+      // también en los estilos sin chaflán propio, con más ornamento y casi siempre comercio; F2R: run.chaflan aunque la variante
+      // no declare campos de chaflán)
+      const chf = !!V && !!V.kit && street && r.L >= 5 && r.L <= 24 && !!(env.S && env.S.chfZ) && (i === env.chaflan || esChaflan(runs, i));
+      const e0 = street && giro(r, runs[(i + nR - 1) % nR]), e1 = street && giro(r, runs[(i + 1) % nR]);
+      const nPr = street && wP > 0 && !chf ? Math.round(r.L / wP) : 1;
+      if (nPr < 2) { tramo(env, r, i, F, e0, e1, chf, r === lay.portal); continue; }
+      for (let j = 0; j < nPr; j++) {
+        const u0 = r.L * j / nPr, rj = Object.assign({}, r, { ax: r.ax + r.tx * u0, az: r.az + r.tz * u0, L: r.L / nPr }), Fj = mkF(rj);
+        const E = envParcela(env, b, kP++); E.lay = Object.assign({}, lay, { portal: rj });
+        tramo(E, rj, i + 64 * (j + 1), Fj, j === 0 && e0, j === nPr - 1 && e1, false, true);
+        if (j > 0) box(W1 || W0, Fj, -0.05, 0.05, Math.max(env.y0, r.cover) + 0.1, env.y1 - 0.2, 0, 0.09, [96, 98, 100], K.METAL, 4);   // bajante en la junta
+      }
     }
     curDg = 0;
     return true;
@@ -610,14 +765,17 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (ES) V0 = ES.V[Fz.v >= 0 ? Fz.v : KIT.EST && KIT.EST[b] === KIT.indice(Fz.id) ? KIT.VAR[b] : (j[5] * 4) | 0];
       else V0 = KIT.variante(b);
       if (V0) {
-        if (!(ES && Fz.v >= 0) && (dep | 0) < 400) {  // regla 3: no repetir la variante de un vecino pegado del mismo estilo (índice menor)
+        const PR = window.BCN_EDIF, pre = !!(PR && PR.ok && !ES);   // F3a: variante y ático precalculados (tools/cc/generador.js)
+        if (!pre && !(ES && Fz.v >= 0) && (dep | 0) < 400) {  // regla 3: no repetir la variante de un vecino pegado del mismo estilo (índice menor)
           const L4 = KIT.E[V0.estilo].V, usados = vecinos(b).map(n => { const v = varOf(n, (dep | 0) + 1); return v && v.id; });
           for (let t = 0; t < 4; t++) { const v = L4[(V0.vi + t) % 4]; if (usados.indexOf(v.id) < 0) { V0 = v; break; } }
           if (!ES && KIT.VAR) KIT.VAR[b] = V0.vi;
         }
         V = Object.assign({}, V0, { bay: V0.bay * (0.93 + j[0] * 0.14), vuelo: V0.vuelo * (0.9 + j[1] * 0.2),
           remate: Math.min(0.85, Math.max(0, V0.remate + (j[2] - 0.5) * 0.16)), hp: V0.hp * (0.97 + j[3] * 0.06) });
-        if (V0.aticoP && j[4] < V0.aticoP) V.coron = 'atico';   // regla 5: ático retranqueado
+        if (!ES) conDet(V, V0, sitio(b).dt);                                         // regla 9 (F3b): ropa y macetas del barrio
+        if (pre ? PR.atico(b) : V0.aticoP && j[4] < V0.aticoP) V.coron = 'atico';   // regla 5: ático retranqueado
+        if (pre) { const rm = PR.remonte(b); if (rm[0]) V.remonte = rm; }            // regla 5: remonte (plantas, acabado)
         if (V0.noble) V.nobleV = Object.assign({}, V, V0.noble, { noble: null, nobleV: null, chaflanV: null });
         if (V0.chaflan) { V.chaflanV = Object.assign({}, V, V0.chaflan, { chaflan: null, chaflanV: null });
           if (V.nobleV) V.chaflanV.nobleV = Object.assign({}, V.nobleV, V0.chaflan); }
@@ -787,7 +945,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const gls = vp && run.gnd ? Array.from({ length: nb }, (_, W) => run.gnd((W + 0.5) * bw)) : null;   // cota de la acera por vano
     // F2R: parcelas virtuales pintadas (V.par vanos por parcela: barroco, casa obrera, gótico estrecho) hasta que la Fase 3 parta
     // las fachadas de verdad: color de la paleta por parcela y bajante en cada medianera
-    const par = street && V.par && KIT && nb > V.par ? V.par : 0, runP = [];
+    const par = street && V.par && KIT && nb > V.par && !env.parcV ? V.par : 0, runP = [];
     if (par) for (let g = 0; g * par < nb; g++) {
       const c = KIT.colPar(env, run, g); runP.push(c === wallC ? run : Object.assign({}, run, { wallC: c }));
       if (g && W1 && F1 < env.C) box(W1, F, g * par * bw - 0.05, g * par * bw + 0.05, Math.max(F1, cover), env.C, 0, 0.12, [118, 120, 118], K.METAL, 4);
@@ -851,7 +1009,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const tt = c - Vw / 2, ct = c + Vw / 2, st = k + Q, yt = st + Bh, car = V.carp;
     // cierre: persiana interior (se), ventanas abiertas con habitación (~25 %), hojas, cadeneta
     const open = rr[7] < 0.38 && RQ && car !== 'alicantina';   // G1F3: más ventanas abiertas (38 %), también tras las mallorquinas
-    const se = open || car === 'ninguna' ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.45 ? 0.12 + rr[1] * 0.5 : 0;
+    let se = open || car === 'ninguna' ? 0 : car === 'enrollable' ? 0.1 + rr[1] * 0.75 : car === 'alicantina' ? (rr[0] < 0.3 ? 0.2 + rr[1] * 0.4 : 0) : rr[0] < 0.45 ? 0.12 + rr[1] * 0.5 : 0;
+    // regla 9 (F3b): persianas bajadas del todo según detalles_prob.persianas_cerradas del barrio (en las que tienen persiana)
+    if (!open && env.dt && car !== 'ninguna' && car !== 'alicantina' && (rr[8] * 9.71 + rr[10] * 5.3) % 1 < env.dt.pers * 0.8) se = 0.97;
     const room = open ? { x0: tt - 0.55, W: Vw + 1.1, yF: k + 0.02, H: Math.max(2.6, yt - k + 0.15), D: 4, mode: 1, seed: 1 + ((rr[8] * 254) | 0) } : null;
     if (open && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(run.r.ax + run.r.tx * c).toFixed(1), +(run.r.az + run.r.tz * c).toFixed(1), run.r.nx, run.r.nz, +((st + yt) / 2).toFixed(1), D]);
     windowHole(W0, F, a, a + bw, tt, ct, k, P, st, yt, 0.3, wallC, kw, se, room && ((B, F, u0, u1, y0, y1, d) => RQ(B, F, u0, u1, y0, y1, d, room)));
@@ -1003,6 +1163,30 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: (e, r, q) => { const kv = kitVano; kitVano = 0; vanoDef(e, r, q); kitVano = kv; },   // vanoDef ya decide sus ventanas abiertas
     corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
     walkAt: (x, z) => walkAt(x, z), coverAt: (x, z, b) => coverAt(x, z, b) };
+  // F3b · estadística de la regla 8 (depuración y verificación): por banda de densidad comercial (< 5, 5–15, ≥ 15 locales/ha) y por
+  // barrio, tramos de calle de viviendas del kit con planta baja posible y cuántos salen comerciales (la misma decisión que genB,
+  // sin las parcelas virtuales). Recorre los edificios elegibles con centro en la caja (x0, z0)–(x1, z1). Sin coste fuera de esto.
+  function pbStat(x0, z0, x1, z1) {
+    const B = { a: [0, 0, 0, 0], b: [0, 0, 0, 0], c: [0, 0, 0, 0], p: [0, 0, 0, 0] }, por = {}, med = [0, 0]; let nChf = 0;
+    for (let b = 0; b < NB; b++) {
+      if (!BREC.elig[b]) continue; const cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2;
+      if (cx < x0 || cx > x1 || cz < z0 || cz > z1) continue;
+      const lay = layoutB(b); if (!lay) continue;
+      for (const r of lay.runs) if (r.kind === 'medianera') { med[0]++; med[1] += r.L; }
+      const V = varOf(b); if (!V || !V.kit) continue;
+      const S = sitio(b), d = lay.d, tipo = BREC.tipo ? BREC.tipo[b] : 0, shops = !(d.cls === 6 || tipo > 0) && lay.H >= 10;
+      let F1 = lay.gHi + (V.pbH ? V.pbH : shops ? 4.3 : 3.25); const C = d.y1 - 0.85; if (C - F1 < 2.5) F1 = C;
+      const sh = (shops && F1 - lay.gHi > 3.6) || (!shops && d.cls !== 6 && !tipo && lay.H >= 6 && S.dn >= 15 && F1 - lay.gHi > 3.1), runs = lay.runs, nR = runs.length, k = S.barrio === 'perif' ? 'p' : S.dn >= 15 ? 'c' : S.dn >= 5 ? 'b' : 'a';
+      const giro = (r, o) => o && o !== r && o.kind === 'street' && Math.abs(r.tx * o.tx + r.tz * o.tz) < 0.87;
+      const P = por[S.barrio || '?'] || (por[S.barrio || '?'] = [0, 0, 0, 0, +S.dn.toFixed(1)]);
+      for (let i = 0; i < nR; i++) { const r = runs[i]; if (r.kind !== 'street' || r.cover >= lay.gHi + 3) continue;
+        const chf = r.L >= 5 && r.L <= 24 && S.chfZ && esChaflan(runs, i), esq = giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR]);
+        seed(b, 7, 2, i); const rc = R(), com = sh && rc < pComDe(S, chf ? chaflanDe(V, S) : V, esq, chf);
+        const dn = S.dn, old = sh && rc < (dn >= 15 ? 0.95 : dn >= 5 ? 0.3 + (dn - 5) * 0.06 : dn * 0.05) * V.com;   // la regla provisional de F2
+        if (chf) nChf++; B[k][0]++; B[k][1] += r.L; if (com) { B[k][2]++; B[k][3] += r.L; } if (old) B[k][4] = (B[k][4] || 0) + 1; if (sh) B[k][5] = (B[k][5] || 0) + 1; P[0]++; P[1] += r.L; if (com) { P[2]++; P[3] += r.L; } }
+    }
+    return { bandas: B, barrios: por, medianeras: med, chaflanes: nChf, skip: nSkip, skipAntes: nSkip0 };
+  }
   // depuración: punto de calle frente a un edificio de la familia (k-ésimo), mirando su fachada
   function spot(fam, k, up) {
     let n = 0;
@@ -1106,7 +1290,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   const S = { on: true, R0: 170, R1: 215, RB: 245, RD: 310, H0: 70, H1: 95, HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
   let job = null, queue = [], tris = [0, 0];
   const dirty = new Set();
-  function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = f; dirty.add(ch); }
+  function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = (inf[v * 4 + 3] & ~1) | f; dirty.add(ch); }   // bits altos de .w: código lejano del estilo (F3a)
   function mkMeshFrom(W, mat, name) {
     if (!W.nv) return null;
     const m = new BABYLON.Mesh(name, scene);
@@ -1220,7 +1404,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
           +Math.abs(r.tx * a.tx + r.tz * a.tz).toFixed(2), +Math.abs(r.tx * cc.tx + r.tz * cc.tz).toFixed(2), +Math.abs(a.tx * cc.tx + a.tz * cc.tz).toFixed(2)]); } } });
     return o;
   }
-  return { update, setRange, nElig, spot, spotFull, spotAt, calle, famOf, varOf, force, chafStat, busy: () => !!job || queue.length > 0,
+  return { update, setRange, nElig, nSkip, pbStat, spot, spotFull, spotAt, calle, famOf, varOf, force, layoutB, esChaflan, chafStat, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();

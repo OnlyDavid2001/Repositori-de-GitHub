@@ -62,6 +62,19 @@ const TYPES = [
     back: [BACK.ESTANTES, [184, 188, 190]], far: [LY.LINEALES, [190, 192, 194]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
 ];
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
+const RESTI = SHOPS.indexOf('RESTAURANT');   // F3R: restaurantes con nombre propio (celdas 25–31 del atlas)
+// F3b · regla 6: anuncios pintados de marcas inventadas (texto, fondo, letra)
+const REST = [['CAN TORRENTS', '#3a1512', '#e9cf8a'], ['CASA MARGARIDA', '#1f3a2c', '#efe4c4', 'italic bold'], ["EL RACÓ D'EN JOSEP", '#e8dcc0', '#5a1e16'],
+  ['LA TAULA DEL BARRI', '#22324a', '#f0d79a'], ['CAN FERRAN', '#7a2418', '#f6ead0'], ["EL FOGÓ DE L'ÀVIA", '#2e2a26', '#e6b25a', 'italic bold'], ['CASA NURI', '#4a5a2a', '#f4ecd6']];
+const ANUNCIOS = [['ANÍS LA GAVINA', '#7a2a1c', '#efe2c0'], ['XOCOLATES SOLER', '#1e3c2e', '#f2dfa8', 'italic bold'], ['GASEOSES MONTCADA', '#222e56', '#f4ecd8'],
+  ['VI RANCI CAN PUJOL', '#c4a046', '#3a1a10'], ['CAFÈS EL MOLINET', '#3c281e', '#e8c890', 'italic bold'], ['SABÓ LA FLORIDA', '#962828', '#f6f0e0'],
+  ['MOTOS RIERA · TALLER', '#284664', '#f0e6c8'], ['LLEIXIU LA PALOMA', '#5a1e28', '#f4e2c0']];
+// F3b · regla 8: negocio (índice de BCN_CONDAL.negocios, orden de condal.json) → tipo de tienda de hoy más parecido (hasta la
+// Fase 4, que pondrá su escaparate con s.neg). -1: supermercado (ancho → SUPERMERCAT, si no QUEVIURES). 58 = local vacío.
+const NEG2T = [3, 7, 7, 10, 3, 11, -1, 0, 4, 12, 12, 12, 15, 9, 9, 9, 1, 13, 13, 1, 8, 8, 1, 1, 1, 9, 9, 6, 2, 2, 6, 5, 14, 5, 13, 5, 5, 14, 14, 14, 14, 14, 13, 13, 14, 13, 14, 5, 5, 14, 9, 9, 2, 2, 2, 2, 2, 2, 12];
+const VACIO = 58;
+function pickNeg(NG, r) { let s = 0; for (const g of NG) s += g.q || 0; if (!(s > 0)) return -1; let x = r * s;
+  for (const g of NG) { x -= g.q || 0; if (x < 0) return g.id; } return NG[NG.length - 1].id; }
 const WSUM = TYPES.reduce((s, t) => s + t.w, 0);
 const pickType = r => { let x = r * WSUM; for (let i = 0; i < TYPES.length; i++) { x -= TYPES[i].w; if (x < 0) return i; } return 0; };
 // colores del género: 8 por paleta (repetir un color le da más peso). La paleta 0 (VARIADO) es un arcoíris que hace el shader
@@ -763,6 +776,13 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     TYPES.forEach((t, r) => { const x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
       g.fillStyle = t.sign[0]; g.fillRect(x, y, 512, 64); g.strokeStyle = t.sign[1]; g.globalAlpha = 0.55; g.lineWidth = 2; g.strokeRect(x + 6, y + 6, 500, 52); g.globalAlpha = 1;
       g.fillStyle = t.sign[1]; g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t.n, x + 256, y + 34, 470); });
+    // F3b · regla 6: anuncios antiguos pintados en las medianeras (celdas 17–24; marcas inventadas; fondos = ANUNCIO de facades.js)
+    ANUNCIOS.forEach((a, k) => { const r = 17 + k, x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
+      g.fillStyle = a[1]; g.fillRect(x, y, 512, 64); g.fillStyle = a[2]; g.font = (a[3] || 'bold') + ' 44px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(a[0], x + 256, y + 34, 490); });
+    // F3R: restaurantes con nombre propio (celdas 25–31; nombres inventados en catalán, 7 combinaciones de color)
+    REST.forEach((a, k) => { const r = 25 + k, x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
+      g.fillStyle = a[1]; g.fillRect(x, y, 512, 64); g.strokeStyle = a[2]; g.globalAlpha = 0.55; g.lineWidth = 2; g.strokeRect(x + 6, y + 6, 500, 52); g.globalAlpha = 1;
+      g.fillStyle = a[2]; g.font = (a[3] || 'bold') + ' 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(a[0], x + 256, y + 34, 470); });
     sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
   }
   const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), PARW, PARH, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
@@ -783,9 +803,8 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     // factor del estilo; ?pb=0/1 lo fuerza), planta baja del estilo (V.pb) y retranqueo (V.pbRec: soportales, pilotis, patio)
     const V = env.V, KIT = window.BCN_KIT, kit = V && V.kit && KIT ? KIT : null;
     let com = street && shopsHere;
-    // F2R: los estilos comerciales (V.com ≥ 0,5) conservan todo el comercio de antes; solo los poco comerciales (villas, casas
-    // baratas, polígonos…) lo sortean con la densidad del sitio
-    if (kit && com) { env.rnd(7, 2, run.i); const rc = R(); com = kit.pbForce !== null ? kit.pbForce === 1 : V.com >= 0.5 || rc < env.pCom; }
+    // F2R: los estilos comerciales (V.com ≥ 0,5) conservan todo el comercio; F3b: si el tramo ya lo decidió (run.com, regla 8), manda
+    if (kit && com) { env.rnd(7, 2, run.i); const rc = R(); com = kit.pbForce !== null ? kit.pbForce === 1 : run.com !== undefined ? run.com : V.com >= 0.5 || rc < env.pCom; }
     const dep = kit && street ? V.pbRec || 0 : 0;
     let F = run.F, rg = run;
     if (dep > 0) {
@@ -842,17 +861,25 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     for (const s of list) {
       env.rnd(10, run.i, s.w0);
       const r = [R(), R(), R(), R(), R(), R()], n = s.w1 - s.w0;
-      s.type = API.force >= 0 ? API.force : n >= 3 && n * bw >= 9.5 && r[0] < 0.3 ? SUPER : pickType(r[1]);
-      for (let j = 1; j < 4 && API.force < 0 && prev.indexOf(s.type) >= 0; j++) s.type = pickType((r[1] * 7.13 + j * 0.377) % 1);
+      s.neg = -1;
+      if (API.force < 0 && env.negs && env.negs.length) {   // F3b · regla 8: negocio por la cuota del sitio (s.neg) → tipo de hoy
+        const tipoDe = g => { if (g < 0) return pickType(r[1]); const t = NEG2T[g]; return t === undefined ? 12 : t >= 0 ? t : n >= 3 && n * bw >= 9.5 ? SUPER : 12; };
+        s.neg = pickNeg(env.negs, r[1]); s.type = tipoDe(s.neg);
+        for (let j = 1; j < 4 && s.neg !== VACIO && prev.indexOf(s.type) >= 0; j++) { s.neg = pickNeg(env.negs, (r[1] * 7.13 + j * 0.377) % 1); s.type = tipoDe(s.neg); }
+      } else {
+        s.type = API.force >= 0 ? API.force : n >= 3 && n * bw >= 9.5 && r[0] < 0.3 ? SUPER : pickType(r[1]);
+        for (let j = 1; j < 4 && API.force < 0 && prev.indexOf(s.type) >= 0; j++) s.type = pickType((r[1] * 7.13 + j * 0.377) % 1);
+      }
       prev.unshift(s.type); prev.length = Math.min(prev.length, 2);
       s.T = TYPES[s.type];
       s.door = s.w0 + Math.min(n - 1, (r[2] * n) | 0);
-      s.sign = r[3] < 0.93; s.awn = r[4] < 0.35; s.seed = 1 + ((r[5] * 254) | 0);
+      s.sign = r[3] < 0.93; s.awn = r[4] < Math.min(0.8, 0.35 * (env.dt ? env.dt.toldo : 1)); s.seed = 1 + ((r[5] * 254) | 0);   // F3b: toldos del barrio (regla 9)
       s.uA = opening(run, s.w0)[0]; s.uB = opening(run, s.w1 - 1)[1];
       // G1F2 · persiana metálica: ~9 % de los locales cerrados (todas bajadas, la de la puerta también) y ~22 % con alguna
       // bajada a medias (el que abre tarde o el que guarda el escaparate). r2 de un sorteo propio para no mover los de arriba
       const r2 = [R(), R(), R(), R()];
       s.shut = r2[0] < 0.09 ? 2 : r2[0] < 0.31 ? 1 : 0; s.shutR = r2[1]; s.shutC = SHUTC[(r2[2] * SHUTC.length) | 0];
+      if (s.neg === VACIO) { s.shut = 2; s.sign = r2[3] < 0.3; s.awn = false; }   // F3b: local vacío (se alquila): cerrado, casi siempre sin rótulo
       // G1F2 · toldo solo si cabe: se mide el paso libre delante (hasta la fachada de enfrente) en los dos extremos y el centro;
       // en callejones (< 4,2 m) no hay toldo y si no, sale como mucho a un cuarto del paso (antes cruzaba las calles del Gòtic)
       if (s.awn && run.r && ctx.city) { const r_ = run.r; let w = 9;
@@ -947,7 +974,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const sv0 = s.top + 0.12, hmax = Math.min(0.56, F1 - 0.2 - sv0);
     if (s.sign && hmax > 0.22) {
       const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
-      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
+      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type === RESTI ? 25 + (((env.b * 7 + run.i * 3 + Math.round(s.uA * 3)) % 7) + 7) % 7 : s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
       box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, shopCols(env).met, K.METAL);   // faja del rótulo, a juego
     }
     if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
@@ -960,7 +987,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // sillas, sombrillas del color del toldo (si el local no tiene toldo), jardineras en los extremos y una pizarra junto a la
   // puerta. ORNAMENTO con detalle; en BASE, tableros y sombrillas de pocos lados marcados como sustitutos (no aparecen de golpe).
   // Azar: ámbito env.rnd(11, tramo, primer vano del comercio), 40 números de golpe.
-  const TERR = new Set(['BAR', 'CAFÈ', 'RESTAURANT', 'GELATERIA'].map(n => SHOPS.indexOf(n)));
+const TERR = new Set(['BAR', 'CAFÈ', 'RESTAURANT', 'GELATERIA'].map(n => SHOPS.indexOf(n)));
   const PINT = pbrAux(0.4, 0, 0, 0), ALU = pbrAux(0.35, 1, 0, 0), RATTAN = pbrAux(0.7, 0, 1, 0), TELA = pbrAux(0.85, 0, 0, 0), PIZ = pbrAux(0.8, 0, 1, 0), SUB = subAux();
   function terrace(env, run, s) {
     const { W0, W1 } = env, { F, r } = run;

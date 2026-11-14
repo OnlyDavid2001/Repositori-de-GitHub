@@ -2032,3 +2032,103 @@ Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas
   `tools/cc/vistas_estilos.json`: una vista por estilo en una calle que le pega (cada bloque añade las suyas).
 - **Ids de material del kit**: 160–167 núcleo · 168–175 bloque 1 · 176–183 bloque 2 · 184–191 bloque 3 · 192–199 bloque 4; los de
   muro (160–199) reciben el desgaste de los paños.
+
+## 17. Condal City: generador por edificio precalculado (`tools/cc/generador.js` → `data/condal_edif.json`, `edif.js`)
+Fase 3a. Las decisiones por edificio de las reglas 0, 1, 2, 3, 4, 5 y 7 (`reglas_generador`) se precalculan con una
+herramienta y el juego solo las lee, para que estilo, variante y color sean los mismos de lejos y de cerca y no cuesten al cargar.
+- **Herramienta**: `node tools/cc/generador.js` (Chromium sin cabeza, como `tools/mz_partidas.js`): carga el juego con
+  `?edif=0`, recorre `BREC` (las fincas de las manzanas partidas incluidas) con `ctx.city`, `fx.layoutB` y `fx.esChaflan`
+  (expuestos por facades.js), el viario (`ctx.SEG`), el kit y `BCN_CONDAL`, y escribe `data/condal_edif.json` (base64 de zlib,
+  8 planos de bytes por edificio; bits en la cabecera de edif.js). Imprime la estadística por barrio (reparto asignado frente a
+  `fachadas_pct`, rachas, contiguos con misma variante y color). Determinista. **Relanzarlo** si cambian los edificios,
+  `mz_partidas.json`, `condal.json` o el kit (estilos, variantes, `pl`, `pal`, `aticoP`): el juego compara una firma (FNV de
+  una muestra de los contenedores y de los datos de condal.json que usa) y, si no casa, avisa en consola y usa el selector
+  provisional de `kit.js`.
+- **Reglas**: semilla = hash del centro de la huella; estilo por la mezcla (0,7 sección + 0,3 barrio; perfiles de periferia)
+  × compatibilidad de plantas (×0,2 por planta fuera del rango; en avenidas, hasta 2 plantas de más) × un multiplicador por
+  barrio y estilo (0,2–5, ajuste iterativo) que devuelve el reparto hacia la mezcla; frentes de calle (tramo de calle más largo
+  y tramo de calzada a ≤ 16 m; calzadas encadenadas en calles por continuación recta) y aceras ordenadas: repite el estilo del
+  anterior con p = 0,5 (0,65 Eixample; 0,8 tras polígono o casas baratas) si casa con la altura; variante por plantas
+  preferidas, evitando la de los vecinos del mismo estilo y nunca variante + color de un vecino (acera o pegado); parcelas
+  virtuales si el frente supera ×1,5 (×1,25 en fachadas estrechas) el ancho máximo del estilo; ático con `aticoP` de la
+  variante (4+ plantas); remonte (1–2 plantas, 4 acabados) con `remontes_plantas_anadidas` en estilos anteriores a 1975;
+  color de la paleta de la variante con tono ±5 % y luminosidad ±8 %; desgaste del estilo + `desgaste_extra` del barrio.
+- **Juego**: `edif.js` (`window.BCN_EDIF`, antes de los edificios) descarga el fichero en paralelo; app.js llama a
+  `BCN_EDIF.listo(dvs, nB)` justo antes de leer los volúmenes; `BCN_KIT.elige` (lo llama `BCN_PAL.pick` al hornear el color)
+  toma estilo, variante y color del fichero (el escaparate `?estilo=` sigue mandando); `varOf` de facades.js usa la variante
+  y el ático asignados sin reajustarlos (y `V.remonte` = [plantas, acabado]); `genB` toma el desgaste. `BCN_EDIF.parcela(b, k)`
+  da variante y color de la parcela virtual k (para la Fase 3b).
+- **Volumen lejano**: `BCN_EDIF.lejosCode(b)` empaqueta `variante.lejos` (muro, altura de planta, ancho de vano, fracción de
+  hueco) en 14 bits que app.js guarda ×2 en `uv.w` del volumen (el bit 0 sigue siendo la bandera de «fachada de detalle
+  construida» de facades.js, que ahora conserva los bits altos; el shader redondea `uv.w` antes de leer los bits: la
+  interpolación del varying deja 32766 en 32765,999 y `mod(w, 2)` daría casi 2, con muros tramados sin fachada delante). FS_BLD pone la planta baja (4,3 m o 3,25 m) y los pisos a
+  las cotas de la fachada de detalle, el ancho de vano y el tamaño del hueco del estilo, y marca el muro (cantos de forjado
+  oscuros en hormigón y claros en ladrillo, planta baja más oscura en piedra y más clara en travertino, vidrio casi entero).
+- **F8**: estilo y variante asignados (con el nombre de la variante y si vienen del fichero, del escaparate o del selector
+  provisional) y una línea «Generador»: color, parcelas, ático, remonte, chaflán, desgaste y si repite el estilo de la acera.
+- **Capas en tiempo de ejecución (F3b, facades.js `genB` → `tramo`)**:
+  - *Parcelas virtuales* (regla 4): con `BCN_EDIF.parcelas(b)` > 1, ancho de parcela = tramo de calle más largo / parcelas; cada
+    tramo de calle de ≥ 1,5 parcelas (salvo el chaflán) se parte en `round(L / ancho)` tramos, cada uno con su env
+    (`envParcela`: `Object.create(env)` con variante y color de `BCN_EDIF.parcela(b, k)`, `KIT.colorDe`, tonos de `tonosV` con
+    ámbito (b, 6, 2 + k)), su portal (`E.lay.portal` = la parcela) y una bajante en la junta. Ámbito de azar del tramo: i + 64·(j + 1).
+    La parcela 0 conserva la variante y el color del edificio (los del volumen lejano); las demás solo existen en el detalle.
+  - *Medianeras* (regla 6): `layoutB` marca `kind = 'medianera'` el tramo pegado (2 de 3 sondas) a un vecino de más de 2 m que queda
+    ≥ 5,8 m por debajo de la cubierta. `medianera(env, run)`: ladrillo visto (45 %) o enfoscado gris / del tono de la fachada y, en
+    W1, anuncio antiguo pintado (18 %: celdas 17–24 del atlas de rótulos de interiors.js, marcas inventadas; el sombreador de K.SIGN
+    no los enciende de noche y los destiñe), mural de planos de color (12 %), ventanas abiertas después (22 %) o nada; grafitis encima
+    del tejado del vecino con `detalles_prob.grafitis` × 1,3. Ámbito (b, 5, i).
+  - *Planta baja* (regla 8): `pComDe(S, V, esquina, chaflán)`: ≥ 15 locales/ha 0,97 × (0,85 + 0,15·V.com); 5–15 de 0,3 a 0,9 × 1,35 en avenidas
+    (bit 2 del byte 6 del fichero) y esquinas, × 0,8 en el resto; < 5, 0,02 + 0,02·dens (× 2 en esquinas); por debajo de 15, × (0,55 + 0,45·V.com);
+    chaflán del Eixample o Sant Martí ≥ 0,93. La decisión va en `run.com` (ámbito (b, 7, 2, i)); interiors.js `groundFloor` la usa
+    (`?pb=0|1` sigue mandando). Negocio: `shopPlan` saca `s.neg` (índice de `BCN_CONDAL.negocios`) por la cuota `q` de
+    `at().negocios` y lo traduce al tipo de tienda de hoy (`NEG2T`; supermercado ancho → SUPERMERCAT; 58 «local vacío» → persiana
+    bajada y casi sin rótulo). La Fase 4 enchufará su escaparate con `s.neg`. `BCN.fx.pbStat(x0, z0, x1, z1)`: estadística por banda
+    de densidad y por barrio.
+  - *Detalles* (regla 9): `detDe(at)` = `detalles_prob` del sitio / media de los 73 barrios (0–2,5). `V.ropa` y `V.mac` de la variante
+    × su factor (varOf y parcelas); persianas bajadas del todo con `persianas_cerradas` × 0,8 (vanoDef); toldos de los comercios
+    0,35 × factor; aparatos de aire y parabólicas del kit: `KIT.detF` (genB) quita la fracción que sobra cuando el factor es < 1.
+  - *Chaflanes* (regla 10): en el Eixample y Sant Martí también los estilos sin `chaflan` propio usan el tramo de chaflán, con un
+    grado más de recercado y +0,3 de balcones (`chaflanDe`); casi siempre comercio. La altura no se toca (+1 planta: no).
+  - *Hitos* (regla 11): `SKIP` = { nombre: [R, Rv] }: en R solo se quitan equipamientos y naves (`BREC.tipo` > 0) y en Rv también las
+    viviendas; parques y recintos con Rv = R. `BCN.fx.nSkip` cuenta los quitados.
+
+### 17.x F3R (repaso de la Fase 3)
+- **Regenerar `condal_edif.json` cuando cambie `layoutB`/`esChaflan` de facades.js** (frentes de calle, medianeras y chaflanes
+  deciden rachas, parcelas y estilos): la firma solo cubre los edificios, así que el juego no lo nota. `node tools/cc/generador.js`
+  tarda ~70 s con el juego ya en caché.
+- Regla 1: λ por barrio y estilo entre 0,02 y 50 y dos vueltas más con el reparto realmente asignado (rachas incluidas). La
+  estadística por barrio es ahora el **% de edificios con otro estilo** que el de fachadas_pct (½ Σ|asignado − mezcla|).
+- Regla 2: la repetición del estilo del anterior admite hasta ~3 plantas fuera de rango (compat ≥ 0,008); el generador imprime
+  la tasa medida (normal, Eixample, tras polígono/casas baratas).
+- Regla 5: ático del 30 % del estilo cuando la variante no trae `aticoP`; remontes con la probabilidad del barrio dividida por la
+  fracción de edificios que lo admiten (tope ×4), y +1 planta también en casas de 2 plantas (pueblo, casas baratas,
+  autoconstrucción, casa obrera, quart de casa). Ojo: hoy el remonte solo se dibuja en las piezas que leen `V.remonte`.
+- Regla 6: un tramo pegado a un vecino bajo es medianera si, a menos de 16 m de calzada, se aleja de la calle (la distancia a la
+  calzada cambia más de L/2 de un extremo al otro); lejos de la calle (patio), solo si el vecino deja ≥ 7 m sobre la acera.
+- Regla 8: en zonas de ≥ 15 locales/ha, las casas de planta baja de 3,25 m también llevan tienda (`shopsHere`).
+- Regla 10: `esChaflan` acepta el chaflán compartido por dos fincas (un vecino es la calle a ~45° y el otro una pared: ciego,
+  medianera o liso). La variante de chaflán y `run.chaflan` solo en la zona de chaflanes (`S.chfZ`).
+- Volumen lejano (app.js): si el edificio tiene parcelas virtuales, los lados del anillo exterior de al menos 2 anchos de parcela
+  (ancho = lado más largo / parcelas) se parten con el color de cada parcela (`BCN_EDIF.parcela` + `kit.colorDe`), en el orden
+  de facades.js (desde la esquina más cerrada) y con vértices duplicados en las juntas. Los búferes del trozo crecen si hace falta.
+- Rótulos: celdas 25–31 del atlas = 7 restaurantes con nombre inventado (se encienden como los demás; 17–24 son los anuncios).
+
+### 17.y F3R2 (repaso de la Fase 3, vuelta 2)
+- **Regla 1 con límite duro**: un estilo solo entra en el sorteo (y en las rachas) si casa con las plantas del edificio con
+  **como mucho una planta fuera de rango** (compat ≥ 0,2; en avenidas, con la tolerancia +1/+2). Si ningún estilo de la mezcla
+  cabe, se usan los pesos blandos y cuenta como `altura.forzados`. λ (0,02–50) solo reparte entre estilos que caben, así que los
+  estilos altos van a los edificios altos del barrio. La estadística `altura` da el % de edificios a 0, 1, 2 y 3+ plantas de su
+  rango (sin y con la tolerancia de avenidas) junto a `otroEstiloMedio`; `otroEstiloSup` pondera por superficie de fachada.
+  Consecuencia: en los barrios donde OSM trae muchos volúmenes bajos (Horta, Torre Baró, Pedralbes, Sarrià, Carmel, Montbau) el
+  reparto ya no llega a fachadas_pct: lo limitan las alturas reales, que no se cambian.
+- Regla 2: rachas solo con estilos que caben (compat ≥ 0,2); la probabilidad se multiplica por (pares / pares con repetición
+  posible) de la vuelta anterior (tope ×1,9, máx. 0,97) para que la tasa medida sobre todos los pares sea la nominal.
+- Gòtic: el gótico pesa ×3 en los edificios con frente de calle del Barri Gòtic (λ lo compensa dentro de manzana).
+- Desarrollismo en el Eixample y Gràcia: variantes ponderadas por (1 − saturación media de su paleta)^4 y color de la mitad
+  menos saturada de la paleta.
+- Regla 10: `esChaflan` compartido exige que la pared vecina sea ciega o medianera (no lisa) y perpendicular a la calle vecina o
+  al chaflán; suma la regla de F2R2 (vecinos a ~45°, alguno de calle, tramo ≥ 8 m). El generador imprime
+  `chaflanesEixample.esquinasDistintas` (puntos medios agrupados a 14 m) y un diagnóstico de los casos perdidos.
+- Regla 8: ≥ 15 locales/ha → p = 0,95 + 0,03·com; tienda pequeña también en casas de una planta (H ≥ 4,6 m).
+- app.js: el reparto de parcelas del volumen lejano comprueba `EDOK`: sin `condal_edif.json` (o con `?edif=0`, que es como
+  lo carga el generador) el juego vuelve al selector provisional sin romperse.
