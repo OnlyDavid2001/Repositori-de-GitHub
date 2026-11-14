@@ -16,9 +16,9 @@
  {"name":"vivienda_social_actual","nota":"el Besòs i el Maresme","x":15912,"z":17184,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(15912,17184,0,'vivienda_social_actual',400,12,34); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"fabrica","nota":"Poblenou (22@)","x":14604,"z":15863,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(14604,15863,0,'fabrica',400,5,20); if(s){s.hour=10.5; s.pitch-=0.1; B.applyView(s);}"},
  {"name":"poligono","nota":"la Guineueta","x":12179,"z":20105,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(12179,20105,0,'poligono',400,15,45); if(s){s.hour=10.5; B.applyView(s);}"},
- {"name":"neoclasico","nota":"Ciutat Vella, Ferran / Plaça Reial","x":12642,"z":13472,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(12642,13472,0,'neoclasico',400); if(s){s.hour=10.5; B.applyView(s);}"},
+ {"name":"neoclasico","nota":"Ciutat Vella, Ferran / Plaça Reial","x":12642,"z":13472,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(12642,13472,1,'neoclasico',400,8,24); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"barroco","nota":"el Born, entorno de Montcada","x":13289,"z":13822,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(13289,13822,0,'barroco',400); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"quart_de_casa","nota":"la Barceloneta","x":13828,"z":13261,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(13828,13261,0,'quart_de_casa',400); if(s){s.hour=10.5; B.applyView(s);}"},
  {"name":"gotico","nota":"Barri Gòtic / Montcada","x":13139,"z":13779,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(13139,13779,0,'gotico',400); if(s){s.hour=10.5; B.applyView(s);}"},
- {"name":"casas_baratas","nota":"Can Peguera / el Bon Pastor","x":11757,"z":19610,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11757,19610,0,'casas_baratas',400,3,9); if(s){s.hour=10.5; B.applyView(s);}"}
+ {"name":"casas_baratas","nota":"Can Peguera / el Bon Pastor","x":11757,"z":19610,"walk":true,"yaw":0,"pitch":0,"hour":10.5,"eval":"const B=BCN,s=B.fx.spotAt(11757,19610,0,'casas_baratas',400,3,6.5); if(s){s.hour=10.5; B.applyView(s);}"}
 ]
