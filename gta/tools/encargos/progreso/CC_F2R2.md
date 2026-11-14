@@ -27,10 +27,24 @@ m5.jpg (segunda tanda).
    borde del muro. Zócalos con tonos menos pardos.
 5. Parcelas pintadas (media): colPar alterna parcelas claras y oscuras (×0,8 / ×1,06) y la medianera sube 1,25 m por encima de la
    cornisa con su albardilla (corta la cornisa en cada parcela): barroco, casa obrera v0/v2, gótico v1.
-6. Sombra del Gòtic (media): lighting.js P.shOrnNear = 0,5: en la cascada cercana, la capa ORNAMENTO (cables, tendederos,
-   bajantes, rejas) solo proyecta si su celda está a menos de 0,5 × semilado (~22 m a pie; antes 63 m, como la base).
+6. Sombra del ornamento (media, solo en parte): lighting.js P.shOrnNear = 0,5: en la cascada cercana, la capa ORNAMENTO
+   (cables, tendederos, bajantes, rejas) solo proyecta si su celda está a menos de 0,5 × semilado (~22 m a pie; antes 63 m).
+   Baja la sombra del Eixample un 30 %, pero no la del Gòtic: allí el detalle está en la celda de la cámara (ver medidas).
 
 ## No resuelto
 - Polígono v3 (galerías que sobresalen): no lo he podido diagnosticar sin más capturas; la losa ya va de a a b del tramo.
 - Pueblo, olímpico, quart: sin cambios en esta vuelta (las vistas ya estaban corregidas en F2R).
+- Racionalista v2 en captura: con la detección nueva hay 37 tramos de chaflán alrededor de dron_bajo (antes 24), pero
+  spotAt(…, chf) sigue sin encontrar un chaflán encuadrable a 700 m (kv.b null en g_rac2_chf): falta ver qué filtro lo
+  descarta (holgura delante, cota del suelo o encuadre). El código del mirador y del torreón no ha cambiado.
+- Sombra del Gòtic: igual que en F2R (+22 % sobre la Fase 0). Hay que sacar el detalle fino (cables, tendederos, bajantes) a
+  una capa sin sombra o no proyectarlo en la celda de la cámara; lo dejo para la Fase 6.
 - Barroco: las parcelas siguen siendo de tonos parecidos (la paleta del estilo es de ocres); se leen por bajantes y pilares.
+
+## Rendimiento (fps_eval.js, calidad media, 960×540, máquina compartida; scratchpad cc/f2r2/log_fps.txt)
+| vista | Fase 0 | F2R | F2R2 | sombra [0] Fase 0 → F2R → F2R2 |
+|---|---|---|---|---|
+| Eixample a pie | 5,2 M / 866 | 5 245 010 / 866 | 5 240 258 / 866 | 1 188 779 → 1 175 669 → 817 858 |
+| Gòtic a pie | 6,40 M / 649 | 6 706 094 / 647 | 6 708 380 / 647 | 1 335 650 → 1 625 928 → 1 624 350 |
+La aérea no se ha medido (no cambia nada visible desde 380 m; F2R: 1 315 294 / 304). Llamadas iguales; sin trabajo por fotograma.
+Comprobado: node --check de todos los .js; cero errores de consola en las 4 tandas de capturas y en la medida.
