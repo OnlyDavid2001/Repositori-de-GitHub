@@ -353,12 +353,15 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     return ins;
   }
   // altura del edificio vecino que ocupa (x,z), o −∞ si no hay ninguno
-  function coverAt(x, z, self) {
+  // suelo: solo los volúmenes que arrancan del suelo (Bugs · volúmenes: una parte elevada vecina, un voladizo o un pasaje a 3 m,
+  // no tapa la planta baja de la fachada: antes se la comía entera y quedaban persianas y dinteles colgados en el aire)
+  function coverAt(x, z, self, suelo) {
     const c = cellOf(x, z); let top = -1e9;
     for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) {
       const b = ALL.list[k]; if (b === self) continue;
       if (x < BB[b * 4] || x > BB[b * 4 + 2] || z < BB[b * 4 + 1] || z > BB[b * 4 + 3]) continue;
-      const d = bget(b); if (d.y1 > top && inside(d, x, z)) top = d.y1;
+      const d = bget(b); if (suelo && d.y0 - d.yb >= 1.5) continue;
+      if (d.y1 > top && inside(d, x, z)) top = d.y1;
     }
     return top;
   }
@@ -446,7 +449,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (inside(d, mx + nx * 0.3, mz + nz * 0.3)) { nx = -nx; nz = -nz; }
       // ¿pegado a otro edificio? (medianera) — mira en tres puntos justo por fuera
       let nIn = 0, cov = 1e9;
-      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
+      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b, true); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
       const cover = nIn >= 2 ? cov : -1e9;
       let kind;
       if (cover >= d.y1 - 2.5) kind = 'blind';
