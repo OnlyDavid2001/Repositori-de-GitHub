@@ -9,7 +9,7 @@
      E, P, BASE, ACAB     estilos registrados, piezas, valores por defecto del esquema, acabados propios
      T                    caja de herramientas de facades.js (wr, rail, ropa, planter, galeriaV, tribunaV, vano, vidAux, KW…);
                           la rellena facades.js al iniciarse: las piezas la usan en tiempo de construcción, nunca al cargar
-     init(n), elige(b, cls, seed, x, z, Hm)   estilo y variante por edificio y color de la paleta del estilo, al cargar (palette.js):
+     init(n), elige(b, cls, seed, x, z, Hm, fam) estilo y variante por edificio y color de la paleta del estilo, al cargar (palette.js):
                           los precalculados de data/condal_edif.json (edif.js, Fase 3a) o, si no casan, el selector provisional;
                           EST[b] (índice del catálogo, 255 = ninguno) y VAR[b] (0–3) → BREC.estilo / varEst
      variante(b)          variante del kit del edificio b (objeto congelado) o null (estilo aún sin kit: la familia de antes)
@@ -35,8 +35,10 @@
                pilotis, patio delantero) y la pieza pbFr (si hay) dibuja el frente (pilares, arcos, verja)
      com       factor de comercio del estilo (0–1) sobre la densidad comercial real del sitio (provisional hasta la Fase 4)
      vano      pieza de vano de piso (calle) · corona: pieza de coronación (calle) · fachada: [piezas] por tramo de calle
+     tribChf   F2R: tribuna de piedra en el eje del chaflán (plantas 1–3)
+     par       F2R: parcelas virtuales pintadas de par vanos (color de la paleta por parcela y bajante en la medianera)
      sinPeto   true: rooftops.js no pone el peto de la azotea (la coronación del estilo ya pone un tejado a la calle)
-     lejos     { muro: 'estuco'|'ladrillo'|'piedra'|'hormigon'|'vidrio'|'travertino', hp, bay, vidrio (fracción de hueco) }
+     lejos     { muro: 'estuco'|'ladrillo'|'piedra'|'hormigon'|'vidrio'|'travertino'|'madera', hp, bay, vidrio (fracción de hueco) }
 
    RANURAS (todas reciben (env, run, q); si devuelven false, el generador hace lo de siempre):
      pb      q = { W, a, c, bw, gl (acera), yB, rr[6], portal (bool), F (marco: el del tramo o el retranqueado), esquina }
@@ -110,7 +112,27 @@ function mapa() {
 const compat = (n, pl) => !pl ? 1 : n < pl[0] ? Math.pow(0.2, pl[0] - n) : n > pl[1] ? Math.pow(0.2, n - pl[1]) : 1;
 API.plantas = Hm => Math.max(1, Math.round((Hm - 5.15) / 3.05) + 1);
 API.init = function (n) { API.EST = new Uint8Array(n).fill(255); API.VAR = new Uint8Array(n); mapa(); };
-API.elige = function (b, cls, seed, x, z, Hm) {
+// F2R: núcleo de identidad por familia de barrio (hasta que la Fase 3 precalcule los estilos con la chuleta por barrio): en el
+// Eixample, Ciutat Vella, el Raval, la Barceloneta y Gràcia, los estilos propios del barrio suman al menos esa fracción del
+// peso (ya ponderado por la altura), para que las calles icónicas no pierdan su carácter con la mezcla de la sección
+const NUCLEO = {
+  eixample: [['eixample_temprano', 'eixample_ornamentado', 'modernista', 'noucentista', 'neoclasico'], 0.9],
+  ciutat_vella: [['gotico', 'barroco', 'neoclasico', 'casa_obrera_xix', 'quart_de_casa', 'eixample_temprano'], 0.9],
+  raval: [['casa_obrera_xix', 'barroco', 'neoclasico', 'eixample_temprano'], 0.85],
+  barceloneta: [['quart_de_casa', 'casa_obrera_xix'], 0.8],
+  gracia: [['casa_obrera_xix', 'modernista', 'eixample_temprano', 'noucentista', 'pueblo'], 0.6],
+};
+let NUI = null;
+function nucleo(w, m, nP, fam) {
+  const N = fam && NUCLEO[fam]; if (!N) return;
+  if (!NUI) { NUI = {}; for (const f in NUCLEO) NUI[f] = NUCLEO[f][0].map(id => CI[id]).filter(i => i !== undefined); }
+  const ids = NUI[fam]; let si = 0;
+  for (const i of ids) { if (!(w[i] > 0)) w[i] = Math.max(m[i], 0.02) * compat(nP, IX[i].pl) * 0.1; si += w[i]; }
+  let rest = 0; for (let i = 0; i < w.length; i++) if (ids.indexOf(i) < 0) rest += w[i];
+  if (!(si > 0) || si / (si + rest) >= N[1]) return;
+  const f = N[1] * rest / ((1 - N[1]) * si); for (const i of ids) w[i] *= f;
+}
+API.elige = function (b, cls, seed, x, z, Hm, fam) {
   if (!API.EST || (cls !== 0 && cls !== 6)) return null;
   if (!IX && !mapa()) return null;
   const nP = API.plantas(Hm), F = API.forced;
@@ -128,7 +150,9 @@ API.elige = function (b, cls, seed, x, z, Hm) {
   else {
     const r = window.BCN_CONDAL.at(x, z, tmp); if (!r || !r.mezcla) return null;
     const m = r.mezcla; let s = 0; const w = tmp._w || (tmp._w = new Float32Array(m.length));
-    for (let i = 0; i < m.length; i++) { w[i] = m[i] * compat(nP, IX[i].pl); s += w[i]; }
+    for (let i = 0; i < m.length; i++) w[i] = m[i] * compat(nP, IX[i].pl);
+    nucleo(w, m, nP, fam);
+    for (let i = 0; i < m.length; i++) s += w[i];
     if (!(s > 0)) return null;
     let q = hb(b, seed, 11) * s; si = m.length - 1;
     for (let i = 0; i < m.length; i++) { q -= w[i]; if (q < 0) { si = i; break; } }
@@ -158,6 +182,19 @@ API.colorDe = function (b, vi, ci) {
   const q = v => Math.max(0, Math.min(252, Math.round(v)));
   return [q(c[0] * kl * (1 + kt)), q(c[1] * kl), q(c[2] * kl * (1 - kt))];
 };
+// F2R: color de la parcela virtual g (V.par vanos por parcela) de un tramo: paleta del estilo, paso primo con su tamaño para
+// que dos parcelas vecinas no repitan; la parcela 0 conserva el color horneado del volumen
+const PALC = {};
+API.colPar = function (env, run, g) {
+  if (!g) return run.wallC;
+  const V = env.V, ES = E[V.estilo]; if (!ES || !IX) return run.wallC;
+  const key = V.id, pal = PALC[key] || (PALC[key] = (V.paleta || ES.paleta || IX[CI[V.estilo]].pal).map(hx)), n = pal.length;
+  if (n < 2) return run.wallC;
+  let st = 1 + ((hb(env.b, 0, 37) * (n - 1)) | 0); while (gcd(st, n) !== 1) st = st % (n - 1) + 1;
+  const c = pal[(((hb(env.b, run.i, 31) * n) | 0) + g * st) % n], k = 0.94 + 0.1 * hb(env.b, g, 41 + run.i);
+  return [c[0] * k, c[1] * k, c[2] * k];
+};
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
 API.lejos = function (b) { const V = API.variante(b); return V ? V.lejos : null; };
 API.indice = id => (CI || (mapa() && CI) || {})[id];
 // escaparate en marcha: solo cambia la geometría de detalle (el color del volumen es el horneado al cargar)

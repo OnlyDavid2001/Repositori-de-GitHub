@@ -666,7 +666,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const nP = PRo ? PRo.parcelas(b) : 1; let wP = 0, kP = 0;
     if (nP > 1) { let Lm = 0; for (const r of runs) if (r.kind === 'street' && r.L > Lm) Lm = r.L; wP = Lm / nP; }
     if (KIT) KIT.detF = env.dt ? { aire: env.dt.aire, parab: env.dt.parab } : null;   // regla 9: aparatos y antenas del barrio
+    env.parcV = nP > 1;                                // F3R: con parcelas del fichero, sin las pintadas de F2R (V.par)
     const mkF = r => ({ x: r.ax - ox + r.nx * 0.04, z: r.az - oz + r.nz * 0.04, tx: r.tx, tz: r.tz, nx: r.nx, nz: r.nz });
+    env.esquinas = !!V && runs.some((r, i) => r.kind === 'street' && (giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR])));   // F2R: ¿tiene esquina real?
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
@@ -676,9 +678,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (r.kind === 'plain') { D.plainRun(env, run); continue; }
       if (r.kind === 'medianera') { medianera(env, run); continue; }
       const street = r.kind === 'street';
-      // chaflán: tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → campos de V.chaflan (regla 10: en el
-      // Eixample y Sant Martí, también en los estilos sin chaflán propio, con más ornamento y casi siempre comercio)
-      const chf = V && street && r.L >= 5 && r.L <= 24 && (V.chaflanV || (env.S && env.S.chfZ)) && esChaflan(runs, i);
+      // chaflán: tramo de calle de 5–24 m a ~45° de sus vecinos → campos de V.chaflan (regla 10: solo en el Eixample y Sant Martí,
+      // también en los estilos sin chaflán propio, con más ornamento y casi siempre comercio; F2R: run.chaflan aunque la variante
+      // no declare campos de chaflán)
+      const chf = !!V && !!V.kit && street && r.L >= 5 && r.L <= 24 && !!(env.S && env.S.chfZ) && (i === env.chaflan || esChaflan(runs, i));
       const e0 = street && giro(r, runs[(i + nR - 1) % nR]), e1 = street && giro(r, runs[(i + 1) % nR]);
       const nPr = street && wP > 0 && !chf ? Math.round(r.L / wP) : 1;
       if (nPr < 2) { tramo(env, r, i, F, e0, e1, chf, r === lay.portal); continue; }
@@ -707,7 +710,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         // G1F1: toda ventana deja ver su habitación (interior mapping, K.HOMEWIN de interiors.js) tras el reflejo del cielo; las que
         // no son «abiertas», con visillo más a menudo (bit veil). Suelo a la altura del forjado (o ~1 m bajo el alféizar si es alto)
         const yF = Math.max(k + 0.02, st - 1.0), hs = Math.abs(Math.sin(F.x * 12.9898 + F.z * 78.233 + tt * 3.7 + st * 1.31) * 43758.5453) % 1;
-        RQV()(W0, F, tt, ct, st, qt, -dep, { x0: tt - 0.5, W: ct - tt + 1.0, yF, H: Math.max(2.5, Math.max(yt, P - 0.25) - yF), D: 3.6 + hs * 1.2, mode: 1, veil: 1, seed: 1 + ((hs * 254) | 0) });
+        // F2R: en las piezas «vano» del kit, el 38 % de las ventanas de calle quedan abiertas (sin visillo), como en vanoDef
+        const ab = kitVano && ((hs * 7.31) % 1) < 0.38;
+        if (ab && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(F.x + F.tx * (tt + ct) / 2).toFixed(1), +(F.z + F.tz * (tt + ct) / 2).toFixed(1), F.nx, F.nz, +((st + yt) / 2).toFixed(1), kitVano]);
+        RQV()(W0, F, tt, ct, st, qt, -dep, { x0: tt - 0.5, W: ct - tt + 1.0, yF, H: Math.max(2.5, Math.max(yt, P - 0.25) - yF), D: 3.6 + hs * 1.2, mode: 1, veil: ab ? 0 : 1, seed: 1 + ((hs * 254) | 0) });
       } else rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
     }
@@ -800,7 +806,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // (u0,y0)(u1,y0)(u1,y1)(u0,y1): x = distancia bajo el borde de arriba del paño (/8 m: el borde es casi siempre un vuelo, una
   // losa, un alféizar o una imposta, y bajo él escurre el agua) · y = 255 (bandera «paño con desgaste») · z = altura sobre la
   // acera del tramo (+4 m, /16 m: el zócalo sucio) · w = 0 (el 255 lo reserva el sustituto). Fuera de un tramo, sin zócalo
-  let curGnd = null, curF = null, curDg = 0;   // curDg: desgaste del edificio en curso (1–100; 0 = el de antes)
+  let curGnd = null, curF = null, curDg = 0, kitVano = 0;   // kitVano: planta D del vano de pieza del kit en curso (0 = ninguno)   // curDg: desgaste del edificio en curso (1–100; 0 = el de antes)
   // yTop (opcional): el borde de referencia, si no es el de arriba del paño (los cuatro paños de un hueco usan el mismo, el
   // forjado de encima, para que en sus solapes de 12 mm el desgaste sea idéntico y no parpadee)
   function wallAux(F, u0, u1, y0, y1, yTop) {
@@ -919,6 +925,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const vp = V.vano && KIT ? KIT.P[V.vano] : null;
     if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, env.uV, K.STUCCO);
     const gls = vp && run.gnd ? Array.from({ length: nb }, (_, W) => run.gnd((W + 0.5) * bw)) : null;   // cota de la acera por vano
+    // F2R: parcelas virtuales pintadas (V.par vanos por parcela: barroco, casa obrera, gótico estrecho) hasta que la Fase 3 parta
+    // las fachadas de verdad: color de la paleta por parcela y bajante en cada medianera
+    const par = street && V.par && KIT && nb > V.par && !env.parcV ? V.par : 0, runP = [];
+    if (par) for (let g = 0; g * par < nb; g++) {
+      const c = KIT.colPar(env, run, g); runP.push(c === wallC ? run : Object.assign({}, run, { wallC: c }));
+      if (g && W1 && F1 < env.C) box(W1, F, g * par * bw - 0.05, g * par * bw + 0.05, Math.max(F1, cover), env.C, 0, 0.12, [118, 120, 118], K.METAL, 4); }
     for (let D = 1; D <= nF; D++) {
       const k = lv[D - 1], P = lv[D], m = P - k, top = D === nF, Vd = D === 1 && V.nobleV ? V.nobleV : V, uV = env.uV;
       if (P <= cover + 0.2) continue;
@@ -947,8 +959,13 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
         const q = { V: Vd, D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr, nF, gl: gls ? gls[W] : y0,
           esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 };
-        if (vp && vp(env, run, q) !== false) continue;
-        vanoDef(env, run, q);
+        const rP = par ? runP[(W / par) | 0] : run;
+        // F2R: tribuna de piedra en el eje del chaflán (V.tribChf: Eixample temprano, noucentista, neoclásico) en las plantas 1–3
+        if (run.chaflan && V.tribChf && KIT.P.tribuna_piedra && nb >= 3 && W === nb >> 1 && D <= Math.min(3, nF - 1)) {
+          env.runWall = rP.wallC; KIT.P.tribuna_piedra(env, F, a, bw, k, P, { base: D === 1, remate: D === Math.min(3, nF - 1) }); continue; }
+        kitVano = D; const hecho = vp && vp(env, rP, q) !== false; kitVano = 0;
+        if (hecho) continue;
+        vanoDef(env, rP, q);
       }
     }
   }
@@ -1121,7 +1138,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
   }
   // caja de herramientas para las piezas del kit (kit.js): lo que no está en BCN_GEO
-  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: vanoDef, corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
+  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: (e, r, q) => { const kv = kitVano; kitVano = 0; vanoDef(e, r, q); kitVano = kv; },   // vanoDef ya decide sus ventanas abiertas
+    corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
     walkAt: (x, z) => walkAt(x, z), coverAt: (x, z, b) => coverAt(x, z, b) };
   // F3b · estadística de la regla 8 (depuración y verificación): por banda de densidad comercial (< 5, 5–15, ≥ 15 locales/ha) y por
   // barrio, tramos de calle de viviendas del kit con planta baja posible y cuántos salen comerciales (la misma decisión que genB,

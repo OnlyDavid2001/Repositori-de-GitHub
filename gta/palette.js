@@ -131,7 +131,7 @@ window.BCN_PAL = {
     let r = e[0] * kb * (1 + kt), g = e[1] * kb, bl = e[2] * kb * (1 - kt);
     // Condal City (F2a): estilo y variante del kit (kit.js, selector provisional) y color de la paleta del estilo, horneado aquí
     // para que sea el mismo de lejos y de cerca; los estilos aún sin kit siguen con la paleta de su familia
-    const KC = window.BCN_KIT && window.BCN_KIT.elige(b, cls, seed, x, z, Hm);
+    const KC = window.BCN_KIT && window.BCN_KIT.elige(b, cls, seed, x, z, Hm, FAMS[fam]);
     if (KC) { r = KC[0]; g = KC[1]; bl = KC[2]; }
     // cubierta: tipo por familia (las casas bajas, cls 6, con más teja; las torres altas, sin teja)
     const w = RWF[fam].slice();

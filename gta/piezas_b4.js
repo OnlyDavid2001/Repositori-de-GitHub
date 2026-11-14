@@ -9,6 +9,8 @@
    fachada lleva su color de la paleta del estilo (el vano 0 conserva el del edificio, que es el del volumen lejano). */
 (function () {
 'use strict';
+// F2R: la esquina real del edificio (q.esquina, núcleo del kit); si el edificio no tiene esquina, el último vano del tramo del portal
+const enEsquina = (env, run, q, nb) => q.esquina ? true : !env.esquinas && run.r === env.lay.portal && q.W === nb - 1 && nb >= 2;
 const KIT = window.BCN_KIT, GEO = window.BCN_GEO;
 const { K, regKind, quad, rect, jamb, hpl, box, lattice, shade, pbrAux } = GEO;
 
@@ -197,7 +199,7 @@ function hornacina(env, run, q) {
 pieza('vano_barroco', function (env, run, q) {
   const vi = q.V.vi;
   if (q.low && vi === 2) { golfes(env, run, q); return; }
-  if (vi === 3 && q.D === 1 && run.r === env.lay.portal && q.W === q.nb - 1 && q.nb >= 2) { hornacina(env, run, q); return; }
+  if (vi === 3 && q.D === 1 && enEsquina(env, run, q, q.nb)) { hornacina(env, run, q); return; }
   return false;
 });
 // coronación sencilla: cornisa de dos molduras y peto; en el terrado, a veces, el tendedero
@@ -222,7 +224,7 @@ const nRem = (env, nF) => env.V.vi === 1 ? (nF >= 4 ? 2 : 1) : 0;
 const bajante = (B, F, u, y0, y1) => { if (B) box(B, F, u - 0.05, u + 0.05, y0, y1, 0, 0.11, [124, 126, 124], K.METAL, 4); };
 pieza('pb_quart', function (env, run, q) {
   const { W0, W1 } = env, F = q.F, top = env.F1, rr = q.rr, vi = env.V.vi, a = q.a, b = a + q.bw, col = colQ(env, run, q.W);
-  if (vi === 3 && run.r === env.lay.portal && q.W === run.nb - 1 && run.nb >= 2) { P.bar_esquina(env, F, q, col); return; }
+  if (vi === 3 && enEsquina(env, run, q, run.nb)) { P.bar_esquina(env, F, q, col); return; }
   const izq = h01(env.b, 53 + q.W) < 0.5, dw = Math.min(2.0, q.bw * 0.45), d0 = izq ? a : b - dw, s0 = izq ? a + dw : a, s1 = izq ? b : b - dw;
   P.puerta(env, F, { a: d0, bw: dw, c: d0 + dw / 2, w: 0.95, gl: q.gl, h: Math.min(2.3, top - q.gl - 0.5), yB: q.yB, top, tipo: rr[0] < 0.7 ? 'madera' : 'vidrio', col, kw: env.kw, dep: 0.2,
     madera: [[60, 92, 70], [52, 84, 120], [110, 70, 44], [150, 60, 48]][(rr[1] * 4) | 0], met: ALU, rr });
@@ -392,7 +394,7 @@ const colCB = (env, run, W) => colPar(env, run, W >> 1, env.V.vi === 0 || env.V.
 const PUERTA_CB = [[60, 92, 70], [52, 84, 120], [110, 70, 44], [150, 60, 48], [70, 70, 72]];
 pieza('pb_casas_baratas', function (env, run, q) {
   const { W0, W1 } = env, F = q.F, top = env.F1, rr = q.rr, vi = env.V.vi, nb = run.nb, a = q.a, b = a + q.bw, col = colCB(env, run, q.W), kw = env.kw;
-  if (vi === 3 && run.r === env.lay.portal && q.W === nb - 1 && nb >= 2) { P.bar_esquina(env, F, q, col); return; }
+  if (vi === 3 && enEsquina(env, run, q, nb)) { P.bar_esquina(env, F, q, col); return; }
   const h = q.W >> 1, so = SOCOL[(h01(env.b, 81 + h + run.i * 16) * SOCOL.length) | 0], zh = q.gl + 0.75;
   const esPuerta = q.portal || (q.W % 2) === (h01(env.b, 83) < 0.5 ? 0 : 1);
   if (esPuerta) {
@@ -450,6 +452,7 @@ pieza('vano_casas_baratas', function (env, run, q) {
     return;
   }
   const col = colCB(env, run, q.W);
+  if (q.D === 1 && env.C - env.F1 > 1.2) { wr(env.W0, run.F, q.a, q.a + q.bw, q.k, q.P, col, env.kw); return; }   // F2R: lo tapa el faldón de teja
   KIT.T.vano(env, col === run.wallC ? run : Object.assign({}, run, { wallC: col }), q);
 });
 pieza('corona_casas_baratas', function (env, run, q) {
@@ -470,6 +473,13 @@ pieza('corona_casas_baratas', function (env, run, q) {
   if (dos) quad(W0, F, -0.05, yR, -dR, L + 0.05, yR, -dR, L + 0.05, yE, -2 * dR, -0.05, yE, -2 * dR, shade(tile, 0.95), KT());
   else rect(W0, F, 0, L, yE, yR, -dR, shade(c0, 0.9), K.STUCCO);
   const db = dos ? -2 * dR : -dR;
+  // F2R: la casita mide ~3 m y el volumen es más alto: el exceso de muro sobre la planta baja se cubre con un faldón de teja
+  // que arranca con su alero corrido (0,5 m de vuelo) justo encima de puertas y ventanas, y sube hasta el tejado
+  const F1 = env.F1;
+  if (yE - F1 > 1.4) { const yS = F1 + 0.12, oS = 0.95;
+    quad(W0, F, -0.05, yS, oS, L + 0.05, yS, oS, L + 0.05, yE - 0.07, ov, -0.05, yE - 0.07, ov, shade(tile, 0.97), KT());
+    box(W0, F, -0.05, L + 0.05, yS - 0.12, yS + 0.02, 0, oS, shade(tile, 0.8), K.STUCCO, 2);
+    for (const u of [0, L]) quad(W0, F, u, yS, 0, u, yS, oS, u, yE - 0.07, ov, u, yE - 0.07, 0, shade(c0, 0.9), kw); }
   for (const u of [0, L]) quad(W0, F, u, yE, 0, u, yE, db, u, yR, -dR, u, yR, -dR, shade(c0, 0.92), kw);
   if (h01(env.b, 93) < 0.45 && L > 3) { const u = 0.8 + h01(env.b, 95) * (L - 1.8);   // chimenea
     box(W0, F, u, u + 0.42, yR - 0.5, yR + 0.55, -dR - 0.2, -dR + 0.22, shade(c0, 0.95), K.STUCCO, 7);
