@@ -383,17 +383,24 @@ void main(){
     vec3 farG = vec3(0.0);
     if (uDusk > 0.01 && fade < 0.999) {
       float px = max(length(vec2(dFdx(u), dFdy(u))), length(vec2(dFdx(h), dFdy(h))));
-      float sc = exp2(clamp(floor(log2(max(px*0.45, 1.0))), 0.0, 4.0));
-      vec2 cf = floor(vec2(u/(2.7*sc) + seed*3.7, h/(3.2*sc)));
-      float hz = hash21(cf + vec2(seed*17.0, sc*3.1)), hc = fract(hz*53.7);
+      // Bugs · parpadeo: las dos escalas vecinas se funden (antes, un salto ×2 de golpe: al acercarse, las chispas cambiaban
+      // todas a la vez). ls: escala continua; se pintan la de abajo y la de arriba y se mezclan en el último 40 % del escalón
+      float ls = clamp(log2(max(px*0.45, 1.0)), 0.0, 4.0), l0 = min(floor(ls), 3.0), tS = smoothstep(0.6, 1.0, ls - l0);
       // irregular, como en las fotos: manzanas casi a oscuras y otras con muchas luces (azar por celda de ~113 m y por barrio)
       // y lo mismo por edificio. De media, la mitad de homeFrac()
       float kB = hash21(floor(vPos.xz/113.0) + 0.37), kR = vnoise(vPos.xz/700.0);
       float dens = homeFrac()*0.62*(0.10 + 2.1*kB*kB*mix(0.5, 1.5, kR))*(0.25 + 1.5*hash21(vCol.rg*57.1 + seed*9.3));
-      float onF = step(hz, dens)*uDusk*step(3.2, h)*step(h, Ht - 1.0);
-      // ~55 % cálidas, ~30 % blancas neutras y ~15 % azuladas (LED, televisores)
-      vec3 wc = hc < 0.55 ? vec3(1.0, 0.70, 0.40) : (hc < 0.85 ? vec3(0.98, 0.94, 0.86) : vec3(0.72, 0.84, 1.0));
-      farG = wc*(onF*mix(0.65, 1.2, fract(hc*7.1)));
+      for (int j = 0; j < 2; j++) {
+        float wS = j == 0 ? 1.0 - tS : tS;
+        if (wS < 0.001) continue;
+        float sc = exp2(l0 + float(j));
+        vec2 cf = floor(vec2(u/(2.7*sc) + seed*3.7, h/(3.2*sc)));
+        float hz = hash21(cf + vec2(seed*17.0, sc*3.1)), hc = fract(hz*53.7);
+        float onF = step(hz, dens)*uDusk*step(3.2, h)*step(h, Ht - 1.0);
+        // ~55 % cálidas, ~30 % blancas neutras y ~15 % azuladas (LED, televisores)
+        vec3 wc = hc < 0.55 ? vec3(1.0, 0.70, 0.40) : (hc < 0.85 ? vec3(0.98, 0.94, 0.86) : vec3(0.72, 0.84, 1.0));
+        farG += wS*wc*(onF*mix(0.65, 1.2, fract(hc*7.1)));
+      }
     }
     bool glassy = abs(style-3.0) < 0.5 || abs(style-12.0) < 0.5;
     bool plain = abs(style-1.0) < 0.5 || abs(style-4.0) < 0.5 || abs(style-5.0) < 0.5 || abs(style-8.0) < 0.5 || abs(style-11.0) < 0.5 || style > 12.5;
