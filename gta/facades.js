@@ -1301,7 +1301,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
 
   // ---------------------------------------------------------------- celdas: construir, mostrar, liberar
   const cells = new Map();   // índice → { base, hi, lay: Map, blds }
-  const S = { on: true, R0: 170, R1: 215, RB: 245, RD: 310, H0: 70, H1: 95, HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
+  const S = { on: true, R0: 200, R1: 215, RB: 245, RD: 310, H0: 83, H1: 95,   // Bugs · parpadeo: bandas de 12–15 m
+               HB: 110, HD: 140, budget: 6, cap: [2.4e6, 1.3e6], rCap: [1e9, 1e9] };
   let job = null, queue = [], tris = [0, 0];
   const dirty = new Set();
   function setFlag(b, f) { const ch = bldChunks[BREC.chunk[b]], inf = ch.inf; for (let v = BREC.v0[b]; v < BREC.v1[b]; v++) inf[v * 4 + 3] = (inf[v * 4 + 3] & ~1) | f; dirty.add(ch); }   // bits altos de .w: código lejano del estilo (F3a)
@@ -1364,7 +1365,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     for (const ci of [...cells.keys()]) if (!keep.has(ci)) { drop(ci, true); drop(ci, false); }
     for (let L = 1; L >= 0; L--) if (tris[L] > S.cap[L]) {
       const far = [...cells.keys()].filter(ci => L ? cells.get(ci).hi : cells.get(ci).base).sort((a, b) => (dist.get(b) || 0) - (dist.get(a) || 0));
-      for (const ci of far) { if (tris[L] <= S.cap[L] * 0.92) break; S.rCap[L] = Math.min(S.rCap[L], (dist.get(ci) || 0) - 1); drop(ci, true); if (!L) drop(ci, false); }
+      // Bugs · parpadeo: nunca se descarga una celda a menos del final del fundido (R1 / H1): ahí desaparecería de golpe, sin
+      // tramado, y volvería a cargarse en cuanto bajasen los triángulos (parpadeo de manzanas enteras). Salvo pasado un 15 % del
+      // tope (red de seguridad: en el Gòtic a pie de calle se queda en un ~8 % por encima)
+      const RF = L ? S.H1 : S.R1;
+      for (const ci of far) { if (tris[L] <= S.cap[L] * 0.92) break; if ((dist.get(ci) || 0) < RF && tris[L] < S.cap[L] * 1.15) continue;
+        S.rCap[L] = Math.max(tris[L] < S.cap[L] * 1.15 ? RF : 0, Math.min(S.rCap[L], (dist.get(ci) || 0) - 1)); drop(ci, true); if (!L) drop(ci, false); }
       for (let k = want.length - 1; k >= 0; k--) if (want[k][2] === !!L && want[k][0] - (L ? 25 : 0) >= S.rCap[L]) want.splice(k, 1);
     }
     want.sort((a, b) => a[0] - b[0]);
@@ -1391,7 +1397,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   function setRange(q) {   // 0 apagado · 1 normal · 2 alto
     S.on = q > 0;
     const k = q >= 2 ? 1.45 : q < 1 ? q : 1;   // q < 1: radios reducidos (hojas de depuración)
-    Object.assign(S, { R0: 170 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 70 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
+    Object.assign(S, { R0: 200 * k, R1: 215 * k, RB: 245 * k, RD: 310 * k, H0: 83 * k, H1: 95 * k, HB: 110 * k, HD: 140 * k, cap: q >= 2 ? [4.5e6, 2.4e6] : [2.4e6, 1.3e6], rCap: [1e9, 1e9] });
     ctx.matBld.setVector2('uFx', new BABYLON.Vector2(S.R0, S.R1));
     matB.setVector2('uFade', new BABYLON.Vector2(S.R0, S.R1)); matH.setVector2('uFade', new BABYLON.Vector2(S.H0, S.H1));
     for (const m of [matB, matH]) m.setVector2('uFadeHi', new BABYLON.Vector2(S.H0, S.H1));   // fundido de entrada del ORNAMENTO (sustitutos)

@@ -72,6 +72,9 @@ node tools/geo_test.js                                                  # geo.js
      marcan en el búfer `inf` del trozo (componente `w`) y la pared simple se descarta en el shader.
   3. *Capa ORNAMENTO* (< ~110 m): carpinterías, molduras, ménsulas, macetas… en una malla aparte por celda.
   4. *Calles*: aceras/bordillo/mobiliario por celdas (< ~215 m); árboles en 3 niveles con *thin instances*.
+  Bandas de fundido estrechas (12–15 m, final fijo; v23, parpadeo con el dron): fachadas BASE 200–215, ORNAMENTO 83–95,
+  aceras 182–195, azoteas 188–200 / 392–410 / 780–800, pavimento de plaza 625–640. Con bandas anchas, al bajar en dron
+  media pantalla quedaba dentro de una banda y el tramado (fijo a la pantalla) hervía.
 - **Construcción en segundo plano**: cada celda se genera con una función generadora que cede el control
   (`yield`) y un presupuesto de pocos ms por fotograma. Nada de trabajos largos de golpe en el hilo principal.
 - **Topes adaptativos**: si se superan N triángulos por capa, el radio de detalle se encoge solo y luego se recupera.
@@ -493,7 +496,7 @@ milímetro (un umbral, un felpudo), `walkAt`.
 devuelve `null` si está vacío y **no** la registra: pásala por `reg`.
 
 **Sustitutos: que la capa ORNAMENTO reemplace de cerca algo de la capa BASE.** La capa BASE se ve hasta ~200 m y la
-ORNAMENTO solo a menos de ~95 m, entrando con un fundido tramado entre 95 y 70 m. Para que un interior de verdad
+ORNAMENTO solo a menos de ~95 m, entrando con un fundido tramado entre 95 y 83 m. Para que un interior de verdad
 (ORNAMENTO) sustituya de cerca a un escaparate o una puerta opacos (BASE):
 
 - emite el quad opaco en la capa BASE **marcado como sustituto**: `aux.w = 255` en sus cuatro vértices, con `subAux()`
@@ -506,7 +509,7 @@ sustituto se queda. Eso lo dice el uniforme por malla `uCellHi` (0/1), que el ma
 leyendo `mesh.metadata.bcn.cell.hi` (la malla BASE lleva su celda desde `reg`; las demás mallas valen 0). `uFadeHi`
 lleva las distancias del fundido. El relevo es exacto píxel a píxel cuando lo que entra está más o menos a la misma
 profundidad que el sustituto (medido con dos paños coplanarios en plena banda: ni un hueco); si queda mucho más al fondo,
-en la banda de 70–95 m puede asomar algún píxel suelto. Hoy ningún quad es sustituto. Ojo: en la capa BASE el byte 255 de `aux.w` queda
+en la banda de 83–95 m puede asomar algún píxel suelto. Hoy ningún quad es sustituto. Ojo: en la capa BASE el byte 255 de `aux.w` queda
 reservado para esto, y en la malla de mobiliario (que usa `matB` sin celda) la marca no hace nada.
 
 ### 6.9 Hooks de fachada: `interiors.js` y `details.js`
