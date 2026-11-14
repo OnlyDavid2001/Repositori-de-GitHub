@@ -1546,11 +1546,9 @@ Lo que dejaron las etapas del día 3 en sus progresos (`tools/encargos/progreso/
 - facades.js `coverAt(x, z, self, suelo)`: con `suelo`, solo cuentan los volúmenes que arrancan del suelo. `layoutB` lo usa para
   el `cover` de los tramos a menos de 16 m de calzada: una parte elevada vecina ya no «tapa» la planta baja (antes se comía la pared y quedaban persianas,
   dinteles y zócalos sueltos debajo del voladizo).
-  En los tramos de patio (> 16 m de calzada) `coverAt` sigue sin `suelo`, pero si un punto de muestra queda libre y de los
-  otros dos solo uno tiene vecino desde el suelo, el tramo no tiene tapa (repaso: el mensaje de b4ff0b5 decía que ya no había
-  persianas ni dinteles colgados y no era cierto; los de la 82862 bajo el voladizo 82758 se van en ab25269).
-- streets.js: la visibilidad de la acera ampliada (S2, `seen`) usa `coverAt(…, -1, true)`: bajo un voladizo o una parte
-  elevada también hay acera, a la cota de `walkY`, y la planta baja de la fachada ya no queda sobre 1 m de zócalo y tierra.
+  En los tramos de patio (> 16 m de calzada) `coverAt` sigue sin `suelo`, pero si algún punto de muestra solo lo tapa una parte
+  elevada y otro tiene vecino desde el suelo o está libre, el tramo no tiene tapa; un patio cubierto del todo por partes
+  elevadas sigue tapando (repaso: el mensaje de b4ff0b5 decía que ya no había persianas ni dinteles colgados y no era cierto).
 
 #### E2
 
