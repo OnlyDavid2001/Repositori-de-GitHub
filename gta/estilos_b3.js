@@ -52,7 +52,7 @@ KIT.estilo('vivienda_social_actual', {
   variantes: [
     { nombre: 'bloque con persianas de colores', pl: [4, 9], pal: [0] },
     { nombre: 'bloque con celosía metálica', pl: [5, 10], pal: [0, 1, 4], lejos: { muro: 'hormigon', vidrio: 0.22 } },
-    { nombre: 'bloque de madera industrializada', pl: [4, 8], acab: 'listones', paleta: ['#b48a5e', '#a67c50', '#c29a6c', '#8f6b48'], lejos: { muro: 'hormigon', vidrio: 0.36 } },
+    { nombre: 'bloque de madera industrializada', pl: [4, 8], acab: 'listones', paleta: ['#b48a5e', '#a67c50', '#c29a6c', '#8f6b48'], lejos: { muro: 'madera', vidrio: 0.36 } },
     { nombre: 'bloque con galería abierta', pl: [4, 8], pal: [0, 1, 3, 4], lejos: { vidrio: 0.25 } }]
 });
 
@@ -66,7 +66,7 @@ KIT.estilo('fabrica', {
     vano: 'vano_fabrica', corona: 'corona_fabrica', fachada: ['fab_fachada'], lejos: { muro: 'ladrillo', hp: 4.0, bay: 4.4, vidrio: 0.45 } },
   variantes: [
     { nombre: 'nave en diente de sierra', pl: [1, 2], pal: [0, 1, 3] },
-    { nombre: 'fábrica de varias plantas con chimenea', pl: [3, 5], pal: [0, 2, 4] },
+    { nombre: 'fábrica de varias plantas con chimenea', pl: [3, 5], pal: [0, 2, 4], win: 3.2, bay: 4.2 },
     { nombre: 'almacén con portalón', pl: [1, 3], pal: [1, 3], win: 1.6, bay: 4.8, lejos: { vidrio: 0.3 } },
     { nombre: 'loft rehabilitado', pl: [2, 5], pal: [0, 2, 4], marco: [[36, 38, 40], [44, 46, 48]], com: 0.7, dg: 0.35, lejos: { vidrio: 0.5 } }]
 });

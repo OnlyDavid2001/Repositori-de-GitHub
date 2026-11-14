@@ -36,7 +36,7 @@ KIT.estilo('barroco', {
   nombre: 'Casa gremial',
   comun: { hp: 2.9, bay: 2.7, win: 0.9, alto: 0.72, hueco: 'balconera', bal: 'indiv', balP: 0.85, vuelo: 0.45, bar: 'forja', forja: 0, carp: 'porticon',
     carpCol: MARRON.concat(VERDE), marco: MADERA, acab: 'estuco', remate: 0.45, imposta: 1, recerc: 1, ultimo: 'normal', coron: 'cornisa', mac: 0.55,
-    ropa: 0.4, com: 0.7, pbH: 3.9, pb: 'pb_barroco', vano: 'vano_barroco', corona: 'corona_barroco', lejos: { muro: 'estuco', hp: 2.9, bay: 2.7, vidrio: 0.26 } },
+    ropa: 0.4, com: 0.7, par: 2, pbH: 3.9, pb: 'pb_barroco', vano: 'vano_barroco', corona: 'corona_barroco', lejos: { muro: 'estuco', hp: 2.9, bay: 2.7, vidrio: 0.26 } },
   variantes: [
     { nombre: 'casa gremial con esgrafiados', pl: [3, 5], acab: 'esgrafiat', recerc: 2 },
     { nombre: 'casa de 2 balcones de forja', pl: [3, 5], bay: 3.3, win: 1.0, vuelo: 0.6, forja: 1, balP: 1, acab: 'piedra', carpCol: VERDE, lejos: { muro: 'piedra' } },
@@ -69,7 +69,7 @@ KIT.estilo('gotico', {
     mac: 0.15, ropa: 0.05, com: 0.5, pbH: 4.6, pb: 'pb_gotico', vano: 'vano_gotico', corona: 'corona_gotico', lejos: { muro: 'piedra', hp: 3.7, bay: 4.2, vidrio: 0.14 } },
   variantes: [
     { nombre: 'palacio con patio y escalera exterior', pl: [3, 4], bay: 4.6, pbH: 5.4, com: 0.3 },
-    { nombre: 'casa estrecha de piedra con ventana geminada', pl: [2, 4], bay: 3.6 },
+    { nombre: 'casa estrecha de piedra con ventana geminada', pl: [2, 4], bay: 3.6, par: 2 },
     { nombre: 'casa con galería de arcos en el último piso', pl: [3, 4] },
     { nombre: 'muro ciego con portalón y escudo', pl: [2, 3], com: 0 }]
 });

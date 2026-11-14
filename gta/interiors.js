@@ -783,7 +783,9 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     // factor del estilo; ?pb=0/1 lo fuerza), planta baja del estilo (V.pb) y retranqueo (V.pbRec: soportales, pilotis, patio)
     const V = env.V, KIT = window.BCN_KIT, kit = V && V.kit && KIT ? KIT : null;
     let com = street && shopsHere;
-    if (kit && com) { env.rnd(7, 2, run.i); const rc = R(); com = kit.pbForce !== null ? kit.pbForce === 1 : rc < env.pCom; }
+    // F2R: los estilos comerciales (V.com ≥ 0,5) conservan todo el comercio de antes; solo los poco comerciales (villas, casas
+    // baratas, polígonos…) lo sortean con la densidad del sitio
+    if (kit && com) { env.rnd(7, 2, run.i); const rc = R(); com = kit.pbForce !== null ? kit.pbForce === 1 : V.com >= 0.5 || rc < env.pCom; }
     const dep = kit && street ? V.pbRec || 0 : 0;
     let F = run.F, rg = run;
     if (dep > 0) {
@@ -804,6 +806,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       const a = W * bw, c = a + bw / 2, gl = gls[W];
       env.rnd(2, run.i, W);
       const rr = [R(), R(), R(), R(), R(), R()];
+      env.pbPortal = W === N;                                     // F2R: P.puerta dibuja el zaguán iluminado en el portal
       if (pbf && (W === N || !plan) && pbf(env, rg, { W, a, c, bw, gl, yB, rr, portal: W === N, F, dep, com: !!plan, esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 }) !== false) continue;
       if (street && W === N) { portalBay(env, rg, a, c, gl, yB, rr); continue; }
       if (plan) { shopBay(env, rg, W, gl, yB, plan.of[W]); continue; }
@@ -816,6 +819,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
       if (street) { lattice(W0, F, tt, ct, st, yt, 0.05, iron, K.IRON, 1); box(W1, F, tt - 0.05, ct + 0.05, st - 0.08, st, 0, 0.12, shade(gc, 1.05), gk); }
       else box(W1, F, tt - 0.05, ct + 0.05, st - 0.07, st, 0, 0.09, u, K.STUCCO);
     }
+    env.pbPortal = false;
     if (plan) for (const s of plan.list) { shopFront(env, rg, s); terrace(env, rg, s); }
   }
 

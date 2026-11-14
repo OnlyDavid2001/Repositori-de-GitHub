@@ -53,6 +53,7 @@ pieza('puerta', function (env, F, o) {
   hpl(W0, F, tt, ct, yt, -dep, 0, shade(o.col, 0.5), o.kw);
   const d = -dep + 0.02, t = o.tipo;
   if (t === 'vidrio') {
+    if (env.pbPortal) { const IA = window.BCN_INTERIORS; if (IA && IA.log) IA.log.push(['P', +(F.x + F.tx * o.c).toFixed(1), +(F.z + F.tz * o.c).toFixed(1), F.nx, F.nz]); }
     RQ(W0, F, tt + 0.06, ct - 0.06, y0 + 0.02, yt - 0.06, d - 0.01, { x0: tt - 0.4, W: w + 0.8, yF: y0, H: Math.max(3.2, yt - y0 + 0.4), D: 8, mode: 0, seed: 1 + ((o.rr ? o.rr[1] : 0.5) * 254 | 0) });
     const mc = o.met || ALU;
     box(W0, F, tt, tt + 0.07, y0, yt, d - 0.02, d + 0.04, mc, K.METAL, 4); box(W0, F, ct - 0.07, ct, y0, yt, d - 0.02, d + 0.04, mc, K.METAL, 4);
@@ -65,13 +66,25 @@ pieza('puerta', function (env, F, o) {
     box(W0, F, tt - 0.04, ct + 0.04, yt - 0.3, yt, d, d + 0.12, shade(o.met || [150, 152, 150], 0.85), K.METAL, 7);
   } else {                                            // madera: dos hojas de cuarterones
     const md = o.madera || env.wood;
-    rect(W0, F, tt, ct, y0, yt, d, md, K.WOOD);
+    // F2R: en el portal del edificio, montante acristalado con reja y, detrás, el zaguán iluminado (como portalBay)
+    const zg = env.pbPortal && yt - y0 > 2.3 && w > 0.8, tr = zg ? yt - Math.min(0.8, (yt - y0) * 0.28) : yt;
+    if (zg) {
+      RQ(W0, F, tt + 0.05, ct - 0.05, tr, yt - 0.04, d - 0.01, { x0: tt - 0.4, W: w + 0.8, yF: y0, H: Math.max(3.3, yt - y0 + 0.3), D: 9, mode: 0, seed: 1 + ((o.rr ? o.rr[1] : 0.5) * 254 | 0) });
+      box(W0, F, tt, ct, tr - 0.06, tr + 0.04, d - 0.02, d + 0.05, shade(md, 0.8), K.WOOD, 3);
+      if (W1) for (let u = tt + 0.2; u < ct - 0.1; u += 0.22) box(W1, F, u - 0.015, u + 0.015, tr, yt - 0.04, d + 0.02, d + 0.05, env.iron || [40, 40, 40], K.IRON, 7);
+      const IA = window.BCN_INTERIORS; if (IA && IA.log) IA.log.push(['P', +(F.x + F.tx * o.c).toFixed(1), +(F.z + F.tz * o.c).toFixed(1), F.nx, F.nz]);
+    }
+    rect(W0, F, tt, ct, y0, tr, d, md, K.WOOD);
+    const yt0 = yt; { const yt = tr;
     if (W1) { const n = w > 1.2 ? 2 : 1, hw = w / n;
       for (let i = 0; i < n; i++) { const u = tt + i * hw;
         box(W1, F, u + 0.1, u + hw - 0.1, y0 + 0.2, y0 + (yt - y0) * 0.42, d, d + 0.03, shade(md, 1.15), K.WOOD, 7);
         box(W1, F, u + 0.1, u + hw - 0.1, y0 + (yt - y0) * 0.5, yt - 0.25, d, d + 0.03, shade(md, 1.15), K.WOOD, 7); }
       if (n === 2) box(W1, F, o.c - 0.03, o.c + 0.03, y0, yt, d, d + 0.05, shade(md, 0.8), K.WOOD, 4);
-      box(W1, F, o.c + 0.12, o.c + 0.18, y0 + 1.0, y0 + 1.1, d + 0.03, d + 0.08, [176, 140, 70], K.PBR, 7, pbrAux(0.3, 1, 0, 0)); }
+      box(W1, F, o.c + 0.12, o.c + 0.18, y0 + 1.0, y0 + 1.1, d + 0.03, d + 0.08, [176, 140, 70], K.PBR, 7, pbrAux(0.3, 1, 0, 0)); } }
+    if (zg && W1 && (!o.rr || o.rr[0] < 0.7)) { box(W1, F, ct + 0.35, ct + 0.53, y0 + 2.5, y0 + 2.9, 0.12, 0.32, [235, 220, 180], K.LAMP);   // aplique
+      box(W1, F, ct + 0.41, ct + 0.47, y0 + 2.9, y0 + 3.1, 0, 0.3, env.iron || [40, 40, 40], K.METAL); }
+    void yt0;
   }
   if (o.arco) { const s = o.arco === 1 ? 0 : o.arco, r = w / 2, ys = yt - (s ? w * s : r);
     if (ys > y0 + 1.6) P.arco(W0, F, tt, ct, ys, yt + 0.002, 0.002, -dep, o.col, o.kw, s); }
@@ -169,10 +182,12 @@ pieza('antenas', function (env, run, q) {
 });
 // pilastras de orden gigante entre vanos (de la 1.ª planta a la cornisa), con basa y capitel
 pieza('pilastras', function (env, run, q) {
-  const { W0, W1, F1, C } = env, F = run.F, L = run.L, col = shade(env.uV, 0.97); if (C <= run.cover + 1) return;
+  // F2R: pilastras gigantes de 0,2 m de vuelo en tono piedra (contrastan con el estuco) y bandas de imposta entre ellas
+  const { W0, W1, F1, C } = env, F = run.F, L = run.L, col = mixc(shade(run.wallC, 0.8), env.stone || [200, 190, 170], 0.5); if (C <= run.cover + 1) return;
   const y0 = Math.max(F1 + 0.1, run.cover + 0.2), y1 = C - 0.55;
-  for (let W = 0; W <= q.nb; W++) { const u = Math.min(L - 0.25, Math.max(0.25, W * q.bw));
-    box(W0, F, u - 0.24, u + 0.24, y0, y1, 0, 0.13, col, K.STUCCO, 4);
+  if (W1) for (let D = 2; D <= env.nF; D++) { const k = env.lv[D - 1]; if (k > y0 + 0.5 && k < y1 - 0.5) box(W1, F, 0, L, k - 0.2, k + 0.08, 0, 0.11, col, K.STUCCO, 3); }
+  for (let W = 0; W <= q.nb; W++) { const u = Math.min(L - 0.3, Math.max(0.3, W * q.bw));
+    box(W0, F, u - 0.3, u + 0.3, y0, y1, 0, 0.2, col, K.STUCCO, 4);
     box(W0, F, u - 0.32, u + 0.32, y1, y1 + 0.3, 0, 0.22, shade(col, 1.04), K.STUCCO, 7);
     if (W1) box(W1, F, u - 0.3, u + 0.3, y0, y0 + 0.35, 0, 0.18, shade(col, 0.95), K.STUCCO, 7); }
 });
@@ -210,7 +225,7 @@ pieza('vano_desarrollismo', function (env, run, q) {
     const w = q.bw - 0.6, st = q.k + 0.95, yt = Math.min(q.P - 0.38, st + 1.25);
     P.ventanaPVC(env, run, q, { w, st, yt, se: rr[0] < 0.7 ? 0.1 + rr[1] * 0.7 : 0, pc, cajon: true, alf: env.uV, aire: ac });
     const BAND = [[92, 124, 142], [150, 96, 66], [228, 224, 212], [116, 128, 108]];
-    rect(env.W0, run.F, q.a, q.a + q.bw, q.k + 0.06, st - 0.07, 0.015, BAND[(h01(env.b, 3) * 4) | 0], 17);
+    rect(env.W0, run.F, q.a, q.a + q.bw, q.k + 0.06, st - 0.07, 0.045, BAND[(h01(env.b, 3) * 4) | 0], 17);
     return;
   }
   const vent = q.W % 2 === 1 || vi === 0, w = vent ? Math.min(1.3, q.bw - 1.0) : Math.min(1.0, q.bw - 1.1);
@@ -384,8 +399,9 @@ pieza('pb_noucentista', function (env, run, q) {
 });
 pieza('vano_noucentista', function (env, run, q) {
   KIT.T.vano(env, run, q);
-  const V = q.V; if (V.vi !== 0 || q.low || q.D > 2) return;
-  const g = KIT.medidas(q), w = g.Vw + 0.55;           // frontón triangular en la planta noble y curvo en la segunda
-  P.fronton(env.W0, run.F, q.c, w, g.yt + 0.17, q.D === 1 ? 0.42 : 0.3, 0.22, shade(env.uV, 1.03), K.STUCCO, q.D === 2);
+  const V = q.V; if (V.vi !== 0 || q.low || q.atico) return;
+  const g = KIT.medidas(q), w = g.Vw + 0.55;           // frontones en todas las plantas: triangular en las impares y curvo en las pares
+  if (g.yt + 0.7 > q.P) return;
+  P.fronton(env.W0, run.F, q.c, w, g.yt + 0.17, q.D === 1 ? 0.42 : 0.3, 0.22, shade(env.uV, 1.03), K.STUCCO, q.D % 2 === 0);
 });
 })();

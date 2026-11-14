@@ -455,7 +455,18 @@ pieza('vano_fabrica', function (env, run, q) {
   const Vw = Math.min(V.win, q.bw - 0.95), st = q.k + (q.low ? 0 : 0.7), yt = q.low ? st : st + Math.min(2.7, q.m - 1.15), tt = q.c - Vw / 2, ct = q.c + Vw / 2;
   if (q.low) return;
   // arco rebajado de ladrillo a sardinel sobre el ventanal, alféizar de piedra
-  const rise = Math.min(0.32, (q.P - yt) * 0.5), n = 6, ac = shade(wc, 0.8);
+  // F2R: cada variante, su hueco: v0 arco de medio punto (ventanal de nave), v1 dintel de acero corrido (fábrica de pisos),
+  // v2 arco rebajado y ventana pequeña con reja (almacén), v3 arco rebajado y balcón francés (loft)
+  const n = 6, ac = shade(wc, 0.8);
+  let rise = Math.min(0.32, (q.P - yt) * 0.5);
+  if (vi === 0) rise = Math.min(Vw / 2 + 0.12, q.P - yt - 0.12);
+  if (vi === 1) { box(W0, F, tt - 0.25, ct + 0.25, yt, yt + 0.3, 0, 0.06, [70, 72, 74], K.METAL, 7);
+    if (W1) for (let u = tt + 0.25; u < ct - 0.1; u += 0.6) box(W1, F, u - 0.03, u + 0.03, st, yt, -0.06, -0.02, [60, 62, 64], K.METAL, 4);
+    rise = 0; }
+  if (vi === 2) { if (W1) lattice(W1, F, tt, ct, st, yt, 0.04, env.iron || [50, 50, 50], K.IRON, 1); }
+  if (vi === 0 && W1 && rise > 0.3) { const r = Vw / 2, cx = q.c, y0a = yt;    // tímpano de ladrillo dentro del arco, a ras de muro
+    for (let i = 0; i < n; i++) { const a0 = Math.PI * i / n, a1 = Math.PI * (i + 1) / n;
+      quad(W1, F, cx - Math.cos(a0) * r, y0a + Math.sin(a0) * rise * 0.9, 0.012, cx - Math.cos(a1) * r, y0a + Math.sin(a1) * rise * 0.9, 0.012, cx, y0a, 0.012, cx, y0a, 0.012, shade(wc, 0.9), KL); } }
   if (rise > 0.08) for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, u0 = tt - 0.12 + (Vw + 0.24) * t0, u1 = tt - 0.12 + (Vw + 0.24) * t1;
     const y0 = yt + Math.sin(Math.PI * t0) * rise, y1 = yt + Math.sin(Math.PI * t1) * rise;
     quad(W0, F, u0, y0 - 0.04, 0.03, u1, y1 - 0.04, 0.03, u1, y1 + 0.24, 0.03, u0, y0 + 0.24, 0.03, ac, KL); }
@@ -472,11 +483,12 @@ pieza('fab_fachada', function (env, run, q) {
   if (vi !== 3 && L > 10 && run.r === env.lay.portal && h01(env.b, 51) < 0.75) {   // rótulo pintado de la fábrica: cartela clara con trazos
     const w = Math.min(L * 0.6, 16), u0 = (L - w) / 2, y = C - 1.4;
     if (y > y0 + 1) { rect(W0, F, u0, u0 + w, y, y + 1.1, 0.16, [214, 202, 176], K.PBR, pbrAux(0.85, 0, 0, 0));
-      if (W1) { const n = Math.round((w - 0.8) / 0.55), lw = (w - 0.8) / n, ink = mixc([[70, 52, 40], [40, 60, 90], [120, 40, 36]][(h01(env.b, 52) * 3) | 0], [214, 202, 176], 0.3);
-        for (let i = 0; i < n; i++) { const r = h01(env.b, 60 + i); if (r < 0.12) continue; const u = u0 + 0.4 + i * lw, y0 = y + 0.28, y1 = y + 0.82, t = 0.07;
-          box(W1, F, u, u + t, y0, y1, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0));          // letras pintadas (trazos de palo seco, ilegibles)
-          if (r > 0.4) box(W1, F, u + lw * 0.55 - t, u + lw * 0.55, y0, y1, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0));
-          const yh = r < 0.55 ? y1 - t : r < 0.8 ? (y0 + y1) / 2 : y0; box(W1, F, u, u + lw * 0.55, yh, yh + t, 0.16, 0.17, ink, K.PBR, 0, pbrAux(0.85, 0, 0, 0)); } } }
+      // F2R: rótulo tan borrado que ya no se lee como texto: dos franjas de pintura desvaída con calvas y el filete del marco
+      if (W1) { const ink = mixc([[70, 52, 40], [40, 60, 90], [120, 40, 36]][(h01(env.b, 52) * 3) | 0], [214, 202, 176], 0.62), A = pbrAux(0.85, 0, 0, 0);
+        box(W1, F, u0 + 0.1, u0 + w - 0.1, y + 0.08, y + 0.14, 0.16, 0.17, ink, K.PBR, 0, A); box(W1, F, u0 + 0.1, u0 + w - 0.1, y + 0.96, y + 1.02, 0.16, 0.17, ink, K.PBR, 0, A);
+        for (const [ya, yb, s] of [[0.3, 0.62, 70], [0.7, 0.84, 80]]) { let u = u0 + 0.5;
+          while (u < u0 + w - 0.6) { const l = 0.8 + h01(env.b, s + (u * 7 | 0)) * 2.4, e = Math.min(u + l, u0 + w - 0.5);
+            box(W1, F, u, e, y + ya, y + yb, 0.16, 0.17, ink, K.PBR, 0, A); u = e + 0.25 + h01(env.b, s + 1 + (u * 5 | 0)) * 0.9; } } } }
   }
 });
 pieza('corona_fabrica', function (env, run, q) {
@@ -547,6 +559,9 @@ pieza('vano_poligono', function (env, run, q) {
     box(W0, F, a, b, y, y + 0.16, 0, jt, [180, 176, 168], KH, 7);
     wr(W0, F, a, b, q.k, q.P, wc, kw);
     box(W0, F, a, b, y + 0.16, y + 0.16 + ph, jt - 0.12, jt, [196, 192, 182], KH, 1);
+    // F2R: testeros de hormigón que cierran la galería en los extremos del tramo (la losa ya no queda volando)
+    if (q.W === 0) box(W0, F, a, a + 0.2, y, q.P, 0, jt, shade(wc, 0.92), kw, 7);
+    if (q.W === q.nb - 1) box(W0, F, b - 0.2, b, y, q.P, 0, jt, shade(wc, 0.92), kw, 7);
     const dc = q.W % 2 ? a + q.bw * 0.3 : a + q.bw * 0.72;
     rect(W0, F, dc - 0.45, dc + 0.45, q.k + 0.16, q.k + 2.1, 0.01, [[110, 80, 56], [96, 100, 104], [70, 90, 76]][(rr[1] * 3) | 0], K.PBR, pbrAux(0.5, 0.3, 0, 0));
     if (W1 && rr[4] < 0.45) KIT.T.ropa(W1, F, a + 0.2, b - 0.2, q.k + 1.9, jt - 0.4, rr[5]);

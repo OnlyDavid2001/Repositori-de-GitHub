@@ -522,6 +522,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (V) for (let i = 0; i < runs.length; i++) { const r = runs[i];
       if (r.kind === 'street' && r.L >= 5 && r.L <= 24 && esChaflan(runs, i)) { env.chaflan = i; break; } }
     const nR = runs.length, giro = (r, o) => o && o !== r && o.kind === 'street' && Math.abs(r.tx * o.tx + r.tz * o.tz) < 0.87;
+    env.esquinas = !!V && runs.some((r, i) => r.kind === 'street' && (giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR])));   // F2R: ¿tiene esquina real?
     for (let i = 0; i < runs.length; i++) {
       const r = runs[i];
       // 4 cm hacia fuera: gana siempre a las paredes simples coplanarias de volúmenes vecinos (building:part)
@@ -540,9 +541,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       run.street = street; run.nb = nb; run.bw = bw; run.N = N; run.M = M; run.wallC = wallC; run.gnd = gnd; run.rM = rM;
       curGnd = gnd; curF = F;                         // G1F1: acera del tramo para el desgaste de los paños (wallAux)
       // chaflán (kit): tramo de calle de 5–24 m a ~45° entre dos tramos casi perpendiculares → campos de V.chaflan
-      const chf = V && V.chaflanV && street && L >= 5 && L <= 24 && esChaflan(runs, i);
-      if (chf) env.V = V.chaflanV;
-      run.chaflan = !!chf;
+      // F2R: run.chaflan no depende de que la variante declare campos de chaflán (torreta modernista, mirador racionalista)
+      const chf = !!V && !!V.kit && street && L >= 5 && L <= 24 && (i === env.chaflan || esChaflan(runs, i));
+      if (chf && V.chaflanV) env.V = V.chaflanV;
+      run.chaflan = chf;
       run.esq0 = street && giro(r, runs[(i + nR - 1) % nR]); run.esq1 = street && giro(r, runs[(i + 1) % nR]);
       I.groundFloor(env, run);
       if (V) { pisosV(env, run); coronaV(env, run);
@@ -778,6 +780,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const vp = V.vano && KIT ? KIT.P[V.vano] : null;
     if (F1 > cover) box(W0, F, 0, L, F1 - 0.22, F1 + 0.1, 0, street ? 0.3 : 0.12, env.uV, K.STUCCO);
     const gls = vp && run.gnd ? Array.from({ length: nb }, (_, W) => run.gnd((W + 0.5) * bw)) : null;   // cota de la acera por vano
+    // F2R: parcelas virtuales pintadas (V.par vanos por parcela: barroco, casa obrera, gótico estrecho) hasta que la Fase 3 parta
+    // las fachadas de verdad: color de la paleta por parcela y bajante en cada medianera
+    const par = street && V.par && KIT && nb > V.par ? V.par : 0, runP = [];
+    if (par) for (let g = 0; g * par < nb; g++) {
+      const c = KIT.colPar(env, run, g); runP.push(c === wallC ? run : Object.assign({}, run, { wallC: c }));
+      if (g && W1 && F1 < env.C) box(W1, F, g * par * bw - 0.05, g * par * bw + 0.05, Math.max(F1, cover), env.C, 0, 0.12, [118, 120, 118], K.METAL, 4); }
     for (let D = 1; D <= nF; D++) {
       const k = lv[D - 1], P = lv[D], m = P - k, top = D === nF, Vd = D === 1 && V.nobleV ? V.nobleV : V, uV = env.uV;
       if (P <= cover + 0.2) continue;
@@ -806,8 +814,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         if (W === Mt && D <= 3 && !top) { tribunaV(env, F, a, bw, k, P); continue; }
         const q = { V: Vd, D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr, nF, gl: gls ? gls[W] : y0,
           esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 };
-        if (vp && vp(env, run, q) !== false) continue;
-        vanoDef(env, run, q);
+        const rP = par ? runP[(W / par) | 0] : run;
+        if (vp && vp(env, rP, q) !== false) continue;
+        vanoDef(env, rP, q);
       }
     }
   }

@@ -40,11 +40,14 @@ KIT.estilo('casa_obrera_xix', {
     com: 1, pb: 'pb_obrera', vano: 'vano_obrera', corona: 'corona_obrera', fachada: ['cables_obrera'],
     lejos: { muro: 'estuco', hp: 3.0, bay: 2.8, vidrio: 0.28 } },
   variantes: [
-    { nombre: 'fachada de 2 balcones', pl: [4, 5], bay: 3.3, win: 1.0, recerc: 2 },
-    { nombre: 'fachada de 3 balcones con cornisa', pl: [4, 6], bay: 2.6, imposta: 2, recerc: 2, vuelo: 0.5, noble: { f: 1.08, vuelo: 0.6 } },
-    { nombre: 'casa obrera muy estrecha', pl: [4, 6], bay: 2.2, win: 0.78, alto: 0.88, hp: 2.85, ultimo: 'normal', coron: 'peto', imposta: 0, recerc: 0, vuelo: 0.38,
-      lejos: { bay: 2.2, vidrio: 0.3 } },
-    { nombre: 'esquina con balcón corrido', pl: [4, 6], bal: 'corrido', princ: 'corrido', vuelo: 0.55, bay: 2.9, chaflan: { bal: 'corrido', vuelo: 0.7 } }]
+    // F2R: cada variante con su ritmo: parcelas pintadas de 2 balcones (v0), fachada unitaria con principal corrido y cornisa de
+    // ménsulas (v1), parcelas de 3 vanos estrechos alternando balcón y ventana (v2), balcón corrido solo en el chaflán y el principal (v3)
+    { nombre: 'fachada de 2 balcones', pl: [4, 5], bay: 3.3, win: 1.0, recerc: 2, par: 2 },
+    { nombre: 'fachada de 3 balcones con cornisa', pl: [4, 6], bay: 2.6, imposta: 2, recerc: 3, vuelo: 0.5, ultimo: 'normal', ropa: 0.2,
+      noble: { f: 1.1, princ: 'corrido', vuelo: 0.7 } },
+    { nombre: 'casa obrera muy estrecha', pl: [4, 6], bay: 2.2, win: 0.78, alto: 0.88, hp: 2.85, hueco: 'mixto', balP: 0.7, ultimo: 'normal', coron: 'peto',
+      imposta: 0, recerc: 0, vuelo: 0.38, par: 3, ropa: 0.6, lejos: { bay: 2.2, vidrio: 0.3 } },
+    { nombre: 'esquina con balcón corrido', pl: [4, 6], vuelo: 0.55, bay: 2.9, noble: { f: 1.06, princ: 'corrido', vuelo: 0.65 }, chaflan: { bal: 'corrido', vuelo: 0.7 } }]
 });
 
 // ---------------------------------------------------------------- autoconstrucción en ladera (1940–1975, 1–4 plantas, 4–8 m)
@@ -103,9 +106,12 @@ KIT.estilo('eixample_temprano', {
     coron: 'cornisa', trib: 0, mac: 0.35, ropa: 0.08, com: 0.9, pbH: 4.5, pb: 'pb_temprano', vano: 'vano_temprano', corona: 'corona_temprano',
     fachada: ['farola_esquina'], noble: { f: 1.08 }, lejos: { muro: 'estuco', hp: 3.25, bay: 3.6, vidrio: 0.3 } },
   variantes: [
+    // F2R: v1 con pilastras entre vanos, último piso entero y balaustrada; v2 sobria de ventanas y balconeras alternas sin
+    // molduras, con el balcón corrido solo en el chaflán
     { nombre: 'fachada de 4 balcones simétrica', bay: 3.8, recerc: 2, noble: { f: 1.1, vuelo: 0.75 } },
-    { nombre: 'fachada de 5 balcones', bay: 3.0, win: 0.95, vuelo: 0.55, lejos: { bay: 3.0 } },
-    { nombre: 'chaflán sobrio', imposta: 2, ultimo: 'normal', chaflan: { bal: 'corrido', princ: 'corrido' } },
+    { nombre: 'fachada de 5 balcones', bay: 3.0, win: 0.95, vuelo: 0.55, pil: true, recerc: 3, imposta: 2, ultimo: 'normal', coron: 'balaustrada', lejos: { bay: 3.0 } },
+    { nombre: 'chaflán sobrio', imposta: 2, ultimo: 'normal', hueco: 'mixto', balP: 0.6, recerc: 0, coron: 'peto', vuelo: 0.5,
+      chaflan: { bal: 'corrido', princ: 'corrido', hueco: 'balconera', balP: 1 } },
     { nombre: 'fachada con balcón corrido en planta principal', noble: { f: 1.12, princ: 'corrido', vuelo: 0.85 }, recerc: 2 }]
 });
 })();
