@@ -316,7 +316,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // la exclusión: en el radio [R] solo quedan fuera los equipamientos y naves (tipo > 0: pabellones, gradas, terminales, museos)
   // y, en el núcleo [Rv], también las viviendas (claustros, casas pegadas al templo); antes se quitaba todo en R y quedaban halos
   // de edificios sin fachada de detalle. En parques y recintos (Park Güell, Montjuïc, Tibidabo, Anella, Fòrum, aeropuerto) Rv = R.
-  const SKIP = { 'Sagrada Família': [110, 45], 'Camp Nou': [230, 60], 'Palau Nacional (MNAC)': [170, 170], 'Catedral': [70, 35], 'Hospital de Sant Pau': [260, 90],
+  const SKIP = { 'Sagrada Família': [110, 45], 'Camp Nou': [230, 60], 'Palau Nacional (MNAC)': [170, 170], 'Catedral': [70, 35], 'Hospital de Sant Pau': [120, 40],
     'Estadi Olímpic': [170, 170], 'Castell de Montjuïc': [140, 140], 'Aeroport · Terminal 1': [700, 700], 'Aeroport · Terminal 2': [500, 500], 'Estació de Sants': [160, 40],
     'Torre Glòries': [60, 25], 'Hotel W': [60, 60], 'Tres Xemeneies del Besòs': [120, 120], 'Fòrum': [260, 260], 'Park Güell': [140, 140], 'Arc de Triomf': [30, 0], 'Tibidabo': [120, 120] };
   const skipPts = META.poi.filter(q => SKIP[q.n]).map(q => [q.p[0], q.p[2], SKIP[q.n][0], SKIP[q.n][1]]);
@@ -439,8 +439,13 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const d = bget(b);
     let gHi = -1e9, gLo = 1e9;
     for (const r of d.rings) for (let j = 0; j < r.length; j += 2) { const g = heightAt(r[j], r[j + 1]); if (g > gHi) gHi = g; if (g < gLo) gLo = g; }
+    // Bugs · fachadas: la fachada arranca en la base del volumen si queda por encima del terreno (volúmenes con la base hasta 4 m
+    // levantada, app.js); en cuesta, si desde el punto más alto no quedan 3,6 m, se mide desde la cota media del terreno y, si
+    // aun así no llega, se dibuja una fachada mínima de una planta (antes: null, sin fachada de detalle)
+    let gHi0 = gHi; if (d.y0 > gHi) gHi = d.y0;
+    if (d.y1 - gHi < 3.6) { const gRef = Math.max(d.y0, gLo + 0.5 * (gHi0 - gLo));
+      if (d.y1 - gRef >= 3.6) gHi = gRef; else if (d.y1 - Math.max(gLo, d.y0) >= 2.6) gHi = d.y1 - 3.6; else return null; }
     const H = d.y1 - gHi;
-    if (H < 3.6) return null;
     const runs = [];
     for (const r of d.rings) for (const [A, Bp] of runsOf(r)) {
       const dx = Bp[0] - A[0], dz = Bp[1] - A[1], L = Math.hypot(dx, dz); if (L < 0.4) continue;
