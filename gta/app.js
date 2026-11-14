@@ -1742,8 +1742,12 @@ const BREC = { dv: [], n: 0 };
         // de 16 000 m² de caja (manzanas y complejos enteros: etapa E2), vidrio (3, 12), cristal y pilares (4), los muy
         // grandes de la clase 10 (centros comerciales, aeropuerto) y los invernaderos y templos (14, 15). Los hitos los quitan.
         const Hm = Ht / 10, area = (bx1 - bx0) * (bz1 - bz0);
+        // Bugs · fachadas: las fincas y piezas estrechas de vivienda (clases 0 y 6, caja < 35 m²) también llevan fachada si tienen
+        // 6 m o más de alto, 6 m² o más de planta real y 2 m o más de lado menor (antes salían como una caja lisa con ventanas
+        // pintadas entre fachadas con detalle y, además, tapaban los frentes de sus vecinos, que quedaban ciegos)
+        const chica = area < 35 && (cls === 0 || cls === 6) && Hm >= 6 && pA >= 6 && Math.min(u1 - u0, w1 - w0) >= 2;
         let tp = -1;
-        if (hb < 15 && area >= 35 && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
+        if (hb < 15 && (area >= 35 || chica) && area < 16000 && rsz[0] >= 3 && Hm >= 3.8) {
           if (cls === 0) tp = Hm < 9 && area > 1800 ? 1 : Hm <= 110 ? 0 : -1;
           else if (cls === 6) tp = Hm <= 30 ? (Hm < 9 && area > 2500 ? 1 : 0) : -1;
           else if (cls === 1 || cls === 5) tp = Hm <= 14 ? 1 : Hm <= 60 ? 2 : -1;
