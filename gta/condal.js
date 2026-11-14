@@ -205,7 +205,7 @@ function initDebug(ctx) {
       const tipo = BR && BR.elig[f.b] ? ['vivienda', 'nave', 'equipamiento'][BR.tipo[f.b]] || '?' : 'sin fachada de detalle';
       h.push('<div><span class="k">Edificio</span>#' + f.b + ' · ' + Math.round(f.d.y1 - f.d.yb) + ' m · clase ' + f.d.cls + ' · ' + tipo + '</div>');
       const elig = !BR || !BR.elig || !!BR.elig[f.b];
-      h.push('<div><span class="k">Estilo hoy</span>' + (!elig ? '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (no tiene fachada de detalle)</span>' : V ? '<b>' + esc(fam || V.fam || '?') + '</b> · variante ' + esc(V.id || '?') + (V.acab ? ' <span class="d">(' + esc(V.acab) + ')</span>' : '') : '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (fachada genérica)</span>') + '</div>');
+      h.push('<div><span class="k">Estilo hoy</span>' + (!elig ? '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (no tiene fachada de detalle)</span>' : V ? '<b>' + esc(fam || V.fam || '?') + '</b> · variante ' + esc(String(V.id || '?').replace(/:(\d+)$/, (m, d) => ' ' + (+d + 1))) + (V.acab ? ' <span class="d">(' + esc(V.acab) + ')</span>' : '') : '<span class="d">' + (fam ? esc(fam) + ' · ' : '') + 'sin variante (fachada genérica)</span>') + '</div>');
       // Fase 3a: estilo y variante asignados (precalculados en data/condal_edif.json, o del selector provisional si no casa)
       const KT = window.BCN_KIT, PR = window.BCN_EDIF, ok = PR && PR.ok && !(KT && KT.forced), vk = KT && KT.variante ? KT.variante(f.b) : null;
       h.push('<div><span class="k">Estilo nuevo</span>' + (nuevo ? '<b>' + esc(nuevo.n) + '</b>' + (BR.varEst ? ' · variante ' + (BR.varEst[f.b] + 1) + (vk && vk.nombre ? ' <span class="d">(' + esc(vk.nombre) + ')</span>' : '') : '') +

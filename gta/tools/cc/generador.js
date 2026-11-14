@@ -116,15 +116,18 @@ function generar() {
   const grp = new Int32Array(NB).fill(-1), gK = new Map(), at0 = {};
   for (let b = 0; b < NB; b++) { if (!res[b]) continue; const r = C.at(cxA[b], czA[b], at0); if (!r || !r.mezcla) continue;
     const k = (r.zona === 'bcn' ? 'b' : 'p') + (r.barrioRef || r.barrio || '?'); let g = gK.get(k); if (g === undefined) gK.set(k, g = gK.size); grp[b] = g; }
+  // F3R: λ entre 0,02 y 50 (antes 0,2–5, que no bastaba en el Carmel, Horta o Torre Baró) y una segunda vuelta con el reparto
+  // realmente asignado (rachas incluidas): los estilos altos van primero a los edificios más altos del barrio
+  const LMIN = 0.02, LMAX = 50;
   const NG = gK.size, LAM = new Float64Array(NG * NE).fill(1), TG = new Float64Array(NG * NE), AG = new Float64Array(NG * NE), wq = new Float64Array(NE);
   const cOf = (n, i, av) => av ? Math.max(compat(n, IX[i].pl), compat(n - 1, IX[i].pl), compat(n - 2, IX[i].pl)) : compat(n, IX[i].pl);
   for (let b = 0; b < NB; b++) { const g = grp[b]; if (g < 0) continue; const m = C.at(cxA[b], czA[b], at0).mezcla; for (let i = 0; i < NE; i++) TG[g * NE + i] += m[i]; }
-  for (let it = 0; it < 8; it++) {
+  for (let it = 0; it < 24; it++) {
     AG.fill(0);
     for (let b = 0; b < NB; b++) { const g = grp[b]; if (g < 0) continue; const m = C.at(cxA[b], czA[b], at0).mezcla; let s = 0;
       for (let i = 0; i < NE; i++) { wq[i] = m[i] * cOf(nPl[b], i, aven[b]) * LAM[g * NE + i]; s += wq[i]; }
       if (s > 0) for (let i = 0; i < NE; i++) AG[g * NE + i] += wq[i] / s; }
-    for (let k = 0; k < NG * NE; k++) if (TG[k] > 0 && AG[k] > 0) LAM[k] = Math.max(0.2, Math.min(5, LAM[k] * Math.sqrt(TG[k] / AG[k]))); }
+    for (let k = 0; k < NG * NE; k++) if (TG[k] > 0 && AG[k] > 0) LAM[k] = Math.max(LMIN, Math.min(LMAX, LAM[k] * Math.sqrt(TG[k] / AG[k]))); }
   const msL = performance.now() - t0;
 
   // ---- reglas 1, 2, 3, 4, 5 y 7
@@ -134,7 +137,11 @@ function generar() {
   const vi = new Int8Array(NB).fill(-1), ci = new Int8Array(NB).fill(-1), at = {}, w = new Float64Array(NE);
   const ids = (ES, v, si) => { const V = ES.V[v], pal = V.paleta || ES.paleta || IX[si].pal; return V.paleta ? pal.map((_, i) => i) : V.pal || pal.map((_, i) => i); };
   const done = new Uint8Array(NB);
-  const ST = { conDatos: 0, rep: 0, conRep: 0, parc: 0, atico: 0, remonte: 0, noKit: 0 };
+  let ST = null;
+  const ATICO = new Set(['eixample_ornamentado', 'noucentista', 'autarquia', 'desarrollismo', 'burgues_60_70']);
+  // F3R: remontes también en casas de 2 plantas de estos estilos (+1 planta)
+  const REM2 = new Set(['pueblo', 'casas_baratas', 'autoconstruccion', 'casa_obrera_xix', 'quart_de_casa']);
+  const remOK = (si, n, atico) => !atico && REMONTE.has(IX[si].id) && (n >= 3 || (n === 2 && REM2.has(IX[si].id)));
   function decide(b, prev) {
     done[b] = 1;
     const r = C.at(cxA[b], czA[b], at); if (!r || !r.mezcla) return;
@@ -144,7 +151,8 @@ function generar() {
     ST.conDatos++;
     let si = -1, rep = 0;
     if (prev >= 0 && est[prev] !== 255) { const ps = est[prev], pRep = /Eixample/.test(r.distrito || '') ? 0.65 : RACHA_ALTA.has(ps) ? 0.8 : 0.5; ST.conRep++;
-      if (m[ps] > 0 && compat(n, IX[ps].pl) >= 0.2 && rnd(b, 10) < pRep) { si = ps; rep = 1; ST.rep++; } }
+      const kR = pRep >= 0.8 ? 2 : pRep >= 0.65 ? 1 : 0; ST.repK[kR * 2]++;
+      if (m[ps] > 0 && cOf(n, ps, av) >= 0.008 && rnd(b, 10) < pRep) { si = ps; rep = 1; ST.rep++; ST.repK[kR * 2 + 1]++; } }
     if (si < 0) { let q = rnd(b, 11) * s; si = NE - 1; for (let i = 0; i < NE; i++) { q -= w[i]; if (q < 0) { si = i; break; } } }
     est[b] = si;
     const ES = KIT.E[IX[si].id]; if (!ES) { ST.noKit++; return; }
@@ -165,9 +173,10 @@ function generar() {
     vi[b] = V; ci[b] = Ci;
     const Vo = ES.V[V];
     // regla 5: ático y remonte
-    const atico = n >= 4 && Vo.aticoP > 0 && rnd(b, 14) < Vo.aticoP ? 1 : 0;
+    const aP = Vo.aticoP > 0 ? Vo.aticoP : ATICO.has(IX[si].id) ? 0.3 : 0;   // F3R: 30 % del estilo si la variante no trae aticoP
+    const atico = n >= 4 && aP > 0 && rnd(b, 14) < aP ? 1 : 0;
     let remP = 0, remA = 0; const pr = (r.detalles && r.detalles.remontes_plantas_anadidas) || 0;
-    if (!atico && n >= 3 && REMONTE.has(IX[si].id) && rnd(b, 15) < pr) { remP = rnd(b, 16) < 0.7 ? 1 : 2; remA = (rnd(b, 17) * 4) | 0; }
+    if (remOK(si, n, atico) && rnd(b, 15) < Math.min(1, pr * (g >= 0 ? REMF[g] : 1))) { remP = n === 2 || rnd(b, 16) < 0.7 ? 1 : 2; remA = (rnd(b, 17) * 4) | 0; }
     ST.atico += atico; ST.remonte += remP ? 1 : 0;
     // regla 4: parcelas virtuales
     let np = 1; const an = IX[si].an;
@@ -183,8 +192,21 @@ function generar() {
   // primero las aceras, en orden de calle y de posición; después el resto
   const ac = []; for (let b = 0; b < NB; b++) if (fr[b] >= 0) ac.push(b);
   ac.sort((a, c) => fr[a] - fr[c] || frT[a] - frT[c] || a - c);
-  for (let i = 0; i < ac.length; i++) { const b = ac[i], prev = i > 0 && fr[ac[i - 1]] === fr[b] ? ac[i - 1] : -1; decide(b, prev); }
-  for (let b = 0; b < NB; b++) if (res[b] && !done[b]) decide(b, -1);
+  const REMF = new Float64Array(NG).fill(1);
+  const pasada = () => { ST = { conDatos: 0, rep: 0, conRep: 0, parc: 0, atico: 0, remonte: 0, noKit: 0, repK: [0, 0, 0, 0, 0, 0] };
+    done.fill(0); vi.fill(-1); ci.fill(-1); for (let b = 0; b < NB; b++) { est[b] = 255; p1[b] = p2[b] = p3[b] = p4[b] = p5[b] = p6[b] = 0; }
+    for (let i = 0; i < ac.length; i++) { const b = ac[i], prev = i > 0 && fr[ac[i - 1]] === fr[b] ? ac[i - 1] : -1; decide(b, prev); }
+    for (let b = 0; b < NB; b++) if (res[b] && !done[b]) decide(b, -1); };
+  for (let vuelta = 0; vuelta < 3; vuelta++) {
+    pasada(); if (vuelta === 2) break;
+    // F3R: reparto realmente asignado por grupo → λ; remontes: probabilidad / fracción de edificios que admiten remonte
+    AG.fill(0); const nG = new Float64Array(NG), sP = new Float64Array(NG), nE = new Float64Array(NG);
+    for (let b = 0; b < NB; b++) { const g = grp[b]; if (g < 0 || est[b] === 255) continue; AG[g * NE + est[b]]++; nG[g]++;
+      const r = C.at(cxA[b], czA[b], at0); sP[g] += (r.detalles && r.detalles.remontes_plantas_anadidas) || 0; if (remOK(est[b], nPl[b], (p1[b] >> 2) & 1)) nE[g]++; }
+    for (let g = 0; g < NG; g++) { REMF[g] = nE[g] > 0 ? Math.min(4, nG[g] / nE[g]) : 1; let t = 0; for (let i = 0; i < NE; i++) t += TG[g * NE + i];
+      if (nG[g] > 0 && t > 0) for (let i = 0; i < NE; i++) { const k = g * NE + i, T = TG[k] / t, A = AG[k] / nG[g];
+        if (T > 0) LAM[k] = Math.max(LMIN, Math.min(LMAX, LAM[k] * Math.pow((T + 0.002) / (A + 0.002), 0.8))); } }
+  }
   const ms2 = performance.now() - t0;
 
   // ---- estadística: por barrio, reparto asignado frente a fachadas_pct; rachas; contiguos repetidos
@@ -196,9 +218,16 @@ function generar() {
     if (r.zona === 'bcn' && MB.has(r.barrioIdx)) { const k = MB.get(r.barrioIdx); cnt[k][est[b]]++; tot[k]++; for (let i = 0; i < NE; i++) cntM[k][i] += r.mezcla[i];
       if (fr[b] >= 0) { cntF[k][est[b]]++; totF[k]++; } }
     else { perif++; cntP[est[b]]++; for (let i = 0; i < NE; i++) cntPM[i] += r.mezcla[i]; } }
+  // F3R: chaflanes por distrito y remontes de Barcelona frente a los esperados (remontes_plantas_anadidas)
+  const chfD = {}; let remB = 0, remEsp = 0, atB = {};
+  for (let b = 0; b < NB; b++) { if (!res[b]) continue; const r = C.at(cxA[b], czA[b], at); if (!r) continue;
+    if (chf[b]) chfD[r.distrito || 'perif'] = (chfD[r.distrito || 'perif'] || 0) + 1;
+    if (r.zona === 'bcn' && est[b] !== 255) { remEsp += (r.detalles && r.detalles.remontes_plantas_anadidas) || 0; if ((p1[b] >> 3) & 3) remB++;
+      if (nPl[b] >= 4) { const id = IX[est[b]].id, o = atB[id] || (atB[id] = [0, 0]); o[0]++; o[1] += (p1[b] >> 2) & 1; } } }
   const barrios = C.barrios.map((x, k) => { if (!tot[k]) return null; let eM = 0, eMax = 0, eS = 0, iMax = -1;
     for (let i = 0; i < NE; i++) { const a = cnt[k][i] / tot[k], f = x.mezcla[i], e = Math.abs(a - f); eM += e; if (e > eMax) { eMax = e; iMax = i; } eS += Math.abs(cntM[k][i] / tot[k] - f); }
-    return { n: x.n, ed: tot[k], errMedio: +(100 * eM / NE).toFixed(2), errMax: +(100 * eMax).toFixed(1), estiloMax: IX[iMax].id, asig: +(100 * cnt[k][iMax] / tot[k]).toFixed(1), pct: +(100 * x.mezcla[iMax]).toFixed(1),
+    let dif = 0; for (let i = 0; i < NE; i++) dif += Math.abs(cnt[k][i] / tot[k] - x.mezcla[i]);
+    return { n: x.n, ed: tot[k], otroEstilo: +(50 * dif).toFixed(1), errMedio: +(100 * eM / NE).toFixed(2), errMax: +(100 * eMax).toFixed(1), estiloMax: IX[iMax].id, asig: +(100 * cnt[k][iMax] / tot[k]).toFixed(1), pct: +(100 * x.mezcla[iMax]).toFixed(1),
       errMezclaSinAltura: +(100 * eS / NE).toFixed(2), errFrente: totF[k] ? +(100 * x.mezcla.reduce((a, f, i) => a + Math.abs(cntF[k][i] / totF[k] - f), 0) / NE).toFixed(2) : null }; }).filter(Boolean);
   // rachas: longitud media de las secuencias de mismo estilo en cada acera
   let nR = 0, sR = 0, cur = 0, lastK = -1, lastS = -1;
@@ -218,7 +247,10 @@ function generar() {
     paresAcera, mismaVarianteAcera: mismaVarAcera, contiguosRepetidosAcera: repAcera, paresPegados: paresPeg, contiguosRepetidosPegados: repPeg,
     parcelas: ST.parc, sinSalida: ST.sinSalida || 0, grupos: NG, aticos: ST.atico, remontes: ST.remonte, chaflanes: chf.reduce((a, v) => a + v, 0), sinKit: ST.noKit,
     errMedioBarrios: +(gE / Math.max(1, barrios.length)).toFixed(2), errMedioPonderado: +(gW / Math.max(1, barrios.reduce((a, x) => a + x.ed, 0))).toFixed(2),
-    errMaxBarrios: gX, errMedioFrente: +(gF / Math.max(1, barrios.length)).toFixed(2), ms: [ms0, ms1, msL, ms2, performance.now() - t0].map(Math.round), barrios, periferia: per };
+    errMaxBarrios: gX, chaflanesPorDistrito: chfD, remontesBcn: remB, remontesEsperadosBcn: Math.round(remEsp),
+    aticosPct4: Object.fromEntries(Object.entries(atB).filter(([, o]) => o[1]).map(([k, o]) => [k, +(100 * o[1] / o[0]).toFixed(1)])), otroEstiloMedio: +(barrios.reduce((a, x) => a + x.otroEstilo, 0) / Math.max(1, barrios.length)).toFixed(1),
+    barriosOtroMas20: barrios.filter(x => x.otroEstilo > 20).length,
+    repeticion: { normal: +(ST.repK[1] / Math.max(1, ST.repK[0])).toFixed(3), eixample: +(ST.repK[3] / Math.max(1, ST.repK[2])).toFixed(3), poligono: +(ST.repK[5] / Math.max(1, ST.repK[4])).toFixed(3) }, errMedioFrente: +(gF / Math.max(1, barrios.length)).toFixed(2), ms: [ms0, ms1, msL, ms2, performance.now() - t0].map(Math.round), barrios, periferia: per };
   // base64 de los planos (lo comprime Node)
   let s64 = ''; for (let i = 0; i < O.length; i += 0x8000) s64 += String.fromCharCode.apply(null, O.subarray(i, i + 0x8000));
   return { nB: NB, firma: ED.firma(BR.dv, NB), raw: btoa(s64), stats };
@@ -252,6 +284,6 @@ function generar() {
   const { barrios, periferia, ...g } = S;
   console.log(JSON.stringify(g));
   console.log('periferia: ' + periferia.ed + ' edificios; asignado % / mezcla %: ' + periferia.top.map(t => t[0] + ' ' + t[1] + '/' + t[2]).join(' · '));
-  console.log('barrio · edificios · error medio (pp) · error máx (pp, estilo: asignado/fachadas_pct) · error medio de la mezcla sin corregir por altura · error medio de los que tienen frente de calle');
-  for (const x of barrios.sort((a, c) => c.ed - a.ed)) console.log('  ' + x.n + ' · ' + x.ed + ' · ' + x.errMedio + ' · ' + x.errMax + ' (' + x.estiloMax + ': ' + x.asig + '/' + x.pct + ') · ' + x.errMezclaSinAltura);
+  console.log('barrio · edificios · % de edificios con otro estilo que el de fachadas_pct · error medio (pp) · error máx (pp, estilo: asignado/fachadas_pct) · error medio de la mezcla sin corregir por altura · error medio de los que tienen frente de calle');
+  for (const x of barrios.sort((a, c) => c.ed - a.ed)) console.log('  ' + x.n + ' · ' + x.ed + ' · ' + x.otroEstilo + ' · ' + x.errMedio + ' · ' + x.errMax + ' (' + x.estiloMax + ': ' + x.asig + '/' + x.pct + ') · ' + x.errMezclaSinAltura);
 })();

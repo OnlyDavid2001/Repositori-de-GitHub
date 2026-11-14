@@ -62,7 +62,10 @@ const TYPES = [
     back: [BACK.ESTANTES, [184, 188, 190]], far: [LY.LINEALES, [190, 192, 194]], near: [LY.NADA, [0, 0, 0]], shelf: [LY.CARTELES, [0, 0, 0]], acc: [220, 40, 40], pal: PAL.VARIADO, shape: SH.MIXTO },
 ];
 const SHOPS = TYPES.map(t => t.n), SUPER = SHOPS.indexOf('SUPERMERCAT');
+const RESTI = SHOPS.indexOf('RESTAURANT');   // F3R: restaurantes con nombre propio (celdas 25–31 del atlas)
 // F3b · regla 6: anuncios pintados de marcas inventadas (texto, fondo, letra)
+const REST = [['CAN TORRENTS', '#3a1512', '#e9cf8a'], ['CASA MARGARIDA', '#1f3a2c', '#efe4c4', 'italic bold'], ["EL RACÓ D'EN JOSEP", '#e8dcc0', '#5a1e16'],
+  ['LA TAULA DEL BARRI', '#22324a', '#f0d79a'], ['CAN FERRAN', '#7a2418', '#f6ead0'], ["EL FOGÓ DE L'ÀVIA", '#2e2a26', '#e6b25a', 'italic bold'], ['CASA NURI', '#4a5a2a', '#f4ecd6']];
 const ANUNCIOS = [['ANÍS LA GAVINA', '#7a2a1c', '#efe2c0'], ['XOCOLATES SOLER', '#1e3c2e', '#f2dfa8', 'italic bold'], ['GASEOSES MONTCADA', '#222e56', '#f4ecd8'],
   ['VI RANCI CAN PUJOL', '#c4a046', '#3a1a10'], ['CAFÈS EL MOLINET', '#3c281e', '#e8c890', 'italic bold'], ['SABÓ LA FLORIDA', '#962828', '#f6f0e0'],
   ['MOTOS RIERA · TALLER', '#284664', '#f0e6c8'], ['LLEIXIU LA PALOMA', '#5a1e28', '#f4e2c0']];
@@ -776,6 +779,10 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     // F3b · regla 6: anuncios antiguos pintados en las medianeras (celdas 17–24; marcas inventadas; fondos = ANUNCIO de facades.js)
     ANUNCIOS.forEach((a, k) => { const r = 17 + k, x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
       g.fillStyle = a[1]; g.fillRect(x, y, 512, 64); g.fillStyle = a[2]; g.font = (a[3] || 'bold') + ' 44px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(a[0], x + 256, y + 34, 490); });
+    // F3R: restaurantes con nombre propio (celdas 25–31; nombres inventados en catalán, 7 combinaciones de color)
+    REST.forEach((a, k) => { const r = 25 + k, x = (r % 2) * 512, y = (15 - (r >> 1)) * 64;
+      g.fillStyle = a[1]; g.fillRect(x, y, 512, 64); g.strokeStyle = a[2]; g.globalAlpha = 0.55; g.lineWidth = 2; g.strokeRect(x + 6, y + 6, 500, 52); g.globalAlpha = 1;
+      g.fillStyle = a[2]; g.font = (a[3] || 'bold') + ' 40px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(a[0], x + 256, y + 34, 470); });
     sign.update(true); sign.wrapU = sign.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE; sign.anisotropicFilteringLevel = 8;
   }
   const par = BABYLON.RawTexture.CreateRGBATexture(paramData(), PARW, PARH, scene, false, false, BABYLON.Texture.NEAREST_SAMPLINGMODE);
@@ -967,7 +974,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
     const sv0 = s.top + 0.12, hmax = Math.min(0.56, F1 - 0.2 - sv0);
     if (s.sign && hmax > 0.22) {
       const w = Math.min(hmax * 8, s.uB - s.uA - 0.1), h = w / 8, uc = (s.uA + s.uB) / 2, y = sv0 + (hmax - h) / 2;
-      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
+      quad(W0, F, uc - w / 2, y, 0.085, uc + w / 2, y, 0.085, uc + w / 2, y + h, 0.085, uc - w / 2, y + h, 0.085, [255, 255, 255], K.SIGN, signAux(s.type === RESTI ? 25 + (((env.b * 7 + run.i * 3 + Math.round(s.uA * 3)) % 7) + 7) % 7 : s.type));   // 2,5 cm delante de la faja (antes 1 cm: parpadeaba de lejos)
       box(W1, F, uc - w / 2 - 0.03, uc + w / 2 + 0.03, y - 0.03, y + h + 0.03, 0, 0.06, shopCols(env).met, K.METAL);   // faja del rótulo, a juego
     }
     if (s.T.shelf[0] === LY.CRUZ) { const uc = s.uA - 0.14, y = s.top - 0.5, g = [40, 215, 95];
@@ -980,7 +987,7 @@ const API = window.BCN_INTERIORS = { SHOPS, TYPES, force: parseForce(), paramDat
   // sillas, sombrillas del color del toldo (si el local no tiene toldo), jardineras en los extremos y una pizarra junto a la
   // puerta. ORNAMENTO con detalle; en BASE, tableros y sombrillas de pocos lados marcados como sustitutos (no aparecen de golpe).
   // Azar: ámbito env.rnd(11, tramo, primer vano del comercio), 40 números de golpe.
-  const TERR = new Set(['BAR', 'CAFÈ', 'RESTAURANT', 'GELATERIA'].map(n => SHOPS.indexOf(n)));
+const TERR = new Set(['BAR', 'CAFÈ', 'RESTAURANT', 'GELATERIA'].map(n => SHOPS.indexOf(n)));
   const PINT = pbrAux(0.4, 0, 0, 0), ALU = pbrAux(0.35, 1, 0, 0), RATTAN = pbrAux(0.7, 0, 1, 0), TELA = pbrAux(0.85, 0, 0, 0), PIZ = pbrAux(0.8, 0, 1, 0), SUB = subAux();
   function terrace(env, run, s) {
     const { W0, W1 } = env, { F, r } = run;

@@ -1643,8 +1643,13 @@ const BREC = { dv: [], n: 0 };
     for (const ck of c.meta.chunks) {
       const [cx, cz, off, len, nB, nV, nR] = ck;
       const maxV = (nV + nR) * 2, maxI = nV * 6 + (nV + 2 * nR) * 3;
-      const pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4), axv = new Int8Array(maxV * 2);
-      const idx = maxV > 65535 ? new Uint32Array(maxI) : new Uint16Array(maxI);
+      let pos = new Float32Array(maxV * 3), col = new Uint8Array(maxV * 4), inf = new Int16Array(maxV * 4), axv = new Int8Array(maxV * 2);
+      let idx = maxV > 65535 ? new Uint32Array(maxI) : new Uint16Array(maxI), capV = maxV, capI = maxI;
+      // F3R: las parcelas virtuales añaden vértices al volumen lejano: los búferes crecen si hace falta
+      const grow = (nv, ni) => { if (nv <= capV && ni <= capI) return;
+        const v2 = Math.max(nv, (capV * 1.25) | 0), i2 = Math.max(ni, (capI * 1.25) | 0), cp = (A, n) => { const B = new A.constructor(n); B.set(A); return B; };
+        if (v2 > capV) { pos = cp(pos, v2 * 3); col = cp(col, v2 * 4); inf = cp(inf, v2 * 4); axv = cp(axv, v2 * 2); }
+        const I2 = v2 > 65535 ? new Uint32Array(i2) : new Uint16Array(i2); I2.set(idx.subarray(0, ip)); idx = I2; capV = Math.max(capV, v2); capI = i2; };
       let vp = 0, ip = 0, p = off; const end = off + len; const flat = [], holes = [], rsz = [], topIdx = [];
       const ox = cx * CH, oz = cz * CH;
       while (p < end) {
@@ -1680,21 +1685,51 @@ const BREC = { dv: [], n: 0 };
         for (let r = 0; r < rsz.length; r++) {
           const m = rsz[r]; if (r > 0) holes.push(rs);
           let ua = 0;
-          for (let k = 0; k <= m; k++) {
-            const kk = rs + (k % m), x = flat[kk * 2], z = flat[kk * 2 + 1];
-            if (k > 0) { const pk = rs + k - 1; ua += Math.hypot(x - flat[pk * 2], z - flat[pk * 2 + 1]); }
-            const uq = Math.min(32767, Math.round(ua * 10));
+          // F3R: parcelas virtuales en el volumen lejano (regla 4): los lados largos del anillo exterior se parten en tramos del ancho
+          // de parcela con el color de cada parcela (BCN_EDIF.parcela + kit.colorDe, el mismo que la fachada de detalle), en el
+          // orden de facades.js (desde la esquina más cerrada); entre parcelas, vértices duplicados sin cara (corte de color nítido)
+          let PC = null;
+          if (r === 0 && LJ && EDIF.parcelas(bi) > 1 && window.BCN_KIT.colorDe) {
+            const nP = EDIF.parcelas(bi); let Lm = 0, s0 = 0, best = -1;
+            for (let k = 0; k < m; k++) { const j = (k + 1) % m, L = Math.hypot(flat[j * 2] - flat[k * 2], flat[j * 2 + 1] - flat[k * 2 + 1]); if (L > Lm) Lm = L;
+              const h = (k + m - 1) % m, t1 = Math.atan2(flat[k * 2 + 1] - flat[h * 2 + 1], flat[k * 2] - flat[h * 2]), t2 = Math.atan2(flat[j * 2 + 1] - flat[k * 2 + 1], flat[j * 2] - flat[k * 2]);
+              let d = Math.abs(t2 - t1); if (d > Math.PI) d = 2 * Math.PI - d; if (d > best) { best = d; s0 = k; } }
+            const wP = Lm / nP; let kP = 0; PC = [];
+            for (let t = 0; t < m; t++) { const k = (s0 + t) % m, j = (k + 1) % m, L = Math.hypot(flat[j * 2] - flat[k * 2], flat[j * 2 + 1] - flat[k * 2 + 1]), n = wP > 0 ? Math.round(L / wP) : 1;
+              if (n < 2) continue; const cs = [];
+              for (let q = 0; q < n; q++, kP++) { const pc = kP ? EDIF.parcela(bi, kP) : null; cs.push(kP && pc ? window.BCN_KIT.colorDe(bi, pc.v, pc.c) || c3 : c3); }
+              PC[k] = cs; }
+          }
+          const emit = (x, z, uq, c, conn, kk) => {
+            grow(vp + 2, ip + 6 + 3 * m);
             let o = vp * 3; pos[o] = x; pos[o + 1] = y0; pos[o + 2] = z; pos[o + 3] = x; pos[o + 4] = y1; pos[o + 5] = z;
-            o = vp * 4; col[o] = c3[0]; col[o + 1] = c3[1]; col[o + 2] = c3[2]; col[o + 3] = a; col[o + 4] = c3[0]; col[o + 5] = c3[1]; col[o + 6] = c3[2]; col[o + 7] = a;
+            o = vp * 4; col[o] = c[0]; col[o + 1] = c[1]; col[o + 2] = c[2]; col[o + 3] = a; col[o + 4] = c[0]; col[o + 5] = c[1]; col[o + 6] = c[2]; col[o + 7] = a;
             inf[o] = hb; inf[o + 1] = Ht; inf[o + 2] = uq; inf[o + 3] = LJ; inf[o + 4] = Ht; inf[o + 5] = Ht; inf[o + 6] = uq; inf[o + 7] = LJ;
             o = vp * 2; axv[o] = axC; axv[o + 1] = axS; axv[o + 2] = axC; axv[o + 3] = axS;
-            if (k < m) topIdx[kk] = vp + 1;
-            if (k > 0) { const a0 = vp - 2; idx[ip++] = a0; idx[ip++] = vp; idx[ip++] = vp + 1; idx[ip++] = a0; idx[ip++] = vp + 1; idx[ip++] = a0 + 1; }
+            if (kk >= 0) topIdx[kk] = vp + 1;
+            if (conn) { const a0 = vp - 2; idx[ip++] = a0; idx[ip++] = vp; idx[ip++] = vp + 1; idx[ip++] = a0; idx[ip++] = vp + 1; idx[ip++] = a0 + 1; }
             vp += 2;
+          };
+          for (let k = 0; k <= m; k++) {
+            const kk = rs + (k % m), x = flat[kk * 2], z = flat[kk * 2 + 1];
+            const cs = PC && k > 0 ? PC[k - 1] : null;
+            if (cs) {                                    // el lado (k − 1 → k) va partido en parcelas
+              const pk = rs + k - 1, xa = flat[pk * 2], za = flat[pk * 2 + 1], L = Math.hypot(x - xa, z - za), n = cs.length, uq0 = ua;
+              emit(xa, za, Math.min(32767, Math.round(uq0 * 10)), cs[0], false, -1);
+              for (let q = 1; q < n; q++) { const f = q / n, xq = xa + (x - xa) * f, zq = za + (z - za) * f, uq = Math.min(32767, Math.round((uq0 + L * f) * 10));
+                emit(xq, zq, uq, cs[q - 1], true, -1); emit(xq, zq, uq, cs[q], false, -1); }
+              ua += L; emit(x, z, Math.min(32767, Math.round(ua * 10)), cs[n - 1], true, -1);
+              const nx = PC[k % m];                         // el lado siguiente arranca con su color: vértice propio sin cara
+              emit(x, z, Math.min(32767, Math.round(ua * 10)), nx ? nx[0] : c3, false, k < m ? kk : -1);
+              continue;
+            }
+            if (k > 0) { const pk = rs + k - 1; ua += Math.hypot(x - flat[pk * 2], z - flat[pk * 2 + 1]); }
+            emit(x, z, Math.min(32767, Math.round(ua * 10)), c3, k > 0, k < m ? kk : -1);
           }
           rs += m;
         }
         const tr = earcut(flat, holes.length ? holes : null, 2);
+        grow(vp, ip + tr.length);
         for (let k = 0; k < tr.length; k++) idx[ip++] = topIdx[tr[k]];
         bldCount++;
         BREC.v1[bi] = vp;

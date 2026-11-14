@@ -180,7 +180,7 @@ void main(){
     float id = floor(vInfo.z*255.0 + 0.5);
     vec2 uv = vec2((mod(id, 2.0) + vInfo.x)/2.0, (floor(id/2.0) + vInfo.y)/16.0);   // atlas de 2 x 16 celdas
     alb = texture2D(tSign, uv).rgb; rough = 0.5;
-    if (id < 16.5) emis = emit(alb, shopOn()*0.4);   // rótulo: encendido mientras el comercio está abierto
+    if (id < 16.5 || id > 24.5) emis = emit(alb, shopOn()*0.4);   // rótulo: encendido mientras el comercio está abierto
     else { alb = mix(alb, vec3(0.62, 0.58, 0.52), 0.22)*mix(0.78, 1.04, vnoise(P*vec2(1.7, 3.1))); rough = 0.95; }   // F3b: anuncio pintado en una medianera, desvaído y sin luz
   } else if (kind < 9.5) {                            // toldo a rayas
     float s = step(0.5, fract(P.x*2.4));
@@ -316,7 +316,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // la exclusión: en el radio [R] solo quedan fuera los equipamientos y naves (tipo > 0: pabellones, gradas, terminales, museos)
   // y, en el núcleo [Rv], también las viviendas (claustros, casas pegadas al templo); antes se quitaba todo en R y quedaban halos
   // de edificios sin fachada de detalle. En parques y recintos (Park Güell, Montjuïc, Tibidabo, Anella, Fòrum, aeropuerto) Rv = R.
-  const SKIP = { 'Sagrada Família': [110, 45], 'Camp Nou': [230, 60], 'Palau Nacional (MNAC)': [170, 170], 'Catedral': [70, 35], 'Hospital de Sant Pau': [260, 0],
+  const SKIP = { 'Sagrada Família': [110, 45], 'Camp Nou': [230, 60], 'Palau Nacional (MNAC)': [170, 170], 'Catedral': [70, 35], 'Hospital de Sant Pau': [260, 90],
     'Estadi Olímpic': [170, 170], 'Castell de Montjuïc': [140, 140], 'Aeroport · Terminal 1': [700, 700], 'Aeroport · Terminal 2': [500, 500], 'Estació de Sants': [160, 40],
     'Torre Glòries': [60, 25], 'Hotel W': [60, 60], 'Tres Xemeneies del Besòs': [120, 120], 'Fòrum': [260, 260], 'Park Güell': [140, 140], 'Arc de Triomf': [30, 0], 'Tibidabo': [120, 120] };
   const skipPts = META.poi.filter(q => SKIP[q.n]).map(q => [q.p[0], q.p[2], SKIP[q.n][0], SKIP[q.n][1]]);
@@ -452,8 +452,13 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       if (cover >= d.y1 - 2.5) kind = 'blind';
       else if (L < 2.2) kind = 'plain';
       // regla 6 (F3b): pegado a un vecino 2+ plantas más bajo → medianera vista por encima de él (antes salían ventanas)
-      else if (cover > -1e8 && cover > gHi + 2 && d.y1 - cover >= 5.8 && L >= 3) kind = 'medianera';
-      else kind = roadDist(mx + nx * 2, mz + nz * 2) < 16 ? 'street' : 'yard';
+      else {
+        // F3R: a menos de 16 m de calzada solo es medianera si el tramo se aleja de la calle (pared lateral, casi perpendicular al
+        // frente); lejos de la calle (patio), solo si el vecino deja 2+ plantas sobre la planta baja (≥ 7 m sobre la acera)
+        const rd = roadDist(mx + nx * 2, mz + nz * 2), med = cover > -1e8 && cover > gHi + 2 && d.y1 - cover >= 5.8 && L >= 3;
+        if (med && (rd < 16 ? Math.abs(roadDist(A[0] + nx * 2, A[1] + nz * 2) - roadDist(Bp[0] + nx * 2, Bp[1] + nz * 2)) > 0.5 * L : cover - gHi >= 7)) kind = 'medianera';
+        else kind = rd < 16 ? 'street' : 'yard';
+      }
       runs.push({ ax: A[0], az: A[1], tx, tz, nx, nz, L, kind, cover });
     }
     let portal = null, pl = 0; for (const r of runs) if (r.kind === 'street' && r.L > pl && r.cover < gHi) { pl = r.L; portal = r; }
@@ -479,7 +484,11 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const n = runs.length; if (n < 3) return false;
     const r = runs[i], a = runs[(i + n - 1) % n], c = runs[(i + 1) % n];
     const d1 = Math.abs(r.tx * a.tx + r.tz * a.tz), d2 = Math.abs(r.tx * c.tx + r.tz * c.tz), d3 = Math.abs(a.tx * c.tx + a.tz * c.tz);
-    return d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 6 && c.L > 6;
+    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 6 && c.L > 6 && a.kind === 'street' && c.kind === 'street') return true;
+    // F3R: chaflán compartido por dos fincas (el caso normal del Eixample): un vecino es la calle a ~45° y el otro, la medianera
+    // con la finca de al lado (ciega, medianera vista o lisa), en cualquier ángulo
+    const pared = o => o.kind === 'blind' || o.kind === 'medianera' || o.kind === 'plain';
+    return (a.kind === 'street' && d1 > 0.5 && d1 < 0.87 && a.L > 6 && pared(c)) || (c.kind === 'street' && d2 > 0.5 && d2 < 0.87 && c.L > 6 && pared(a));
   }
   // tonos y banderas de la variante (ámbito (b, 6, k): k = 1 el edificio, 2 + k las parcelas virtuales)
   function tonosV(env, V, k) {
@@ -633,7 +642,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     let Rm = C - F1, nF = Rm >= 2.5 ? Math.max(1, Math.round(Rm / (V ? V.hp : 3.15))) : 0;
     if (!nF) F1 = C;
     const m = nF ? Rm / nF : 0;
-    const shopsHere = shops && F1 - gHi > 3.6;
+    // F3R · regla 8: en las zonas de ≥ 15 locales/ha, las casas bajas (planta baja de 3,25 m) también llevan una tienda pequeña
+    const dnB = !shops && !cls6 && V && V.kit && H >= 6 ? sitio(b).dn : 0;
+    const shopsHere = (shops && F1 - gHi > 3.6) || (dnB >= 15 && F1 - gHi > 3.1);
     const glass = [33, 43, 54], rv = shade(p, 0.58);
     const env = { b, lay, d, W0, W1, ox, oz, style, cls6, shops, shopsHere, porticones, tribunaOK, balusters,
       p, u, stone, shut, persi, wood, iron, glass, rv, gHi, H, G, F1, C, nF, m, y0: d.y0, y1: d.y1, windowHole, rnd, wa: wallAux };
@@ -1145,7 +1156,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // barrio, tramos de calle de viviendas del kit con planta baja posible y cuántos salen comerciales (la misma decisión que genB,
   // sin las parcelas virtuales). Recorre los edificios elegibles con centro en la caja (x0, z0)–(x1, z1). Sin coste fuera de esto.
   function pbStat(x0, z0, x1, z1) {
-    const B = { a: [0, 0, 0, 0], b: [0, 0, 0, 0], c: [0, 0, 0, 0], p: [0, 0, 0, 0] }, por = {}, med = [0, 0];
+    const B = { a: [0, 0, 0, 0], b: [0, 0, 0, 0], c: [0, 0, 0, 0], p: [0, 0, 0, 0] }, por = {}, med = [0, 0]; let nChf = 0;
     for (let b = 0; b < NB; b++) {
       if (!BREC.elig[b]) continue; const cx = (BB[b * 4] + BB[b * 4 + 2]) / 2, cz = (BB[b * 4 + 1] + BB[b * 4 + 3]) / 2;
       if (cx < x0 || cx > x1 || cz < z0 || cz > z1) continue;
@@ -1154,16 +1165,16 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const V = varOf(b); if (!V || !V.kit) continue;
       const S = sitio(b), d = lay.d, tipo = BREC.tipo ? BREC.tipo[b] : 0, shops = !(d.cls === 6 || tipo > 0) && lay.H >= 10;
       let F1 = lay.gHi + (V.pbH ? V.pbH : shops ? 4.3 : 3.25); const C = d.y1 - 0.85; if (C - F1 < 2.5) F1 = C;
-      const sh = shops && F1 - lay.gHi > 3.6, runs = lay.runs, nR = runs.length, k = S.barrio === 'perif' ? 'p' : S.dn >= 15 ? 'c' : S.dn >= 5 ? 'b' : 'a';
+      const sh = (shops && F1 - lay.gHi > 3.6) || (!shops && d.cls !== 6 && !tipo && lay.H >= 6 && S.dn >= 15 && F1 - lay.gHi > 3.1), runs = lay.runs, nR = runs.length, k = S.barrio === 'perif' ? 'p' : S.dn >= 15 ? 'c' : S.dn >= 5 ? 'b' : 'a';
       const giro = (r, o) => o && o !== r && o.kind === 'street' && Math.abs(r.tx * o.tx + r.tz * o.tz) < 0.87;
       const P = por[S.barrio || '?'] || (por[S.barrio || '?'] = [0, 0, 0, 0, +S.dn.toFixed(1)]);
       for (let i = 0; i < nR; i++) { const r = runs[i]; if (r.kind !== 'street' || r.cover >= lay.gHi + 3) continue;
-        const chf = r.L >= 5 && r.L <= 24 && (V.chaflanV || S.chfZ) && esChaflan(runs, i), esq = giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR]);
+        const chf = r.L >= 5 && r.L <= 24 && S.chfZ && esChaflan(runs, i), esq = giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR]);
         seed(b, 7, 2, i); const rc = R(), com = sh && rc < pComDe(S, chf ? chaflanDe(V, S) : V, esq, chf);
         const dn = S.dn, old = sh && rc < (dn >= 15 ? 0.95 : dn >= 5 ? 0.3 + (dn - 5) * 0.06 : dn * 0.05) * V.com;   // la regla provisional de F2
-        B[k][0]++; B[k][1] += r.L; if (com) { B[k][2]++; B[k][3] += r.L; } if (old) B[k][4] = (B[k][4] || 0) + 1; if (sh) B[k][5] = (B[k][5] || 0) + 1; P[0]++; P[1] += r.L; if (com) { P[2]++; P[3] += r.L; } }
+        if (chf) nChf++; B[k][0]++; B[k][1] += r.L; if (com) { B[k][2]++; B[k][3] += r.L; } if (old) B[k][4] = (B[k][4] || 0) + 1; if (sh) B[k][5] = (B[k][5] || 0) + 1; P[0]++; P[1] += r.L; if (com) { P[2]++; P[3] += r.L; } }
     }
-    return { bandas: B, barrios: por, medianeras: med, skip: nSkip, skipAntes: nSkip0 };
+    return { bandas: B, barrios: por, medianeras: med, chaflanes: nChf, skip: nSkip, skipAntes: nSkip0 };
   }
   // depuración: punto de calle frente a un edificio de la familia (k-ésimo), mirando su fachada
   function spot(fam, k, up) {
