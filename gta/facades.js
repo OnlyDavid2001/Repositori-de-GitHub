@@ -450,9 +450,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       // ¿pegado a otro edificio? (medianera) — mira en tres puntos justo por fuera
       // Bugs · volúmenes: hacia la calle (< 16 m de calzada) solo tapan los vecinos que arrancan del suelo; en los patios, como
       // antes (las cubiertas de patio elevadas siguen tapando: así no crece la fachada de detalle donde no se ve)
-      let nIn = 0, cov = 1e9; const sueloC = roadDist(mx + nx * 2, mz + nz * 2) < 16;
-      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b, sueloC); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
-      const cover = nIn >= 2 ? cov : -1e9;
+      // Repaso: en los patios, si un punto queda libre y de los otros dos solo uno tiene vecino desde el suelo (el otro es una parte
+      // elevada, un voladizo), por debajo se ve la fachada: no hay tapa (82862 junto a la 82758: persianas y dintel colgados)
+      let nIn = 0, nG = 0, cov = 1e9; const sueloC = roadDist(mx + nx * 2, mz + nz * 2) < 16;
+      for (const f of [0.2, 0.5, 0.8]) { const sx = A[0] + dx * f + nx * 0.9, sz = A[1] + dz * f + nz * 0.9, t = coverAt(sx, sz, b, sueloC);
+        if (t > -1e8) { nIn++; if (t < cov) cov = t; if (sueloC || coverAt(sx, sz, b, true) > -1e8) nG++; } }
+      const cover = nIn >= 3 || nIn >= 2 && nG >= 2 ? cov : -1e9;
       let kind;
       if (cover >= d.y1 - 2.5) kind = 'blind';
       else if (L < 2.2) kind = 'plain';
