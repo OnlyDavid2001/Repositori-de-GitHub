@@ -456,6 +456,10 @@ void main(){
     // aura nocturna: las farolas bañan la parte baja de los muros (cae con la altura). Las cubiertas quedan oscuras
     // Solo los muros que dan a una calle (máscara de calles, 3 m por delante del muro): los patios de manzana quedan a oscuras
     if (uGlow.y > 0.001) glow += kAura*base*(exp(-max(h, 0.0)/6.0)*uGlow.y*mix(0.08, 1.0, texture2D(uStreet, (vPos.xz + normalize(n.xz + vec2(1e-4))*3.0 - uStreetR.xy)*uStreetR.zw).r)*mix(0.45, 1.0, smoothstep(90.0, 380.0, dist))*(1.0 - 0.8*smoothstep(200.0, 380.0, vPos.y)));
+  } else if (n.y < 0.0) {
+    // Bugs · volúmenes: PLAFÓN (cara de abajo de un volumen elevado vista desde abajo): el color del muro oscurecido y liso,
+    // no la textura de la cubierta (antes se veía la teja o la chapa por debajo de marquesinas y voladizos)
+    base *= 0.66;
   } else {
     // CUBIERTA: una por edificio, de un material y un color (palette.js), con su textura fina ALINEADA con los muros del
     // propio edificio (vAx = su eje) y en metros de la propia cubierta: ni costuras por triángulo ni cambios de tono. Toda la
@@ -536,7 +540,7 @@ void main(){
     if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
   // de lejos, algo más (la bruma nocturna se come la penumbra y las cubiertas volvían a leerse como un agujero negro desde el aire)
-  if (abs(n.y) >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
+  if (n.y >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
@@ -1729,8 +1733,12 @@ const BREC = { dv: [], n: 0 };
           rs += m;
         }
         const tr = earcut(flat, holes.length ? holes : null, 2);
-        grow(vp, ip + tr.length);
+        // Bugs · volúmenes: los volúmenes elevados (hb ≥ 1,5 m: marquesinas, voladizos, partes altas) llevan tapa inferior (plafón)
+        // con los vértices de abajo de los muros (topIdx − 1) y el giro invertido; FS_BLD la pinta lisa con el color del muro
+        const cap = hb >= 15;
+        grow(vp, ip + tr.length * (cap ? 2 : 1));
         for (let k = 0; k < tr.length; k++) idx[ip++] = topIdx[tr[k]];
+        if (cap) for (let k = tr.length - 3; k >= 0; k -= 3) { idx[ip++] = topIdx[tr[k + 2]] - 1; idx[ip++] = topIdx[tr[k + 1]] - 1; idx[ip++] = topIdx[tr[k]] - 1; }
         bldCount++;
         BREC.v1[bi] = vp;
         BREC.bb[bi * 4] = bx0 + ox; BREC.bb[bi * 4 + 1] = bz0 + oz; BREC.bb[bi * 4 + 2] = bx1 + ox; BREC.bb[bi * 4 + 3] = bz1 + oz;
