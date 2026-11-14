@@ -2058,3 +2058,28 @@ herramienta y el juego solo las lee, para que estilo, variante y color sean los 
   oscuros en hormigón y claros en ladrillo, planta baja más oscura en piedra y más clara en travertino, vidrio casi entero).
 - **F8**: estilo y variante asignados (con el nombre de la variante y si vienen del fichero, del escaparate o del selector
   provisional) y una línea «Generador»: color, parcelas, ático, remonte, chaflán, desgaste y si repite el estilo de la acera.
+- **Capas en tiempo de ejecución (F3b, facades.js `genB` → `tramo`)**:
+  - *Parcelas virtuales* (regla 4): con `BCN_EDIF.parcelas(b)` > 1, ancho de parcela = tramo de calle más largo / parcelas; cada
+    tramo de calle de ≥ 1,5 parcelas (salvo el chaflán) se parte en `round(L / ancho)` tramos, cada uno con su env
+    (`envParcela`: `Object.create(env)` con variante y color de `BCN_EDIF.parcela(b, k)`, `KIT.colorDe`, tonos de `tonosV` con
+    ámbito (b, 6, 2 + k)), su portal (`E.lay.portal` = la parcela) y una bajante en la junta. Ámbito de azar del tramo: i + 64·(j + 1).
+    La parcela 0 conserva la variante y el color del edificio (los del volumen lejano); las demás solo existen en el detalle.
+  - *Medianeras* (regla 6): `layoutB` marca `kind = 'medianera'` el tramo pegado (2 de 3 sondas) a un vecino de más de 2 m que queda
+    ≥ 5,8 m por debajo de la cubierta. `medianera(env, run)`: ladrillo visto (45 %) o enfoscado gris / del tono de la fachada y, en
+    W1, anuncio antiguo pintado (18 %: celdas 17–24 del atlas de rótulos de interiors.js, marcas inventadas; el sombreador de K.SIGN
+    no los enciende de noche y los destiñe), mural de planos de color (12 %), ventanas abiertas después (22 %) o nada; grafitis encima
+    del tejado del vecino con `detalles_prob.grafitis` × 1,3. Ámbito (b, 5, i).
+  - *Planta baja* (regla 8): `pComDe(S, V, esquina, chaflán)`: ≥ 15 locales/ha 0,95; 5–15 de 0,3 a 0,9 × 1,35 en avenidas
+    (bit 2 del byte 6 del fichero) y esquinas, × 0,8 en el resto; < 5, 0,02 + 0,02·dens (× 2 en esquinas); todo × (0,55 + 0,45·V.com);
+    chaflán del Eixample o Sant Martí ≥ 0,93. La decisión va en `run.com` (ámbito (b, 7, 2, i)); interiors.js `groundFloor` la usa
+    (`?pb=0|1` sigue mandando). Negocio: `shopPlan` saca `s.neg` (índice de `BCN_CONDAL.negocios`) por la cuota `q` de
+    `at().negocios` y lo traduce al tipo de tienda de hoy (`NEG2T`; supermercado ancho → SUPERMERCAT; 58 «local vacío» → persiana
+    bajada y casi sin rótulo). La Fase 4 enchufará su escaparate con `s.neg`. `BCN.fx.pbStat(x0, z0, x1, z1)`: estadística por banda
+    de densidad y por barrio.
+  - *Detalles* (regla 9): `detDe(at)` = `detalles_prob` del sitio / media de los 73 barrios (0–2,5). `V.ropa` y `V.mac` de la variante
+    × su factor (varOf y parcelas); persianas bajadas del todo con `persianas_cerradas` × 0,8 (vanoDef); toldos de los comercios
+    0,35 × factor; aparatos de aire y parabólicas del kit: `KIT.detF` (genB) quita la fracción que sobra cuando el factor es < 1.
+  - *Chaflanes* (regla 10): en el Eixample y Sant Martí también los estilos sin `chaflan` propio usan el tramo de chaflán, con un
+    grado más de recercado y +0,3 de balcones (`chaflanDe`); casi siempre comercio. La altura no se toca (+1 planta: no).
+  - *Hitos* (regla 11): `SKIP` = { nombre: [R, Rv] }: en R solo se quitan equipamientos y naves (`BREC.tipo` > 0) y en Rv también las
+    viviendas; parques y recintos con Rv = R. `BCN.fx.nSkip` cuenta los quitados.

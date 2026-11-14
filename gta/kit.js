@@ -150,6 +150,14 @@ API.variante = function (b) {
   const si = API.EST[b]; if (si === 255) return null;
   const ES = E[IX[si].id]; return ES ? ES.V[API.VAR[b]] : null;
 };
+// F3b · color de una parcela virtual (regla 4): variante vi y color ci de BCN_EDIF.parcela, con el tono y la luminosidad del edificio
+API.colorDe = function (b, vi, ci) {
+  const PR = window.BCN_EDIF; if (!PR || !PR.ok || (!IX && !mapa())) return null;
+  const si = PR.est(b); if (si === 255) return null; const ES = E[IX[si].id]; if (!ES) return null;
+  const V = ES.V[vi & 3], pal = V.paleta || ES.paleta || IX[si].pal, c = hx(pal[ci % pal.length]), kl = PR.lum(b), kt = PR.tono(b);
+  const q = v => Math.max(0, Math.min(252, Math.round(v)));
+  return [q(c[0] * kl * (1 + kt)), q(c[1] * kl), q(c[2] * kl * (1 - kt))];
+};
 API.lejos = function (b) { const V = API.variante(b); return V ? V.lejos : null; };
 API.indice = id => (CI || (mapa() && CI) || {})[id];
 // escaparate en marcha: solo cambia la geometría de detalle (el color del volumen es el horneado al cargar)
@@ -193,14 +201,17 @@ pieza('fronton', function (B, F, c, w, y, h, d, col, k, curvo) {
   quad(B, F, c, y + 0.13 + h, d, b + 0.04, y + 0.09, d, b + 0.04, y + 0.2, d, c, y + 0.24 + h, d, col, k);
 });
 // aparato de aire acondicionado (condensadora) colgado bajo un alféizar o en un balcón: caja clara con rejilla
+// F3b · regla 9: API.detF = { aire, parab } (factor del barrio frente a la media de Barcelona, lo pone facades.js genB por
+// edificio): con factor < 1 se quita esa fracción de aparatos y antenas (hash de la posición: igual en las dos capas)
+const quita = (F, u, y, f) => f < 1 && (Math.abs(Math.sin(F.x * 12.99 + F.z * 78.23 + u * 3.1 + y * 1.7) * 43758.5) % 1) >= f;
 pieza('aire', function (B, F, u, y, d) {
-  if (!B) return; box(B, F, u, u + 0.78, y, y + 0.55, d, d + 0.3, [214, 214, 208], K.PBR, 7, pbrAux(0.5, 0.1, 0, 0));
+  if (!B || (API.detF && quita(F, u, y, API.detF.aire))) return; box(B, F, u, u + 0.78, y, y + 0.55, d, d + 0.3, [214, 214, 208], K.PBR, 7, pbrAux(0.5, 0.1, 0, 0));
   box(B, F, u + 0.08, u + 0.5, y + 0.07, y + 0.48, d + 0.3, d + 0.31, [70, 72, 74], K.PBR, 1, pbrAux(0.6, 0.3, 1, 0));
   box(B, F, u + 0.05, u + 0.73, y - 0.06, y, d, d + 0.28, [120, 122, 120], K.METAL, 7);
 });
 // antena parabólica (plato y brazo), en barandillas y cornisas
 pieza('parabolica', function (B, F, u, y, d, r) {
-  if (!B) return; r = r || 0.3; box(B, F, u - 0.02, u + 0.02, y, y + r * 1.4, d, d + 0.05, [120, 120, 118], K.METAL, 7);
+  if (!B || (API.detF && quita(F, u, y, API.detF.parab))) return; r = r || 0.3; box(B, F, u - 0.02, u + 0.02, y, y + r * 1.4, d, d + 0.05, [120, 120, 118], K.METAL, 7);
   const c = [222, 222, 216], cy = y + r * 1.4;
   quad(B, F, u - r, cy - r * 0.7, d + 0.22, u + r, cy - r * 0.7, d + 0.12, u + r, cy + r * 0.7, d + 0.12, u - r, cy + r * 0.7, d + 0.22, c, K.PBR, pbrAux(0.45, 0.2, 0, 0));
 });

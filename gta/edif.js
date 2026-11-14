@@ -11,7 +11,7 @@
      3  tono (bits 0–3: −5 % … +5 %) · luminosidad (bits 4–7: ×0,92 … ×1,08) · 4 desgaste (0–255 → 0–1; ± 0,08 sacado del byte 3)
      5  reservado
      6  frente: tiene calle principal (bit 0) · repite el estilo del vecino anterior de su acera (bit 1) · avenida (bit 2)
-     7  reservado (Fase 3b: planta baja comercial y negocio)
+     7  reservado (la planta baja comercial y el negocio los decide F3b en tiempo de ejecución: facades.js pComDe, interiors.js s.neg)
    Clave: nB (edificios, con las fincas) y firma (FNV de una muestra de los bytes de los contenedores de edificios y de los datos
    de condal.json que usa el generador). Si no casa (otros edificios, otro condal.json), aviso en consola y el selector
    provisional de kit.js (BCN_KIT.elige): hay que relanzar tools/cc/generador.js. ?edif=0 no lo carga (lo usa el generador).
