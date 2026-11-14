@@ -400,7 +400,10 @@ void main(){
     if (glassy) {
       float fy = fract(h/3.6), fx = fract(u/1.9);
       float mull = max(1.0 - smoothstep(0.05,0.09,fy), 1.0 - smoothstep(0.04,0.08,fx));
-      float cell = hash21(vec2(floor(u/1.9), floor(h/3.6)));
+      // Bugs · parpadeo: cuando el módulo del muro cortina cabe en 1–2 píxeles, montantes y paños a su media
+      float aaG = smoothstep(0.3, 0.6, max(length(vec2(dFdx(u), dFdy(u)))/1.9, length(vec2(dFdx(h), dFdy(h)))/3.6));
+      mull = mix(mull, 0.13, aaG);
+      float cell = mix(hash21(vec2(floor(u/1.9), floor(h/3.6))), 0.5, aaG);
       if (uDusk > 0.01) glow = vec3(0.80, 0.90, 1.0)*((1.0 - mull)*step(fract(cell*5.3), 0.45*homeFrac())*uDusk*mix(0.5, 1.0, fade));   // oficinas: pocas plantas encendidas
       vec3 gl = mix(base*0.62, mix(base, uSkyCol*1.25, 0.45), cell*0.6 + 0.2);
       gl = mix(gl, mix(base, uSkyCol*1.3, 0.5)*1.1, 0.4*(1.0 - uDusk));   // REV3: de día, vidrio menos negro (como el de cerca)
@@ -423,16 +426,21 @@ void main(){
         if (h >= gH) { float t = (h - gH)/fh; fl = 1.0 + floor(t); fy = fract(t); } else { fl = 0.0; fy = h/gH; }
       } else { fl = floor(h/fh); fy = fract(h/fh); }
       float fx = fract(u/bayW + seed*3.7);
-      float wy = smoothstep(wya,wya + 0.06,fy)*(1.0 - smoothstep(wyb - 0.06,wyb,fy));
-      float wx = smoothstep(wxa,wxa + 0.06,fx)*(1.0 - smoothstep(wxb - 0.06,wxb,fx));
-      float w = wx*wy;
-      if (fl < 0.5) w = smoothstep(0.10,0.16,fx)*(1.0 - smoothstep(0.84,0.90,fx))*smoothstep(0.12,0.18,fy)*(1.0 - smoothstep(0.84,0.9,fy));
+      // Bugs · parpadeo: antialiasing según el tamaño del píxel. fu, fv: lo que mide un píxel en unidades del vano y de la
+      // planta; el borde de la ventana se ensancha a un píxel y, cuando el vano o la planta caben en 1–2 píxeles (aaW), el
+      // dibujo se lleva a su media (la misma fracción de hueco): de cerca no cambia nada y de lejos ni moiré ni hormigueo
+      float fu = length(vec2(dFdx(u), dFdy(u)))/bayW, fv = length(vec2(dFdx(h), dFdy(h)))/(fl < 0.5 ? max(gH, 3.2) : fh);
+      float aaW = smoothstep(0.3, 0.6, max(fu, fv)), eu = max(0.06, fu), ev = max(0.06, fv);
+      float wy = smoothstep(wya + 0.03 - 0.5*ev, wya + 0.03 + 0.5*ev, fy)*(1.0 - smoothstep(wyb - 0.03 - 0.5*ev, wyb - 0.03 + 0.5*ev, fy));
+      float wx = smoothstep(wxa + 0.03 - 0.5*eu, wxa + 0.03 + 0.5*eu, fx)*(1.0 - smoothstep(wxb - 0.03 - 0.5*eu, wxb - 0.03 + 0.5*eu, fx));
+      float w = mix(wx*wy, (wxb - wxa - 0.06)*(wyb - wya - 0.06), aaW);
+      if (fl < 0.5) w = mix(smoothstep(0.13 - 0.5*eu, 0.13 + 0.5*eu, fx)*(1.0 - smoothstep(0.87 - 0.5*eu, 0.87 + 0.5*eu, fx))*smoothstep(0.15 - 0.5*ev, 0.15 + 0.5*ev, fy)*(1.0 - smoothstep(0.87 - 0.5*ev, 0.87 + 0.5*ev, fy)), 0.74*0.72, aaW);
       w *= step(0.0, h)*step(h, Ht - 0.7);
-      float cell = hash21(vec2(floor(u/bayW + seed*3.7), fl + seed*13.0));
+      float cell = mix(hash21(vec2(floor(u/bayW + seed*3.7), fl + seed*13.0)), 0.5, aaW);
       if (uDusk > 0.01) {                                // de noche: ventanas de pisos encendidas (de lejos, su media) y bajos comerciales
         float hw = fract(cell*9.7 + 0.37);
         float fr = 0.65*homeFrac();                      // de lejos, algo menos que en las fachadas de detalle
-        float on = fl < 0.5 ? w*shopOn()*step(0.35, hw)*fade : w*uDusk*step(hw, fr);
+        float on = fl < 0.5 ? w*shopOn()*mix(step(0.35, hw), 0.65, aaW)*fade : w*uDusk*mix(step(hw, fr), fr, aaW);
         glow = (fl < 0.5 ? vec3(1.0, 0.88, 0.70) : mix(vec3(1.0, 0.70, 0.38), vec3(0.78, 0.88, 1.0), step(0.90, fract(hw*7.3))))*on;
       }
       vec3 glass = mix(vec3(0.11,0.13,0.17), uSkyCol*0.85, 0.25 + 0.35*cell);
@@ -443,7 +451,9 @@ void main(){
       if (abs(muro - 5.0) < 0.5) amt = 0.95;
       base = mix(base, glass, mix(far0, w*amt, fade));
       float slab = abs(muro - 4.0) < 0.5 ? 0.16 : abs(muro - 2.0) < 0.5 ? -0.10 : 0.07;
-      base *= 1.0 - slab*(1.0 - smoothstep(0.02,0.06,fy))*fade*step(0.5, fl);
+      // canto de forjado (~4 % de la planta): borde de al menos un píxel y, cuando la línea ya no se resuelve, su media
+      float esl = max(0.04, fv);
+      base *= 1.0 - slab*mix(1.0 - smoothstep(0.04 - 0.5*esl, 0.04 + 0.5*esl, fy), 0.04, smoothstep(0.15, 0.4, fv))*fade*step(0.5, fl);
       if (fl < 0.5 && lc > 0.5) base *= abs(muro - 3.0) < 0.5 ? 0.9 : abs(muro - 6.0) < 0.5 ? 1.06 : 1.0;
     } else {
       // grano de revoco: se apaga cuando la celda de ruido baja de unos pocos píxeles (de lejos, ni moiré ni parpadeo)
@@ -492,30 +502,30 @@ void main(){
         vec2 f = abs(fract(g) - 0.5)*sz;                       // distancia al centro de la pieza (m)
         float jw = 0.012, lj = 1.0 - smoothstep(-0.5, 0.5, (min(sz.x*0.5 - f.x, sz.y*0.5 - f.y) - jw)/max(pw, 1e-4));
         float jf = 2.0*jw*(1.0/sz.x + 1.0/sz.y);               // fracción media de junta
-        float fs = 1.0 - smoothstep(0.45, 0.9, pw/sz.y);
+        float fs = 1.0 - smoothstep(0.25, 0.5, pw/sz.y);
         tx = (0.10*(hash21(floor(g) + seed*7.0) - 0.5) + 0.22*(lj - jf))*fs;
       } else if (rt < 1.5) {
         // teja árabe: canales de 22 cm a lo largo del eje y cursos de 40 cm (borde de cada teja, en sombra)
         float cu = q.x/0.22, co = q.y/0.40 + 0.5*step(1.0, mod(floor(cu), 2.0));
-        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.22);
+        float fs = 1.0 - smoothstep(0.25, 0.5, pw/0.22);
         float sh = sin(6.2832*cu)*0.16, cv = (smoothstep(0.80, 0.95, fract(co)) - 0.15)*-0.16;
         tx = (sh + cv + 0.12*(hash21(vec2(floor(cu), floor(co)) + seed*5.0) - 0.5))*fs;
       } else if (rt < 2.5) {
         // tela asfáltica: rollos de 1 m solapados (junta clara) y algún tono distinto por rollo
         float rl = q.y/1.0, fr = fract(rl);
-        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.5);
+        float fs = 1.0 - smoothstep(0.25, 0.5, pw/0.5);
         tx = ((smoothstep(0.90, 0.94, fr) - smoothstep(0.97, 1.0, fr) - 0.045)*0.20 + 0.07*(hash21(vec2(floor(rl), seed*3.0)) - 0.5))*fs;
       } else {
         // grava
-        float fs = 1.0 - smoothstep(0.45, 0.9, pw/0.12);
-        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.45, 0.9, pw/0.6));
+        float fs = 1.0 - smoothstep(0.25, 0.5, pw/0.12);
+        tx = 0.22*(vnoise(q*9.0) - 0.5)*fs + 0.10*(vnoise(q*2.3 + 7.0) - 0.5)*(1.0 - smoothstep(0.25, 0.5, pw/0.6));
       }
       // manchas de uso y de humedad (escala de metros), también de media cero
       tx += 0.07*(vnoise(q*0.21) - 0.5)*(1.0 - smoothstep(0.4, 0.8, pw/3.0));
       // REV: rodales de piezas cambiadas, sol y humedad (de 0,6 a 2 m): el «granulado» que se ve de cerca a 50–150 m, cuando la
       // pieza ya no se resuelve. También de media cero y apagado con el píxel: de lejos, el color de la tabla
       float rk = hash21(floor(q/vec2(1.1, 0.9)) + seed*3.0) - 0.5;
-      tx += (0.10*(vnoise(q*0.95) - 0.5) + 0.09*rk)*(1.0 - smoothstep(0.3, 0.6, pw/0.9))
+      tx += (0.10*(vnoise(q*0.95) - 0.5) + 0.09*rk)*(1.0 - smoothstep(0.2, 0.4, pw/0.9))
           + 0.10*(vnoise(q*0.42 + 3.0) - 0.5)*(1.0 - smoothstep(0.35, 0.7, pw/1.6));
       // FIX2: zonas de reparación (paños de 3–4 m relosados, más claros o más oscuros) y cercos de humedad de 6–10 m, que
       // todavía se leen desde una azotea vecina o desde el aire bajo (100–200 m); de media cero y apagados con el píxel
