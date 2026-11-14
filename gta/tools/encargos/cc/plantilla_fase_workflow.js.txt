@@ -1,0 +1,96 @@
+export const meta = {
+  name: 'condal-fase-v2',
+  description: 'Condal City: una fase con constructor, panel de críticos con lentes distintas, repaso y verificación adversarial de los arreglos (Opus 5.5)',
+  phases: [
+    { title: 'Construcción', detail: 'la fase según su encargo', model: 'opus' },
+    { title: 'Críticos', detail: 'especificación, visual y regresiones, cada uno por su lado', model: 'opus' },
+    { title: 'Repaso', detail: 'arreglar las notas de los críticos', model: 'opus' },
+    { title: 'Verificación', detail: 'comprobar uno a uno que los arreglos son de verdad', model: 'opus' },
+  ],
+}
+// args: { fase, nombre, brief, tope, esfuerzo, wt, rama, topeR, barrios, soloVerificar, informe }
+const A = args || {}
+const SP = '/tmp/claude-0/-home-user/6a030a94-1fe2-5831-a104-304cc6d92e7c/scratchpad/cc'
+const W = A.wt || '/home/user/wt/cc', BR = A.rama || 'wt-cc'
+const BARRIOS = A.barrios || 'el Gòtic, el Raval, la Dreta del Eixample y la Vila de Gràcia'
+const REPORT = { type: 'object', properties: {
+  summary: { type: 'string' }, commits: { type: 'array', items: { type: 'string' } }, hecho: { type: 'array', items: { type: 'string' } },
+  pendiente: { type: 'array', items: { type: 'string' } }, flojo: { type: 'array', items: { type: 'string' } },
+  rendimiento: { type: 'string', description: 'triángulos, llamadas, fps y tiempo de carga antes y después en las vistas de referencia' },
+  roto: { type: 'boolean', description: 'true si la fase rompe el juego o empeora el rendimiento de forma apreciable y no se ha podido arreglar' },
+  hojas: { type: 'array', items: { type: 'string' } }, notesForNext: { type: 'string' } },
+  required: ['summary', 'commits', 'pendiente', 'flojo', 'rendimiento', 'roto', 'notesForNext'] }
+const CRIT = { type: 'object', properties: {
+  resumen: { type: 'string' }, cumple: { type: 'boolean', description: 'cumple lo que pide el usuario en esta fase, visto desde tu lente' },
+  notas: { type: 'array', items: { type: 'object', properties: {
+    gravedad: { type: 'string', enum: ['alta', 'media', 'baja'] }, que: { type: 'string' }, donde: { type: 'string' },
+    prueba: { type: 'string', description: 'captura, medida o línea de código que lo demuestra' }, arreglo: { type: 'string' } },
+    required: ['gravedad', 'que', 'prueba', 'arreglo'] } },
+  rendimiento: { type: 'string' } },
+  required: ['resumen', 'cumple', 'notas'] }
+const VERIF = { type: 'object', properties: {
+  resumen: { type: 'string' },
+  notas: { type: 'array', items: { type: 'object', properties: {
+    que: { type: 'string' }, resuelta: { type: 'boolean' }, prueba: { type: 'string' } }, required: ['que', 'resuelta', 'prueba'] } },
+  nuevas: { type: 'array', items: { type: 'object', properties: {
+    gravedad: { type: 'string', enum: ['alta', 'media', 'baja'] }, que: { type: 'string' }, prueba: { type: 'string' }, arreglo: { type: 'string' } },
+    required: ['gravedad', 'que', 'prueba', 'arreglo'] } },
+  roto: { type: 'boolean' } },
+  required: ['resumen', 'notas', 'nuevas', 'roto'] }
+const cab = (et) => 'Trabajas en el worktree ' + W + ' (rama ' + BR + '); el juego está en ' + W + '/gta («Barcelona: Condal City», Babylon.js). Lee primero, dentro del worktree, gta/tools/encargos/cc/comun.md y tu encargo gta/tools/encargos/cc/' + A.brief + '. Tu etapa es «' + et + '» (progreso gta/tools/encargos/progreso/CC_' + et + '.md; si existe, continúa desde ahí). Capturas en ' + SP + '/' + et.toLowerCase() + '/ (tandas de 3: la máquina se comparte). Trabaja con rutas absolutas dentro de ' + W + '.'
+const fin = '\n\nAl terminar: node --check de todos los .js, cero errores y avisos de consola en tus capturas, árbol limpio, todo confirmado y subido (git push origin ' + BR + '), progreso al día. Informe estructurado y sincero (lo flojo, dilo; si algo rompe el juego o empeora el rendimiento de forma apreciable y no lo has podido arreglar, roto = true).'
+const critico = 'Eres un CRÍTICO independiente de «Barcelona: Condal City» (Babylon.js). No has hecho este trabajo y NO cambias nada del repositorio (solo miras, mides, capturas y escribes tu informe). Worktree ' + W + ' (rama ' + BR + '). Lee ' + W + '/gta/tools/encargos/cc/comun.md, la especificación del usuario /home/user/Repositori-de-GitHub/CONDAL_CITY_PROMPT.md (la fase «' + A.nombre + '» de la Parte 1 y lo que le toque de la Parte 2), el encargo ' + W + '/gta/tools/encargos/cc/' + A.brief + ' y los progresos CC_' + A.fase + '*.md. Cada nota con su prueba (captura, medida o línea de código). Sé severo y concreto; no inventes problemas sin prueba.'
+const LENTES = [
+  { k: 'especificacion', t: 'Tu lente es la ESPECIFICACIÓN: repasa punto por punto lo que pide el usuario en esta fase y el encargo, leyendo el código y midiendo con scripts de node o python (estadísticas por barrio frente a los datos de condal.json), y di qué falta o está mal hecho. Pocas capturas (como mucho 6), solo para confirmar. Tope aproximado: 45 llamadas a herramientas.' },
+  { k: 'visual', t: 'Tu lente es lo VISUAL: capturas a pie y desde el aire en ' + BARRIOS + ', de día y de noche (en ' + SP + '/' + (A.fase || 'f').toLowerCase() + '_critico_visual/), y de cerca y de lejos. Busca lo que un jugador notaría: repeticiones, piezas que flotan o se cortan, parpadeos, saltos al acercarse, colores o rótulos que desentonan, cosas que no parecen de ese barrio. Tope aproximado: 45 llamadas a herramientas.' },
+  { k: 'regresiones', t: 'Tu lente son las REGRESIONES: ¿se ha roto algo que ya funcionaba (hitos y monumentos, Sagrada Família, interiores, noche y luces, plazas, tráfico, azoteas, el escaparate de estilos)? Errores y avisos de consola, rendimiento frente a la Fase 0 (tools/cc/fps_eval.js en las tres vistas de referencia: triángulos, llamadas, fps), tiempo de carga y memoria. Compara con la rama gta-barcelona-fachadas-detalle cuando haga falta (git worktree o git show; no la modifiques). Tope aproximado: 45 llamadas a herramientas.' },
+]
+let c = null
+if (!A.soloVerificar) {
+  phase('Construcción')
+  c = await agent(cab(A.fase) + ' Haz la fase completa según tu encargo. Tope aproximado: ' + (A.tope || 100) + ' llamadas a herramientas.' + fin,
+    { label: A.fase + ' · ' + A.nombre, phase: 'Construcción', schema: REPORT, model: 'opus', effort: A.esfuerzo || 'high' })
+  if (!c) return { error: A.fase + ' sin resultado (se puede reanudar)' }
+  if (c.roto) return { roto: true, constructor: c }
+  log(A.fase + ': ' + c.summary.slice(0, 160))
+}
+const informe = c ? JSON.stringify(c) : (A.informe || '')
+phase('Críticos')
+const crs = await parallel(LENTES.map(l => () => agent(critico + ' ' + l.t + '\n\nInforme del constructor:\n' + informe,
+  { label: A.fase + ' · crítico ' + l.k, phase: 'Críticos', schema: CRIT, model: 'opus', effort: 'high' })))
+if (!crs.filter(Boolean).length) return { error: 'ningún crítico devolvió resultado (se puede reanudar)', constructor: c }
+const vistas = new Set(), notas = []
+crs.forEach((cr, i) => { if (!cr) return; cr.notas.forEach(n => {
+  const key = (n.que || '').toLowerCase().replace(/[^a-z0-9áéíóúñç]+/g, ' ').trim().slice(0, 70)
+  if (vistas.has(key)) return; vistas.add(key); notas.push(Object.assign({ lente: LENTES[i].k }, n)) }) })
+const orden = { alta: 0, media: 1, baja: 2 }
+notas.sort((a, b) => orden[a.gravedad] - orden[b.gravedad])
+const graves = notas.filter(n => n.gravedad !== 'baja')
+log(A.fase + ' críticos: ' + crs.filter(Boolean).length + '/3 · ' + notas.length + ' notas (' + graves.length + ' altas o medias)')
+if (!graves.length) return { constructor: c, criticos: crs, notas }
+const normQ = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+const casa = (que, lista) => {
+  const ex = lista.find(p => p.que === que); if (ex) return ex
+  const m = /^\s*(alta|media|baja)\b/i.exec(que || '')
+  const tq = new Set(normQ(que).split(' ').filter(w => w.length > 3))
+  let best = null, bs = 0
+  for (const p of lista) { const tp = normQ(p.que).split(' ').filter(w => w.length > 3); const s = tp.filter(w => tq.has(w)).length / Math.max(1, Math.min(tq.size, tp.length)); if (s > bs) { bs = s; best = p } }
+  return Object.assign({}, (best && bs >= 0.5) ? best : {}, m ? { gravedad: m[1].toLowerCase() } : {})
+}
+let pend = notas, r = null, v = null
+for (let vuelta = 1; vuelta <= 2; vuelta++) {
+  phase('Repaso')
+  r = await agent(cab(A.fase + 'R' + (vuelta > 1 ? vuelta : '')) + ' Es el REPASO de la fase (vuelta ' + vuelta + '): corrige las notas, de más a menos graves, con prueba o captura antes y después, y di cuáles quedaron resueltas y cuáles no (y por qué). Las bajas, si son baratas. Tope aproximado: ' + (A.topeR || 70) + ' llamadas a herramientas.\n\nNotas:\n' + JSON.stringify(pend) + '\n\nInforme del constructor:\n' + informe + fin,
+    { label: A.fase + ' · repaso ' + vuelta, phase: 'Repaso', schema: REPORT, model: 'opus', effort: 'medium' })
+  if (!r) return { error: 'repaso sin resultado (se puede reanudar)', constructor: c, criticos: crs, notas: pend }
+  phase('Verificación')
+  v = await agent('Eres un VERIFICADOR independiente y escéptico de «Barcelona: Condal City». No cambias nada. Worktree ' + W + ' (rama ' + BR + '). Para cada nota de la lista, comprueba TÚ MISMO con tu propia prueba (captura, medida o código) si de verdad está resuelta; si dudas, resuelta = false. Añade en «nuevas» lo que el repaso haya roto o empeorado (errores de consola, rendimiento con tools/cc/fps_eval.js, algo que antes estaba bien). Capturas en ' + SP + '/' + (A.fase || 'f').toLowerCase() + '_verif' + vuelta + '/ (tandas de 3). Tope aproximado: 40 llamadas a herramientas.\n\nNotas (altas y medias):\n' + JSON.stringify(pend.filter(n => n.gravedad !== 'baja')) + '\n\nInforme del repaso:\n' + JSON.stringify(r),
+    { label: A.fase + ' · verificación ' + vuelta, phase: 'Verificación', schema: VERIF, model: 'opus', effort: 'high' })
+  if (!v) break
+  const quedan = v.notas.filter(n => !n.resuelta).map(n => Object.assign({ gravedad: 'media', arreglo: 'ver la prueba del verificador' }, casa(n.que, pend), { que: n.que, prueba: n.prueba }))
+  const nuevas = v.nuevas.filter(n => n.gravedad !== 'baja')
+  log(A.fase + ' verificación ' + vuelta + ': ' + quedan.length + ' sin resolver, ' + nuevas.length + ' nuevas')
+  pend = quedan.concat(nuevas)
+  if (!pend.filter(n => n.gravedad === 'alta').length && !v.roto) break
+}
+return { constructor: c, criticos: crs, notas, repaso: r, verificacion: v, pendientes: pend }
