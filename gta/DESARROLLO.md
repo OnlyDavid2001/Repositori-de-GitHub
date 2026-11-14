@@ -2069,8 +2069,8 @@ herramienta y el juego solo las lee, para que estilo, variante y color sean los 
     W1, anuncio antiguo pintado (18 %: celdas 17–24 del atlas de rótulos de interiors.js, marcas inventadas; el sombreador de K.SIGN
     no los enciende de noche y los destiñe), mural de planos de color (12 %), ventanas abiertas después (22 %) o nada; grafitis encima
     del tejado del vecino con `detalles_prob.grafitis` × 1,3. Ámbito (b, 5, i).
-  - *Planta baja* (regla 8): `pComDe(S, V, esquina, chaflán)`: ≥ 15 locales/ha 0,95; 5–15 de 0,3 a 0,9 × 1,35 en avenidas
-    (bit 2 del byte 6 del fichero) y esquinas, × 0,8 en el resto; < 5, 0,02 + 0,02·dens (× 2 en esquinas); todo × (0,55 + 0,45·V.com);
+  - *Planta baja* (regla 8): `pComDe(S, V, esquina, chaflán)`: ≥ 15 locales/ha 0,97 × (0,85 + 0,15·V.com); 5–15 de 0,3 a 0,9 × 1,35 en avenidas
+    (bit 2 del byte 6 del fichero) y esquinas, × 0,8 en el resto; < 5, 0,02 + 0,02·dens (× 2 en esquinas); por debajo de 15, × (0,55 + 0,45·V.com);
     chaflán del Eixample o Sant Martí ≥ 0,93. La decisión va en `run.com` (ámbito (b, 7, 2, i)); interiors.js `groundFloor` la usa
     (`?pb=0|1` sigue mandando). Negocio: `shopPlan` saca `s.neg` (índice de `BCN_CONDAL.negocios`) por la cuota `q` de
     `at().negocios` y lo traduce al tipo de tienda de hoy (`NEG2T`; supermercado ancho → SUPERMERCAT; 58 «local vacío» → persiana

@@ -515,7 +515,6 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     E.V = Vt;
     curGnd = null; curF = null;
   }
-  const y1Of = env => env.y1;
   // regla 10: variante de chaflán; en el Eixample y Sant Martí, con un grado más de recercado y más balcones
   const CHF = new WeakMap();
   function chaflanDe(V, S) {
@@ -543,8 +542,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // avenidas y las esquinas; < 5 casi ninguno. El estilo pesa algo (V.com: casas con jardín, poco; bloques con bajos, mucho)
   function pComDe(S, V, esq, chf) {
     const dn = S.dn;
-    let p = dn >= 15 ? 0.95 : dn >= 5 ? (0.3 + (dn - 5) * 0.06) * (S.av || esq ? 1.35 : 0.8) : (0.02 + dn * 0.02) * (esq ? 2 : 1);
-    p *= 0.55 + 0.45 * Math.min(1, V && V.com !== undefined ? V.com : 0.6);
+    const c = Math.min(1, V && V.com !== undefined ? V.com : 0.6);
+    let p = dn >= 15 ? 0.97 * (0.85 + 0.15 * c) : ((dn >= 5 ? (0.3 + (dn - 5) * 0.06) * (S.av || esq ? 1.35 : 0.8) : (0.02 + dn * 0.02) * (esq ? 2 : 1)) * (0.55 + 0.45 * c));
     if (chf && S.chfZ) p = Math.max(p, 0.93);
     return Math.min(0.98, p);
   }
@@ -687,7 +686,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         const u0 = r.L * j / nPr, rj = Object.assign({}, r, { ax: r.ax + r.tx * u0, az: r.az + r.tz * u0, L: r.L / nPr }), Fj = mkF(rj);
         const E = envParcela(env, b, kP++); E.lay = Object.assign({}, lay, { portal: rj });
         tramo(E, rj, i + 64 * (j + 1), Fj, j === 0 && e0, j === nPr - 1 && e1, false, true);
-        if (j > 0 && r.cover < y1Of(env) - 3) box(W1 || W0, Fj, -0.05, 0.05, Math.max(env.y0, r.cover) + 0.1, env.y1 - 0.2, 0, 0.09, [96, 98, 100], K.METAL, 4);   // bajante en la junta
+        if (j > 0) box(W1 || W0, Fj, -0.05, 0.05, Math.max(env.y0, r.cover) + 0.1, env.y1 - 0.2, 0, 0.09, [96, 98, 100], K.METAL, 4);   // bajante en la junta
       }
     }
     curDg = 0;
@@ -1144,7 +1143,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         const chf = r.L >= 5 && r.L <= 24 && (V.chaflanV || S.chfZ) && esChaflan(runs, i), esq = giro(r, runs[(i + nR - 1) % nR]) || giro(r, runs[(i + 1) % nR]);
         seed(b, 7, 2, i); const rc = R(), com = sh && rc < pComDe(S, chf ? chaflanDe(V, S) : V, esq, chf);
         const dn = S.dn, old = sh && rc < (dn >= 15 ? 0.95 : dn >= 5 ? 0.3 + (dn - 5) * 0.06 : dn * 0.05) * V.com;   // la regla provisional de F2
-        B[k][0]++; B[k][1] += r.L; if (com) { B[k][2]++; B[k][3] += r.L; } if (old) B[k][4] = (B[k][4] || 0) + 1; P[0]++; P[1] += r.L; if (com) { P[2]++; P[3] += r.L; } }
+        B[k][0]++; B[k][1] += r.L; if (com) { B[k][2]++; B[k][3] += r.L; } if (old) B[k][4] = (B[k][4] || 0) + 1; if (sh) B[k][5] = (B[k][5] || 0) + 1; P[0]++; P[1] += r.L; if (com) { P[2]++; P[3] += r.L; } }
     }
     return { bandas: B, barrios: por, medianeras: med, skip: nSkip, skipAntes: nSkip0 };
   }
