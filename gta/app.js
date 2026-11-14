@@ -456,6 +456,10 @@ void main(){
     // aura nocturna: las farolas bañan la parte baja de los muros (cae con la altura). Las cubiertas quedan oscuras
     // Solo los muros que dan a una calle (máscara de calles, 3 m por delante del muro): los patios de manzana quedan a oscuras
     if (uGlow.y > 0.001) glow += kAura*base*(exp(-max(h, 0.0)/6.0)*uGlow.y*mix(0.08, 1.0, texture2D(uStreet, (vPos.xz + normalize(n.xz + vec2(1e-4))*3.0 - uStreetR.xy)*uStreetR.zw).r)*mix(0.45, 1.0, smoothstep(90.0, 380.0, dist))*(1.0 - 0.8*smoothstep(200.0, 380.0, vPos.y)));
+  } else if (n.y < 0.0) {
+    // Bugs · volúmenes: PLAFÓN (cara de abajo de un volumen elevado vista desde abajo): el color del muro oscurecido y liso,
+    // no la textura de la cubierta (antes se veía la teja o la chapa por debajo de marquesinas y voladizos)
+    base *= 0.66;
   } else {
     // CUBIERTA: una por edificio, de un material y un color (palette.js), con su textura fina ALINEADA con los muros del
     // propio edificio (vAx = su eje) y en metros de la propia cubierta: ni costuras por triángulo ni cambios de tono. Toda la
@@ -536,7 +540,7 @@ void main(){
     if (so > 0.001) gSunVis = sunVisN(n)*mix(1.0, smoothstep(hs - 1.5, hs + 1.5, h), so); }
   vec3 c = lit(base, n)*(1.0 - 0.6*uNight);
   // de lejos, algo más (la bruma nocturna se come la penumbra y las cubiertas volvían a leerse como un agujero negro desde el aire)
-  if (abs(n.y) >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
+  if (n.y >= 0.5) c += roofNight(base, n.y)*(1.0 + 0.8*smoothstep(250.0, 1500.0, dist));
   c += emit(glow, 0.8);
   FRAG(c);
 }`;
@@ -1729,8 +1733,45 @@ const BREC = { dv: [], n: 0 };
           rs += m;
         }
         const tr = earcut(flat, holes.length ? holes : null, 2);
-        grow(vp, ip + tr.length);
+        // Bugs · volúmenes: los volúmenes elevados (hb ≥ 1,5 m: marquesinas, voladizos, partes altas) llevan tapa inferior (plafón)
+        // con los vértices de abajo de los muros (topIdx − 1) y el giro invertido; FS_BLD la pinta lisa con el color del muro
+        const cap = hb >= 15;
+        grow(vp, ip + tr.length * (cap ? 2 : 1));
         for (let k = 0; k < tr.length; k++) idx[ip++] = topIdx[tr[k]];
+        if (cap) for (let k = tr.length - 3; k >= 0; k -= 3) { idx[ip++] = topIdx[tr[k + 2]] - 1; idx[ip++] = topIdx[tr[k + 1]] - 1; idx[ip++] = topIdx[tr[k]] - 1; }
+        // Bugs · volúmenes: las marquesinas bajas de clase 5 (losa a menos de 9 m) se apoyan en pilares de 0,3 × 0,3 m desde el
+        // suelo, en las esquinas del anillo exterior (0,3 m hacia dentro) y cada ~8 m en los lados largos
+        // y las de menos de 30 m² (marquesinas de portal mal mapeadas) se descartan: se colapsan como las manzanas partidas
+        const tiny = cls === 5 && cap && hb < 90 && pA < 30;
+        if (tiny) { const v0 = BREC.v0[bi]; for (let v = v0 + 1; v < vp; v++) { pos[v * 3] = pos[v0 * 3]; pos[v * 3 + 1] = pos[v0 * 3 + 1]; pos[v * 3 + 2] = pos[v0 * 3 + 2]; } }
+        else if (cls === 5 && cap && hb < 90) {
+          const m0 = rsz[0], pts = []; let sA = 0;
+          for (let k = 0; k < m0; k++) { const j = (k + 1) % m0; sA += flat[k * 2] * flat[j * 2 + 1] - flat[j * 2] * flat[k * 2 + 1]; }
+          const sg = sA > 0 ? 1 : -1;                  // normal hacia dentro de la arista (dx, dz): sg·(−dz, dx)
+          for (let k = 0; k < m0; k++) {
+            const h = (k + m0 - 1) % m0, j = (k + 1) % m0, x = flat[k * 2], z = flat[k * 2 + 1];
+            const d1x = x - flat[h * 2], d1z = z - flat[h * 2 + 1], L1 = Math.hypot(d1x, d1z) || 1, d2x = flat[j * 2] - x, d2z = flat[j * 2 + 1] - z, L2 = Math.hypot(d2x, d2z) || 1;
+            let nx = sg * (-d1z / L1 - d2z / L2), nz = sg * (d1x / L1 + d2x / L2); const nl = Math.hypot(nx, nz);
+            if (nl > 0.2) { nx /= nl; nz /= nl; pts.push(x + nx * 0.3, z + nz * 0.3); }
+            const nSeg = Math.floor(L2 / 8);              // intermedios en el lado k → j
+            const ix = -sg * d2z / L2 * 0.3, iz = sg * d2x / L2 * 0.3;
+            for (let q = 1; q <= nSeg && L2 >= 12; q++) { const f = q / (nSeg + 1); pts.push(x + d2x * f + ix, z + d2z * f + iz); }
+          }
+          const np = pts.length / 2, s = 0.15;
+          grow(vp + np * 8, ip + np * 24);
+          for (let t = 0; t < np; t++) {
+            const px = pts[t * 2], pz = pts[t * 2 + 1], g0 = Math.min(yb / 10, heightAt(px + ox, pz + oz)) - 0.3;
+            const cx4 = [px - s, px + s, px + s, px - s], cz4 = [pz - s, pz - s, pz + s, pz + s], b0 = vp;
+            for (let q = 0; q < 4; q++) {
+              let o = vp * 3; pos[o] = cx4[q]; pos[o + 1] = g0; pos[o + 2] = cz4[q]; pos[o + 3] = cx4[q]; pos[o + 4] = y0; pos[o + 5] = cz4[q];
+              o = vp * 4; col[o] = c3[0]; col[o + 1] = c3[1]; col[o + 2] = c3[2]; col[o + 3] = a; col[o + 4] = c3[0]; col[o + 5] = c3[1]; col[o + 6] = c3[2]; col[o + 7] = a;
+              inf[o] = 0; inf[o + 1] = Ht; inf[o + 2] = q * 3; inf[o + 3] = 0; inf[o + 4] = hb; inf[o + 5] = Ht; inf[o + 6] = q * 3; inf[o + 7] = 0;
+              o = vp * 2; axv[o] = axC; axv[o + 1] = axS; axv[o + 2] = axC; axv[o + 3] = axS; vp += 2;
+            }
+            for (let q = 0; q < 4; q++) { const A = b0 + q * 2, B2 = b0 + ((q + 1) % 4) * 2;
+              idx[ip++] = A; idx[ip++] = B2; idx[ip++] = B2 + 1; idx[ip++] = A; idx[ip++] = B2 + 1; idx[ip++] = A + 1; }
+          }
+        }
         bldCount++;
         BREC.v1[bi] = vp;
         BREC.bb[bi * 4] = bx0 + ox; BREC.bb[bi * 4 + 1] = bz0 + oz; BREC.bb[bi * 4 + 2] = bx1 + ox; BREC.bb[bi * 4 + 3] = bz1 + oz;

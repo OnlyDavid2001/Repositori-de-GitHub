@@ -353,12 +353,15 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     return ins;
   }
   // altura del edificio vecino que ocupa (x,z), o −∞ si no hay ninguno
-  function coverAt(x, z, self) {
+  // suelo: solo los volúmenes que arrancan del suelo (Bugs · volúmenes: una parte elevada vecina, un voladizo o un pasaje a 3 m,
+  // no tapa la planta baja de la fachada: antes se la comía entera y quedaban persianas y dinteles colgados en el aire)
+  function coverAt(x, z, self, suelo) {
     const c = cellOf(x, z); let top = -1e9;
     for (let k = ALL.start[c]; k < ALL.start[c + 1]; k++) {
       const b = ALL.list[k]; if (b === self) continue;
       if (x < BB[b * 4] || x > BB[b * 4 + 2] || z < BB[b * 4 + 1] || z > BB[b * 4 + 3]) continue;
-      const d = bget(b); if (d.y1 > top && inside(d, x, z)) top = d.y1;
+      const d = bget(b); if (suelo && d.y0 - d.yb >= 1.5) continue;
+      if (d.y1 > top && inside(d, x, z)) top = d.y1;
     }
     return top;
   }
@@ -445,9 +448,15 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
       const mx = (A[0] + Bp[0]) / 2, mz = (A[1] + Bp[1]) / 2;
       if (inside(d, mx + nx * 0.3, mz + nz * 0.3)) { nx = -nx; nz = -nz; }
       // ¿pegado a otro edificio? (medianera) — mira en tres puntos justo por fuera
-      let nIn = 0, cov = 1e9;
-      for (const f of [0.2, 0.5, 0.8]) { const t = coverAt(A[0] + dx * f + nx * 0.9, A[1] + dz * f + nz * 0.9, b); if (t > -1e8) { nIn++; if (t < cov) cov = t; } }
-      const cover = nIn >= 2 ? cov : -1e9;
+      // Bugs · volúmenes: hacia la calle (< 16 m de calzada) solo tapan los vecinos que arrancan del suelo; en los patios, como
+      // antes (las cubiertas de patio elevadas siguen tapando: así no crece la fachada de detalle donde no se ve)
+      // Repaso: en los patios, si algún punto solo lo tapa una parte elevada (un voladizo) y otro tiene vecino desde el suelo o
+      // está libre, por debajo del voladizo se ve la fachada: no hay tapa (82862 bajo la 82758: persianas y dintel colgados). Un
+      // patio cubierto del todo por partes elevadas (los tres puntos) sigue tapando, como antes
+      let nIn = 0, nG = 0, cov = 1e9; const sueloC = roadDist(mx + nx * 2, mz + nz * 2) < 16;
+      for (const f of [0.2, 0.5, 0.8]) { const sx = A[0] + dx * f + nx * 0.9, sz = A[1] + dz * f + nz * 0.9, t = coverAt(sx, sz, b, sueloC);
+        if (t > -1e8) { nIn++; if (t < cov) cov = t; if (sueloC || coverAt(sx, sz, b, true) > -1e8) nG++; } }
+      const cover = nIn >= 2 && (nG === nIn || nG === 0 && nIn === 3) ? cov : -1e9;
       let kind;
       if (cover >= d.y1 - 2.5) kind = 'blind';
       else if (L < 2.2) kind = 'plain';

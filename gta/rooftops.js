@@ -155,6 +155,8 @@ window.BCN_ROOFTOPS = { init(ctx) {
     // n3 E1: además de las viviendas (clases 0, 2 y 6), las naves y los equipamientos con fachada de detalle (BREC.tipo 1 y 2)
     let tipo = BREC.tipo && BREC.elig[b] ? BREC.tipo[b] : 0;
     const d = bget(b), resid = d.cls === 0 || d.cls === 2 || d.cls === 6;
+    // Bugs · volúmenes: las losas de clase 5 (marquesinas, pérgolas, building=roof: 0,6 m sin muros) no llevan azotea de nave
+    if (d.cls === 5 && d.y1 - d.y0 < 1.5) return null;
     // G1T1: también las cubiertas planas que antes quedaban vacías: industria, comercio, equipamientos y oficinas sin fachada
     // de detalle (los de más de 16 000 m² de caja, las torres, los volúmenes elevados): azotea de nave (< 14 m) o de
     // equipamiento. Fuera los templos e invernaderos (14, 15), el cristal con pilares (4) y la clase 7
@@ -192,7 +194,16 @@ window.BCN_ROOFTOPS = { init(ctx) {
     const pH = 0.85 + g[6] * 0.35;
     // kit (Condal City): sin peto si la coronación del estilo ya pone un tejado inclinado a la calle (V.sinPeto: casas baratas)
     const KV = window.BCN_KIT && window.BCN_KIT.variante ? window.BCN_KIT.variante(b) : null;
-    if (!(KV && KV.sinPeto)) for (const r of d.rings) { const n = r.length / 2;
+    // Bugs · volúmenes: sin peto en las partes elevadas (≥ 1,5 m sobre el suelo) sin muro debajo: se mira si otro volumen llega
+    // hasta su base en el centro y en 4 puntos hacia las esquinas (coverAt); con menos de 2 apoyos, es un voladizo al aire
+    let apoyo = true;
+    if (d.y0 - d.yb >= 1.5) {
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2; let nP = 0, nA = 0;
+      for (const [fx, fz] of [[0, 0], [-0.3, -0.3], [0.3, -0.3], [0.3, 0.3], [-0.3, 0.3]]) { const x = cx + (x1 - x0) * fx, z = cz + (z1 - z0) * fz;
+        if (!inside(d, x, z)) continue; nP++; if (city.coverAt(x, z, b) >= d.y0 - 1) nA++; }
+      apoyo = nP === 0 || nA >= Math.min(2, nP);
+    }
+    if (apoyo && !(KV && KV.sinPeto)) for (const r of d.rings) { const n = r.length / 2;
       for (let i = 0; i < n; i++) { const j = (i + 1) % n, ax = r[i * 2], az = r[i * 2 + 1], bx = r[j * 2], bz = r[j * 2 + 1], L = Math.hypot(bx - ax, bz - az); if (L < 0.4) continue;
         const tx = (bx - ax) / L, tz = (bz - az) / L; let nx = -tz, nz = tx;
         if (!inside(d, (ax + bx) / 2 + nx * 0.5, (az + bz) / 2 + nz * 0.5)) { nx = -nx; nz = -nz; }

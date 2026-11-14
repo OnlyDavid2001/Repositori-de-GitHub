@@ -1533,6 +1533,23 @@ Lo que dejaron las etapas del día 3 en sus progresos (`tools/encargos/progreso/
   que la sume para no quedar negro de noche.
 - §8.1: los bajos comerciales toman su piedra y su carpintería de `d.col` (`shopCols` en interiors.js).
 
+#### Volúmenes elevados (Bugs · volúmenes, tras la v22)
+
+- En app.js `hb = ybot − yb` va en **decímetros** (`hb < 15` = 1,5 m). Los volúmenes con `hb ≥ 15` (marquesinas, voladizos,
+  partes altas y pasajes) llevan tapa inferior: los mismos índices de earcut de la cubierta, girados y sobre los vértices de abajo
+  de los muros (`topIdx − 1`), sin vértices nuevos. FS_BLD pinta toda cara horizontal vista desde abajo (`n.y < 0` tras girar la
+  normal hacia la cámara) como plafón: el color del muro × 0,66, liso y sin `roofNight`.
+- Clase 5 (building=roof, losas de 0,6 m): las de `hb < 9 m` llevan pilares de 0,3 × 0,3 m desde el suelo (esquinas del anillo
+  exterior, 0,3 m hacia dentro, y cada ~8 m en los lados de 12 m o más; van dentro del rango v0–v1 del edificio) y las de menos
+  de 30 m² se colapsan. rooftops.js `plan0` no pone azotea a las losas de clase 5 (< 1,5 m de grueso) ni peto a las partes
+  elevadas sin apoyo (`coverAt` en el centro y 4 puntos: con menos de 2 que lleguen a su base, voladizo al aire).
+- facades.js `coverAt(x, z, self, suelo)`: con `suelo`, solo cuentan los volúmenes que arrancan del suelo. `layoutB` lo usa para
+  el `cover` de los tramos a menos de 16 m de calzada: una parte elevada vecina ya no «tapa» la planta baja (antes se comía la pared y quedaban persianas,
+  dinteles y zócalos sueltos debajo del voladizo).
+  En los tramos de patio (> 16 m de calzada) `coverAt` sigue sin `suelo`, pero si algún punto de muestra solo lo tapa una parte
+  elevada y otro tiene vecino desde el suelo o está libre, el tramo no tiene tapa; un patio cubierto del todo por partes
+  elevadas sigue tapando (repaso: el mensaje de b4ff0b5 decía que ya no había persianas ni dinteles colgados y no era cierto).
+
 #### E2
 
 - §11.2: `manzanas.js` (sin init; lo usa app.js al cargar): `BCN_MZ.cand/split/encode`. Registro: `BREC.mzk`, `BREC.mz`.
