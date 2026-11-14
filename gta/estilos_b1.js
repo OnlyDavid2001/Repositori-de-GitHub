@@ -100,7 +100,7 @@ KIT.estilo('noucentista', {
     ropa: 0.05, aticoP: 0.3, pb: 'pb_noucentista', vano: 'vano_noucentista', fachada: ['urnas'], noble: { f: 1.12, princ: 'corrido', recerc: 3, alto: 0.84 },
     chaflan: { bal: 'corrido' }, lejos: { muro: 'estuco', hp: 3.2, bay: 3.5, vidrio: 0.3 } },
   variantes: [
-    { nombre: 'fachada simétrica con frontones', balP: 0.6 },
+    { nombre: 'fachada simétrica con frontones', balP: 0.6, tribChf: true },
     { nombre: 'fachada con pilastras', fachada: ['pilastras', 'urnas'], balP: 1, recerc: 1, bay: 4.0, noble: { f: 1.12, recerc: 3, alto: 0.84 } },
     { nombre: 'edificio de oficinas monumental', pl: [5, 8], pbH: 5.4, hueco: 'ventana', win: 1.5, bay: 3.2, acab: 'piedra', bal: 'ninguno',
       noble: { f: 1.15, princ: 'corrido', recerc: 3 }, lejos: { muro: 'piedra', vidrio: 0.35 } },

@@ -56,7 +56,7 @@ KIT.estilo('autoconstruccion', {
   nombre: 'Autoconstrucció',
   comun: { hp: 2.75, bay: 3.0, win: 1.0, alto: 0.78, hueco: 'mixto', bal: 'indiv', balP: 0.35, vuelo: 0.6, bar: 'tubo', carp: 'enrollable',
     carpCol: ALIC, marco: [[168, 170, 168], [120, 100, 72], [200, 200, 196]], acab: 'estuco', remate: 0.2, imposta: 0, recerc: 0, ultimo: 'normal',
-    coron: 'peto', ropa: 0.35, mac: 0.6, com: 0.3, pbH: 3.0, pb: 'pb_auto', vano: 'vano_auto', corona: 'corona_auto',
+    coron: 'peto', ropa: 0.35, mac: 0.6, com: 0.3, par: 2, pbH: 3.0, pb: 'pb_auto', vano: 'vano_auto', corona: 'corona_auto',
     lejos: { muro: 'estuco', hp: 2.75, bay: 3.0, vidrio: 0.22 } },
   variantes: [
     { nombre: 'casita escalonada', pl: [1, 2], pal: [0, 3, 4] },
@@ -108,8 +108,9 @@ KIT.estilo('eixample_temprano', {
   variantes: [
     // F2R: v1 con pilastras entre vanos, último piso entero y balaustrada; v2 sobria de ventanas y balconeras alternas sin
     // molduras, con el balcón corrido solo en el chaflán
-    { nombre: 'fachada de 4 balcones simétrica', bay: 3.8, recerc: 2, noble: { f: 1.1, vuelo: 0.75 } },
-    { nombre: 'fachada de 5 balcones', bay: 3.0, win: 0.95, vuelo: 0.55, pil: true, recerc: 3, imposta: 2, ultimo: 'normal', coron: 'balaustrada', lejos: { bay: 3.0 } },
+    { nombre: 'fachada de 4 balcones simétrica', bay: 3.8, recerc: 2, tribChf: true, noble: { f: 1.1, vuelo: 0.75 } },
+    { nombre: 'fachada de 5 balcones', bay: 3.0, win: 0.95, vuelo: 0.55, pil: true, recerc: 3, imposta: 2, ultimo: 'normal', coron: 'balaustrada', carp: 'porticon',
+      carpCol: [[96, 64, 40], [110, 76, 48], [84, 56, 36]], lejos: { bay: 3.0 } },
     { nombre: 'chaflán sobrio', imposta: 2, ultimo: 'normal', hueco: 'mixto', balP: 0.6, recerc: 0, coron: 'peto', vuelo: 0.5,
       chaflan: { bal: 'corrido', princ: 'corrido', hueco: 'balconera', balP: 1 } },
     { nombre: 'fachada con balcón corrido en planta principal', noble: { f: 1.12, princ: 'corrido', vuelo: 0.85 }, recerc: 2 }]

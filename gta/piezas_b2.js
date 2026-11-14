@@ -351,10 +351,14 @@ pieza('pb_auto', function (env, run, q) {
   }
   return false;
 });
+const matAuto = (env, g) => { if (!g || env.V.vi === 2) return null; const r = h01(env.b, 300 + g);
+  return r < 0.22 ? [shade(LADR, 0.88 + h01(env.b, 310 + g) * 0.2), 16] : r < 0.36 ? [[168, 165, 157], env.kw] : null; };
 pieza('vano_auto', function (env, run, q) {
   const V = q.V, vi = V.vi, rr = q.rr, { W0, W1 } = env, F = run.F, a = q.a, b = a + q.bw, k = q.k, Pk = q.P;
   if (q.atico) return false;
-  const nueva = vi === 1 && q.top, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
+  // F2R: cada casita (parcela de 2 vanos) con su material: algunas de ladrillo visto, otras de bloque, las demás de su color
+  const nueva = vi === 1 && q.top, pm = matAuto(env, q.W >> 1);
+  const wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : pm ? pm[0] : run.wallC, kw = nueva ? 16 : pm ? pm[1] : env.kw;
   const h = (i) => h01(env.b * 7 + q.D, q.W * 13 + i);   // irregular por casa: cada vano a su manera
   if (nueva && q.W === 0) box(W0, F, 0, q.nb * q.bw, k - 0.18, k + 0.08, 0, 0.04, CONC, 19, 3);   // canto del forjado de la ampliación
   if (h(0) < 0.14 && q.nb > 1) { wr(W0, F, a, b, k, Pk, wc, kw); return; }   // paño ciego
@@ -380,14 +384,19 @@ pieza('vano_auto', function (env, run, q) {
 pieza('corona_auto', function (env, run, q) {
   const { W0, W1, C, y1, V } = env, F = run.F, L = run.L; if (C <= run.cover) return;
   const nueva = V.vi === 1 && env.nF >= 1, wc = nueva ? shade(LADR, 0.9 + h01(env.b, 1) * 0.2) : run.wallC, kw = nueva ? 16 : env.kw;
-  if (V.vi === 0 && L > 5) {                          // casita escalonada: el peto sube y baja por tramos (cada casa a su altura)
-    const ns = Math.max(2, Math.round(L / 4.5));
-    for (let i = 0; i < ns; i++) { const u0 = L * i / ns, u1 = L * (i + 1) / ns, hh = y1 + 0.95 + ((h01(env.b, run.i * 8 + i) * 4) | 0) * 0.35;
-      wr(W0, F, u0, u1, C, hh, wc, kw); box(W0, F, u0, u1, hh, hh + 0.07, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 5); }
-  } else wr(W0, F, 0, L, C, y1 + 0.95, wc, kw);
+  // F2R: cada casita (parcela de 2 vanos) a su altura y con su material; en la escalonada (v0) los saltos llegan a 2,7 m y las
+  // casas que suben llevan un ventanuco en el remonte ciego
+  const pw = 2 * q.bw, ns = Math.max(1, Math.ceil(q.nb / 2));
+  if (L > 5 && V.vi !== 1) for (let i = 0; i < ns; i++) { const u0 = Math.min(L, i * pw), u1 = Math.min(L, (i + 1) * pw); if (u1 - u0 < 0.3) continue;
+    const pm = matAuto(env, i), cc = pm ? pm[0] : KIT.colPar(env, run, i), kk = pm ? pm[1] : kw;
+    const st = ((h01(env.b, run.i * 8 + i) * 4) | 0) * (V.vi === 0 ? 0.9 : 0.3), hh = y1 + 0.95 + st;
+    wr(W0, F, u0, u1, C, hh, cc, kk); box(W0, F, u0, u1, hh, hh + 0.07, -0.05, 0.06, shade(cc, 1.08), K.STUCCO, 5);
+    if (st > 1.6 && u1 - u0 > 2) { const c = (u0 + u1) / 2; rect(W0, F, c - 0.35, c + 0.35, y1 + 1.3, y1 + 1.3 + Math.min(0.8, st - 0.7), 0.01, [44, 48, 52], K.GLASS);
+      box(W0, F, c - 0.42, c + 0.42, y1 + 1.24, y1 + 1.3, 0, 0.08, [190, 186, 178], K.STUCCO, 7); } }
+  else wr(W0, F, 0, L, C, y1 + 0.95, wc, kw);
   if (V.vi === 3) { box(W0, F, 0, L, y1 + 0.45, y1 + 0.5, -0.05, 0.08, CONC, K.STUCCO, 1);   // terraza: peto bajo y barandilla de tubo
     for (const [h0, h1] of [[y1 + 1.0, y1 + 1.05], [y1 + 0.75, y1 + 0.78]]) box(W1 || W0, F, 0, L, h0, h1, 0.02, 0.06, env.marcoV, K.METAL, 3); }
-  else if (V.vi !== 0 || L <= 5) box(W0, F, 0, L, y1 + 0.95, y1 + 1.02, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 1);
+  else if (V.vi === 1 || L <= 5) box(W0, F, 0, L, y1 + 0.95, y1 + 1.02, -0.05, 0.06, shade(wc, 1.08), K.STUCCO, 1);
   const r = h01(env.b, run.i);
   if (L > 3 && r < 0.75) P.deposito(W0, F, 0.4 + r * Math.max(0, L - 2.2), y1, -0.7, h01(env.b, 9));
   if (V.vi === 3 && W1 && L > 4) { P.pergola(W1, F, 0.3, Math.min(L - 0.3, 3.4), y1 + 2.3, -2.2, [96, 90, 76]);   // sombrajo con dos pies

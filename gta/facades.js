@@ -571,7 +571,10 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         // G1F1: toda ventana deja ver su habitación (interior mapping, K.HOMEWIN de interiors.js) tras el reflejo del cielo; las que
         // no son «abiertas», con visillo más a menudo (bit veil). Suelo a la altura del forjado (o ~1 m bajo el alféizar si es alto)
         const yF = Math.max(k + 0.02, st - 1.0), hs = Math.abs(Math.sin(F.x * 12.9898 + F.z * 78.233 + tt * 3.7 + st * 1.31) * 43758.5453) % 1;
-        RQV()(W0, F, tt, ct, st, qt, -dep, { x0: tt - 0.5, W: ct - tt + 1.0, yF, H: Math.max(2.5, Math.max(yt, P - 0.25) - yF), D: 3.6 + hs * 1.2, mode: 1, veil: 1, seed: 1 + ((hs * 254) | 0) });
+        // F2R: en las piezas «vano» del kit, el 38 % de las ventanas de calle quedan abiertas (sin visillo), como en vanoDef
+        const ab = kitVano && ((hs * 7.31) % 1) < 0.38;
+        if (ab && window.BCN_INTERIORS.log) window.BCN_INTERIORS.log.push(['W', +(F.x + F.tx * (tt + ct) / 2).toFixed(1), +(F.z + F.tz * (tt + ct) / 2).toFixed(1), F.nx, F.nz, +((st + yt) / 2).toFixed(1), kitVano]);
+        RQV()(W0, F, tt, ct, st, qt, -dep, { x0: tt - 0.5, W: ct - tt + 1.0, yF, H: Math.max(2.5, Math.max(yt, P - 0.25) - yF), D: 3.6 + hs * 1.2, mode: 1, veil: ab ? 0 : 1, seed: 1 + ((hs * 254) | 0) });
       } else rect(W0, F, tt, ct, st, qt, -dep, glass, K.GLASS);
       if (se > 0) rect(W0, F, tt, ct, qt, yt, -dep + 0.04, persi, K.SHUT);
     }
@@ -661,7 +664,7 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
   // (u0,y0)(u1,y0)(u1,y1)(u0,y1): x = distancia bajo el borde de arriba del paño (/8 m: el borde es casi siempre un vuelo, una
   // losa, un alféizar o una imposta, y bajo él escurre el agua) · y = 255 (bandera «paño con desgaste») · z = altura sobre la
   // acera del tramo (+4 m, /16 m: el zócalo sucio) · w = 0 (el 255 lo reserva el sustituto). Fuera de un tramo, sin zócalo
-  let curGnd = null, curF = null, curDg = 0;   // curDg: desgaste del edificio en curso (1–100; 0 = el de antes)
+  let curGnd = null, curF = null, curDg = 0, kitVano = 0;   // kitVano: planta D del vano de pieza del kit en curso (0 = ninguno)   // curDg: desgaste del edificio en curso (1–100; 0 = el de antes)
   // yTop (opcional): el borde de referencia, si no es el de arriba del paño (los cuatro paños de un hueco usan el mismo, el
   // forjado de encima, para que en sus solapes de 12 mm el desgaste sea idéntico y no parpadee)
   function wallAux(F, u0, u1, y0, y1, yTop) {
@@ -815,7 +818,11 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
         const q = { V: Vd, D, W, nb, bw, a, c, k, P, m, top, low, atico, tipo, corr, rr, nF, gl: gls ? gls[W] : y0,
           esquina: W === 0 && run.esq0 ? -1 : W === nb - 1 && run.esq1 ? 1 : 0 };
         const rP = par ? runP[(W / par) | 0] : run;
-        if (vp && vp(env, rP, q) !== false) continue;
+        // F2R: tribuna de piedra en el eje del chaflán (V.tribChf: Eixample temprano, noucentista, neoclásico) en las plantas 1–3
+        if (run.chaflan && V.tribChf && KIT.P.tribuna_piedra && nb >= 3 && W === nb >> 1 && D <= Math.min(3, nF - 1)) {
+          env.runWall = rP.wallC; KIT.P.tribuna_piedra(env, F, a, bw, k, P, { base: D === 1, remate: D === Math.min(3, nF - 1) }); continue; }
+        kitVano = D; const hecho = vp && vp(env, rP, q) !== false; kitVano = 0;
+        if (hecho) continue;
         vanoDef(env, rP, q);
       }
     }
@@ -987,7 +994,8 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     }
   }
   // caja de herramientas para las piezas del kit (kit.js): lo que no está en BCN_GEO
-  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: vanoDef, corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
+  if (KIT) KIT.T = { wr, rail, ropa, planter, galeriaV, tribunaV, patioV, vano: (e, r, q) => { const kv = kitVano; kitVano = 0; vanoDef(e, r, q); kitVano = kv; },   // vanoDef ya decide sus ventanas abiertas
+    corona: coronaDef, vidAux, wallAux, KW, VID, VIDA, PERFIL, CW_GL, CW_SP,
     walkAt: (x, z) => walkAt(x, z), coverAt: (x, z, b) => coverAt(x, z, b) };
   // depuración: punto de calle frente a un edificio de la familia (k-ésimo), mirando su fachada
   function spot(fam, k, up) {

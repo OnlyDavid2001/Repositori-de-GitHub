@@ -1,6 +1,6 @@
 # CC_F2R · Repaso de la Fase 2 (vuelta 1)
 
-Estado: código hecho (commit 1); capturas «después» en marcha (scratchpad cc/f2r/). Los «antes» son las capturas de los críticos
+Estado: hecho. Capturas «después» en el scratchpad cc/f2r/ (r_* primera tanda, s_* segunda tanda con los últimos cambios; hojas m_regr.jpg, m_obrera_temprano.jpg, m_b.jpg, m_c.jpg, m_d.jpg). Los «antes» son las capturas de los críticos
 (cc/f2_critico/c_*.jpg, cc/f2_critico_regr/cc_*.jpg y base_*.jpg, cc/f2m/*).
 
 ## Arreglos (de más a menos graves)
@@ -23,3 +23,28 @@ Estado: código hecho (commit 1); capturas «después» en marcha (scratchpad cc
 9. Escaparate: hMin/hMax en pueblo, barroco, gótico y quart; autarquía k=1, olímpico k=2, racionalista k=1.
 10. Desarrollismo v2: franja de gresite a 4,5 cm; polígono v3: testeros que cierran las galerías; fábrica: rótulo borrado sin
     pseudoletras; lejos.muro 'madera' (vivienda social v2).
+11. Ventanas abiertas: el 38 % de las ventanas que las piezas «vano» dibujan con env.windowHole quedan abiertas (sin visillo) y se
+    anotan como 'W' (T.vano no cuenta dos veces: vanoDef ya decide las suyas).
+12. Autoconstrucción: parcelas de 2 vanos pintadas, con material propio (algunas de ladrillo visto o bloque) y cada casita a su
+    altura (v0: saltos de hasta 2,7 m con ventanuco en el remonte).
+13. Tribuna de piedra en el eje del chaflán (V.tribChf): Eixample temprano v0, noucentista v0, neoclásico.
+14. Núcleo de identidad subido a 0,9 en Eixample y Ciutat Vella (con 0,8, el edificio de dron_bajo seguía saliendo de desarrollismo).
+
+## Comprobado con capturas (antes = las de los críticos)
+- dron_bajo, sagrada_pie, cat_pie, n_eixacera_23, n_ramblapie_23, gotic_tienda: vuelven a ser Eixample / Ciutat Vella como en base;
+  el portal con aplique y zaguán vuelve en n_eixacera_23. Registro en dron_bajo: P 4 → 349, T 264 → 382, W 3919 → 5808
+  (base 359 / 363 / 6308). fx.trisHi en las celdas de dron_bajo: 444 079 → 536 214 (base 636 481).
+- Casa obrera v0–v3: ahora distintas (parcelas pintadas, principal corrido, parcelas estrechas con ventanas, corrido solo en principal).
+- Noucentista: v0 con frontones en todas las plantas y v3 sobria, distintas; v1 (pilastras) sigue pareciéndose a v0 a esa distancia.
+- Eixample temprano: v2 distinta (ventanas alternas); v1 solo cambia porticones y pilastras finas: sigue cerca de v0.
+- Fábrica: v2 con rejas y v1 con ventanal ancho se distinguen; el arco de medio punto de v0 apenas se ve en la fábrica de pisos.
+- Barroco: parcelas pintadas con bajantes; casas baratas: faldón de teja sobre la planta baja (queda una franja de muro de ~1 m);
+  autarquía (k=1) y olímpico (k=2) ya se ven; autoconstrucción v0 escalonada y de varios materiales.
+
+## No resuelto
+- Desarrollismo v2: los triángulos de ladrillo en la franja de gresite no son de profundidad (siguen a 4,5 cm y con otro
+  material): falta encontrar la causa (posible quad del muro del antepecho de ventanaPVC).
+- Racionalista v2: el escaparate no cae en un chaflán; el mirador no se ha podido ver en captura.
+- Pueblo, gótico, quart: vistas corregidas en vistas_estilos.json pero no recapturadas.
+- Ventana de pieza con habitación de noche detrás de las galerías del polígono v3; rótulo BAR invertido (Fase 4).
+- Medida de tiempo de construcción en máquina tranquila (Fase 6).

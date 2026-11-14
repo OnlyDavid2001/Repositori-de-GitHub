@@ -19,7 +19,7 @@ KIT.estilo('neoclasico', {
   nombre: 'Neoclàssic',
   comun: { hp: 3.3, bay: 3.0, win: 1.05, alto: 0.84, hueco: 'balconera', bal: 'indiv', balP: 1, vuelo: 0.55, bar: 'forja', forja: 0, carp: 'librillo',
     carpCol: VERDE.concat(GRIS), marco: MADERA, acab: 'estuco', remate: 0.5, imposta: 2, recerc: 2, ultimo: 'bajo', coron: 'cornisa', mac: 0.25,
-    ropa: 0.05, com: 0.9, pbH: 4.8, pb: 'pb_neoclasico', vano: 'vano_neoclasico', noble: { f: 1.12, recerc: 3, alto: 0.86 }, chaflan: { bal: 'corrido' },
+    ropa: 0.05, com: 0.9, pbH: 4.8, pb: 'pb_neoclasico', vano: 'vano_neoclasico', noble: { f: 1.12, recerc: 3, alto: 0.86 }, chaflan: { bal: 'corrido' }, tribChf: true,
     lejos: { muro: 'estuco', hp: 3.3, bay: 3.0, vidrio: 0.32 } },
   variantes: [
     { nombre: 'edificio porticado', pl: [4, 6], pbRec: 3.2, pbH: 5.4, pbFr: 'frente_arcos', coron: 'balaustrada', com: 1, imposta: 1 },

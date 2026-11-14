@@ -225,7 +225,7 @@ pieza('vano_desarrollismo', function (env, run, q) {
     const w = q.bw - 0.6, st = q.k + 0.95, yt = Math.min(q.P - 0.38, st + 1.25);
     P.ventanaPVC(env, run, q, { w, st, yt, se: rr[0] < 0.7 ? 0.1 + rr[1] * 0.7 : 0, pc, cajon: true, alf: env.uV, aire: ac });
     const BAND = [[92, 124, 142], [150, 96, 66], [228, 224, 212], [116, 128, 108]];
-    rect(env.W0, run.F, q.a, q.a + q.bw, q.k + 0.06, st - 0.07, 0.045, BAND[(h01(env.b, 3) * 4) | 0], 17);
+    rect(env.W0, run.F, q.a, q.a + q.bw, q.k + 0.06, st - 0.07, 0.045, BAND[(h01(env.b, 3) * 4) | 0], 17);   // F2R: 4,5 cm (los triángulos de ladrillo siguen: no son de profundidad)
     return;
   }
   const vent = q.W % 2 === 1 || vi === 0, w = vent ? Math.min(1.3, q.bw - 1.0) : Math.min(1.0, q.bw - 1.1);

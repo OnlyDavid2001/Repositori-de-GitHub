@@ -34,6 +34,7 @@
                pilotis, patio delantero) y la pieza pbFr (si hay) dibuja el frente (pilares, arcos, verja)
      com       factor de comercio del estilo (0–1) sobre la densidad comercial real del sitio (provisional hasta la Fase 4)
      vano      pieza de vano de piso (calle) · corona: pieza de coronación (calle) · fachada: [piezas] por tramo de calle
+     tribChf   F2R: tribuna de piedra en el eje del chaflán (plantas 1–3)
      par       F2R: parcelas virtuales pintadas de par vanos (color de la paleta por parcela y bajante en la medianera)
      sinPeto   true: rooftops.js no pone el peto de la azotea (la coronación del estilo ya pone un tejado a la calle)
      lejos     { muro: 'estuco'|'ladrillo'|'piedra'|'hormigon'|'vidrio'|'travertino'|'madera', hp, bay, vidrio (fracción de hueco) }
@@ -114,9 +115,9 @@ API.init = function (n) { API.EST = new Uint8Array(n).fill(255); API.VAR = new U
 // Eixample, Ciutat Vella, el Raval, la Barceloneta y Gràcia, los estilos propios del barrio suman al menos esa fracción del
 // peso (ya ponderado por la altura), para que las calles icónicas no pierdan su carácter con la mezcla de la sección
 const NUCLEO = {
-  eixample: [['eixample_temprano', 'eixample_ornamentado', 'modernista', 'noucentista', 'neoclasico'], 0.8],
-  ciutat_vella: [['gotico', 'barroco', 'neoclasico', 'casa_obrera_xix', 'quart_de_casa', 'eixample_temprano'], 0.85],
-  raval: [['casa_obrera_xix', 'barroco', 'neoclasico', 'eixample_temprano'], 0.8],
+  eixample: [['eixample_temprano', 'eixample_ornamentado', 'modernista', 'noucentista', 'neoclasico'], 0.9],
+  ciutat_vella: [['gotico', 'barroco', 'neoclasico', 'casa_obrera_xix', 'quart_de_casa', 'eixample_temprano'], 0.9],
+  raval: [['casa_obrera_xix', 'barroco', 'neoclasico', 'eixample_temprano'], 0.85],
   barceloneta: [['quart_de_casa', 'casa_obrera_xix'], 0.8],
   gracia: [['casa_obrera_xix', 'modernista', 'eixample_temprano', 'noucentista', 'pueblo'], 0.6],
 };

@@ -2020,6 +2020,14 @@ Fase 2 (F2a monta la arquitectura y el bloque 1). Orden en index.html: `fachadas
 - **Lejos**: `V.lejos = { muro, hp, bay, vidrio }` y `BCN_KIT.lejos(b)`, para que la Fase 3 lo lleve a FS_BLD.
 - **Escaparate**: `?estilo=<id>&v=<0..3>` (al cargar: estilo, variante y color en todo lo que es vivienda) o
   `BCN.fx.force('estilo:<id>:<v>')` (en marcha: solo la geometría de detalle); `?pb=0|1` fuerza plantas bajas sin o con comercio.
+  Las variantes de **material** (color, acabado `acab`, `paleta`/`pal`: autarquía v2 de ladrillo, modernista, burgués v3…) solo se
+  comprueban con `?estilo=&v=`: `force()` no vuelve a hornear el color del volumen.
+- **F2R** (repaso): `V.par` (parcelas virtuales pintadas de `par` vanos: `KIT.colPar(env, run, g)` y bajante en cada medianera,
+  en `pisosV`); `env.pbPortal` (el vano de planta baja en curso es el portal: `P.puerta` de madera pone montante con zaguán
+  iluminado y aplique); `env.esquinas` (el edificio tiene alguna esquina real); `run.chaflan` ya no depende de `V.chaflan`; el
+  selector provisional pondera la mezcla con un núcleo de estilos propios por familia de barrio (`NUCLEO` en kit.js); los
+  estilos con `com ≥ 0,5` conservan todo el comercio; el 38 % de las ventanas que dibujan las piezas «vano» con
+  `env.windowHole` quedan abiertas (sin visillo); `lejos.muro` admite `'madera'`.
   `BCN.fx.spotAt(x, z, k, id, R, hMin, hMax)`: vista de fachada entera de un edificio del estilo cerca de (x, z).
   `tools/cc/vistas_estilos.json`: una vista por estilo en una calle que le pega (cada bloque añade las suyas).
 - **Ids de material del kit**: 160–167 núcleo · 168–175 bloque 1 · 176–183 bloque 2 · 184–191 bloque 3 · 192–199 bloque 4; los de
