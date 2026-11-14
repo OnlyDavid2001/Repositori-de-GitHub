@@ -450,23 +450,34 @@ pieza('pb_fabrica', function (env, run, q) {
 pieza('vano_fabrica', function (env, run, q) {
   const V = q.V, vi = V.vi, rr = q.rr, { W0, W1 } = env, F = run.F, wc = run.wallC;
   if (q.atico) return false;
-  KIT.T.vano(env, run, q);
   // el hueco de taller de siempre (vanoDef): ancho min(win, bw − 0,95), antepecho 0,7, alto min(2,7, m − 1,15)
-  const Vw = Math.min(V.win, q.bw - 0.95), st = q.k + (q.low ? 0 : 0.7), yt = q.low ? st : st + Math.min(2.7, q.m - 1.15), tt = q.c - Vw / 2, ct = q.c + Vw / 2;
+  const Vw = Math.min(V.win, q.bw - 0.95), st = q.k + (q.low ? 0 : 0.7);
+  let yt = q.low ? st : st + Math.min(2.7, q.m - 1.15);
+  const tt = q.c - Vw / 2, ct = q.c + Vw / 2;
+  // F2R2: v0, ventanal de nave en arco de medio punto: el hueco recto baja lo que haga falta para que quepa el arco entero y el
+  // arco se acristala en abanico (montantes radiales) con su rosca de ladrillo
+  const arcoV = vi === 0 && !q.low && Vw > 0.8 && yt - st > 1.2;
+  if (arcoV) { yt = Math.max(st + 1.0, Math.min(yt, q.P - 0.42 - Vw / 2));
+    env.windowHole(W0, F, q.a, q.a + q.bw, tt, ct, q.k, q.P, st, yt, 0.2, wc, env.kw, rr[0] < 0.4 ? 0.2 + rr[1] * 0.4 : 0);
+    if (W1) { for (let u = tt + Vw / 4; u < ct - 0.05; u += Vw / 4) box(W1, F, u - 0.025, u + 0.025, st, yt, -0.2, -0.16, [60, 62, 64], K.METAL, 4);
+      box(W1, F, tt, ct, (st + yt) / 2 - 0.025, (st + yt) / 2 + 0.025, -0.2, -0.16, [60, 62, 64], K.METAL, 1); } }
+  else KIT.T.vano(env, run, q);
   if (q.low) return;
   // arco rebajado de ladrillo a sardinel sobre el ventanal, alféizar de piedra
   // F2R: cada variante, su hueco: v0 arco de medio punto (ventanal de nave), v1 dintel de acero corrido (fábrica de pisos),
   // v2 arco rebajado y ventana pequeña con reja (almacén), v3 arco rebajado y balcón francés (loft)
   const n = 6, ac = shade(wc, 0.8);
   let rise = Math.min(0.32, (q.P - yt) * 0.5);
-  if (vi === 0) rise = Math.min(Vw / 2 + 0.12, q.P - yt - 0.12);
+  if (vi === 0) rise = arcoV ? Vw / 2 + 0.12 : Math.min(Vw / 2 + 0.12, q.P - yt - 0.12);
   if (vi === 1) { box(W0, F, tt - 0.25, ct + 0.25, yt, yt + 0.3, 0, 0.06, [70, 72, 74], K.METAL, 7);
     if (W1) for (let u = tt + 0.25; u < ct - 0.1; u += 0.6) box(W1, F, u - 0.03, u + 0.03, st, yt, -0.06, -0.02, [60, 62, 64], K.METAL, 4);
     rise = 0; }
   if (vi === 2) { if (W1) lattice(W1, F, tt, ct, st, yt, 0.04, env.iron || [50, 50, 50], K.IRON, 1); }
-  if (vi === 0 && W1 && rise > 0.3) { const r = Vw / 2, cx = q.c, y0a = yt;    // tímpano de ladrillo dentro del arco, a ras de muro
+  if (vi === 0 && rise > 0.3) { const r = Vw / 2, cx = q.c, y0a = yt;    // abanico acristalado (o tímpano de ladrillo) dentro del arco
     for (let i = 0; i < n; i++) { const a0 = Math.PI * i / n, a1 = Math.PI * (i + 1) / n;
-      quad(W1, F, cx - Math.cos(a0) * r, y0a + Math.sin(a0) * rise * 0.9, 0.012, cx - Math.cos(a1) * r, y0a + Math.sin(a1) * rise * 0.9, 0.012, cx, y0a, 0.012, cx, y0a, 0.012, shade(wc, 0.9), KL); } }
+      quad(arcoV ? W0 : W1 || W0, F, cx - Math.cos(a0) * r, y0a + Math.sin(a0) * rise * 0.95, 0.012, cx - Math.cos(a1) * r, y0a + Math.sin(a1) * rise * 0.95, 0.012, cx, y0a, 0.012, cx, y0a, 0.012, arcoV ? [44, 52, 58] : shade(wc, 0.9), arcoV ? K.GLASS : KL);
+      if (arcoV && W1 && i > 0) box(W1, F, cx - Math.cos(a0) * r * 0.5 - 0.02, cx - Math.cos(a0) * r * 0.5 + 0.02, y0a + Math.sin(a0) * rise * 0.45 - 0.02, y0a + Math.sin(a0) * rise * 0.45 + 0.02, 0.012, 0.05, [60, 62, 64], K.METAL, 7); }
+    if (arcoV) box(W0, F, tt - 0.02, ct + 0.02, yt - 0.04, yt + 0.03, 0, 0.05, [60, 62, 64], K.METAL, 1); }
   if (rise > 0.08) for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, u0 = tt - 0.12 + (Vw + 0.24) * t0, u1 = tt - 0.12 + (Vw + 0.24) * t1;
     const y0 = yt + Math.sin(Math.PI * t0) * rise, y1 = yt + Math.sin(Math.PI * t1) * rise;
     quad(W0, F, u0, y0 - 0.04, 0.03, u1, y1 - 0.04, 0.03, u1, y1 + 0.24, 0.03, u0, y0 + 0.24, 0.03, ac, KL); }

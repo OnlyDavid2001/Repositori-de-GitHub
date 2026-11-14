@@ -484,6 +484,9 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const n = runs.length; if (n < 3) return false;
     const r = runs[i], a = runs[(i + n - 1) % n], c = runs[(i + 1) % n];
     const d1 = Math.abs(r.tx * a.tx + r.tz * a.tz), d2 = Math.abs(r.tx * c.tx + r.tz * c.tz), d3 = Math.abs(a.tx * c.tx + a.tz * c.tz);
+    // F2R2: en los datos, los tramos vecinos del chaflán suelen salir cortos o partidos (24 de 1093 tramos en el Eixample de
+    // dron_bajo): basta con que el tramo vaya a ~45° de los dos vecinos y que alguno sea de calle
+    if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && (d3 < 0.3 || a.kind === 'street' || c.kind === 'street') && a.L > 2.5 && c.L > 2.5 && r.L >= 8) return true;
     if (d1 > 0.5 && d1 < 0.87 && d2 > 0.5 && d2 < 0.87 && d3 < 0.3 && a.L > 3 && c.L > 3 && a.kind === 'street' && c.kind === 'street') return true;   // F3R2: calles vecinas > 3 m (antes 6: la finca de esquina con poco frente a la otra calle se perdía)
     // F3R: chaflán compartido por dos fincas (el caso normal del Eixample): un vecino es la calle a ~45° y el otro, la medianera
     // con la finca de al lado (ciega o medianera vista; F3R2: no la lisa). F3R2: la medianera tiene que ser la de un chaflán de
@@ -945,7 +948,11 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     const par = street && V.par && KIT && nb > V.par && !env.parcV ? V.par : 0, runP = [];
     if (par) for (let g = 0; g * par < nb; g++) {
       const c = KIT.colPar(env, run, g); runP.push(c === wallC ? run : Object.assign({}, run, { wallC: c }));
-      if (g && W1 && F1 < env.C) box(W1, F, g * par * bw - 0.05, g * par * bw + 0.05, Math.max(F1, cover), env.C, 0, 0.12, [118, 120, 118], K.METAL, 4); }
+      if (g && W1 && F1 < env.C) box(W1, F, g * par * bw - 0.05, g * par * bw + 0.05, Math.max(F1, cover), env.C, 0, 0.12, [118, 120, 118], K.METAL, 4);
+      // F2R2: la medianera sube por encima de la cornisa (pilar de 0,5 m con su albardilla): corta la cornisa en cada parcela
+      if (g && env.C > cover + 1) { const u = g * par * bw, cm = shade(c, 0.9);
+        box(W0, F, u - 0.25, u + 0.25, env.C - 0.3, env.C + 1.25, 0, 0.42, cm, env.kw, 7);
+        box(W0, F, u - 0.3, u + 0.3, env.C + 1.25, env.C + 1.35, -0.05, 0.47, [176, 170, 160], K.STUCCO, 7); } }
     for (let D = 1; D <= nF; D++) {
       const k = lv[D - 1], P = lv[D], m = P - k, top = D === nF, Vd = D === 1 && V.nobleV ? V.nobleV : V, uV = env.uV;
       if (P <= cover + 0.2) continue;
@@ -1231,18 +1238,19 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
 
   // escaparate de estilos (Condal City): vista de fachada entera, como spotFull, de los edificios a menos de R m de (x, z) (el
   // k-ésimo por holgura y cercanía); con id, solo los de ese estilo (BREC.estilo, el del selector o el forzado)
-  function spotAt(x, z, k, id, R_, hMin, hMax) {
+  function spotAt(x, z, k, id, R_, hMin, hMax, chf) {   // F2R2: chf → solo el tramo de chaflán
     const R2 = R_ || 300, ix = id && KIT ? KIT.indice(id) : -1, out = [], seen = new Set();
     rangeCells(x - R2, z - R2, x + R2, z + R2, c => { for (let q = ALL.start[c]; q < ALL.start[c + 1]; q++) { const b = ALL.list[q];
       if (seen.has(b) || !BREC.elig[b] || BREC.tipo[b]) continue; seen.add(b);
       if (ix >= 0 && (!KIT.EST || KIT.EST[b] !== ix)) continue;
       const lay = layoutB(b); if (!lay || lay.H < (hMin || 6) || lay.H > (hMax || 40)) continue;
-      for (const r of lay.runs) {
-        if (r.kind !== 'street' || r.L < 9) continue;
+      for (let ri = 0; ri < lay.runs.length; ri++) { const r = lay.runs[ri];
+        if (r.kind !== 'street' || r.L < (chf ? 5 : 9) || (chf && !esChaflan(lay.runs, ri))) continue;
         const mx = r.ax + r.tx * r.L / 2, mz = r.az + r.tz * r.L / 2, dd = Math.hypot(mx - x, mz - z); if (dd > R2) continue;
-        let w = 0; for (let t = 1.5; t <= 40; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
-        if (w < 7 || w >= 40) continue;
-        const dc = w - 1.6, px = mx + r.nx * dc, pz = mz + r.nz * dc, g = heightAt(px, pz);
+        const wM = chf ? 70 : 40;                     // F2R2: delante de un chaflán está el cruce entero (más de 40 m)
+        let w = 0; for (let t = 1.5; t <= wM; t += 0.5) { if (coverAt(mx + r.nx * t, mz + r.nz * t, b) > -1e8) break; w = t; }
+        if (w < 7 || w >= wM) continue;
+        const dc = chf ? Math.min(w - 1.6, 26) : w - 1.6, px = mx + r.nx * dc, pz = mz + r.nz * dc, g = heightAt(px, pz);
         if (coverAt(px, pz, -1) > -1e8 || Math.abs(g - heightAt(mx + r.nx * 2, mz + r.nz * 2)) > 1.2) continue;
         const pt = Math.max(0.12, Math.atan2(lay.gHi + lay.H + 0.8 - g - 1.75, dc) - 0.40); if (pt > 0.5) continue;
         out.push({ x: px, z: pz, walk: true, yaw: Math.atan2(mx - px, mz - pz), pitch: -pt, b, H: +lay.H.toFixed(1), w,
@@ -1383,7 +1391,20 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     if (KIT) KIT.force(mk ? mk[1] : null, mk && mk[2] !== undefined ? +mk[2] : -1);
     if (mk) v = null;
     FXV = v; VAR.fill(undefined); dropAll(); planT = 0; }
-  return { update, setRange, nElig, nSkip, pbStat, spot, spotFull, spotAt, calle, famOf, varOf, force, layoutB, esChaflan, busy: () => !!job || queue.length > 0,
+  // depuración (F2R2): cuántos edificios cerca de (x, z) tienen tramo de chaflán y por qué no (ángulos de los vecinos)
+  function chafStat(x, z, R_) {
+    const R2 = R_ || 200, seen = new Set(), o = { b: 0, calle: 0, chf: 0, ej: [] };
+    rangeCells(x - R2, z - R2, x + R2, z + R2, c => { for (let q = ALL.start[c]; q < ALL.start[c + 1]; q++) { const b = ALL.list[q];
+      if (seen.has(b) || !BREC.elig[b] || BREC.tipo[b]) continue; seen.add(b); const lay = layoutB(b); if (!lay) continue; o.b++;
+      const rs = lay.runs, n = rs.length;
+      for (let i = 0; i < n; i++) { const r = rs[i]; if (r.kind !== 'street' || r.L < 5 || r.L > 24) continue; o.calle++;
+        if (esChaflan(rs, i)) { o.chf++; continue; }
+        const a = rs[(i + n - 1) % n], cc = rs[(i + 1) % n];
+        if (o.ej.length < 12 && Math.abs(r.tx * a.tx + r.tz * a.tz) < 0.9) o.ej.push([b, +r.L.toFixed(1), n, a.kind, +a.L.toFixed(1), cc.kind, +cc.L.toFixed(1),
+          +Math.abs(r.tx * a.tx + r.tz * a.tz).toFixed(2), +Math.abs(r.tx * cc.tx + r.tz * cc.tz).toFixed(2), +Math.abs(a.tx * cc.tx + a.tz * cc.tz).toFixed(2)]); } } });
+    return o;
+  }
+  return { update, setRange, nElig, nSkip, pbStat, spot, spotFull, spotAt, calle, famOf, varOf, force, layoutB, esChaflan, chafStat, busy: () => !!job || queue.length > 0,
     stats: () => ({ rCap: S.rCap, cells: cells.size, base: [...cells.values()].filter(c => c.base).length, hi: [...cells.values()].filter(c => c.hi).length, trisBase: tris[0], trisHi: tris[1], queue: queue.length, job: !!job }) };
 } };
 })();

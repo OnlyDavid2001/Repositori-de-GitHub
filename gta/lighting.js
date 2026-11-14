@@ -34,9 +34,10 @@ window.BCN_LIGHTING = { init(ctx) {
   // shTreeNF: 1 = la cascada lejana también lleva los árboles cercanos (por defecto no: ver shList)
   // shNear: en la cascada cercana, el detalle (fachadas de detalle y mobiliario) solo proyecta si está a menos de
   // shNear × semilado de la cámara, en planta (63 m a pie); más lejos basta el volumen simple del edificio. 0 = sin límite
+  // shOrnNear: lo mismo para la capa ORNAMENTO (cables, tendederos, bajantes, rejas: sombra fina), más corto (F2R2: 22 m a pie)
   // ao: intensidad de la oclusión ambiental (0 = nada, pero el pase sigue: sirve para comparar) · aoR: radio en mundo (m) ·
   // aoFar: distancia (m) a la que ya no hay oclusión (empieza a desvanecerse en aoFar × 0,73) · aoDbg: 1 = ver solo la oclusión
-  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shTreeNF: 0,
+  const P = { bloomT: 2.6, bloomW: 0.16, bloomK: 64, sharpen: 0.10, vignette: 0.3, shadows: 1, shOrn: 1, shNear: 1.4, shOrnNear: 0.5, shTreeNF: 0,
               ao: 1, aoDay: 1.45, aoR: 0.8, aoFar: 110, aoDbg: 0,   // G1L3 · aoDay: de día, más fuerte (sombra de contacto); de noche como estaba
               soft: 0.006 };   // G1L1 · soft: anchura de la penumbra por metro de distancia al que tapa (0 = sombra de siempre)
   const baseScale = engine.getHardwareScalingLevel();          // la resolución completa la decide app.js (según devicePixelRatio)
@@ -229,7 +230,7 @@ void main(){
         bb = [(a.x + z.x) / 2 + w[12], (a.y + z.y) / 2 + w[13], (a.z + z.z) / 2 + w[14], (z.x - a.x) / 2, (z.y - a.y) / 2, (z.z - a.z) / 2]; shBox.set(m, bb); }
       const dx = bb[0] - C.x, dy = bb[1] - C.y, dz = bb[2] - C.z;
       if (lim < 1e9 && (b.layer === 'base' || b.layer === 'orn' || b.layer === 'furn') &&
-          Math.hypot(Math.max(Math.abs(dx) - bb[3], 0), Math.max(Math.abs(dz) - bb[5], 0)) > lim) continue;
+          Math.hypot(Math.max(Math.abs(dx) - bb[3], 0), Math.max(Math.abs(dz) - bb[5], 0)) > (b.layer === 'orn' && P.shOrnNear > 0 ? P.shOrnNear * half : lim)) continue;
       if (Math.abs(dx * X.x + dy * X.y + dz * X.z) > half + bb[3] * Math.abs(X.x) + bb[4] * Math.abs(X.y) + bb[5] * Math.abs(X.z)) continue;
       if (Math.abs(dx * Y.x + dy * Y.y + dz * Y.z) > half + bb[3] * Math.abs(Y.x) + bb[4] * Math.abs(Y.y) + bb[5] * Math.abs(Y.z)) continue;
       list.push(m); sig += m.uniqueId;

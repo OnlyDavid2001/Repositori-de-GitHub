@@ -389,8 +389,9 @@ pieza('corona_gotico', function (env, run, q) {
 // cada casita son dos vanos (puerta y ventana) con su color o su cal, su zócalo pintado y la junta entre casas; tejado bajo de
 // teja a una o dos aguas; la reformada lleva un piso de ladrillo con ventana de aluminio
 const CBPAL = { cal: ['#f2ece0', '#f6f2ea', '#ece4d4', '#f0eadc'].map(hx), color: ['#f2ece0', '#e8d9bf', '#d9c7a8', '#c9d6c8', '#e6c9a0', '#cfdbe0', '#efd9c9'].map(hx) };
-const SOCOL = [[118, 120, 118], [150, 112, 80], [92, 112, 140], [160, 150, 130], [96, 120, 96]];
+const SOCOL = [[132, 134, 130], [168, 150, 120], [110, 126, 150], [176, 166, 146], [112, 132, 112]];   // F2R2: zócalos menos pardos
 const colCB = (env, run, W) => colPar(env, run, W >> 1, env.V.vi === 0 || env.V.vi === 2 ? CBPAL.cal : CBPAL.color);
+const TEJA_CB = [[170, 84, 58], [150, 78, 56], [182, 98, 66]];
 const PUERTA_CB = [[60, 92, 70], [52, 84, 120], [110, 70, 44], [150, 60, 48], [70, 70, 72]];
 pieza('pb_casas_baratas', function (env, run, q) {
   const { W0, W1 } = env, F = q.F, top = env.F1, rr = q.rr, vi = env.V.vi, nb = run.nb, a = q.a, b = a + q.bw, col = colCB(env, run, q.W), kw = env.kw;
@@ -417,13 +418,6 @@ pieza('pb_casas_baratas', function (env, run, q) {
     if (W1 && rr[5] < 0.45) KIT.T.planter(W1, F, q.c - 0.2 + rr[2] * 0.3, 0.08, st, rr[5], rr[2], rr[3]);
   }
   if (q.W > 0 && q.W % 2 === 0) box(W0, F, a - 0.06, a + 0.06, q.gl, top, 0, 0.05, shade(col, 0.96), K.STUCCO, 4);
-  if (env.nF === 0 && top - q.gl > 3.4) {            // casita de una planta con el muro alto: cenefa pintada y respiradero de la cambra
-    rect(W1 || W0, F, a, b, q.gl + 2.62, q.gl + 2.78, 0.012, so, K.STUCCO);
-    const yv = Math.min(top - 0.75, q.gl + 3.35);
-    if (!esPuerta && top - yv > 0.6) { rect(W0, F, q.c - 0.28, q.c + 0.28, yv, yv + 0.32, 0.006, [46, 42, 38], K.STUCCO);
-      lattice(W1 || W0, F, q.c - 0.28, q.c + 0.28, yv, yv + 0.32, 0.02, [200, 196, 188], K.BAL, 0);
-      box(W0, F, q.c - 0.34, q.c + 0.34, yv - 0.05, yv, 0, 0.06, [214, 210, 200], K.STUCCO, 7); }
-  }
 });
 // patio delantero: murete encalado con su albardilla, cancela de hierro en la puerta de cada casa y plantas detrás
 pieza('cb_patio', function (env, run, q) {
@@ -464,19 +458,30 @@ pieza('corona_casas_baratas', function (env, run, q) {
       for (const f of [0.6, 0.85]) box(W1, F, u - 0.45, u + 0.5, y1 + 1.0 + 2.2 * f, y1 + 1.03 + 2.2 * f, -1.2, -1.17, [120, 120, 118], K.METAL, 7); }
     return;
   }
-  const yE = y1 + 0.9, ov = 0.42, dR = 2.4, yR = yE + 1.25, dos = V.vi === 2;   // alero a la altura del peto de los demás (tapa el de rooftops.js), ~27°
+  // F2R2: casita de una planta (o la de patio): alero de teja bajo, a ~2,6 m de su acera, y faldón de teja que sube hasta el
+  // tejado; la cota es la de cada casita (dos vanos), así que en cuesta la hilera escalona casa a casa
+  const yT = Math.max(C, y1);
+  let cbF = false;
+  if (env.nF === 0 && V.vi !== 1 && run.gnd && q.nb >= 1) for (let W = 0; W < q.nb; W++) {
+    const h0 = W & ~1, a = W * q.bw, b = a + q.bw, gH = Math.max(run.gnd(Math.min(L - 0.1, (h0 + 0.5) * q.bw)), h0 + 1 < q.nb ? run.gnd((h0 + 1.5) * q.bw) : -1e9);
+    const yS = gH + 2.62, col = colCB(env, run, W), tl = TEJA_CB[(h01(env.b, 9) * 3) | 0], ovS = 0.6;
+    if (yT - yS < 0.45) continue; cbF = true;
+    quad(W0, F, a - 0.01, yS, ovS, b + 0.01, yS, ovS, b + 0.01, yT + 0.02, 0.02, a - 0.01, yT + 0.02, 0.02, shade(tl, 0.97), KT());
+    box(W0, F, a - 0.01, b + 0.01, yS - 0.13, yS + 0.01, 0, ovS + 0.04, shade(tl, 0.78), K.STUCCO, 2);
+    for (const u of [a, b]) quad(W0, F, u, yS, 0, u, yS, ovS, u, yT + 0.02, 0.02, u, yT + 0.02, 0, shade(col, 0.88), kw); }
+  const yE = cbF ? yT + 0.09 : y1 + 0.9, ov = cbF ? 0.02 : 0.42, dR = 2.4, yR = yE + 1.25, dos = V.vi === 2;   // alero a la altura del peto de los demás (tapa el de rooftops.js), ~27°
   const tile = [[170, 84, 58], [150, 78, 56], [182, 98, 66]][(h01(env.b, 9) * 3) | 0];
-  for (let W = 0; W < q.nb; W++) wr(W0, F, W * q.bw, (W + 1) * q.bw, C, yE, colCB(env, run, W), kw);
+  if (!cbF) for (let W = 0; W < q.nb; W++) wr(W0, F, W * q.bw, (W + 1) * q.bw, C, yE, colCB(env, run, W), kw);
   const c0 = colCB(env, run, 0);
   quad(W0, F, -0.05, yE - 0.07, ov, L + 0.05, yE - 0.07, ov, L + 0.05, yR, -dR, -0.05, yR, -dR, tile, KT());
-  box(W0, F, -0.05, L + 0.05, yE - 0.17, yE - 0.03, 0, ov, shade(tile, 0.82), K.STUCCO, 2);
+  if (!cbF) box(W0, F, -0.05, L + 0.05, yE - 0.17, yE - 0.03, 0, ov, shade(tile, 0.82), K.STUCCO, 2);
   if (dos) quad(W0, F, -0.05, yR, -dR, L + 0.05, yR, -dR, L + 0.05, yE, -2 * dR, -0.05, yE, -2 * dR, shade(tile, 0.95), KT());
   else rect(W0, F, 0, L, yE, yR, -dR, shade(c0, 0.9), K.STUCCO);
   const db = dos ? -2 * dR : -dR;
   // F2R: la casita mide ~3 m y el volumen es más alto: el exceso de muro sobre la planta baja se cubre con un faldón de teja
   // que arranca con su alero corrido (0,5 m de vuelo) justo encima de puertas y ventanas, y sube hasta el tejado
   const F1 = env.F1;
-  if (yE - F1 > 1.4) { const yS = F1 + 0.12, oS = 0.95;
+  if (!cbF && yE - F1 > 1.4) { const yS = F1 + 0.12, oS = 0.95;
     quad(W0, F, -0.05, yS, oS, L + 0.05, yS, oS, L + 0.05, yE - 0.07, ov, -0.05, yE - 0.07, ov, shade(tile, 0.97), KT());
     box(W0, F, -0.05, L + 0.05, yS - 0.12, yS + 0.02, 0, oS, shade(tile, 0.8), K.STUCCO, 2);
     for (const u of [0, L]) quad(W0, F, u, yS, 0, u, yS, oS, u, yE - 0.07, ov, u, yE - 0.07, 0, shade(c0, 0.9), kw); }

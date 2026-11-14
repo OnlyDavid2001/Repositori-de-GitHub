@@ -101,7 +101,7 @@ KIT.estilo('noucentista', {
     chaflan: { bal: 'corrido' }, lejos: { muro: 'estuco', hp: 3.2, bay: 3.5, vidrio: 0.3 } },
   variantes: [
     { nombre: 'fachada simétrica con frontones', balP: 0.6, tribChf: true },
-    { nombre: 'fachada con pilastras', fachada: ['pilastras', 'urnas'], balP: 1, recerc: 1, bay: 4.0, noble: { f: 1.12, recerc: 3, alto: 0.84 } },
+    { nombre: 'fachada con pilastras', fachada: ['pilastras', 'urnas'], hueco: 'ventana', win: 1.2, alto: 0.86, balP: 0, recerc: 3, bay: 4.0, noble: { f: 1.12, recerc: 3, alto: 0.84, hueco: 'balconera', bal: 'indiv', balP: 1 } },   // F2R2: balcones solo en el principal
     { nombre: 'edificio de oficinas monumental', pl: [5, 8], pbH: 5.4, hueco: 'ventana', win: 1.5, bay: 3.2, acab: 'piedra', bal: 'ninguno',
       noble: { f: 1.15, princ: 'corrido', recerc: 3 }, lejos: { muro: 'piedra', vidrio: 0.35 } },
     { nombre: 'casa de renta sobria', recerc: 1, imposta: 1, balP: 0.5, hueco: 'mixto', bay: 3.0, ultimo: 'normal', coron: 'cornisa', noble: { f: 1.06 }, aticoP: 0.15 }]

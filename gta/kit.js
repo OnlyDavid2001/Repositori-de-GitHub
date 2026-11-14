@@ -191,7 +191,7 @@ API.colPar = function (env, run, g) {
   const key = V.id, pal = PALC[key] || (PALC[key] = (V.paleta || ES.paleta || IX[CI[V.estilo]].pal).map(hx)), n = pal.length;
   if (n < 2) return run.wallC;
   let st = 1 + ((hb(env.b, 0, 37) * (n - 1)) | 0); while (gcd(st, n) !== 1) st = st % (n - 1) + 1;
-  const c = pal[(((hb(env.b, run.i, 31) * n) | 0) + g * st) % n], k = 0.94 + 0.1 * hb(env.b, g, 41 + run.i);
+  const c = pal[(((hb(env.b, run.i, 31) * n) | 0) + g * st) % n], k = (g % 2 ? 0.8 : 1.06) + 0.08 * hb(env.b, g, 41 + run.i);   // F2R2: alterna claro / oscuro
   return [c[0] * k, c[1] * k, c[2] * k];
 };
 const gcd = (a, b) => b ? gcd(b, a % b) : a;

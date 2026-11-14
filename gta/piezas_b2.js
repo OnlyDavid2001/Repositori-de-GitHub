@@ -294,7 +294,7 @@ pieza('pb_obrera', function (env, run, q) {
     const MD = [[86, 58, 36], [58, 76, 60], [92, 70, 52], [60, 64, 82]][(rr[3] * 4) | 0];
     const r = P.puerta(env, F, { a: q.a, bw: q.bw, c: q.c, w, gl: q.gl, h: top - q.gl - 0.45, yB: q.yB, top, tipo: 'madera', col: run.wallC, kw: env.kw, dep: 0.22, madera: MD, rr });
     const ym = q.gl + 0.12 + h;                        // montante: vidrio oscuro con reja sobre la puerta
-    if (r.yt - ym > 0.3) { rect(W0, F, r.tt, r.ct, ym, r.yt, -0.18, [30, 34, 38], K.GLASS); lattice(W0, F, r.tt, r.ct, ym, r.yt, -0.15, env.iron, K.IRON, 1);
+    if (!env.pbPortal && r.yt - ym > 0.3) { rect(W0, F, r.tt, r.ct, ym, r.yt, -0.18, [30, 34, 38], K.GLASS); lattice(W0, F, r.tt, r.ct, ym, r.yt, -0.15, env.iron, K.IRON, 1);
       box(W0, F, r.tt, r.ct, ym - 0.06, ym, -0.2, -0.12, shade(MD, 0.8), K.WOOD, 1); }
     return;
   }
@@ -538,17 +538,25 @@ pieza('pb_temprano', function (env, run, q) {
     const r = P.puerta(env, F, { a: q.a, bw: q.bw, c: q.c, w, gl: q.gl, h, yB: q.yB, top, tipo: 'madera', col: sc, kw: KS(), dep: 0.4,
       madera: [[70, 48, 30], [48, 58, 46], [82, 60, 40]][(rr[3] * 3) | 0], marco: { col: shade(sc, 1.1), k: KS(), w: 0.2, d: 0.06, W0: true }, rr });
     const ym = r.yt - 0.7;
-    rect(W0, F, r.tt + 0.03, r.ct - 0.03, ym, r.yt - 0.03, -0.36, [30, 34, 38], K.GLASS);
-    lattice(W0, F, r.tt + 0.03, r.ct - 0.03, ym, r.yt - 0.03, -0.34, env.iron, K.IRON, 0);
-    box(W0, F, r.tt, r.ct, ym - 0.08, ym, -0.4, -0.3, [60, 42, 28], K.WOOD, 1);
+    if (!env.pbPortal) { rect(W0, F, r.tt + 0.03, r.ct - 0.03, ym, r.yt - 0.03, -0.36, [30, 34, 38], K.GLASS);   // F2R2: el portal ya lleva zaguán
+      lattice(W0, F, r.tt + 0.03, r.ct - 0.03, ym, r.yt - 0.03, -0.34, env.iron, K.IRON, 0);
+      box(W0, F, r.tt, r.ct, ym - 0.08, ym, -0.4, -0.3, [60, 42, 28], K.WOOD, 1); }
     if (W1) box(W1, F, q.c - 0.06, q.c + 0.06, q.gl + 1.35, q.gl + 1.5, -0.38, -0.32, [170, 140, 80], K.PBR, 7, pbrAux(0.3, 1, 0, 0));   // picaporte
     return;
   }
+  if (env.V.vi === 1) return P.almohadillado(env, run, q, { forja: 1, hl: 0.42, sc: shade(sc, 0.9), h: Math.min(2.6, top - q.gl - 1.2), vert: true, arco: true, w: 1.4 });   // F2R2
   return P.almohadillado(env, run, q, { forja: 0, hl: 0.48, sc, h: 2.1 });
 });
 pieza('vano_temprano', function (env, run, q) {
   if (q.V.vi === 0 && !q.low && !q.atico && q.nb >= 3 && q.nb % 2 === 1 && q.W === q.nb >> 1) {   // simétrica: eje central marcado
     KIT.T.vano(env, run, conV(q, { recerc: 3, win: q.V.win * 1.12, vuelo: q.V.vuelo + 0.12 })); return; }
+  if (q.V.vi === 1 && !q.low && !q.atico && q.nb >= 3 && (q.W === q.nb >> 1 || (q.nb % 2 === 0 && q.W === (q.nb >> 1) - 1))) {   // F2R2: eje central
+    KIT.T.vano(env, run, conV(q, { recerc: 3, bal: 'indiv', balP: 1, vuelo: q.V.vuelo + 0.2, forja: 1 }));
+    const sc = env.stone || [200, 190, 170], w = q.V.win + 0.9, y = Math.min(q.P - 0.55, q.k + (q.D === 1 ? 2.75 : 2.6));
+    P.fronton(env.W0, run.F, q.c, w, y, q.D % 2 ? 0.42 : 0.3, 0.22, shade(sc, 1.05), K.STUCCO, q.D % 2 === 0);
+    if (env.W1) for (const s of [-1, 1]) box(env.W1, run.F, q.c + s * (w / 2 - 0.1) - 0.14, q.c + s * (w / 2 - 0.1) + 0.14, q.k + 0.1, y, 0, 0.12, shade(sc, 1.0), KS(), 7);
+    return; }
+  if (q.V.vi === 1 && q.D >= 2 && !q.low && !q.atico) { KIT.T.vano(env, run, conV(q, { hueco: 'ventana', balP: 0 })); return; }   // F2R2: balcones solo en el principal; arriba, ventanas
   if (q.V.vi !== 2 || q.D < 3 || q.low || q.atico) return false;
   KIT.T.vano(env, run, conV(q, { hueco: 'ventana' }));   // chaflán sobrio: de la 3.ª planta arriba, ventanas con antepecho
 });
