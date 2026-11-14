@@ -1250,7 +1250,7 @@ window.BCN_PLAZAS = { async init(ctx) {
     // ---- plataforma (P3): el suelo de la plaza es un plano ajustado al relieve por mínimos cuadrados y levantado lo justo para que
     // no asome ningún triángulo del terreno ni de la acera; en los bordes, faldón de piedra hasta la calle (y escalinatas donde
     // haga falta). Si el relieve es demasiado accidentado para un plano, una envolvente (máximo del suelo en ±1 m) sin bultos que asomen
-    const gAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.05);
+    const gAt = (x, z) => Math.max(walkAt(x, z), heightAt(x, z) + 0.12);   // Bugs · suelo: margen de 0,12 m sobre el relieve (antes 0,05)
     let hAt = (x, z) => Math.max(gAt(x, z), gAt(x + 1, z), gAt(x - 1, z), gAt(x, z + 1), gAt(x, z - 1)) + 0.03;
     o.plat = null;
     if (!o.noPav) {
