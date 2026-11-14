@@ -1352,10 +1352,11 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     for (let L = 1; L >= 0; L--) if (tris[L] > S.cap[L]) {
       const far = [...cells.keys()].filter(ci => L ? cells.get(ci).hi : cells.get(ci).base).sort((a, b) => (dist.get(b) || 0) - (dist.get(a) || 0));
       // Bugs · parpadeo: nunca se descarga una celda a menos del final del fundido (R1 / H1): ahí desaparecería de golpe, sin
-      // tramado, y volvería a cargarse en cuanto bajasen los triángulos (parpadeo de manzanas enteras)
+      // tramado, y volvería a cargarse en cuanto bajasen los triángulos (parpadeo de manzanas enteras). Salvo pasado un 15 % del
+      // tope (red de seguridad: en el Gòtic a pie de calle se queda en un ~8 % por encima)
       const RF = L ? S.H1 : S.R1;
-      for (const ci of far) { if (tris[L] <= S.cap[L] * 0.92) break; if ((dist.get(ci) || 0) < RF) continue;
-        S.rCap[L] = Math.max(RF, Math.min(S.rCap[L], (dist.get(ci) || 0) - 1)); drop(ci, true); if (!L) drop(ci, false); }
+      for (const ci of far) { if (tris[L] <= S.cap[L] * 0.92) break; if ((dist.get(ci) || 0) < RF && tris[L] < S.cap[L] * 1.15) continue;
+        S.rCap[L] = Math.max(tris[L] < S.cap[L] * 1.15 ? RF : 0, Math.min(S.rCap[L], (dist.get(ci) || 0) - 1)); drop(ci, true); if (!L) drop(ci, false); }
       for (let k = want.length - 1; k >= 0; k--) if (want[k][2] === !!L && want[k][0] - (L ? 25 : 0) >= S.rCap[L]) want.splice(k, 1);
     }
     want.sort((a, b) => a[0] - b[0]);
