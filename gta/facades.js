@@ -437,10 +437,12 @@ void main(){ vec4 wp = world*vec4(position,1.0); vPos = wp.xyz; vLoc = position;
     let gHi = -1e9, gLo = 1e9;
     for (const r of d.rings) for (let j = 0; j < r.length; j += 2) { const g = heightAt(r[j], r[j + 1]); if (g > gHi) gHi = g; if (g < gLo) gLo = g; }
     // Bugs · fachadas: la fachada arranca en la base del volumen si queda por encima del terreno (volúmenes con la base hasta 4 m
-    // levantada, app.js)
-    if (d.y0 > gHi) gHi = d.y0;
+    // levantada, app.js); en cuesta, si desde el punto más alto no quedan 3,6 m, se mide desde la cota media del terreno y, si
+    // aun así no llega, se dibuja una fachada mínima de una planta (antes: null, sin fachada de detalle)
+    let gHi0 = gHi; if (d.y0 > gHi) gHi = d.y0;
+    if (d.y1 - gHi < 3.6) { const gRef = Math.max(d.y0, gLo + 0.5 * (gHi0 - gLo));
+      if (d.y1 - gRef >= 3.6) gHi = gRef; else if (d.y1 - Math.max(gLo, d.y0) >= 2.6) gHi = d.y1 - 3.6; else return null; }
     const H = d.y1 - gHi;
-    if (H < 3.6) return null;
     const runs = [];
     for (const r of d.rings) for (const [A, Bp] of runsOf(r)) {
       const dx = Bp[0] - A[0], dz = Bp[1] - A[1], L = Math.hypot(dx, dz); if (L < 0.4) continue;
