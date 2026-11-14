@@ -2112,3 +2112,23 @@ herramienta y el juego solo las lee, para que estilo, variante y color sean los 
   (ancho = lado más largo / parcelas) se parten con el color de cada parcela (`BCN_EDIF.parcela` + `kit.colorDe`), en el orden
   de facades.js (desde la esquina más cerrada) y con vértices duplicados en las juntas. Los búferes del trozo crecen si hace falta.
 - Rótulos: celdas 25–31 del atlas = 7 restaurantes con nombre inventado (se encienden como los demás; 17–24 son los anuncios).
+
+### 17.y F3R2 (repaso de la Fase 3, vuelta 2)
+- **Regla 1 con límite duro**: un estilo solo entra en el sorteo (y en las rachas) si casa con las plantas del edificio con
+  **como mucho una planta fuera de rango** (compat ≥ 0,2; en avenidas, con la tolerancia +1/+2). Si ningún estilo de la mezcla
+  cabe, se usan los pesos blandos y cuenta como `altura.forzados`. λ (0,02–50) solo reparte entre estilos que caben, así que los
+  estilos altos van a los edificios altos del barrio. La estadística `altura` da el % de edificios a 0, 1, 2 y 3+ plantas de su
+  rango (sin y con la tolerancia de avenidas) junto a `otroEstiloMedio`; `otroEstiloSup` pondera por superficie de fachada.
+  Consecuencia: en los barrios donde OSM trae muchos volúmenes bajos (Horta, Torre Baró, Pedralbes, Sarrià, Carmel, Montbau) el
+  reparto ya no llega a fachadas_pct: lo limitan las alturas reales, que no se cambian.
+- Regla 2: rachas solo con estilos que caben (compat ≥ 0,2); la probabilidad se multiplica por (pares / pares con repetición
+  posible) de la vuelta anterior (tope ×1,9, máx. 0,97) para que la tasa medida sobre todos los pares sea la nominal.
+- Gòtic: el gótico pesa ×3 en los edificios con frente de calle del Barri Gòtic (λ lo compensa dentro de manzana).
+- Desarrollismo en el Eixample y Gràcia: variantes ponderadas por (1 − saturación media de su paleta)^4 y color de la mitad
+  menos saturada de la paleta.
+- Regla 10: `esChaflan` compartido exige que la pared vecina sea ciega o medianera (no lisa) y perpendicular a la calle vecina o
+  al chaflán; suma la regla de F2R2 (vecinos a ~45°, alguno de calle, tramo ≥ 8 m). El generador imprime
+  `chaflanesEixample.esquinasDistintas` (puntos medios agrupados a 14 m) y un diagnóstico de los casos perdidos.
+- Regla 8: ≥ 15 locales/ha → p = 0,95 + 0,03·com; tienda pequeña también en casas de una planta (H ≥ 4,6 m).
+- app.js: el reparto de parcelas del volumen lejano comprueba `EDOK`: sin `condal_edif.json` (o con `?edif=0`, que es como
+  lo carga el generador) el juego vuelve al selector provisional sin romperse.
