@@ -544,7 +544,8 @@ void main(){
       let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
       const cx = ax + dx * t, cz = az + dz * t, ex = x - cx, ez = z - cz, el = Math.sqrt(ex * ex + ez * ez) || 1, hw = SEG[o + 4];
       const kx = cx + ex / el * (hw + 1), kz = cz + ez / el * (hw + 1); let ok = 1;
-      for (const f of [0.15, 0.4, 0.65, 0.88]) if (coverAt(kx + (x - kx) * f, kz + (z - kz) * f, -1) > -1e8) { ok = 0; break; }
+      // Bugs · volúmenes: un voladizo o una parte elevada (≥ 1,5 m sobre el suelo) no tapa la vista: debajo también hay acera
+      for (const f of [0.15, 0.4, 0.65, 0.88]) if (coverAt(kx + (x - kx) * f, kz + (z - kz) * f, -1, true) > -1e8) { ok = 0; break; }
       VIS[q] = ok; return ok;
     };
     let nExt = 0;
